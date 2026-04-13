@@ -1,5 +1,5 @@
 {
-  "name": "DesignOps Plugin",
+  "name": "Labs DesignOps",
   "description": "Detroit Labs design operations plugin — scaffold Figma projects, create design systems, sync tokens, build components, check accessibility, and more.",
   "tags": ["figma", "design-ops", "design-system", "detroit-labs", "accessibility"],
   "distribution": "internal",

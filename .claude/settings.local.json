@@ -1,11 +1,11 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/new-agent)",
-      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/create-ticket)",
-      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/research)",
-      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/plan)",
-      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/build)"
-    ]
+  "figma_mcp": "connector",
+  "token_schema_path": "tokens.json",
+  "preferred_platform": "web",
+  "template_file_keys": {
+    "workshop": "hnCK8gpGtxzBoBakRX8QLn",
+    "summary": "8YBZtQLCnt7sbmlCKpMO1Y",
+    "foundations": "rJQsr4aou5yjzUhaEM0I2f",
+    "master_files": "C9C0XpIdj1WS3klOugVzGM"
   }
 }

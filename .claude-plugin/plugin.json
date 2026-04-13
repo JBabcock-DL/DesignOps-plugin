@@ -1,5 +1,5 @@
 {
-  "name": "DesignOps Plugin",
+  "name": "Labs DesignOps",
   "description": "Skills-based design ops plugin for Detroit Labs designers to run Figma design tasks via Claude Code commands",
   "version": "0.1.0",
   "author": "Detroit Labs",
