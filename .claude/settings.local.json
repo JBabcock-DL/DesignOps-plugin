@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/new-agent)",
+      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/create-ticket)",
+      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/research)",
+      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/plan)",
+      "Bash(mkdir -p c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/.claude/skills/build)"
+    ]
+  }
+}
