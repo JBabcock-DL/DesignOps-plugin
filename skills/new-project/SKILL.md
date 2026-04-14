@@ -2,29 +2,31 @@
 name: new-project
 description: Scaffold a new Detroit Labs Figma project by duplicating the standard template files into the correct team folder hierarchy (Strategy/, Design-Systems/, Master-Files/).
 argument-hint: "Optional: --team \"Team Name\" --name \"Project Name\" --platform web|android|ios. All arguments are optional — any that are omitted will be prompted interactively."
-context: fork
 agent: general-purpose
 ---
 
 # /new-project
 
-You are scaffolding a new Detroit Labs Figma project. Your first action is to collect three values from the user — do not output any text before calling AskUserQuestion.
+You are scaffolding a new Detroit Labs Figma project.
+
+Your first action is to collect the required inputs using AskUserQuestion — do not output any text before the first AskUserQuestion call.
 
 ## Step 1 — Collect Project Details
 
-Parse `$ARGUMENTS` for `--team`, `--name`, and `--platform`. For each value not already provided, ask using AskUserQuestion. Ask one at a time and wait for each reply before asking the next.
+Parse `$ARGUMENTS` for `--team`, `--name`, and `--platform`. For each value not already provided, call AskUserQuestion. Ask one at a time and wait for each reply before asking the next.
 
-**If `--team` is missing**, ask:
+**If `--team` is missing**, call AskUserQuestion:
 > "What is the exact name of the Figma team this project lives under? (Case-sensitive — must match exactly as it appears in Figma.)"
 
-**If `--name` is missing**, ask:
+**If `--name` is missing**, call AskUserQuestion:
 > "What is the project name? (e.g. `Acme Mobile App`) This will appear in the title of every file created."
 
-**If `--platform` is missing**, ask:
+**If `--platform` is missing**, call AskUserQuestion:
 > "What is the primary platform for this project?
 > - **web** — Next.js / React (Tailwind token collection)
 > - **android** — Android / Compose (Material 3 collection)
 > - **ios** — iOS / SwiftUI (Apple HIG collection)
+> - **all** — All platforms (web + android + ios)
 > - **skip** — Set up the design system separately later"
 
 Use the Project Name verbatim in all file titles — do not normalize or reformat it.
@@ -35,25 +37,25 @@ Use the Project Name verbatim in all file titles — do not normalize or reforma
 
 ## Step 2 — Confirm the File List
 
-Before creating anything, call `AskUserQuestion` with the full file list table and confirmation prompt as the message body. Do not output the table as plain text before calling `AskUserQuestion` — put it directly inside the question so the display and the reply channel are the same call.
+Before creating anything, show the user the full file list and ask for confirmation. Wait for their reply before proceeding.
 
-The `AskUserQuestion` message should be:
+Present the following table (substituting the actual Project Name and Team Name):
 
-> Here is the full list of files I will create for "\<Project Name\>" in the "\<Team Name\>" team:
->
-> | # | File Title | Figma Type | Folder | Source |
-> |---|---|---|---|---|
-> | 1 | \<Project Name\> — Discovery Workshop | FigJam | Strategy/ | Clone from template |
-> | 2 | \<Project Name\> — Discovery Summary | Slides | Strategy/ | Clone from template |
-> | 3 | \<Project Name\> — Wireframes | Design | Strategy/ | New blank file |
-> | 4 | \<Project Name\> — Foundations | Design | Design-Systems/ | Clone from template |
-> | 5 | \<Project Name\> — iOS Masterfile | Design | Master-Files/ | Clone from template |
-> | 6 | \<Project Name\> — Android Masterfile | Design | Master-Files/ | Clone from template |
-> | 7 | \<Project Name\> — RIVE Masterfile | Design | Master-Files/ | Clone from template |
->
-> Shall I proceed? (yes / no / edit)
+Here is the full list of files I will create for "\<Project Name\>" in the "\<Team Name\>" team:
 
-Wait for the reply. If the designer responds `edit` or requests a change, update the plan and call `AskUserQuestion` again with the revised table. Only continue to Step 3 after receiving an explicit `yes`.
+| # | File Title | Figma Type | Folder | Source |
+|---|---|---|---|---|
+| 1 | \<Project Name\> — Discovery Workshop | FigJam | Strategy/ | Clone from template |
+| 2 | \<Project Name\> — Discovery Summary | Slides | Strategy/ | Clone from template |
+| 3 | \<Project Name\> — Wireframes | Design | Strategy/ | New blank file |
+| 4 | \<Project Name\> — Foundations | Design | Design-Systems/ | Clone from template |
+| 5 | \<Project Name\> — iOS Masterfile | Design | Master-Files/ | Clone from template |
+| 6 | \<Project Name\> — Android Masterfile | Design | Master-Files/ | Clone from template |
+| 7 | \<Project Name\> — RIVE Masterfile | Design | Master-Files/ | Clone from template |
+
+Shall I proceed? (yes / no / edit)
+
+If the designer responds `edit` or requests a change, update the plan and re-present the table. Only continue to Step 3 after receiving an explicit `yes`.
 
 ---
 
@@ -188,14 +190,15 @@ All files have been created for "<Project Name>" in the "<Team Name>" team.
 
 ### Step 7 — Offer Design System Initialization
 
-After presenting the results table, call `AskUserQuestion` with:
+After presenting the results table, call AskUserQuestion:
 
-> Would you like to run /create-design-system now to populate the Foundations file with your brand tokens? (yes / no)
+> "Would you like to run /create-design-system now to populate the Foundations file with your brand tokens? (yes / no)"
 
 Wait for the reply. If the designer responds **yes**, invoke the `/create-design-system` skill:
 - Pass the file key for `<Project Name> — Foundations` as the active file context.
 - Use `plugin/templates/agent-handoff.md` to carry state: set `active_file_key` to the Foundations file key, `active_project_name` to the Project Name, and `last_skill_run` to `new-project`.
-- Prompt the designer for the `platform` argument (`web`, `android`, or `ios`) if they have not specified one.
+- If platform is `all`, run `/create-design-system` three times sequentially — once for `web`, once for `android`, once for `ios` — using the same Foundations file key each time.
+- If platform is a single value (`web`, `android`, or `ios`), pass it directly. If platform is `skip` or unset, prompt the designer for a platform before proceeding.
 
 If the designer responds **no**, conclude the skill run. Remind them they can run `/create-design-system` at any time by passing the Foundations file key.
 
