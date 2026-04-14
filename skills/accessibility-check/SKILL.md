@@ -1,12 +1,18 @@
 ---
 name: accessibility-check
 description: Run a WCAG 2.1 AA accessibility check on a Figma frame, including contrast ratio checks, font size minimums, iOS Dynamic Type simulation (12-step Apple scale), and Android font scaling simulation (100/130/150/200%). Generates an inline pass/fail report and optionally writes a report frame to an Accessibility page.
-argument-hint: "[node-id] — optional. e.g. /accessibility-check 123:456. If omitted, the agent prompts for the target frame."
+argument-hint: "[node-id] — optional. e.g. /accessibility-check 123:456. If omitted, the agent collects the target frame via AskUserQuestion."
 ---
 
 # /accessibility-check
 
 Run a WCAG 2.1 AA accessibility audit on a selected Figma frame. Checks contrast ratios and font sizes, simulates iOS Dynamic Type across all 12 Apple scale steps, simulates Android font scaling at Material 3 breakpoints, and generates a detailed inline report.
+
+---
+
+## Interactive input contract
+
+Whenever this skill needs a **target frame** (node ID or description), **Figma file key**, or **whether to write a report frame to the canvas**, use **AskUserQuestion** — **one tool call per question**. Wait for each answer before the next. Do not print multi-part prompts as plain markdown before the first AskUserQuestion.
 
 ---
 
@@ -87,17 +93,11 @@ Android 14 / Material 3 defines four font scale breakpoints for accessibility si
 
 Check `$ARGUMENTS` first. If a node ID was passed (e.g. `/accessibility-check 123:456`), use it directly as `source_node_id` and skip the prompt below. Resolve `source_frame_name` by calling `get_metadata` on the node.
 
-If no argument was provided, ask the designer:
+If no argument was provided, call **AskUserQuestion**:
 
-```
-Which frame should I audit for accessibility?
+> "Which frame should I audit for accessibility? Paste a Figma node ID (e.g. `123:456`) **or** describe the frame name and I will search the file."
 
-You can:
-  - Paste the Figma node ID (e.g. 123:456)
-  - Describe the frame name and I will locate it in the file
-```
-
-If the designer provides a name, use `get_design_context` or `get_metadata` to locate it in the file. If multiple candidates match, list them and ask the designer to confirm.
+If the designer provides a name, use `get_design_context` or `get_metadata` to locate it in the file. If multiple candidates match, call **AskUserQuestion** listing the candidates and ask which node ID to use.
 
 Store the resolved values as `source_node_id` and `source_frame_name`.
 
@@ -107,14 +107,9 @@ Store the resolved values as `source_node_id` and `source_frame_name`.
 
 Check `plugin/templates/agent-handoff.md` for `active_file_key`. If it is set, use that value.
 
-If no file key is available, ask:
+If no file key is available, call **AskUserQuestion**:
 
-```
-What is the Figma file key for this file?
-
-You can find it in the Figma URL:
-  https://www.figma.com/design/<FILE_KEY>/...
-```
+> "What is the Figma file key for this file? (Segment after `figma.com/design/` in the URL.)"
 
 Store the value as `file_key`.
 
@@ -266,12 +261,9 @@ FONT SIZE WARNINGS
 
 ### Step 8 — Optional: Write Report Frame to Figma (Conditional)
 
-After presenting the inline report, ask:
+After presenting the inline report, call **AskUserQuestion**:
 
-```
-Would you like me to write a report frame to an "Accessibility" page in the Figma file?
-This creates a permanent record of the findings directly on the canvas. (yes / no)
-```
+> "Write a report frame to an **Accessibility** page in the Figma file? This saves the findings on the canvas. (yes / no)"
 
 If the designer says **yes**:
 

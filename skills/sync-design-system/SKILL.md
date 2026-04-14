@@ -19,18 +19,23 @@ the chosen sync direction.
 
 ---
 
+## Interactive input contract
+
+Whenever this skill needs a **token file path**, **Figma file key or URL**, **sync direction** (Step 7), **per-conflict resolution** (F / C / S), **whether to push after manual conflict review**, or a **corrected path after an error**, use **AskUserQuestion** — **one tool call per question**. Wait for each answer before the next.
+
+Do not dump multiple decision prompts as plain markdown without calling **AskUserQuestion** for each decision turn.
+
+---
+
 ## Step 1 — Locate the Token Source File
 
 1. Read `plugin/.claude/settings.local.json` and look for the `token_schema_path` key.
 2. If `token_schema_path` is present and the file exists at that path, use it.
-3. If `token_schema_path` is missing or the file does not exist, ask the designer:
+3. If `token_schema_path` is missing or the file does not exist, call **AskUserQuestion**:
 
-   > "I couldn't find the token file at the path in settings.local.json.
-   > Please provide the path to your token file
-   > (e.g. `src/tokens.json`, `tailwind.config.js`, or `src/styles/tokens.css`)."
+   > "I couldn't find the token file at the path in settings.local.json. Paste the path to your token file (e.g. `src/tokens.json`, `tailwind.config.js`, or `src/styles/tokens.css`)."
 
-4. Accept the path the designer provides and proceed. Do not assume a default
-   path that has not been confirmed.
+4. Accept the path from the AskUserQuestion reply and proceed. Do not assume a default path that has not been confirmed. If the path is still invalid, call **AskUserQuestion** again until you have a readable file.
 
 ---
 
@@ -53,10 +58,9 @@ designer (see "Error Guidance" below).
 
 1. Check `$ARGUMENTS` first — if a Figma file URL or key was passed directly (e.g. `/sync-design-system figma.com/design/abc123/...`), extract and use it.
 2. If no argument was provided, check `plugin/templates/agent-handoff.md` for the `active_file_key` field.
-3. If neither is available, ask the designer:
+3. If neither is available, call **AskUserQuestion**:
 
-   > "Please paste the Figma file URL or file key for the design system file
-   > you want to sync against."
+   > "Paste the Figma file URL or file key for the design system file you want to sync against."
 
 4. Extract the file key from the URL if a full URL was provided
    (`figma.com/design/:fileKey/...`).
@@ -130,24 +134,18 @@ If all tokens are in sync (diff is empty), report that and stop:
 
 ---
 
-## Step 7 — Ask the Designer Which Direction to Sync
+## Step 7 — Choose sync direction
 
-Present the following options. Remove "Push both" if any conflicts exist.
+Call **AskUserQuestion**. Include the following text in the question body. If any **CONFLICTS** exist in the diff, **omit option 3** from the question text entirely.
 
-> "Which direction would you like to sync?
+> "Which direction should I sync? Reply **1**, **2**, **3**, or **4**:
 >
-> 1. **Push to Figma** — overwrite Figma variables with code token values
->    (applies NEW + resolves CONFLICTS in favor of code)
-> 2. **Push to code** — overwrite the local token file with Figma variable
->    values (applies MISSING + resolves CONFLICTS in favor of Figma)
-> 3. **Push both** — push NEW tokens to Figma AND MISSING tokens to code
->    (only available when there are no CONFLICTS)
-> 4. **Review conflicts manually** — resolve each conflict one at a time
->    before pushing
->
-> Enter 1, 2, 3, or 4:"
+> 1. **Push to Figma** — overwrite Figma variables with code token values (NEW + CONFLICTS use code)
+> 2. **Push to code** — overwrite the local token file with Figma values (MISSING + CONFLICTS use Figma)
+> 3. **Push both** — NEW → Figma and MISSING → code (only when there are zero CONFLICTS)
+> 4. **Review conflicts manually** — resolve each conflict one at a time before pushing"
 
-Wait for the designer's response before proceeding.
+Parse the reply (`1`–`4`) before Step 8. If the reply is ambiguous, call **AskUserQuestion** again with the same options.
 
 ---
 
@@ -199,13 +197,7 @@ simultaneously. Report: "Pushed N tokens to Figma and updated M tokens in code."
 
 ### Option 4 — Review conflicts manually
 
-Follow the manual conflict resolution flow in the "Conflict Resolution" section
-below. After all conflicts are resolved, ask the designer:
-
-> "All conflicts resolved. Would you like to push the resolved changes now?
-> (yes / no)"
-
-If yes, execute the push using the decisions made during resolution.
+Follow the manual conflict resolution flow in the **Conflict Resolution** section below. That section ends with one **AskUserQuestion** to confirm pushing resolved changes. If the designer answers **yes**, execute the push using the decisions recorded during resolution.
 
 ---
 
@@ -226,30 +218,16 @@ Sync complete.
 ## Conflict Resolution
 
 When the designer chooses "Review conflicts manually" (Option 4), walk through
-each conflict token one at a time in this format:
+each conflict token **one at a time**. For **each** conflict, call **AskUserQuestion** with a body like:
 
-```
-Conflict 1 of 5 — color/primary
-  Code value:   #2563EB   (from tokens.json)
-  Figma value:  #1D4ED8   (from Figma Primitives collection)
+> "Conflict [i] of [N] — `[token-name]`
+> - Code value: `[code-value]`
+> - Figma value: `[figma-value]`
+> Reply **F** (use Figma → update code), **C** (use code → update Figma), or **S** (skip)."
 
-  Options:
-    F — Use Figma value (#1D4ED8) → update code file
-    C — Use code value (#2563EB) → update Figma variable
-    S — Skip (leave both as-is for now)
+Record each decision and move to the next conflict. After all conflicts have been reviewed, present a resolution summary (counts for Figma vs code vs skipped), then call **AskUserQuestion**:
 
-Enter F, C, or S:
-```
-
-Record each decision and move to the next conflict. After all conflicts have
-been reviewed, display a resolution summary before asking to push:
-
-```
-Conflict resolution summary:
-  Use Figma value:  2 tokens
-  Use code value:   2 tokens
-  Skipped:          1 token
-```
+> "Push these resolutions to Figma and/or code now? (yes / no)"
 
 ---
 
@@ -315,7 +293,7 @@ Convert kebab-case names to slash-notation:
 > "The token file at `<path>` could not be found. Please check the path in
 > `plugin/.claude/settings.local.json` or provide the correct file path."
 
-Do not proceed until a valid file path is confirmed.
+If the path is still wrong after reporting the error, call **AskUserQuestion** to collect a corrected path before continuing.
 
 ### Malformed token file
 
@@ -327,6 +305,8 @@ Do not proceed until a valid file path is confirmed.
 >
 > Please fix the file and run `/sync-design-system` again, or provide an
 > alternative token file path."
+
+Then call **AskUserQuestion** asking whether to paste a new token file path or stop the skill.
 
 ### API write permission error (403 / insufficient permissions)
 

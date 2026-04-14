@@ -1,12 +1,18 @@
 ---
 name: new-language
 description: Duplicate a Figma frame into a new page for a target locale and translate all text nodes inline using Claude's language capabilities. No external translation API required. Flags RTL languages (Arabic, Hebrew, Urdu, Persian) with a layout mirroring warning.
-argument-hint: "[locale] [node-id] — e.g. /new-language es 123:456. Both are optional — any omitted values will be prompted interactively."
+argument-hint: "[locale] [node-id] — e.g. /new-language es 123:456. Both are optional — any omitted values are collected with AskUserQuestion."
 ---
 
 # /new-language
 
 Duplicate a Figma frame into a new locale-specific page and translate every text node to the target language — entirely inline, with no external translation API.
+
+---
+
+## Interactive input contract
+
+Whenever this skill needs a **locale**, **source frame** (node ID or description), **Figma file key**, or **disambiguation** between multiple matching frames, use **AskUserQuestion** — **one tool call per question**. Wait for each answer before the next. Do not print multi-part prompts as plain markdown before the first AskUserQuestion.
 
 ---
 
@@ -71,21 +77,11 @@ The following locales are right-to-left script languages and receive special han
 
 Parse `$ARGUMENTS`. The first token (if present) is the locale code; the second token (if present and matches the pattern `\d+:\d+`) is the source frame node ID — store it for Step 2 and skip that prompt.
 
-If no locale was provided in `$ARGUMENTS`, ask:
+If no locale was provided in `$ARGUMENTS`, call **AskUserQuestion**:
 
-```
-Which locale should I translate this frame to?
+> "Which locale should I translate this frame to? Common codes: **es** Spanish · **fr** French · **de** German · **ar** Arabic (RTL) · **he** Hebrew (RTL) · **ur** Urdu (RTL) · **fa** Persian (RTL) · **ja** Japanese · **zh-Hans** Chinese (Simplified) · **ko** Korean · **pt** Portuguese · **ru** Russian. Reply with a locale code or any BCP 47 tag (e.g. pt-BR)."
 
-Common codes:
-  es — Spanish        fr — French         de — German
-  ar — Arabic (RTL)   he — Hebrew (RTL)   ur — Urdu (RTL)
-  fa — Persian (RTL)  ja — Japanese       zh-Hans — Chinese (Simplified)
-  ko — Korean         pt — Portuguese     ru — Russian
-
-Enter a locale code, or type any BCP 47 language tag (e.g. pt-BR for Brazilian Portuguese).
-```
-
-Validate that the input is a plausible locale code (2–10 characters, alphanumeric with optional hyphens). If the input cannot be identified as a known language, warn the designer and ask them to confirm before continuing.
+Validate that the input is a plausible locale code (2–10 characters, alphanumeric with optional hyphens). If the input cannot be identified as a known language, call **AskUserQuestion** asking them to confirm or correct the locale before continuing.
 
 Store the locale code as `target_locale`.
 
@@ -95,17 +91,11 @@ Store the locale code as `target_locale`.
 
 If a node ID was parsed from `$ARGUMENTS` in Step 1, use it directly — skip the prompt below.
 
-Otherwise ask the designer:
+Otherwise call **AskUserQuestion**:
 
-```
-Which frame should I duplicate for this translation?
+> "Which frame should I duplicate? Paste a Figma node ID (e.g. `123:456`) **or** describe the frame name and I will search the file."
 
-You can:
-  - Paste the Figma node ID (e.g. 123:456)
-  - Describe the frame name and I will locate it in the file
-```
-
-If the designer provides a node ID, use it directly. If they provide a name or description, use the Figma MCP tool `get_design_context` or `get_metadata` to search the file for a frame matching that name. Confirm the correct frame with the designer before proceeding if more than one candidate is found.
+If the designer provides a node ID, use it directly. If they provide a name or description, use the Figma MCP tool `get_design_context` or `get_metadata` to search the file for a frame matching that name. If more than one candidate matches, call **AskUserQuestion** listing the candidates and ask which node ID to use.
 
 Store the resolved node ID as `source_node_id` and the frame name as `source_frame_name`.
 
@@ -115,14 +105,9 @@ Store the resolved node ID as `source_node_id` and the frame name as `source_fra
 
 Check `plugin/templates/agent-handoff.md` for `active_file_key`. If it is set, use that value.
 
-If no file key is available in handoff context, ask:
+If no file key is available in handoff context, call **AskUserQuestion**:
 
-```
-What is the Figma file key for this file?
-
-You can find it in the URL:
-  https://www.figma.com/design/<FILE_KEY>/...
-```
+> "What is the Figma file key for this file? (Segment after `figma.com/design/` in the URL.)"
 
 Store the resolved value as `file_key`.
 
