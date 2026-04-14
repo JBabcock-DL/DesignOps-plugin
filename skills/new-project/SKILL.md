@@ -49,15 +49,21 @@ Check `$ARGUMENTS` for any of the following optional flags before prompting:
 
 For each value already provided via arguments, use it directly and skip that question. Only ask for values that are missing.
 
-**IMPORTANT — always use the `AskUserQuestion` tool for every prompt below.** Do not print questions as plain text and wait for a reply — that pattern breaks in fork context and on Claude Desktop. Each question must be a distinct `AskUserQuestion` call so the user's reply is routed back to this agent invocation.
+**DO NOT** output any introductory text, preamble, or summary of what you are about to ask. Do not list the questions upfront. Jump directly to the first missing value by calling `AskUserQuestion` immediately — that is the first thing you do.
+
+Ask each question as a separate, sequential `AskUserQuestion` call. Wait for the reply before asking the next. Never batch questions into a single message or print them as plain text — that pattern deadlocks in `fork` context because plain text output has no reply channel.
 
 **If `--team` is missing**, call `AskUserQuestion` with:
 > "What is the exact name of the Figma team this project lives under?
 > (This must match the team name exactly as it appears in Figma — it is case-sensitive.)"
 
+Wait for the reply. Store the team name. Then:
+
 **If `--name` is missing**, call `AskUserQuestion` with:
 > "What is the project name? (e.g. `Acme Mobile App`)
 > This will appear in the title of every file created."
+
+Wait for the reply. Store the project name. Then:
 
 **If `--platform` is missing**, call `AskUserQuestion` with:
 > "What is the primary platform for this project?
@@ -68,7 +74,9 @@ For each value already provided via arguments, use it directly and skip that que
 >
 > This is only used if you run `/create-design-system` after project setup."
 
-Store all three values. Use the Project Name verbatim in all file titles — do not normalize or reformat it.
+Wait for the reply. Store the platform value.
+
+Use the Project Name verbatim in all file titles — do not normalize or reformat it.
 
 ---
 
