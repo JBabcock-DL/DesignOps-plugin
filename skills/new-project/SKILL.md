@@ -8,79 +8,32 @@ agent: general-purpose
 
 # /new-project
 
-Scaffold a complete Detroit Labs Figma project by cloning the standard template files into the correct team folder hierarchy.
+You are scaffolding a new Detroit Labs Figma project. Your first action is to collect three values from the user — do not output any text before calling AskUserQuestion.
 
----
+## Step 1 — Collect Project Details
 
-## Prerequisites
+Parse `$ARGUMENTS` for `--team`, `--name`, and `--platform`. For each value not already provided, ask using AskUserQuestion. Ask one at a time and wait for each reply before asking the next.
 
-Before running this skill, verify the following are in place:
+**If `--team` is missing**, ask:
+> "What is the exact name of the Figma team this project lives under? (Case-sensitive — must match exactly as it appears in Figma.)"
 
-| Requirement | Notes |
-|---|---|
-| Figma MCP connector configured | The connector must be active in Claude Code. All Figma API calls are authenticated through it — no personal access token (PAT) or environment variable is needed. |
-| Organization-tier Figma account | Required to use the Figma REST Files API `duplicate` endpoint and to create files in team project folders. |
-| Team already exists in Figma | The target team must already be created in the Figma organization. This skill creates folders and files within an existing team — it does not create the team itself. |
+**If `--name` is missing**, ask:
+> "What is the project name? (e.g. `Acme Mobile App`) This will appear in the title of every file created."
 
----
-
-## Template Keys Reference
-
-| Template | File Key | Figma File Type | Destination Folder |
-|---|---|---|---|
-| Discovery Workshop | `hnCK8gpGtxzBoBakRX8QLn` | FigJam | `Strategy/` |
-| Discovery Summary | `8YBZtQLCnt7sbmlCKpMO1Y` | Slides | `Strategy/` |
-| Foundations / Agent Kit | `rJQsr4aou5yjzUhaEM0I2f` | Design | `Design-Systems/` |
-| Master Files | `C9C0XpIdj1WS3klOugVzGM` | Design | `Master-Files/` |
-
-These keys are also stored in `plugin/.claude/settings.local.json` under `template_file_keys`.
-
----
-
-## Steps
-
-### Step 1 — Collect Project Details
-
-Check `$ARGUMENTS` for any of the following optional flags before prompting:
-
-- `--team "..."` — the Figma team name
-- `--name "..."` — the project name
-- `--platform web|android|ios` — the primary platform (passed to `/create-design-system` if chained in Step 7)
-
-For each value already provided via arguments, use it directly and skip that question. Only ask for values that are missing.
-
-**DO NOT** output any introductory text, preamble, or summary of what you are about to ask. Do not list the questions upfront. Jump directly to the first missing value by calling `AskUserQuestion` immediately — that is the first thing you do.
-
-Ask each question as a separate, sequential `AskUserQuestion` call. Wait for the reply before asking the next. Never batch questions into a single message or print them as plain text — that pattern deadlocks in `fork` context because plain text output has no reply channel.
-
-**If `--team` is missing**, call `AskUserQuestion` with:
-> "What is the exact name of the Figma team this project lives under?
-> (This must match the team name exactly as it appears in Figma — it is case-sensitive.)"
-
-Wait for the reply. Store the team name. Then:
-
-**If `--name` is missing**, call `AskUserQuestion` with:
-> "What is the project name? (e.g. `Acme Mobile App`)
-> This will appear in the title of every file created."
-
-Wait for the reply. Store the project name. Then:
-
-**If `--platform` is missing**, call `AskUserQuestion` with:
+**If `--platform` is missing**, ask:
 > "What is the primary platform for this project?
 > - **web** — Next.js / React (Tailwind token collection)
 > - **android** — Android / Compose (Material 3 collection)
 > - **ios** — iOS / SwiftUI (Apple HIG collection)
-> - **skip** — Set up the design system separately later
->
-> This is only used if you run `/create-design-system` after project setup."
-
-Wait for the reply. Store the platform value.
+> - **skip** — Set up the design system separately later"
 
 Use the Project Name verbatim in all file titles — do not normalize or reformat it.
 
 ---
 
-### Step 2 — Confirm the File List
+#---
+
+## Step 2 — Confirm the File List
 
 Before creating anything, call `AskUserQuestion` with the full file list table and confirmation prompt as the message body. Do not output the table as plain text before calling `AskUserQuestion` — put it directly inside the question so the display and the reply channel are the same call.
 
@@ -275,6 +228,29 @@ If some files were created successfully and others failed, present the results t
 ```
 
 Tell the designer which files need to be created manually or retried.
+
+---
+
+## Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Figma MCP connector configured | The connector must be active in Claude Code. All Figma API calls are authenticated through it — no personal access token (PAT) or environment variable is needed. |
+| Organization-tier Figma account | Required to use the Figma REST Files API `duplicate` endpoint and to create files in team project folders. |
+| Team already exists in Figma | The target team must already be created in the Figma organization. This skill creates folders and files within an existing team — it does not create the team itself. |
+
+---
+
+## Template Keys Reference
+
+| Template | File Key | Figma File Type | Destination Folder |
+|---|---|---|---|
+| Discovery Workshop | `hnCK8gpGtxzBoBakRX8QLn` | FigJam | `Strategy/` |
+| Discovery Summary | `8YBZtQLCnt7sbmlCKpMO1Y` | Slides | `Strategy/` |
+| Foundations / Agent Kit | `rJQsr4aou5yjzUhaEM0I2f` | Design | `Design-Systems/` |
+| Master Files | `C9C0XpIdj1WS3klOugVzGM` | Design | `Master-Files/` |
+
+These keys are also stored in `plugin/.claude/settings.local.json` under `template_file_keys`.
 
 ---
 
