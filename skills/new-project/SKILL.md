@@ -82,31 +82,25 @@ Use the Project Name verbatim in all file titles — do not normalize or reforma
 
 ### Step 2 — Confirm the File List
 
-Before creating anything, present a summary table of all files that will be created. Wait for the designer to confirm before proceeding.
+Before creating anything, call `AskUserQuestion` with the full file list table and confirmation prompt as the message body. Do not output the table as plain text before calling `AskUserQuestion` — put it directly inside the question so the display and the reply channel are the same call.
 
-Show the following table (with the actual Project Name substituted):
+The `AskUserQuestion` message should be:
 
-```
-Here is the full list of files I will create for "<Project Name>" in the "<Team Name>" team:
+> Here is the full list of files I will create for "\<Project Name\>" in the "\<Team Name\>" team:
+>
+> | # | File Title | Figma Type | Folder | Source |
+> |---|---|---|---|---|
+> | 1 | \<Project Name\> — Discovery Workshop | FigJam | Strategy/ | Clone from template |
+> | 2 | \<Project Name\> — Discovery Summary | Slides | Strategy/ | Clone from template |
+> | 3 | \<Project Name\> — Wireframes | Design | Strategy/ | New blank file |
+> | 4 | \<Project Name\> — Foundations | Design | Design-Systems/ | Clone from template |
+> | 5 | \<Project Name\> — iOS Masterfile | Design | Master-Files/ | Clone from template |
+> | 6 | \<Project Name\> — Android Masterfile | Design | Master-Files/ | Clone from template |
+> | 7 | \<Project Name\> — RIVE Masterfile | Design | Master-Files/ | Clone from template |
+>
+> Shall I proceed? (yes / no / edit)
 
-| # | File Title | Figma Type | Folder | Source |
-|---|---|---|---|---|
-| 1 | <Project Name> — Discovery Workshop | FigJam | Strategy/ | Clone from template |
-| 2 | <Project Name> — Discovery Summary | Slides | Strategy/ | Clone from template |
-| 3 | <Project Name> — Wireframes | Design | Strategy/ | New blank file |
-| 4 | <Project Name> — Foundations | Design | Design-Systems/ | Clone from template |
-| 5 | <Project Name> — iOS Masterfile | Design | Master-Files/ | Clone from template |
-| 6 | <Project Name> — Android Masterfile | Design | Master-Files/ | Clone from template |
-| 7 | <Project Name> — RIVE Masterfile | Design | Master-Files/ | Clone from template |
-
-Shall I proceed? (yes / no / edit)
-```
-
-Use `AskUserQuestion` to collect this confirmation — do not print it as text.
-
-If the designer responds with `edit` or requests a change, update the plan accordingly and re-present the table before proceeding.
-
-Only continue to Step 3 after receiving explicit confirmation via `AskUserQuestion`.
+Wait for the reply. If the designer responds `edit` or requests a change, update the plan and call `AskUserQuestion` again with the revised table. Only continue to Step 3 after receiving an explicit `yes`.
 
 ---
 
@@ -241,14 +235,11 @@ All files have been created for "<Project Name>" in the "<Team Name>" team.
 
 ### Step 7 — Offer Design System Initialization
 
-After presenting the results table, use `AskUserQuestion` to ask:
+After presenting the results table, call `AskUserQuestion` with:
 
-```
-Would you like to run /create-design-system now to populate the Foundations file with your brand tokens?
-(yes / no)
-```
+> Would you like to run /create-design-system now to populate the Foundations file with your brand tokens? (yes / no)
 
-If the designer responds **yes**, invoke the `/create-design-system` skill:
+Wait for the reply. If the designer responds **yes**, invoke the `/create-design-system` skill:
 - Pass the file key for `<Project Name> — Foundations` as the active file context.
 - Use `plugin/templates/agent-handoff.md` to carry state: set `active_file_key` to the Foundations file key, `active_project_name` to the Project Name, and `last_skill_run` to `new-project`.
 - Prompt the designer for the `platform` argument (`web`, `android`, or `ios`) if they have not specified one.
