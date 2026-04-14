@@ -26,7 +26,8 @@ This document is the standardized context transfer template for the DesignOps Pl
 2. **Add any open items** that the next skill needs to know about — be specific (e.g. "Foundations file has not been renamed yet", "Android alias collection was skipped — M3 role mapping needs review").
 3. **Pass this file to the next skill invocation** by including it in your Claude Code prompt:
    ```
-   /create-design-system platform=web
+   /create-design-system web
+   # or: /create-design-system all
    Context: see plugin/templates/agent-handoff.md
    ```
 4. **The receiving agent** should read this file first, incorporate the open items into its execution plan, and update the frontmatter before it concludes.

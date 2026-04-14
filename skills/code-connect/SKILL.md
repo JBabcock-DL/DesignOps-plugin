@@ -2,13 +2,18 @@
 name: code-connect
 description: Find Figma components that are missing Code Connect mappings and publish them after designer review.
 argument-hint: "[figma-file-key] — optional. If omitted, the agent reads from handoff context or prompts."
-context: fork
 agent: general-purpose
 ---
 
 # Skill: /code-connect
 
 Find Figma components that are missing Code Connect mappings and publish them after designer review.
+
+---
+
+## Interactive input contract
+
+When you need a Figma file key or publish confirmation, use **AskUserQuestion** — **one question per tool call**. Wait for each answer before the next. Do not print multiple questions as plain markdown before the first AskUserQuestion.
 
 ---
 
@@ -27,10 +32,7 @@ Find Figma components that are missing Code Connect mappings and publish them af
 
 1. Check `$ARGUMENTS` first — if a Figma file URL or key was passed directly (e.g. `/code-connect figma.com/design/abc123/...`), extract and use it.
 2. If no argument was provided, check `plugin/templates/agent-handoff.md` for the `active_file_key` field.
-3. If neither is available, ask the designer:
-
-   > "What is the Figma file key for this project?
-   > You can find it in the Figma URL: `figma.com/design/**{fileKey}**/...`"
+3. If neither is available, call **AskUserQuestion**: "What is the Figma file key for this project? (Segment after `figma.com/design/` in the URL.)"
 
 ### Step 2 — Get Code Connect suggestions
 
@@ -78,10 +80,10 @@ Display the proposed mappings as a structured summary. For each mapping, show:
 - Mapped props (if any)
 - Usage example
 
-Then ask: "Do these mappings look correct? Reply 'yes' to publish, or list any component names you want to skip or correct before publishing."
+Then call **AskUserQuestion**: "Do these mappings look correct? Reply **yes** to publish, **no** to cancel, or list component names to skip or correct before publishing."
 
 - Wait for explicit confirmation before proceeding.
-- If the designer requests corrections, update the relevant mappings as instructed and re-present the corrected list for a final confirmation.
+- If the designer requests corrections, update the relevant mappings as instructed and re-present the corrected list, then call **AskUserQuestion** again for final confirmation.
 - If the designer declines entirely, exit without publishing.
 
 ### Step 7 — Publish Code Connect mappings

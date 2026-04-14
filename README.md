@@ -77,7 +77,7 @@ Scaffold a complete Detroit Labs Figma project by cloning the standard template 
 **Syntax**
 ```
 /new-project
-/new-project --team "Team Name" --name "Project Name" --platform web|android|ios
+/new-project --team "Team Name" --name "Project Name" --platform web|android|ios|all|skip
 ```
 
 **Arguments** (all optional — prompted interactively if omitted)
@@ -86,7 +86,7 @@ Scaffold a complete Detroit Labs Figma project by cloning the standard template 
 |---|---|
 | `--team` | Exact Figma team name (case-sensitive) |
 | `--name` | Project name — used in all file titles |
-| `--platform` | `web`, `android`, `ios`, or `skip` — used if `/create-design-system` is chained |
+| `--platform` | `web`, `android`, `ios`, `all`, or `skip` — used if `/create-design-system` is chained (`all` runs `/create-design-system all`) |
 
 **What it creates**
 
@@ -116,18 +116,20 @@ Initialize a design system in a Figma file by pushing brand tokens into the `Pri
 /create-design-system web
 /create-design-system android
 /create-design-system ios
+/create-design-system all
 ```
 
 **Arguments**
 
 | Argument | Description |
 |---|---|
-| `web` / `android` / `ios` | Target platform for the alias token collection. Prompted interactively if omitted. |
+| `web` / `android` / `ios` | Target platform for the alias token collection (`Web`, `Android/M3`, or `iOS/HIG`). Prompted interactively if omitted. |
+| `all` | Same file and token inputs; runs the web, android, and ios alias passes sequentially (shared `Primitives`). |
 
 **What it does**
 
 1. Checks `templates/agent-handoff.md` for an active file key before prompting for one
-2. Runs an interactive brand token wizard — prompts for primary color, secondary color, neutral color, body font, display font, base font size (default 16px), base spacing unit (default 4px), and border radius (default 4px)
+2. Collects brand tokens via interactive prompts (the skill instructs the agent to use **AskUserQuestion** one question at a time — primary color, secondary color, neutral color, body font, display font, base font size (default 16px), base spacing unit (default 4px), and border radius (default 4px))
 3. Generates the `Primitives` collection: full color ramps (50–900 steps via Tailwind HSL interpolation), `Space/*`, `Corner/*`, `Typography/*`, `Shadow/*`
 4. Creates or updates the platform alias collection:
    - **Web** → `Web` collection with `var(--*)` CSS custom property pattern

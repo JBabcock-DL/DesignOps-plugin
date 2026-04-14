@@ -1,24 +1,52 @@
 ---
 name: create-design-system
-description: Push brand tokens into the Primitives variable collection and the target platform alias collection (Web, Android/M3, or iOS/HIG) in a Figma file. Accepts web, android, or ios as the platform argument.
-argument-hint: "[web|android|ios]"
-context: fork
+description: Push brand tokens into the Primitives variable collection and the target platform alias collection (Web, Android/M3, or iOS/HIG) in a Figma file. Accepts web, android, ios, or all (web then android then ios on the same file).
+argument-hint: "[web|android|ios|all]"
 agent: general-purpose
 ---
 
-# Skill — `/create-design-system [web|android|ios]`
+# Skill — `/create-design-system [web|android|ios|all]`
 
 You are the Create Design System agent for the Detroit Labs DesignOps plugin. Your job is to collect brand tokens from the designer, map them to the correct Figma variable collections, and push the result to the target Figma file.
 
 ---
 
+## Interactive input contract
+
+- For **Steps 1-4**, **Step 8** when the API returns partial write errors, and **Step 11**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
+- **Do not** print a block of multiple questions as plain markdown before the first AskUserQuestion.
+- After any AskUserQuestion, you may show a brief acknowledgment in prose; do not bundle the next question in that same message — call AskUserQuestion again.
+
+---
+
+## Multi-platform (`all`)
+
+If the resolved platform is **`all`** (from `$ARGUMENTS` or AskUserQuestion):
+
+1. Complete **Steps 2-4 once** (file key and tokens). Do not re-prompt Steps 2-4 between passes.
+2. Set `PLATFORM_QUEUE = [web, android, ios]`. Before Step 5, set **`EFFECTIVE_PLATFORM`** to the first queue entry. After each full Step 10 for that entry, shift the queue: set `EFFECTIVE_PLATFORM` to the next platform until the queue is exhausted.
+3. Run **Steps 5-10** once per `EFFECTIVE_PLATFORM` value. Each pass uses the same `TARGET_FILE_KEY` and the same token values. Throughout Steps 5-10, use **`EFFECTIVE_PLATFORM`** anywhere this skill refers to the platform from Step 1 (especially Step 7).
+4. On the **second and third** passes, Step 5 re-reads the registry; Step 6 should **update** existing Primitives in place (idempotent) rather than failing on duplicate names. Step 7 always targets the alias collection for the **current** `EFFECTIVE_PLATFORM` (`Web`, `Android/M3`, or `iOS/HIG`).
+5. **Step 10** reports after **each** pass which collections were updated, then a **final** short summary listing all three platforms when the queue finishes.
+6. Run **Step 11 once** after the queue is exhausted (do not offer `/create-component` between web/android/ios passes).
+
+If the resolved platform is **not** `all`, set **`EFFECTIVE_PLATFORM`** to that single platform and run Steps 5-10 once, then Step 11 once.
+
+---
+
 ## Step 1 — Resolve the platform argument
 
-Check `$ARGUMENTS` for a platform value: `web`, `android`, or `ios`.
+Parse `$ARGUMENTS` (first token, case-insensitive) for a platform: `web`, `android`, `ios`, or `all`.
 
-If `$ARGUMENTS` is empty or unrecognized, ask:
+If a valid value is present, use it and proceed to Step 2.
 
-> "Which platform are you targeting? Reply with **web**, **android**, or **ios**."
+If `$ARGUMENTS` is empty or unrecognized, call **AskUserQuestion**:
+
+> "Which platform are you targeting?
+> - **web** — Web / Tailwind-style `var(--*)` aliases
+> - **android** — Android / Material 3 (`md/sys/*`)
+> - **ios** — iOS / HIG (`ios/*`)
+> - **all** — Run web, then android, then ios on the same file (shared Primitives, three alias collections)"
 
 Do not proceed until a valid platform is confirmed.
 
@@ -26,106 +54,74 @@ Do not proceed until a valid platform is confirmed.
 
 ## Step 2 — Resolve the Figma file key
 
-1. Check `plugin/templates/agent-handoff.md` for the `active_file_key` field. If set, use it and confirm with the designer:
+1. Check `plugin/templates/agent-handoff.md` for `active_file_key`.
 
-   > "I'll use the Foundations file from the last `/new-project` run: `<active_file_key>`. Is that the right file? (yes / paste a different key)"
+2. **If `active_file_key` is set**, call **AskUserQuestion**:
 
-2. If no handoff file key is present, ask:
+   > "I'll use the Foundations file from the last `/new-project` run: `<active_file_key>`. Use this file? Reply **yes** or paste a different Figma file key."
 
-   > "What is the Figma file key for your design system file?
-   > You can find it in the Figma URL: `figma.com/design/<FILE_KEY>/...`"
+   - If the reply is **yes** (or equivalent), set `TARGET_FILE_KEY` to `active_file_key`.
+   - If the reply is a different key string, validate it (alphanumerics and hyphens only). If valid, set `TARGET_FILE_KEY`. If invalid, call **AskUserQuestion** again with the same prompt shape until you have a valid key.
 
-Store the confirmed value as `TARGET_FILE_KEY`. Do not proceed without it.
+3. **If `active_file_key` is missing**, call **AskUserQuestion**:
 
-**Error — missing or malformed file key:**
-If the designer cannot find the file key, instruct them to:
-1. Open the Figma file in a browser.
-2. Copy the segment between `/design/` and the next `/` in the URL.
-3. Paste it here.
+   > "What is the Figma file key for your design system file? (The segment after `figma.com/design/` in the file URL, before the next `/`.)"
 
-If the file key looks malformed (contains spaces or special characters other than alphanumerics and hyphens), reject it and ask again.
+   Validate the reply. If malformed, call **AskUserQuestion** again (same question) until `TARGET_FILE_KEY` is valid.
+
+Do not proceed without `TARGET_FILE_KEY`.
+
+**If the designer cannot find the file key:** In the AskUserQuestion prompt text, remind them to open the file in a browser and copy only the segment between `/design/` and the next `/`.
 
 ---
 
 ## Step 3 — Check for existing brand tokens
 
-Ask:
+Call **AskUserQuestion**:
 
-> "Do you have brand tokens ready to provide? (colors, fonts, spacing) Reply **yes** to paste them in, or **no** to run the setup wizard."
+> "Do you have brand tokens ready to paste? (colors, fonts, spacing) Reply **yes** to paste them next, or **no** to run the guided wizard one question at a time."
 
-**If yes:** Ask the designer to provide their tokens in any readable format (JSON, CSS custom properties, Figma token JSON, plain list). Parse the values you need from whatever is supplied:
-- Primary brand color (hex)
-- Secondary/accent color (hex)
-- Neutral/gray base color (hex)
-- Body font family name
-- Display/heading font family name
-- Base font size in px
-- Base spacing unit in px
-- Border radius base in px
+**If yes:**
 
-If any of these values are missing from the pasted tokens, ask for them individually before proceeding.
+1. Call **AskUserQuestion** asking them to paste tokens in any readable format (JSON, CSS variables, Figma token JSON, or a plain list).
+2. Parse what you can. For **each** required value still missing after parsing, call **AskUserQuestion** for that single field only (one tool call per missing field):
+   - Primary brand color (hex)
+   - Secondary/accent color (hex)
+   - Neutral/gray base color (hex)
+   - Body font family name
+   - Display/heading font family name
+   - Base font size in px
+   - Base spacing unit in px
+   - Border radius base in px
 
-**If no:** Run the interactive setup wizard in Step 4.
+**If no:** Go to Step 4 and use AskUserQuestion for each wizard field (do not paste Step 4’s full question list into chat at once).
 
 ---
 
 ## Step 4 — Interactive setup wizard (when no tokens supplied)
 
-Ask each question in sequence. Accept only the input types specified. Use the stated defaults when the designer presses Enter without a value.
+When Step 3 was **no**, collect each value with **AskUserQuestion**, one call at a time, in this order. Use the stated default only when the designer explicitly asks for the default or leaves the answer empty (treat empty as default where noted).
 
-1. **Primary brand color**
-   > "What is your primary brand color? (hex, e.g. `#3B82F6`)"
-   Required. No default.
+1. Call **AskUserQuestion**: "What is your primary brand color? (hex, e.g. `#3B82F6`)" — required, no default.
+2. Call **AskUserQuestion**: "What is your secondary or accent color? (hex)" — required, no default.
+3. Call **AskUserQuestion**: "What is your neutral or gray base color? (hex, e.g. `#6B7280`)" — required, no default.
+4. Call **AskUserQuestion**: "What font family for body text? (e.g. `Inter`, `Roboto`; default `Inter` if unspecified)"
+5. Call **AskUserQuestion**: "What font family for display and headings? (default: same as body if unspecified)"
+6. Call **AskUserQuestion**: "Base font size in px? (default: 16)"
+7. Call **AskUserQuestion**: "Base spacing unit in px? (default: 4)"
+8. Call **AskUserQuestion**: "Base border radius in px? (default: 4)"
 
-2. **Secondary/accent color**
-   > "What is your secondary or accent color? (hex)"
-   Required. No default.
+Then call **AskUserQuestion** to confirm the full summary:
 
-3. **Neutral/gray base**
-   > "What is your neutral or gray base color? (hex, e.g. `#6B7280`)"
-   Required. No default.
+> "Collected: Primary `{…}` · Secondary `{…}` · Neutral `{…}` · Body `{…}` · Display `{…}` · Font size `{…}px` · Spacing `{…}px` · Radius `{…}px`. Proceed with **yes**, or reply **edit** and name which fields to change."
 
-4. **Body font family**
-   > "What font family should be used for body text? (e.g. `Inter`, `Roboto`, `SF Pro Text`)"
-   Default: `Inter`
-
-5. **Display/heading font family**
-   > "What font family should be used for display and headings? (e.g. `Inter`, `Roboto`, `Playfair Display`)"
-   Default: same as body font.
-
-6. **Base font size**
-   > "What is your base font size in px? (default: 16)"
-   Default: `16`
-
-7. **Base spacing unit**
-   > "What is your base spacing unit in px? (default: 4)"
-   Default: `4`
-
-8. **Border radius base**
-   > "What is your base border radius in px? (default: 4)"
-   Default: `4`
-
-Confirm collected values with the designer before proceeding:
-
-> "Here are the values I collected:
-> - Primary: `{color}`
-> - Secondary: `{color}`
-> - Neutral: `{color}`
-> - Body font: `{font}`
-> - Display font: `{font}`
-> - Base font size: `{n}px`
-> - Base spacing: `{n}px`
-> - Border radius: `{n}px`
->
-> Proceed? (yes / edit)"
-
-If the designer says "edit", repeat only the questions for the fields they want to change.
+If the designer replies **edit**, call **AskUserQuestion** once per field they name to change, then AskUserQuestion for confirmation again until they answer **yes**.
 
 ---
 
 ## Step 5 — Read current Figma variable state
 
-Before writing anything, call the Figma Variables REST API to read the full variable registry of the target file. This is required to know which collections and variable IDs already exist.
+Before writing anything for the current `EFFECTIVE_PLATFORM` pass, call the Figma Variables REST API to read the full variable registry of the target file. This is required to know which collections and variable IDs already exist.
 
 ```
 GET https://api.figma.com/v1/files/{TARGET_FILE_KEY}/variables/local
@@ -243,7 +239,7 @@ Note: If the target file contains the malformed token `var--{shadow-default)`, w
 
 ## Step 7 — Create or update the platform alias collection
 
-Based on the platform argument from Step 1, write the corresponding alias collection. Each alias variable must reference its Primitives counterpart by variable ID (Figma alias), not by hard-coded hex value.
+Based on **`EFFECTIVE_PLATFORM`** (see Multi-platform section), write the corresponding alias collection. Each alias variable must reference its Primitives counterpart by variable ID (Figma alias), not by hard-coded hex value.
 
 If the collection does not exist in the registry from Step 5, create it first using `PUT /v1/files/{TARGET_FILE_KEY}/variables` with a `variableCollections` create payload before writing the aliases.
 
@@ -383,7 +379,7 @@ Execute the write via `mcp__claude_ai_Figma__use_figma` or the REST endpoint dir
 If the API returns a `200` with a `errors` array in the response body, some variables failed to write. For each error:
 1. Log the variable name and error message.
 2. Retry the failed variables individually in a second `PUT` call.
-3. If the retry also fails, report the specific variable names and error reasons to the designer and ask whether to skip them or abort.
+3. If the retry also fails, call **AskUserQuestion**: "These variables failed after retry: {names}. Reply **skip** to continue without them, or **abort** to stop the skill."
 
 Do not silently suppress partial failures.
 
@@ -407,30 +403,32 @@ Report any variables present in the expected set but absent in the verified resp
 
 ## Step 10 — Confirm success
 
-Report to the designer:
+After each **Steps 5-9** pass, report to the designer using this shape (substitute real counts and the current `EFFECTIVE_PLATFORM`):
 
 ```
 Design system written to Figma file {TARGET_FILE_KEY}
 
 Collections created or updated:
   Primitives        — {N} variables written
-  {Platform name}   — {N} variables written
+  {Platform alias collection name}   — {N} variables written
 
-Platform: {web|android|ios}
-Total variables: {N}
+Platform (this pass): {EFFECTIVE_PLATFORM}
+Total variables (this pass): {N}
 
 Open in Figma: https://figma.com/design/{TARGET_FILE_KEY}
 ```
+
+When the original request was **`all`**, after the **third** pass add one line: `All platforms complete: web, android, ios.`
 
 ---
 
 ## Step 11 — Offer next step
 
-Ask:
+Call **AskUserQuestion**:
 
-> "Run `/create-component` now to build UI components with these tokens?"
+> "Run `/create-component` now to build UI components with these tokens? (yes / no)"
 
-If yes, invoke `/create-component` with the same Figma file context. If no, close the skill.
+If **yes**, invoke `/create-component` with the same Figma file context. If **no**, close the skill.
 
 ---
 
@@ -532,7 +530,7 @@ The lightness interpolation is a practical approximation — it is not required 
 
 | Error Condition | Cause | Resolution |
 |---|---|---|
-| Missing file key | Designer did not provide or cannot find the Figma file key | Ask them to open the file in a browser and copy the key from the URL |
+| Missing file key | Designer did not provide or cannot find the Figma file key | Call **AskUserQuestion** with instructions to open the file in a browser and copy the key from the URL |
 | 403 Permission denied | MCP connector not authenticated, or account lacks edit access or Organization tier | Re-authenticate Figma MCP connector in Claude Code settings; confirm Figma tier |
 | 404 File not found | File key is wrong or the file was deleted | Verify the key matches the current Figma URL; re-run `/new-project` if the file is missing |
 | Partial write failures (errors in 200 response) | One or more variable payloads were malformed or referenced a non-existent alias | Retry the failed variables; report names and reasons to the designer if retry fails |

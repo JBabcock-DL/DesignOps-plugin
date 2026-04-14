@@ -32,7 +32,7 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 | Skill | Invocation | Description | Required Arguments |
 |---|---|---|---|
 | New Project | `/new-project` | Duplicates the four standard Detroit Labs Figma template files and places them into the correct team folder hierarchy. | None (agent prompts interactively) |
-| Create Design System | `/create-design-system` | Pushes brand tokens into the Primitives variable collection and the target platform alias collection in a Figma file. | `platform` — `web`, `android`, or `ios` |
+| Create Design System | `/create-design-system` | Pushes brand tokens into the Primitives variable collection and the target platform alias collection in a Figma file. | `platform` — `web`, `android`, `ios`, or `all` |
 | Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction. | None (reads `tokens.json` by default; path configurable in settings) |
 | Create Component | `/create-component` | Installs shadcn/ui components locally, draws structure to the Figma canvas, binds token variables, and optionally links Code Connect. | `components` — list of shadcn component names |
 | Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings. | None |
@@ -141,7 +141,7 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 | Skill | Syntax | Arguments | Description |
 |---|---|---|---|
 | /new-project | `/new-project` | none (interactive) | Scaffolds a full DL Figma project |
-| /create-design-system | `/create-design-system [platform]` | platform: web\|android\|ios | Creates token collections in a Foundations file |
+| /create-design-system | `/create-design-system [platform]` | platform: web\|android\|ios\|all | Creates token collections in a Foundations file |
 | /sync-design-system | `/sync-design-system` | none (interactive) | Diffs and syncs Figma variables with local tokens |
 | /create-component | `/create-component [components...]` | components: shadcn component names | Installs shadcn components and draws them to canvas |
 | /code-connect | `/code-connect` | none | Finds and publishes missing Code Connect mappings |
@@ -165,7 +165,7 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 A complete new project setup runs the skills in this sequence:
 
 1. Run `/new-project` → scaffolds all Figma files (Workshop, Summary, Foundations, Master Files) into the correct team folder hierarchy
-2. Run `/create-design-system web` → prompts for brand colors, typefaces, and spacing, then populates the Foundations file with Primitives and a Web alias collection
+2. Run `/create-design-system web` (or `/create-design-system all` for Web + Android/M3 + iOS/HIG aliases on the same file) → collects brand colors, typefaces, and spacing, then populates the Foundations file with Primitives and the platform alias collection(s)
 3. Run `/create-component button input card` → installs the listed shadcn/ui components locally and draws them onto the Figma canvas with token variable bindings
 4. Run `/code-connect` → lists unmapped Figma components, generates Code Connect mappings, confirms with the designer, and publishes via `send_code_connect_mappings`
 5. Run `/accessibility-check` → audits the selected frame for WCAG 2.1 AA contrast, font size minimums, iOS Dynamic Type, and Android font scaling before handoff

@@ -2,13 +2,18 @@
 name: create-component
 description: Install shadcn/ui components into the local codebase and draw them onto the Figma canvas with token variable bindings.
 argument-hint: "[component...] — e.g. /create-component button input card. If omitted, the agent shows the full component list and prompts."
-context: fork
 agent: general-purpose
 ---
 
 # Skill: /create-component
 
 Install shadcn/ui components into the local codebase and draw them onto the Figma canvas with token variable bindings.
+
+---
+
+## Interactive input contract
+
+When this skill needs designer input (component list, Figma file key, shadcn init choices, optional `/code-connect` chaining), use **AskUserQuestion** — **one question per tool call**, wait for each reply before the next. Do not dump multiple questions as plain markdown before the first AskUserQuestion.
 
 ---
 
@@ -28,16 +33,15 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 Accept a list of shadcn/ui component names as the skill argument (e.g. `/create-component button input card dialog`).
 
 - If one or more component names are provided, proceed to Step 2 with that list.
-- If no components are provided, display the full shadcn/ui component list (see "Supported Components" below) and ask: "Which components would you like to install? Enter one or more names separated by spaces."
-- Validate each provided name against the supported component list. For any unrecognized name, warn the designer: "'{name}' is not a recognized shadcn/ui component name. It will be skipped unless you confirm you want to attempt installation anyway."
+- If no components are provided, show the supported component list (see below), then call **AskUserQuestion**: "Which shadcn/ui components should I install? Enter one or more names separated by spaces."
+- Validate each provided name against the supported component list. For any unrecognized name, call **AskUserQuestion**: "'{name}' is not a recognized shadcn/ui component. Skip it, or reply **try anyway** to attempt installation?"
 
 ### Step 2 — Check shadcn initialization
 
 Check whether shadcn is already initialized in the project by looking for `components.json` in the project root.
 
 - If `components.json` exists, proceed to Step 3.
-- If `components.json` does not exist, inform the designer: "shadcn/ui is not initialized in this project. Running `npx shadcn@latest init` now." Then:
-  1. Run `npx shadcn@latest init` and display the interactive prompts to the designer to guide them through the setup wizard (style, base color, CSS variables, `tailwind.config`, path aliases).
+- If `components.json` does not exist, call **AskUserQuestion**: "shadcn/ui is not initialized. May I run `npx shadcn@latest init`? (yes / no)" If **no**, stop. If **yes**, prefer **non-interactive** init flags if the CLI supports them in this environment; otherwise collect each init choice with **AskUserQuestion** (one question at a time: style, base color, CSS variables vs default, paths) **before** running the command so the terminal is not stuck waiting for stdin.
   2. Confirm that `components.json` was created before continuing.
   3. If init fails, stop and report the error — do not attempt component installation.
 
@@ -56,10 +60,7 @@ If a component install fails, log the error, mark it `failed`, and continue to t
 
 1. Check `plugin/templates/agent-handoff.md` for the `active_file_key` field.
 2. If set and valid, use it without prompting.
-3. If not present, ask the designer:
-
-   > "What is the Figma file key for this project?
-   > You can find it in the Figma URL: `figma.com/design/**{fileKey}**/...`"
+3. If not present, call **AskUserQuestion**: "What is the Figma file key for this project? (Segment after `figma.com/design/` in the URL.)"
 
 ### Step 5 — Draw components to Figma canvas
 
@@ -75,12 +76,10 @@ For each successfully installed component:
 
 ### Step 6 — Offer Code Connect chaining
 
-After all components have been processed, ask the designer:
+After all components have been processed, call **AskUserQuestion**: "Run `/code-connect` to map the Figma components you drew to the installed shadcn/ui source files? (yes / no)"
 
-"Run `/code-connect` to link these components to the codebase? This will map the Figma components just drawn to their installed shadcn/ui source files."
-
-- If the designer confirms, invoke `/code-connect`.
-- If the designer declines or does not respond affirmatively, skip and proceed to reporting.
+- If **yes**, invoke `/code-connect`.
+- If **no**, skip and proceed to reporting.
 
 ### Step 7 — Report results
 

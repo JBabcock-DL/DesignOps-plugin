@@ -1,7 +1,7 @@
 ---
 name: new-project
 description: Scaffold a new Detroit Labs Figma project by duplicating the standard template files into the correct team folder hierarchy (Strategy/, Design-Systems/, Master-Files/).
-argument-hint: "Optional: --team \"Team Name\" --name \"Project Name\" --platform web|android|ios. All arguments are optional — any that are omitted will be prompted interactively."
+argument-hint: "Optional: --team \"Team Name\" --name \"Project Name\" --platform web|android|ios|all|skip. All arguments are optional — any that are omitted will be prompted interactively."
 agent: general-purpose
 ---
 
@@ -197,8 +197,8 @@ After presenting the results table, call AskUserQuestion:
 Wait for the reply. If the designer responds **yes**, invoke the `/create-design-system` skill:
 - Pass the file key for `<Project Name> — Foundations` as the active file context.
 - Use `plugin/templates/agent-handoff.md` to carry state: set `active_file_key` to the Foundations file key, `active_project_name` to the Project Name, and `last_skill_run` to `new-project`.
-- If platform is `all`, run `/create-design-system` three times sequentially — once for `web`, once for `android`, once for `ios` — using the same Foundations file key each time.
-- If platform is a single value (`web`, `android`, or `ios`), pass it directly. If platform is `skip` or unset, prompt the designer for a platform before proceeding.
+- If platform is `all`, invoke `/create-design-system all` once with the same Foundations file key in handoff context (that skill runs web → android → ios internally).
+- If platform is a single value (`web`, `android`, or `ios`), pass it directly (e.g. `/create-design-system web`). If platform is `skip` or unset, prompt the designer for a platform before proceeding.
 
 If the designer responds **no**, conclude the skill run. Remind them they can run `/create-design-system` at any time by passing the Foundations file key.
 
