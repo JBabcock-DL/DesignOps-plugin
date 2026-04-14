@@ -49,15 +49,17 @@ Check `$ARGUMENTS` for any of the following optional flags before prompting:
 
 For each value already provided via arguments, use it directly and skip that question. Only ask for values that are missing.
 
-**If `--team` is missing**, ask:
+**IMPORTANT — always use the `AskUserQuestion` tool for every prompt below.** Do not print questions as plain text and wait for a reply — that pattern breaks in fork context and on Claude Desktop. Each question must be a distinct `AskUserQuestion` call so the user's reply is routed back to this agent invocation.
+
+**If `--team` is missing**, call `AskUserQuestion` with:
 > "What is the exact name of the Figma team this project lives under?
 > (This must match the team name exactly as it appears in Figma — it is case-sensitive.)"
 
-**If `--name` is missing**, ask:
+**If `--name` is missing**, call `AskUserQuestion` with:
 > "What is the project name? (e.g. `Acme Mobile App`)
 > This will appear in the title of every file created."
 
-**If `--platform` is missing**, ask:
+**If `--platform` is missing**, call `AskUserQuestion` with:
 > "What is the primary platform for this project?
 > - **web** — Next.js / React (Tailwind token collection)
 > - **android** — Android / Compose (Material 3 collection)
@@ -92,9 +94,11 @@ Here is the full list of files I will create for "<Project Name>" in the "<Team 
 Shall I proceed? (yes / no / edit)
 ```
 
-If the designer responds with `edit` or requests a change, update the plan accordingly before proceeding.
+Use `AskUserQuestion` to collect this confirmation — do not print it as text.
 
-Only continue to Step 3 after receiving explicit confirmation.
+If the designer responds with `edit` or requests a change, update the plan accordingly and re-present the table before proceeding.
+
+Only continue to Step 3 after receiving explicit confirmation via `AskUserQuestion`.
 
 ---
 
@@ -125,7 +129,9 @@ Record the project ID for each folder. You will need these IDs when placing dupl
 
 ### Step 4 — Clone Template Files
 
-For each of the six template-based files, call the Figma REST API duplicate endpoint:
+For each of the six template-based files, call the Figma REST API duplicate endpoint via `use_figma` or the REST connector.
+
+**Do not use `team_id` in the duplicate body — it does not place the file in a project folder. Instead, resolve the project IDs in Step 3 first and pass `project_id` directly so the file lands in the correct folder in one call.**
 
 ```
 POST /v1/files/:templateKey/duplicate
@@ -136,16 +142,18 @@ Use the following request body for each call:
 ```json
 {
   "name": "<Project Name> — <File Title>",
-  "team_id": "<team_id>"
+  "project_id": "<resolved project ID for this file's folder>"
 }
 ```
 
-After duplicating, move the file into the correct project folder:
-
-```
-PUT /v1/files/:new_file_key
-Body: { "project_id": "<folder_project_id>" }
-```
+If the Figma API does not accept `project_id` on the duplicate endpoint (returns 400 or ignores it), fall back to the two-step move:
+1. Duplicate with just `name` in the body — the file lands in Drafts.
+2. Immediately move it using:
+   ```
+   PUT /v1/files/:new_file_key
+   Body: { "name": "<Project Name> — <File Title>", "project_id": "<folder_project_id>" }
+   ```
+   **You must include `name` in every PUT body — omitting it silently clears the file name on some Figma API versions and the move may be ignored.**
 
 Execute the six template clones in this order:
 
@@ -159,6 +167,8 @@ Execute the six template clones in this order:
 | 7 | `<Project Name> — RIVE Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID |
 
 Record the new file key returned by each duplicate call. You will use these keys to build file URLs in Step 6.
+
+**Verification:** After each duplicate+move, call `GET /v1/projects/:project_id/files` and confirm the new file key appears in the project. If it does not appear, the file is still in Drafts — retry the PUT move before continuing.
 
 ---
 
@@ -186,8 +196,10 @@ If using `create_new_file`, move the resulting file into the `Strategy/` project
 
 ```
 PUT /v1/files/:new_file_key
-Body: { "project_id": "<Strategy project ID>" }
+Body: { "name": "<Project Name> — Wireframes", "project_id": "<Strategy project ID>" }
 ```
+
+**Always include `name` in the PUT body — omitting it may silently clear the file name on some Figma API versions.**
 
 Record the file key of the new Wireframes file.
 
@@ -221,7 +233,7 @@ All files have been created for "<Project Name>" in the "<Team Name>" team.
 
 ### Step 7 — Offer Design System Initialization
 
-After presenting the results table, ask:
+After presenting the results table, use `AskUserQuestion` to ask:
 
 ```
 Would you like to run /create-design-system now to populate the Foundations file with your brand tokens?
