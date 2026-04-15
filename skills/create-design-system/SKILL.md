@@ -96,7 +96,7 @@ Before writing anything, call the Figma Variables REST API to read the full vari
 GET https://api.figma.com/v1/files/{TARGET_FILE_KEY}/variables/local
 ```
 
-Execute via `mcp__claude_ai_Figma__use_figma` or the REST endpoint directly.
+Execute via `mcp__claude_ai_Figma__get_variable_defs` (preferred) or as a direct REST call through the Figma MCP connector. Do **not** use `use_figma` — the Plugin API does not expose variable collection IDs needed for the write payload.
 
 Parse the response and identify:
 - Existing collection names and their IDs
@@ -734,7 +734,9 @@ For alias values: `"value": { "type": "VARIABLE_ALIAS", "id": "<primitive-variab
 For hard-coded COLOR: `"value": { "r": 0, "g": 0, "b": 0, "a": 0.32 }` (Figma COLOR uses 0–1 float channels)
 For hard-coded FLOAT: `"value": 57`
 
-**Execution:** call `mcp__claude_ai_Figma__use_figma` or the REST endpoint directly.
+**Execution:** call the Figma Variables REST API directly — `PUT https://api.figma.com/v1/files/{TARGET_FILE_KEY}/variables` — via the Figma MCP connector.
+
+> **Do NOT use `use_figma` for this step.** The Figma Plugin API exposes `codeSyntax` as read-only. Setting `codeSyntax` on variables requires the REST API. This is the only path that works.
 
 ### Error — partial write failure
 
@@ -744,7 +746,7 @@ If the API returns `200` with an `errors` array, retry each failed variable indi
 
 ## Step 12 — Verify the write
 
-After the PUT completes, call the GET endpoint again:
+After the PUT completes, read the current variable state again via `mcp__claude_ai_Figma__get_variable_defs` or a direct REST GET:
 
 ```
 GET https://api.figma.com/v1/files/{TARGET_FILE_KEY}/variables/local
