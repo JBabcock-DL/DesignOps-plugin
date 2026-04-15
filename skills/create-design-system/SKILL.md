@@ -371,10 +371,21 @@ The nonlinear rule (Android 14 behaviour) prevents very large display text from 
 
 ### codeSyntax for Typography
 
-Strip `/`, lowercase, kebab the slot+property: `Display/LG/font-size` → `display-lg-font-size`
-- WEB: `var(--display-lg-font-size)`, ANDROID: `displayLgFontSize`, iOS: `displayLgFontSize`
+**ANDROID and iOS are identical for all Typography variables.** Derivation: split name on `/`, `-`, spaces → lowercase each word → join with `-` for WEB `var(--result)` → camelCase for ANDROID and iOS (same value).
 
-Full derivation: split name on `/`, `-`, and spaces → lowercase each word → join with `-` for WEB `var(--result)` → CamelCase (capitalize each word after the first, join) for ANDROID and iOS.
+Every variable in all 12 slots follows this pattern — apply to all 48 variables:
+
+| Property | WEB example | ANDROID | iOS |
+|---|---|---|---|
+| `Display/LG/font-family` | `var(--display-lg-font-family)` | `displayLgFontFamily` | `displayLgFontFamily` |
+| `Display/LG/font-size` | `var(--display-lg-font-size)` | `displayLgFontSize` | `displayLgFontSize` |
+| `Display/LG/font-weight` | `var(--display-lg-font-weight)` | `displayLgFontWeight` | `displayLgFontWeight` |
+| `Display/LG/line-height` | `var(--display-lg-line-height)` | `displayLgLineHeight` | `displayLgLineHeight` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
+| `Body/MD/font-family` | `var(--body-md-font-family)` | `bodyMdFontFamily` | `bodyMdFontFamily` |
+| `Label/SM/font-weight` | `var(--label-sm-font-weight)` | `labelSmFontWeight` | `labelSmFontWeight` |
+
+(Pattern repeats for all 12 slots: Display/LG, Display/MD, Display/SM, Headline/LG, Headline/MD, Headline/SM, Body/LG, Body/MD, Body/SM, Label/LG, Label/MD, Label/SM — each with the same 4 properties.)
 
 ---
 
@@ -441,12 +452,15 @@ The blur FLOAT variables alias the corresponding Primitive elevation by ID; thei
 
 ### codeSyntax for Effects
 
-`shadow/color` maps to the M3 `shadow` color role (ANDROID `shadow`).
+`shadow/color` maps to the M3 `shadow` color role (ANDROID `shadow`). All blur variables: ANDROID and iOS are identical camelCase.
 
 | Variable | WEB | ANDROID (M3) | iOS |
 |---|---|---|---|
 | `shadow/color` | `var(--shadow-color)` | `shadow` | `shadowColor` |
 | `shadow/sm/blur` | `var(--shadow-sm-blur)` | `shadowSmBlur` | `shadowSmBlur` |
+| `shadow/md/blur` | `var(--shadow-md-blur)` | `shadowMdBlur` | `shadowMdBlur` |
+| `shadow/lg/blur` | `var(--shadow-lg-blur)` | `shadowLgBlur` | `shadowLgBlur` |
+| `shadow/xl/blur` | `var(--shadow-xl-blur)` | `shadowXlBlur` | `shadowXlBlur` |
 | `shadow/2xl/blur` | `var(--shadow-2xl-blur)` | `shadow2xlBlur` | `shadow2xlBlur` |
 
 ---
