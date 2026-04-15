@@ -62,13 +62,30 @@ After shadcn is confirmed initialized (whether it was just run or already existe
 1. Read `components.json` to find the `tailwind.css` path (the project's global CSS file, usually `src/app/globals.css`, `src/styles/globals.css`, or `app/globals.css`).
 2. Read that file. Check if it already contains an `@import` referencing `tokens.css`. If it does, skip this step.
 3. If not imported yet, do the following:
-   a. Remove shadcn's generated `@layer base { :root { … } .dark { … } }` block entirely — our `tokens.css` replaces it.
-   b. Insert `@import '{relative_path_to_tokens_css}';` at the **top** of the file, before any `@tailwind` directives.
-   c. The relative path must be computed from the globals CSS file's location to `TOKEN_CSS_PATH`.
+
+   **a. Remove CSS variable declaration blocks only.**
+   shadcn generates one or more `@layer base` blocks. Remove **only** the blocks whose body contains CSS custom property declarations (lines of the form `--variable-name: value;`). These are the `:root { … }` and `.dark { … }` blocks that define HSL, oklch, or other color variable values.
+
+   **Do NOT remove** `@layer base` blocks that contain only `@apply` directives or element selectors — for example:
+   ```css
+   /* KEEP this block — it wires shadcn utility classes */
+   @layer base {
+     * { @apply border-border outline-ring/50; }
+     body { @apply bg-background text-foreground; }
+   }
+   ```
+
+   If shadcn generated a combined `@layer base` block with both variable declarations AND `@apply` rules, remove only the `:root { … }` and `.dark { … }` sub-blocks inside it, leaving the `@apply` rules in place.
+
+   Also remove any standalone `@theme inline { … }` block if present (Tailwind v4 / shadcn v3) — that block re-declares CSS variables that conflict with `tokens.css`.
+
+   **b.** Insert `@import '{relative_path_to_tokens_css}';` at the **top** of the file, before any `@tailwind` or `@import "tailwindcss"` directive.
+   The relative path must be computed from the globals CSS file's location to `TOKEN_CSS_PATH`.
+
 4. Write the updated globals CSS file.
 5. If `TOKEN_CSS_PATH` is null (designer skipped), leave globals.css unchanged.
 
-**Example result** (Next.js project, tokens at `src/styles/tokens.css`, globals at `src/app/globals.css`):
+**Example result** (Tailwind v3, tokens at `src/styles/tokens.css`, globals at `src/app/globals.css`):
 
 ```css
 @import '../styles/tokens.css';
@@ -76,6 +93,23 @@ After shadcn is confirmed initialized (whether it was just run or already existe
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+}
+```
+
+**Example result** (Tailwind v4 / shadcn v3):
+
+```css
+@import '../styles/tokens.css';
+@import "tailwindcss";
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+}
 ```
 
 ### Step 4 — Install components

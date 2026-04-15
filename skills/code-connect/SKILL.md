@@ -22,8 +22,8 @@ When you need a Figma file key or publish confirmation, use **AskUserQuestion** 
 - **Active Figma file open** — The agent needs the Figma file key for the project. This is read from the handoff context (`plugin/templates/agent-handoff.md`) or prompted from the designer.
 - **Library published** — Components must be published to a Figma team library before Code Connect can map them. The Figma REST API does not support programmatic publishing — the designer must publish manually from the Figma UI. See Step 2 for the exact steps and the agent gate.
 - **Local codebase present** — Component source files must exist locally (e.g., installed via `/create-component` or checked in to the project repo). The agent searches the filesystem by component name to find matching files.
-- **Figma MCP connector authenticated** — The primary path uses `mcp__claude_ai_Figma__*` tools. No separate PAT configuration is required for the MCP path.
-- **Organization-tier Figma account** — Required to publish Code Connect mappings.
+- **Figma MCP connector authenticated** — The primary MCP path uses `mcp__claude_ai_Figma__*` tools and requires no PAT. If `get_code_connect_suggestions` returns empty after two retries (common on Professional/Starter plans), the skill automatically escalates to the CLI path (Step 3b).
+- **Figma Personal Access Token (CLI path only)** — Required only when the CLI path is used. The PAT must have `Code Connect → Write` scope. The designer creates it during Step 3b-3; it is not needed up front.
 
 ---
 
@@ -61,28 +61,130 @@ Call **AskUserQuestion**:
 - If the designer replies **done** or **skip**, proceed to Step 3.
 - If the designer replies with a question or an error, answer it and call **AskUserQuestion** again — do not proceed until they explicitly confirm.
 
-### Step 3 — Get Code Connect suggestions
+### Step 3 — Enumerate components via design context
 
-Call `mcp__claude_ai_Figma__get_code_connect_suggestions` with the resolved file key.
+> **Why not `get_code_connect_suggestions`?**  
+> `get_code_connect_suggestions` only surfaces components that already have _some_ Code Connect metadata attached (partial mappings, stale links, etc.). It returns empty for net-new components that have never been mapped — which is the normal state after `/create-component`. Use `get_design_context` to enumerate components directly instead.
 
-This returns a list of Figma components in the file that do not yet have Code Connect mappings.
+Call `mcp__claude_ai_Figma__get_design_context` with the resolved file key.
 
-- If the tool returns an empty list, it may mean all components are already mapped **or** the library is still being indexed by Figma (indexing can take up to 60 seconds after publishing). Call **AskUserQuestion**: "The component list came back empty. If you just published, Figma may still be indexing — wait 30–60 seconds and reply **retry**. Or reply **done** if all components are already mapped."
-  - On **retry**, repeat the `get_code_connect_suggestions` call. If it returns results, proceed. If empty again, report that no unmapped components were found and exit.
-  - On **done**, report "All components in this file already have Code Connect mappings. No action needed." and exit.
-- If the tool returns one or more unmapped components, proceed to Step 4.
+Walk the returned node tree and collect every node whose type is `COMPONENT` or `COMPONENT_SET`. For each, record:
+- `nodeId` (the node ID, used in the Code Connect URL)
+- `name` (the component name as it appears in Figma)
+- `variantProperties` (if present — the variant dimension names and their allowed values)
 
-### Step 4 — Gather context for each unmapped component
+If the file has no `COMPONENT` or `COMPONENT_SET` nodes, call **AskUserQuestion**: "No components were found in this file. Components must be drawn to the canvas first — run `/create-component` and then re-run `/code-connect`." Then exit.
 
-For each unmapped component returned in Step 3:
+If `get_design_context` is unavailable or returns an error, fall through to the **CLI path** (Step 3b).
 
-1. Call `mcp__claude_ai_Figma__get_context_for_code_connect` with the component's node ID and file key.
-2. This returns the component's name, variant properties, documented props, and any existing annotations.
-3. Store the returned context alongside the component name for use in Step 5.
+### Step 3b — CLI path (escalation when MCP tools are unavailable)
+
+Use this path when `get_design_context` returns an error or is unavailable, or when `send_code_connect_mappings` returns a persistent error.
+
+#### 3b-1 — Collect component node IDs from Figma
+
+The CLI needs a Figma URL with a node ID for each component to map. For each component the designer wants to wire:
+
+Call `mcp__claude_ai_Figma__get_design_context` on the target file to enumerate top-level components. Extract each component's `nodeId`. If `get_design_context` is unavailable, call **AskUserQuestion**:
+> "I need the Figma node IDs for each component to wire up Code Connect. In Figma, right-click each component frame → Copy link. Paste all the links here, one per line."
+
+Parse each URL to extract the node ID from the `node-id=` query parameter (URL-decode `%3A` → `:`).
+
+#### 3b-2 — Install the CLI
+
+Check whether `@figma/code-connect` is installed:
+```bash
+npx figma connect --version
+```
+If the command fails, install it:
+```bash
+npm install --save-dev @figma/code-connect
+```
+
+#### 3b-3 — Get a PAT from the designer
+
+Call **AskUserQuestion**:
+> "The CLI path needs a Figma Personal Access Token with **Code Connect → Write** scope to publish mappings.
+>
+> To create one:
+> 1. Open Figma → Account Settings → Security → Personal access tokens
+> 2. Click **Generate new token**
+> 3. Under Scopes, enable **Code Connect → Write**
+> 4. Copy the token and paste it here.
+>
+> (The token is used only for this publish step and is not saved anywhere.)"
+
+Store the token as `FIGMA_PAT` for the publish command. Do not log it.
+
+#### 3b-4 — Search the codebase for matching component files
+
+For each component to wire:
+1. Derive a search term from the component name (e.g., `Button` → look for `button.tsx`, `Button.tsx`, `button/index.tsx`).
+2. Search under `components/`, `src/components/`, and `app/components/`.
+3. Mark unmatched components — they will be skipped.
+
+#### 3b-5 — Generate `.figma.tsx` files
+
+For each matched component, write a `.figma.tsx` file alongside the component source file.
+
+The file must follow this structure — adjust props to match the actual component interface:
+
+```tsx
+import figma from '@figma/code-connect'
+import { {ComponentName} } from './{ComponentName}'
+
+figma.connect(
+  {ComponentName},
+  'https://www.figma.com/design/{TARGET_FILE_KEY}?node-id={NODE_ID}',
+  {
+    props: {
+      // Map Figma variant properties to component props.
+      // Use figma.enum() for variant props, figma.boolean() for toggles,
+      // figma.string() for text layer content.
+      // Example:
+      // variant: figma.enum('Variant', { default: 'default', secondary: 'secondary' }),
+      // disabled: figma.boolean('Disabled'),
+    },
+    example: (props) => <{ComponentName} {...props} />,
+  }
+)
+```
+
+Rules for prop mapping:
+- Read the component's TypeScript interface (or JSDoc) from the matched source file to know available props.
+- Match Figma variant property names to component prop names where they align (case-insensitive).
+- Use `figma.enum()` for string union props; `figma.boolean()` for boolean props; `figma.string()` for text content.
+- If a Figma property has no matching code prop, omit it rather than guessing.
+
+Present all generated `.figma.tsx` file contents to the designer before writing. Call **AskUserQuestion**: "Here are the proposed Code Connect files. Reply **yes** to write them, or paste corrections."
+
+On confirmation, write each file to disk.
+
+#### 3b-6 — Publish
+
+Run:
+```bash
+npx figma connect publish --token={FIGMA_PAT}
+```
+
+- If publish succeeds, proceed to Step 9 (results report).
+- If publish fails with an auth error, the PAT may be missing the `code_connect:write` scope — show the error and ask the designer to regenerate the token with the correct scope.
+- If publish fails with a node-not-found error, the component node ID may be wrong or the library may not be published — show the error and the affected node ID.
+
+### Step 4 — Gather Code Connect context for each component
+
+For each component collected in Step 3:
+
+1. Call `mcp__claude_ai_Figma__get_context_for_code_connect` with the component's `nodeId` and file key.
+2. This returns richer metadata: documented props, interaction annotations, any existing partial Code Connect config.
+3. Merge this with the `variantProperties` already captured from `get_design_context`.
+4. Store the combined context alongside the component name for use in Step 5.
+
+If `get_context_for_code_connect` fails for a specific component, fall back to the variant properties from Step 3 alone — do not skip the component.
 
 ### Step 5 — Search the codebase for matching component files
 
-For each unmapped Figma component:
+For each Figma component:
 
 1. Derive a search term from the Figma component name (e.g., Figma component `Button` → search for files named `button.tsx`, `Button.tsx`, `button/index.tsx`, etc.).
 2. Search the local filesystem under `components/`, `src/components/`, and `app/components/` (common shadcn/ui install paths) for matching files.
@@ -144,46 +246,25 @@ Follow with:
 
 ---
 
-## CLI Fallback
+## CLI Path Notes
 
-If the MCP path is unavailable (e.g., `send_code_connect_mappings` returns a persistent error, or the Figma MCP connector is not configured in the current session), use the `@figma/code-connect` CLI as a fallback.
+The CLI path (Step 3b) uses `npx figma connect publish` from the `@figma/code-connect` package.
 
-### Fallback Steps
+Key commands:
+```bash
+# Check CLI is available
+npx figma connect --version
 
-1. Confirm `@figma/code-connect` is installed:
-   ```bash
-   npx @figma/code-connect --version
-   ```
-   If not installed, run:
-   ```bash
-   npm install --save-dev @figma/code-connect
-   ```
+# Publish all .figma.tsx files found in the project
+npx figma connect publish --token=<PAT>
 
-2. Generate Code Connect config files for each matched component:
-   ```bash
-   npx @figma/code-connect create --component [component-name] --file [figma-file-key]
-   ```
+# Unpublish mappings (if needed)
+npx figma connect unpublish --token=<PAT>
+```
 
-3. Review and edit the generated `.figma.tsx` (or `.figma.ts`) files as needed.
+**PAT scope required:** `Code Connect → Write`. The MCP path (`send_code_connect_mappings`) does not need a PAT — it uses the Figma MCP connector's OAuth session. Only the CLI path requires a PAT.
 
-4. Publish all mappings using the CLI:
-   ```bash
-   npx @figma/code-connect connect --token=[PAT]
-   ```
-   Replace `[PAT]` with a Figma Personal Access Token that has the `code_connect:write` scope (see PAT Scope Note below).
-
-### CLI Scope Note
-
-**The `@figma/code-connect` CLI requires a Figma Personal Access Token (PAT) with `code_connect:write` scope.** This scope is not automatically granted on new PATs — it must be explicitly selected when creating the token in Figma account settings under Security > Personal access tokens.
-
-The MCP path (`send_code_connect_mappings`) handles authentication automatically via the Figma MCP connector configured in Claude Code. No PAT configuration is required for the primary MCP path.
-
-To create a PAT with the correct scope:
-1. Open Figma → Account Settings → Security → Personal access tokens.
-2. Click "Generate new token."
-3. Under "Scopes," enable **Code Connect** → **Write**.
-4. Copy the token and use it with `--token=` in the CLI command above.
-5. Do not commit the PAT to version control. Use an environment variable (`FIGMA_ACCESS_TOKEN`) or a local `.env` file excluded by `.gitignore`.
+Do not commit the PAT. If the project has a `.env` file, store it there as `FIGMA_ACCESS_TOKEN` and pass `--token=$FIGMA_ACCESS_TOKEN` instead.
 
 ---
 
@@ -191,7 +272,7 @@ To create a PAT with the correct scope:
 
 - **Library must be published before this skill can run.** Step 2 is an explicit gate — the agent displays publish instructions and waits for confirmation before calling any Figma Code Connect API. Skipping this step causes `get_code_connect_suggestions` to return empty results or stale data.
 - **Figma library indexing delay.** After publishing, Figma can take up to 60 seconds to index components. Step 3 handles the retry loop if `get_code_connect_suggestions` comes back empty immediately after publishing.
-- **Primary path uses Figma MCP tools exclusively.** The `get_code_connect_suggestions` → `get_context_for_code_connect` → `send_code_connect_mappings` sequence handles the full workflow without requiring a PAT or CLI install.
+- **Primary path uses Figma MCP tools exclusively.** The `get_design_context` → `get_context_for_code_connect` → `send_code_connect_mappings` sequence handles the full workflow without a PAT or CLI. `get_code_connect_suggestions` is not used — it only surfaces components with pre-existing Code Connect metadata, not net-new components.
 - **Designer confirmation is required before publishing.** The agent will never call `send_code_connect_mappings` without an explicit affirmative response.
 - **Prop mapping is best-effort.** The agent maps props by matching Figma variant property names to component prop names. Review the proposed mappings before confirming — manual correction is expected for non-obvious mappings.
 - **Unmatched components** are components present in Figma but not found in the local codebase. Running `/create-component [name]` will install the shadcn/ui component and make it available for mapping on the next `/code-connect` run.
