@@ -1,10 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Read(~/.claude/plugins/**)"
+      "Read(~/.claude/plugins/**)",
+      "Read(//c/Users/jbabc/.claude/**)"
     ],
     "additionalDirectories": [
-      "~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/.claude-plugin"
+      "~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/.claude-plugin",
+      "C:\\Users\\jbabc\\.claude\\plugins\\marketplaces\\local-desktop-app-uploads\\labs-design-ops\\skills\\new-project"
     ]
   }
 }
