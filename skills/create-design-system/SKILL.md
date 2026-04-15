@@ -542,7 +542,7 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   color/background/fg             {hex}   {hex}   var(--on-background)             onBackground              label
   color/background/bg-inverse     {hex}   {hex}   var(--inverse-surface)           inverseSurface            inverseSurface
   color/background/fg-inverse     {hex}   {hex}   var(--inverse-on-surface)        inverseOnSurface          inverseOnSurface
-  color/background/inverse-primary{hex}   {hex}   var(--inverse-primary)           inversePrimary            inversePrimary
+  color/background/inverse-primary {hex}   {hex}   var(--inverse-primary)           inversePrimary            inversePrimary
   — surface/ (component surfaces) —
   color/surface/default           {hex}   {hex}   var(--surface)                   surface                   secondarySystemBackground
   color/surface/raised            {hex}   {hex}   var(--surface-variant)           surfaceVariant            tertiarySystemBackground
@@ -703,25 +703,29 @@ For **UPDATE** passes (collection already exists from the registry in Step 4), u
 
 > **codeSyntax is MANDATORY on every variable. Never omit it, never leave it empty. A variable pushed without codeSyntax is broken — it will not resolve to any platform token name.** Use the tables in Steps 5–9 to look up each value; do NOT derive from the Figma path for Theme variables.
 
-Each entry:
+> **Key casing is exact:** `"WEB"`, `"ANDROID"`, `"iOS"` — the iOS key is mixed case (capital I, lowercase o, capital S). Never write `"ios"` or `"IOS"`. The Figma API silently ignores incorrectly cased keys, which is why iOS syntax disappears from variables when the case is wrong.
+
+Each entry — showing a real Theme example:
 ```json
 {
-  "id": "TEMP_VAR_{NAME}",
-  "name": "...",
-  "variableCollectionId": "...",
-  "resolvedType": "COLOR|FLOAT|STRING",
+  "id": "TEMP_VAR_COLOR_BACKGROUND_BG",
+  "name": "color/background/bg",
+  "variableCollectionId": "TEMP_COLLECTION_THEME",
+  "resolvedType": "COLOR",
   "action": "CREATE",
   "codeSyntax": {
-    "WEB":     "<exact value from Step 5–9 table>",
-    "ANDROID": "<exact value from Step 5–9 table>",
-    "iOS":     "<exact value from Step 5–9 table>"
+    "WEB":     "var(--background)",
+    "ANDROID": "background",
+    "iOS":     "systemBackground"
   }
 }
 ```
 
+Note that WEB, ANDROID, and iOS are all **different values** for Theme variables — iOS uses HIG system color names, not the same camelCase as ANDROID. Never copy ANDROID into iOS; always read the iOS column from the Step 6 table.
+
 Look up each variable's three codeSyntax values from the appropriate step:
 - Primitives (`color/*`, `Space/*`, `Corner/*`, `elevation/*`) → Step 5 codeSyntax rules
-- Theme (`color/background/*`, `color/surface/*`, `color/primary/*`, `color/secondary/*`, `color/tertiary/*`, `color/status/*`, `color/component/*`) → Step 6 codeSyntax table (use the exact row — do NOT derive from path)
+- Theme (`color/background/*`, `color/surface/*`, `color/primary/*`, `color/secondary/*`, `color/tertiary/*`, `color/status/*`, `color/component/*`) → Step 6 codeSyntax table (use the exact row — do NOT derive from path, do NOT copy ANDROID value into iOS)
 - Typography (`Display/*`, `Headline/*`, `Body/*`, `Label/*`) → Step 7 codeSyntax rules
 - Layout (`space/*`, `radius/*`) → Step 8 codeSyntax rules
 - Effects (`shadow/*`) → Step 9 codeSyntax rules
@@ -759,15 +763,15 @@ Confirm:
 - `Primitives` contains the expected 5 color ramps (primary, secondary, tertiary, error, neutral)
 - No `Web`, `Android/M3`, or `iOS/HIG` collections were created
 
-**codeSyntax spot-check — verify at least these three variables have all three platform values populated:**
+**codeSyntax spot-check — verify at least these three variables have all three platform values populated with the correct casing (`"iOS"`, not `"ios"`):**
 
-| Variable | Expected WEB | Expected ANDROID | Expected iOS |
+| Variable | Expected WEB | Expected ANDROID | Expected `"iOS"` key |
 |---|---|---|---|
 | `color/background/bg` (Theme) | `var(--background)` | `background` | `systemBackground` |
 | `color/status/error` (Theme) | `var(--error)` | `error` | `systemRed` |
 | `color/primary/500` (Primitives) | `var(--color-primary-500)` | `colorPrimary500` | `primary500` |
 
-If any `codeSyntax` field is missing or empty on any variable in the GET response, the write was incomplete. Re-issue a `PUT` with only the affected variables, including their full `codeSyntax` object, before proceeding to Step 13.
+If the `iOS` key is absent or its value matches the ANDROID value on Theme variables (e.g. `background` instead of `systemBackground`), the write used wrong key casing or copied ANDROID into iOS. Re-issue a `PUT` with correct `"iOS"` casing on all affected variables before proceeding to Step 13.
 
 Report any expected variables absent from the verified response.
 
