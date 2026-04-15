@@ -15,6 +15,11 @@ Your first action is to collect the required inputs using AskUserQuestion — do
 
 Parse `$ARGUMENTS` for `--team`, `--name`, and `--platform`. For each value not already provided, call AskUserQuestion. Ask one at a time and wait for each reply before asking the next.
 
+**Always ask first — PAT is required before any API calls can proceed.** Call AskUserQuestion:
+> "I need a Figma Personal Access Token to create project folders and files via the Figma REST API. To generate one: Figma → Account Settings → Security → Personal access tokens → Generate new token (File content + write scope is sufficient). Please paste your token here."
+
+Store the token as `FIGMA_PAT`. Use it as a Bearer token in all REST API calls: `Authorization: Bearer <FIGMA_PAT>`.
+
 **If `--team` is missing**, call AskUserQuestion:
 > "What is the exact name of the Figma team this project lives under? (Case-sensitive — must match exactly as it appears in Figma.)"
 
@@ -39,7 +44,7 @@ Use the Project Name verbatim in all file titles — do not normalize or reforma
 
 Before creating anything, show the user the full file list and ask for confirmation. Wait for their reply before proceeding.
 
-Present the following table (substituting the actual Project Name and Team Name):
+Present the following table (substituting the actual Project Name and Team Name). The Masterfile rows are conditional — only include the rows for platforms the user selected:
 
 Here is the full list of files I will create for "\<Project Name\>" in the "\<Team Name\>" team:
 
@@ -49,9 +54,11 @@ Here is the full list of files I will create for "\<Project Name\>" in the "\<Te
 | 2 | \<Project Name\> — Discovery Summary | Slides | Strategy/ | Clone from template |
 | 3 | \<Project Name\> — Wireframes | Design | Strategy/ | New blank file |
 | 4 | \<Project Name\> — Foundations | Design | Design-Systems/ | Clone from template |
-| 5 | \<Project Name\> — iOS Masterfile | Design | Master-Files/ | Clone from template |
-| 6 | \<Project Name\> — Android Masterfile | Design | Master-Files/ | Clone from template |
-| 7 | \<Project Name\> — RIVE Masterfile | Design | Master-Files/ | Clone from template |
+| 5 _(if platform = ios or all)_ | \<Project Name\> — iOS Masterfile | Design | Master-Files/ | Clone from template |
+| 6 _(if platform = android or all)_ | \<Project Name\> — Android Masterfile | Design | Master-Files/ | Clone from template |
+| 7 _(if platform = web or all)_ | \<Project Name\> — Web Masterfile | Design | Master-Files/ | Clone from template |
+
+Omit any Masterfile row whose platform condition is not met. If platform is `skip`, omit all three Masterfile rows.
 
 Shall I proceed? (yes / no / edit)
 
@@ -86,7 +93,7 @@ Record the project ID for each folder. You will need these IDs when placing dupl
 
 ### Step 4 — Clone Template Files
 
-For each of the six template-based files, call the Figma REST API duplicate endpoint via `use_figma` or the REST connector.
+For each of the template-based files, call the Figma REST API duplicate endpoint via `use_figma` or the REST connector.
 
 **Do not use `team_id` in the duplicate body — it does not place the file in a project folder. Instead, resolve the project IDs in Step 3 first and pass `project_id` directly so the file lands in the correct folder in one call.**
 
@@ -112,16 +119,18 @@ If the Figma API does not accept `project_id` on the duplicate endpoint (returns
    ```
    **You must include `name` in every PUT body — omitting it silently clears the file name on some Figma API versions and the move may be ignored.**
 
-Execute the six template clones in this order:
+Execute template clones in this order. Masterfile rows are conditional — only clone the files whose platform condition is met:
 
-| # | Title | Template Key | Project Folder |
-|---|---|---|---|
-| 1 | `<Project Name> — Discovery Workshop` | `hnCK8gpGtxzBoBakRX8QLn` | `Strategy/` project ID |
-| 2 | `<Project Name> — Discovery Summary` | `8YBZtQLCnt7sbmlCKpMO1Y` | `Strategy/` project ID |
-| 4 | `<Project Name> — Foundations` | `rJQsr4aou5yjzUhaEM0I2f` | `Design-Systems/` project ID |
-| 5 | `<Project Name> — iOS Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID |
-| 6 | `<Project Name> — Android Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID |
-| 7 | `<Project Name> — RIVE Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID |
+| # | Title | Template Key | Project Folder | Condition |
+|---|---|---|---|---|
+| 1 | `<Project Name> — Discovery Workshop` | `hnCK8gpGtxzBoBakRX8QLn` | `Strategy/` project ID | Always |
+| 2 | `<Project Name> — Discovery Summary` | `8YBZtQLCnt7sbmlCKpMO1Y` | `Strategy/` project ID | Always |
+| 3 | `<Project Name> — Foundations` | `rJQsr4aou5yjzUhaEM0I2f` | `Design-Systems/` project ID | Always |
+| 4 | `<Project Name> — iOS Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID | platform = `ios` or `all` |
+| 5 | `<Project Name> — Android Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID | platform = `android` or `all` |
+| 6 | `<Project Name> — Web Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID | platform = `web` or `all` |
+
+If platform is `skip`, skip all three Masterfile rows entirely.
 
 Record the new file key returned by each duplicate call. You will use these keys to build file URLs in Step 6.
 
@@ -164,13 +173,13 @@ Record the file key of the new Wireframes file.
 
 ### Step 6 — Report Created File URLs
 
-Once all seven files have been created, collect each file key and construct the Figma URL:
+Once all files have been created, collect each file key and construct the Figma URL:
 
 ```
 https://www.figma.com/design/<file_key>/
 ```
 
-Present a results table to the designer:
+Present a results table to the designer. Only include Masterfile rows for platforms that were selected:
 
 ```
 All files have been created for "<Project Name>" in the "<Team Name>" team.
@@ -181,9 +190,9 @@ All files have been created for "<Project Name>" in the "<Team Name>" team.
 | <Project Name> — Discovery Summary | Strategy/ | https://www.figma.com/design/<key>/ |
 | <Project Name> — Wireframes | Strategy/ | https://www.figma.com/design/<key>/ |
 | <Project Name> — Foundations | Design-Systems/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — iOS Masterfile | Master-Files/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — Android Masterfile | Master-Files/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — RIVE Masterfile | Master-Files/ | https://www.figma.com/design/<key>/ |
+| <Project Name> — iOS Masterfile (if created) | Master-Files/ | https://www.figma.com/design/<key>/ |
+| <Project Name> — Android Masterfile (if created) | Master-Files/ | https://www.figma.com/design/<key>/ |
+| <Project Name> — Web Masterfile (if created) | Master-Files/ | https://www.figma.com/design/<key>/ |
 ```
 
 ---
@@ -212,6 +221,7 @@ If any API call fails, do not abort the entire run silently. Report the failure 
 
 | Error | Likely Cause | What to Say |
 |---|---|---|
+| `401 Unauthorized` on any REST call | Missing or invalid PAT. | "The Figma REST API returned a 401. Your Personal Access Token may be missing, expired, or lack the required scope. Please generate a new token (File content + write scope) and re-run `/new-project`." |
 | `403 Forbidden` on `POST /v1/files/:key/duplicate` | The authenticated user does not have access to the template file, or the Organization tier is not active. | "I was unable to duplicate the [file title] template (`<key>`). This usually means the Figma MCP connector account does not have access to the source template, or your Figma plan does not permit file duplication via API. Please verify your account tier and that the template is shared with your organization, then retry." |
 | `404 Not Found` on the template key | The template file has been moved or deleted. | "The template file for [file title] could not be found (key: `<key>`). The source file may have been deleted or its key may have changed. Please check `plugin/.claude/settings.local.json` and verify the key against the current Figma file." |
 | `403 Forbidden` on project folder creation | The user does not have edit permissions in the team. | "I could not create the '[folder name]' project folder in the '[Team Name]' team. Please verify that your account has Editor access to this team in Figma, then retry." |
@@ -238,7 +248,8 @@ Tell the designer which files need to be created manually or retried.
 
 | Requirement | Notes |
 |---|---|
-| Figma MCP connector configured | The connector must be active in Claude Code. All Figma API calls are authenticated through it — no personal access token (PAT) or environment variable is needed. |
+| Figma MCP connector configured | The connector must be active in Claude Code for canvas operations (screenshots, node reads). |
+| Figma Personal Access Token (PAT) | Required for all Figma REST API calls (folder creation, file duplication, file moves). Collected interactively at the start of Step 1. Generate at: Figma → Account Settings → Security → Personal access tokens. File content + write scope is sufficient. |
 | Organization-tier Figma account | Required to use the Figma REST Files API `duplicate` endpoint and to create files in team project folders. |
 | Team already exists in Figma | The target team must already be created in the Figma organization. This skill creates folders and files within an existing team — it does not create the team itself. |
 
@@ -251,7 +262,7 @@ Tell the designer which files need to be created manually or retried.
 | Discovery Workshop | `hnCK8gpGtxzBoBakRX8QLn` | FigJam | `Strategy/` |
 | Discovery Summary | `8YBZtQLCnt7sbmlCKpMO1Y` | Slides | `Strategy/` |
 | Foundations / Agent Kit | `rJQsr4aou5yjzUhaEM0I2f` | Design | `Design-Systems/` |
-| Master Files | `C9C0XpIdj1WS3klOugVzGM` | Design | `Master-Files/` |
+| Masterfile (iOS / Android / Web) | `C9C0XpIdj1WS3klOugVzGM` | Design | `Master-Files/` |
 
 These keys are also stored in `plugin/.claude/settings.local.json` under `template_file_keys`.
 
@@ -277,6 +288,6 @@ last_skill_run: "new-project"
 variable_slot_catalog_path: ""
 open_items:
   - "Foundations file is ready for /create-design-system — file key: <key>"
-  - "iOS, Android, and RIVE Masterfiles duplicated from the same source template — verify naming is correct in Figma before distributing to the team."
+  - "iOS, Android, and Web Masterfiles (whichever were created) duplicated from the same source template — verify naming is correct in Figma before distributing to the team."
 ---
 ```
