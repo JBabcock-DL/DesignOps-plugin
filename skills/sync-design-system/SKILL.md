@@ -82,9 +82,9 @@ primitive values for diff purposes.
 
 **Mode-aware flattening:** For collections with multiple modes, flatten each
 mode into a separate key using the pattern `collection/mode/token-name`:
-- Theme (2 modes): `theme/light/color/background/bg`, `theme/dark/color/background/bg`
+- Theme (2 modes): `theme/light/color/background/bg`, `theme/dark/color/background/bg`, `theme/light/color/surface/raised`, `theme/light/color/status/error`, etc.
 - Typography (8 modes): `typography/100/Headline-LG-font-size`, `typography/200/Headline-LG-font-size`, etc.
-- Effects (2 modes): `effects/light/shadow-color`, `effects/dark/shadow-color`
+- Effects (2 modes): `effects/light/shadow/color`, `effects/dark/shadow/color`
 - Primitives and Layout (1 mode each): `primitives/color-primary-500`, `layout/space-md`
 
 If the file contains legacy collections (`Web`, `Android/M3`, `iOS/HIG`) from a
@@ -301,27 +301,43 @@ Parse all `--<name>: <value>` declarations inside `:root` blocks.
 Convert kebab-case names to slash-notation:
 `--color-primary` → `color/primary`, `--spacing-4` → `spacing/4`.
 
-When parsing CSS custom properties that match Theme semantic token names, map them to the new grouped paths using the codeSyntax reverse-lookup table from `/create-design-system`:
+When parsing CSS custom properties that match Theme semantic token names, map them to the grouped Figma token paths using this reverse-lookup table. **M3-primary vars** are the canonical keys — shadcn alias vars are skipped during diff:
 - `--background` → `color/background/bg`
-- `--foreground` → `color/background/fg`
+- `--on-background` → `color/background/fg`
+- `--inverse-surface` → `color/background/bg-inverse`
+- `--inverse-on-surface` → `color/background/fg-inverse`
+- `--inverse-primary` → `color/background/inverse-primary`
 - `--surface` → `color/surface/default`
-- `--surface-raised` → `color/surface/raised`
-- `--surface-overlay` → `color/surface/overlay`
+- `--surface-variant` → `color/surface/raised`
+- `--surface-container-highest` → `color/surface/overlay`
 - `--on-surface` → `color/surface/fg`
 - `--on-surface-variant` → `color/surface/fg-subtle`
-- `--border` → `color/surface/border`
-- `--border-subtle` → `color/surface/border-subtle`
+- `--outline` → `color/surface/border`
+- `--outline-variant` → `color/surface/border-subtle`
 - `--primary` → `color/primary/default`
-- `--primary-tint` → `color/primary/tint`
+- `--on-primary` → `color/primary/fg`
+- `--primary-container` → `color/primary/tint`
+- `--on-primary-container` → `color/primary/fg-on-tint`
 - `--secondary` → `color/secondary/default`
+- `--on-secondary` → `color/secondary/fg`
+- `--secondary-container` → `color/secondary/tint`
+- `--on-secondary-container` → `color/secondary/fg-on-tint`
 - `--tertiary` → `color/tertiary/default`
-- `--accent` → `color/tertiary/tint`
-- `--destructive` → `color/status/error`
-- `--error-tint` → `color/status/error-tint`
+- `--on-tertiary` → `color/tertiary/fg`
+- `--tertiary-container` → `color/tertiary/tint`
+- `--on-tertiary-container` → `color/tertiary/fg-on-tint`
+- `--error` → `color/status/error`
+- `--on-error` → `color/status/error-fg`
+- `--error-container` → `color/status/error-tint`
+- `--on-error-container` → `color/status/error-fg-on-tint`
 - `--input` → `color/component/input`
 - `--ring` → `color/component/ring`
 - `--sidebar` → `color/component/sidebar`
-shadcn alias vars (`--card`, `--popover`, `--muted`, `--primary-container`, etc.) are aliases defined in tokens.css — skip them during diff (they resolve to the semantic vars above).
+- `--sidebar-foreground` → `color/component/sidebar-fg`
+
+**Skip during diff** — these are shadcn/ui compatibility aliases that resolve back to M3 vars above:
+`--foreground`, `--background-inverse`, `--foreground-inverse`, `--surface-raised`, `--surface-overlay`, `--border`, `--border-subtle`, `--primary-foreground`, `--primary-tint`, `--on-primary-tint`, `--secondary-foreground`, `--secondary-tint`, `--on-secondary-tint`, `--accent`, `--accent-foreground`, `--destructive`, `--destructive-foreground`, `--error-tint`, `--on-error-tint`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`
+
 Platform-prefixed names (`--md-sys-*`, `--ios-*`) are legacy — skip them with a warning.
 
 ---
