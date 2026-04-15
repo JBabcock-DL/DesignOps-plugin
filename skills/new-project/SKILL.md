@@ -16,7 +16,11 @@ Your first action is to collect the required inputs using AskUserQuestion — do
 Parse `$ARGUMENTS` for `--team`, `--name`, and `--platform`. For each value not already provided, call AskUserQuestion. Ask one at a time and wait for each reply before asking the next.
 
 **Always ask first — PAT is required before any API calls can proceed.** Call AskUserQuestion:
-> "I need a Figma Personal Access Token to create project folders and files via the Figma REST API. To generate one: Figma → Account Settings → Security → Personal access tokens → Generate new token (File content + write scope is sufficient). Please paste your token here."
+> "I need a Figma Personal Access Token to create project folders and files via the Figma REST API. To generate one: Figma → Account Settings → Security → Personal access tokens → Generate new token.
+>
+> **Required scopes:** File content (read + write), Projects (read + write), and Teams (read).
+>
+> Please paste your token here."
 
 Store the token as `FIGMA_PAT`. Use it as a Bearer token in all REST API calls: `Authorization: Bearer <FIGMA_PAT>`.
 
@@ -224,7 +228,8 @@ If any API call fails, do not abort the entire run silently. Report the failure 
 | `401 Unauthorized` on any REST call | Missing or invalid PAT. | "The Figma REST API returned a 401. Your Personal Access Token may be missing, expired, or lack the required scope. Please generate a new token (File content + write scope) and re-run `/new-project`." |
 | `403 Forbidden` on `POST /v1/files/:key/duplicate` | The authenticated user does not have access to the template file, or the Organization tier is not active. | "I was unable to duplicate the [file title] template (`<key>`). This usually means the Figma MCP connector account does not have access to the source template, or your Figma plan does not permit file duplication via API. Please verify your account tier and that the template is shared with your organization, then retry." |
 | `404 Not Found` on the template key | The template file has been moved or deleted. | "The template file for [file title] could not be found (key: `<key>`). The source file may have been deleted or its key may have changed. Please check `plugin/.claude/settings.local.json` and verify the key against the current Figma file." |
-| `403 Forbidden` on project folder creation | The user does not have edit permissions in the team. | "I could not create the '[folder name]' project folder in the '[Team Name]' team. Please verify that your account has Editor access to this team in Figma, then retry." |
+| `404 Not Found` on `POST /v1/teams/:team_id/projects` | PAT is missing the Projects write scope — this is the most common cause even on Org accounts. A 404 here does **not** mean the team wasn't found (GET worked) or that the plan is insufficient. | "Project folder creation returned 404. This almost always means the Personal Access Token is missing the **Projects (read + write)** scope. Please regenerate the token with File content, Projects, and Teams scopes enabled, then re-run `/new-project`." |
+| `403 Forbidden` on project folder creation | The PAT user does not have Editor access to the team. | "I could not create the '[folder name]' project folder in the '[Team Name]' team. Please verify that your Figma account has Editor access to this team, then retry." |
 | `400 Bad Request` on file creation | Malformed request body or unsupported file type for the account tier. | "The request to create [file title] was rejected by Figma. This may indicate a plan limitation or a malformed request. Check the Figma API response for details and retry, or create the file manually in Figma." |
 | MCP connector auth error | Figma MCP connector session has expired. | "The Figma MCP connector returned an authentication error. Please re-authenticate the Figma connector in Claude Code settings (Settings → MCP → Figma → Reconnect) and then re-run `/new-project`." |
 
@@ -249,7 +254,7 @@ Tell the designer which files need to be created manually or retried.
 | Requirement | Notes |
 |---|---|
 | Figma MCP connector configured | The connector must be active in Claude Code for canvas operations (screenshots, node reads). |
-| Figma Personal Access Token (PAT) | Required for all Figma REST API calls (folder creation, file duplication, file moves). Collected interactively at the start of Step 1. Generate at: Figma → Account Settings → Security → Personal access tokens. File content + write scope is sufficient. |
+| Figma Personal Access Token (PAT) | Required for all Figma REST API calls (folder creation, file duplication, file moves). Collected interactively at the start of Step 1. Generate at: Figma → Account Settings → Security → Personal access tokens. Required scopes: **File content (read + write)**, **Projects (read + write)**, **Teams (read)**. Missing Projects scope is the most common cause of 404 on project folder creation. |
 | Organization-tier Figma account | Required to use the Figma REST Files API `duplicate` endpoint and to create files in team project folders. |
 | Team already exists in Figma | The target team must already be created in the Figma organization. This skill creates folders and files within an existing team — it does not create the team itself. |
 
