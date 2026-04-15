@@ -82,7 +82,7 @@ primitive values for diff purposes.
 
 **Mode-aware flattening:** For collections with multiple modes, flatten each
 mode into a separate key using the pattern `collection/mode/token-name`:
-- Theme (2 modes): `theme/light/color/background`, `theme/dark/color/background`
+- Theme (2 modes): `theme/light/color/background/bg`, `theme/dark/color/background/bg`
 - Typography (8 modes): `typography/100/Headline-LG-font-size`, `typography/200/Headline-LG-font-size`, etc.
 - Effects (2 modes): `effects/light/shadow-color`, `effects/dark/shadow-color`
 - Primitives and Layout (1 mode each): `primitives/color-primary-500`, `layout/space-md`
@@ -189,7 +189,7 @@ Payload structure (Figma Variables bulk write format):
   its value. Infer the collection from the token name prefix using these rules:
   - `color/{ramp}/{stop}` (e.g. `color/primary/500`) → `Primitives`
   - `Space/*`, `Corner/*`, `elevation/*` → `Primitives`
-  - `color/{semantic}` (e.g. `color/background`, `color/on-surface`) → `Theme`
+  - `color/{group}/{token}` (e.g. `color/background/bg`, `color/surface/fg`, `color/primary/default`) → `Theme`
   - `Display/*`, `Headline/*`, `Body/*`, `Label/*` → `Typography`
   - `space/*`, `radius/*` (lowercase) → `Layout`
   - `shadow/*` → `Effects`
@@ -301,9 +301,27 @@ Parse all `--<name>: <value>` declarations inside `:root` blocks.
 Convert kebab-case names to slash-notation:
 `--color-primary` → `color/primary`, `--spacing-4` → `spacing/4`.
 
-When parsing CSS custom properties that match the new semantic token names
-(e.g. `--background`, `--on-surface`, `--primary-container`), map them to
-`color/{name}` in the flat map so they diff correctly against the Theme collection.
+When parsing CSS custom properties that match Theme semantic token names, map them to the new grouped paths using the codeSyntax reverse-lookup table from `/create-design-system`:
+- `--background` → `color/background/bg`
+- `--foreground` → `color/background/fg`
+- `--surface` → `color/surface/default`
+- `--surface-raised` → `color/surface/raised`
+- `--surface-overlay` → `color/surface/overlay`
+- `--on-surface` → `color/surface/fg`
+- `--on-surface-variant` → `color/surface/fg-subtle`
+- `--border` → `color/surface/border`
+- `--border-subtle` → `color/surface/border-subtle`
+- `--primary` → `color/primary/default`
+- `--primary-tint` → `color/primary/tint`
+- `--secondary` → `color/secondary/default`
+- `--tertiary` → `color/tertiary/default`
+- `--accent` → `color/tertiary/tint`
+- `--destructive` → `color/status/error`
+- `--error-tint` → `color/status/error-tint`
+- `--input` → `color/component/input`
+- `--ring` → `color/component/ring`
+- `--sidebar` → `color/component/sidebar`
+shadcn alias vars (`--card`, `--popover`, `--muted`, `--primary-container`, etc.) are aliases defined in tokens.css — skip them during diff (they resolve to the semantic vars above).
 Platform-prefixed names (`--md-sys-*`, `--ios-*`) are legacy — skip them with a warning.
 
 ---

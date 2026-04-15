@@ -162,7 +162,7 @@ await figma.setCurrentPageAsync(targetPage);
 const collections = figma.variables.getLocalVariableCollections();
 const allVars = figma.variables.getLocalVariables();
 
-// Theme → color tokens  (color/primary, color/background, color/foreground, …)
+// Theme → color tokens  (color/primary/default, color/background/bg, color/background/fg, …)
 const themeCol = collections.find(c => c.name === 'Theme');
 const themeVars = themeCol ? allVars.filter(v => v.variableCollectionId === themeCol.id) : [];
 const getColorVar = name => themeVars.find(v => v.name === name) ?? null;
@@ -251,7 +251,7 @@ function bindNum(node, field, varName, fallback) {
 //   padV      — Layout path for vertical padding
 function buildVariant(name, fillVar, fallbackFill, {
   label     = null,
-  labelVar  = 'color/foreground',
+  labelVar  = 'color/background/fg',
   strokeVar = null,
   radiusVar = 'radius/md',
   padH      = 'space/md',
@@ -344,12 +344,12 @@ const BUTTON_VARIANTS = ['default', 'destructive', 'outline', 'secondary', 'ghos
 const BUTTON_SIZES    = ['default', 'sm', 'lg', 'icon'];
 
 const BUTTON_STYLE = {
-  default:     { fill: 'color/primary',    fallback: '#1a1a1a', lv: 'color/primary-foreground',   stroke: null },
-  destructive: { fill: 'color/error',      fallback: '#ef4444', lv: 'color/on-error',              stroke: null },
-  outline:     { fill: 'color/background', fallback: '#ffffff', lv: 'color/foreground',            stroke: 'color/outline-variant' },
-  secondary:   { fill: 'color/secondary',  fallback: '#6b7280', lv: 'color/secondary-foreground',  stroke: null },
-  ghost:       { fill: 'color/background', fallback: '#ffffff', lv: 'color/foreground',            stroke: null },
-  link:        { fill: 'color/background', fallback: '#ffffff', lv: 'color/primary',               stroke: null },
+  default:     { fill: 'color/primary/default',    fallback: '#1a1a1a', lv: 'color/primary/fg',             stroke: null },
+  destructive: { fill: 'color/status/error',       fallback: '#ef4444', lv: 'color/status/error-fg',        stroke: null },
+  outline:     { fill: 'color/background/bg',      fallback: '#ffffff', lv: 'color/background/fg',          stroke: 'color/surface/border' },
+  secondary:   { fill: 'color/secondary/default',  fallback: '#6b7280', lv: 'color/secondary/fg',           stroke: null },
+  ghost:       { fill: 'color/background/bg',      fallback: '#ffffff', lv: 'color/background/fg',          stroke: null },
+  link:        { fill: 'color/background/bg',      fallback: '#ffffff', lv: 'color/primary/default',        stroke: null },
 };
 const BUTTON_PAD_H = { default: 'space/md', sm: 'space/xs', lg: 'space/lg', icon: 'space/xs' };
 
@@ -373,10 +373,10 @@ layoutSet(compSet, "Button", 100, 100);
 // Use this pattern when the component has exactly one variant dimension.
 
 const badgeNodes = [
-  buildVariant('variant=default',     'color/primary',    '#1a1a1a', { label: 'Badge', labelVar: 'color/primary-foreground' }),
-  buildVariant('variant=secondary',   'color/secondary',  '#6b7280', { label: 'Badge', labelVar: 'color/secondary-foreground' }),
-  buildVariant('variant=destructive', 'color/error',      '#ef4444', { label: 'Badge', labelVar: 'color/on-error' }),
-  buildVariant('variant=outline',     'color/background', '#ffffff', { label: 'Badge', labelVar: 'color/foreground', strokeVar: 'color/outline-variant' }),
+  buildVariant('variant=default',     'color/primary/default',   '#1a1a1a', { label: 'Badge', labelVar: 'color/primary/fg' }),
+  buildVariant('variant=secondary',   'color/secondary/default', '#6b7280', { label: 'Badge', labelVar: 'color/secondary/fg' }),
+  buildVariant('variant=destructive', 'color/status/error',      '#ef4444', { label: 'Badge', labelVar: 'color/status/error-fg' }),
+  buildVariant('variant=outline',     'color/background/bg',     '#ffffff', { label: 'Badge', labelVar: 'color/background/fg', strokeVar: 'color/surface/border' }),
 ];
 spreadNodes(badgeNodes);
 const badgeSet = figma.combineAsVariants(badgeNodes, figma.currentPage);
@@ -385,8 +385,8 @@ layoutSet(badgeSet, "Badge", 100, 100);
 // ── 6c. SINGLE-STATE pattern ─────────────────────────────────────────────
 // For components with no variants (separator, label, card, etc.).
 
-const comp = buildVariant('Card', 'color/card', '#ffffff',
-  { label: 'Card', labelVar: 'color/card-foreground', radiusVar: 'radius/lg' });
+const comp = buildVariant('Card', 'color/surface/default', '#ffffff',
+  { label: 'Card', labelVar: 'color/surface/fg', radiusVar: 'radius/lg' });
 // Position single-state components explicitly — they land at (0,0) by default.
 comp.x = 100;
 comp.y = 100;
@@ -405,18 +405,18 @@ comp.y = 100;
 
 | Component | Property | Values | Fill variable guidance |
 |---|---|---|---|
-| `badge` | `variant` | default, secondary, destructive, outline | default→`color/primary`, secondary→`color/secondary`, destructive→`color/error`, outline→`color/background`+stroke |
-| `input` | `state` | default, focus, disabled, error | all→`color/input`; error adds stroke `color/error` |
+| `badge` | `variant` | default, secondary, destructive, outline | default→`color/primary/default`, secondary→`color/secondary/default`, destructive→`color/status/error`, outline→`color/background/bg`+stroke |
+| `input` | `state` | default, focus, disabled, error | all→`color/component/input`; error adds stroke `color/status/error` |
 | `textarea` | `state` | default, focus, disabled, error | same as input |
-| `select` | `state` | default, open, disabled | `color/background`; open adds stroke `color/ring` |
-| `alert` | `variant` | default, destructive | default→`color/surface-variant`; destructive→`color/error-container` |
-| `avatar` | `size` | sm, md, lg | `color/muted`; vary `padH`: sm→`space/xs`, md→`space/sm`, lg→`space/md` |
-| `progress` | `value` | 0, 25, 50, 75, 100 | track→`color/muted`; indicator→`color/primary` |
-| `skeleton` | `shape` | line, circle, rect | `color/muted` |
-| `tabs` | `state` | active, inactive | active→`color/background`+stroke `color/primary`; inactive→`color/muted` |
-| `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` | open, closed | `color/popover`; `radius/lg` |
-| `accordion`, `collapsible` | `state` | open, closed | `color/background` |
-| `toggle`, `toggle-group` | `pressed` | false, true | false→`color/background`; true→`color/accent` |
+| `select` | `state` | default, open, disabled | `color/background/bg`; open adds stroke `color/component/ring` |
+| `alert` | `variant` | default, destructive | default→`color/surface/raised`; destructive→`color/status/error-tint` |
+| `avatar` | `size` | sm, md, lg | `color/surface/raised`; vary `padH`: sm→`space/xs`, md→`space/sm`, lg→`space/md` |
+| `progress` | `value` | 0, 25, 50, 75, 100 | track→`color/surface/raised`; indicator→`color/primary/default` |
+| `skeleton` | `shape` | line, circle, rect | `color/surface/raised` |
+| `tabs` | `state` | active, inactive | active→`color/background/bg`+stroke `color/primary/default`; inactive→`color/surface/raised` |
+| `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` | open, closed | `color/surface/overlay`; `radius/lg` |
+| `accordion`, `collapsible` | `state` | open, closed | `color/background/bg` |
+| `toggle`, `toggle-group` | `pressed` | false, true | false→`color/background/bg`; true→`color/tertiary/tint` |
 
 **Single-state components** (no variants — use pattern 6c):
 `breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast`

@@ -195,123 +195,122 @@ Apply to every Primitives variable:
 
 Create (or update) the `Theme` collection with **two modes: `Light` and `Dark`**.
 
-Every Theme variable is a COLOR type that aliases a Primitive variable by ID. Use the table below — `Light →` and `Dark →` columns name the Primitive path to alias.
+Every Theme variable is a COLOR type that aliases a Primitive variable by ID. Use the tables below — `Light →` and `Dark →` columns name the Primitive path to alias. codeSyntax values are set **explicitly** from the table — they are NOT derived from the variable name path.
 
-### Backgrounds & Foregrounds (4 variables)
-
-| Variable | Light → | Dark → |
-|---|---|---|
-| `color/background` | `color/neutral/50` | `color/neutral/950` |
-| `color/background-inverse` | `color/neutral/950` | `color/neutral/50` |
-| `color/foreground` | `color/neutral/900` | `color/neutral/100` |
-| `color/foreground-inverse` | `color/neutral/50` | `color/neutral/900` |
-
-### Primary (4 variables)
+### background/ — App canvas (4 variables)
+*Use these tokens on `<html>` and `<body>`. Everything else sits on top of them.*
 
 | Variable | Light → | Dark → |
 |---|---|---|
-| `color/primary` | `color/primary/500` | `color/primary/400` |
-| `color/primary-foreground` | `color/primary/50` | `color/primary/50` |
-| `color/primary-container` | `color/primary/100` | `color/primary/800` |
-| `color/on-primary-container` | `color/primary/900` | `color/primary/100` |
+| `color/background/bg` | `color/neutral/50` | `color/neutral/950` |
+| `color/background/fg` | `color/neutral/900` | `color/neutral/100` |
+| `color/background/bg-inverse` | `color/neutral/950` | `color/neutral/50` |
+| `color/background/fg-inverse` | `color/neutral/50` | `color/neutral/900` |
 
-### Secondary (4 variables)
-
-| Variable | Light → | Dark → |
-|---|---|---|
-| `color/secondary` | `color/secondary/500` | `color/secondary/400` |
-| `color/secondary-foreground` | `color/secondary/50` | `color/secondary/50` |
-| `color/secondary-container` | `color/secondary/100` | `color/secondary/800` |
-| `color/on-secondary-container` | `color/secondary/900` | `color/secondary/100` |
-
-### Tertiary / Accent (4 variables)
+### surface/ — Component surfaces (7 variables)
+*`default` = cards and panels sitting on the page. `raised` = drawers, sidebars, sticky headers. `overlay` = modals, dialogs, popovers, context menus. `fg` / `fg-subtle` = text at two prominence levels. `border` / `border-subtle` = dividers at two weights.*
 
 | Variable | Light → | Dark → |
 |---|---|---|
-| `color/tertiary` | `color/tertiary/500` | `color/tertiary/400` |
-| `color/on-tertiary` | `color/tertiary/50` | `color/tertiary/50` |
-| `color/tertiary-container` | `color/tertiary/100` | `color/tertiary/800` |
-| `color/on-tertiary-container` | `color/tertiary/900` | `color/tertiary/100` |
+| `color/surface/default` | `color/neutral/50` | `color/neutral/900` |
+| `color/surface/raised` | `color/neutral/100` | `color/neutral/800` |
+| `color/surface/overlay` | `color/neutral/50` | `color/neutral/800` |
+| `color/surface/fg` | `color/neutral/900` | `color/neutral/50` |
+| `color/surface/fg-subtle` | `color/neutral/500` | `color/neutral/400` |
+| `color/surface/border` | `color/neutral/200` | `color/neutral/700` |
+| `color/surface/border-subtle` | `color/neutral/100` | `color/neutral/800` |
 
-### Error / Destructive (4 variables)
-
-| Variable | Light → | Dark → |
-|---|---|---|
-| `color/error` | `color/error/600` | `color/error/400` |
-| `color/on-error` | `color/error/50` | `color/error/50` |
-| `color/error-container` | `color/error/100` | `color/error/900` |
-| `color/on-error-container` | `color/error/900` | `color/error/100` |
-
-### Muted & Accent (4 variables)
+### primary/ — Primary brand (4 variables)
+*`default` = main CTA fills (buttons, active indicators). `fg` = text/icon on `default`. `tint` = tinted background for primary-context areas (selected nav item, active state bg). `fg-on-tint` = text on `tint`.*
 
 | Variable | Light → | Dark → |
 |---|---|---|
-| `color/muted` | `color/neutral/100` | `color/neutral/800` |
-| `color/muted-foreground` | `color/neutral/500` | `color/neutral/400` |
-| `color/accent` | `color/tertiary/100` | `color/tertiary/800` |
-| `color/accent-foreground` | `color/tertiary/900` | `color/tertiary/100` |
+| `color/primary/default` | `color/primary/500` | `color/primary/400` |
+| `color/primary/fg` | `color/primary/50` | `color/primary/50` |
+| `color/primary/tint` | `color/primary/100` | `color/primary/800` |
+| `color/primary/fg-on-tint` | `color/primary/900` | `color/primary/100` |
 
-### Surface Hierarchy (9 variables)
-
-| Variable | Light → | Dark → |
-|---|---|---|
-| `color/surface` | `color/neutral/50` | `color/neutral/900` |
-| `color/on-surface` | `color/neutral/900` | `color/neutral/50` |
-| `color/surface-variant` | `color/neutral/100` | `color/neutral/800` |
-| `color/on-surface-variant` | `color/neutral/700` | `color/neutral/300` |
-| `color/surface-container-lowest` | `color/neutral/50` | `color/neutral/900` |
-| `color/surface-container-low` | `color/neutral/100` | `color/neutral/800` |
-| `color/surface-container` | `color/neutral/200` | `color/neutral/800` |
-| `color/surface-container-high` | `color/neutral/200` | `color/neutral/700` |
-| `color/surface-container-highest` | `color/neutral/300` | `color/neutral/700` |
-
-### Outline / Border (2 variables)
+### secondary/ — Secondary actions (4 variables)
+*Same shape as primary/. Use for alternative or supporting actions.*
 
 | Variable | Light → | Dark → |
 |---|---|---|
-| `color/outline` | `color/neutral/300` | `color/neutral/600` |
-| `color/outline-variant` | `color/neutral/200` | `color/neutral/700` |
+| `color/secondary/default` | `color/secondary/500` | `color/secondary/400` |
+| `color/secondary/fg` | `color/secondary/50` | `color/secondary/50` |
+| `color/secondary/tint` | `color/secondary/100` | `color/secondary/800` |
+| `color/secondary/fg-on-tint` | `color/secondary/900` | `color/secondary/100` |
 
-### UI Component Tokens — Tailwind/shadcn (8 variables)
-
-| Variable | Light → | Dark → |
-|---|---|---|
-| `color/card` | `color/neutral/50` | `color/neutral/900` |
-| `color/card-foreground` | `color/neutral/900` | `color/neutral/50` |
-| `color/popover` | `color/neutral/50` | `color/neutral/900` |
-| `color/popover-foreground` | `color/neutral/900` | `color/neutral/50` |
-| `color/input` | `color/neutral/200` | `color/neutral/700` |
-| `color/ring` | `color/primary/500` | `color/primary/400` |
-| `color/sidebar` | `color/neutral/100` | `color/neutral/900` |
-| `color/sidebar-foreground` | `color/neutral/900` | `color/neutral/100` |
-
-### Inverse / Dark Surfaces (3 variables)
+### tertiary/ — Decorative / Accent (4 variables)
+*Use for tags, chips, illustration accents, decorative highlights. `tint` and `fg-on-tint` also serve as shadcn `--accent` and `--accent-foreground` (hover backgrounds, selection highlights).*
 
 | Variable | Light → | Dark → |
 |---|---|---|
-| `color/inverse-surface` | `color/neutral/900` | `color/neutral/100` |
-| `color/inverse-on-surface` | `color/neutral/100` | `color/neutral/900` |
-| `color/inverse-primary` | `color/primary/300` | `color/primary/700` |
+| `color/tertiary/default` | `color/tertiary/500` | `color/tertiary/400` |
+| `color/tertiary/fg` | `color/tertiary/50` | `color/tertiary/50` |
+| `color/tertiary/tint` | `color/tertiary/100` | `color/tertiary/800` |
+| `color/tertiary/fg-on-tint` | `color/tertiary/900` | `color/tertiary/100` |
 
-### Overlay (1 variable)
+### status/ — Feedback states (4 variables)
+*Error/destructive only. Expand with `warning/`, `success/`, `info/` subgroups using the same 4-token shape when needed.*
 
-| Variable | Light | Dark |
+| Variable | Light → | Dark → |
 |---|---|---|
-| `color/scrim` | `color/neutral/950` at 32% opacity | `color/neutral/950` at 32% opacity |
+| `color/status/error` | `color/error/600` | `color/error/400` |
+| `color/status/error-fg` | `color/error/50` | `color/error/50` |
+| `color/status/error-tint` | `color/error/100` | `color/error/900` |
+| `color/status/error-fg-on-tint` | `color/error/900` | `color/error/100` |
 
-Write `color/scrim` as a hard-coded COLOR value (not an alias) with `#000000` at 32% alpha in both modes. Figma variable aliases cannot carry opacity; use the resolved RGBA.
+### component/ — shadcn component tokens (5 variables)
+*1:1 with specific shadcn component variables. Use `surface/` tokens for generic surfaces — these are only for named shadcn props.*
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/component/input` | `color/neutral/200` | `color/neutral/700` |
+| `color/component/ring` | `color/primary/500` | `color/primary/400` |
+| `color/component/sidebar` | `color/neutral/100` | `color/neutral/900` |
+| `color/component/sidebar-fg` | `color/neutral/900` | `color/neutral/100` |
+| `color/component/scrim` | `color/neutral/950` at 32% opacity | `color/neutral/950` at 32% opacity |
+
+Write `color/component/scrim` as a hard-coded COLOR value (not an alias) with `#000000` at 32% alpha in both modes. Figma variable aliases cannot carry opacity; use the resolved RGBA.
 
 ### codeSyntax for Theme
 
-Strip the `color/` prefix, convert remaining path to kebab, wrap in `var(--)` for WEB; camelCase for ANDROID and iOS. The `color/` prefix is dropped from all three outputs.
+codeSyntax values are **set explicitly per token** — they are NOT derived from the Figma variable path. The group segments (`background/`, `surface/`, `component/`, etc.) and the descriptive leaf names (`default`, `fg`, `tint`) are Figma UI labels only.
 
-| Variable | WEB | ANDROID | iOS |
+| Figma variable | WEB | ANDROID | iOS |
 |---|---|---|---|
-| `color/background` | `var(--background)` | `background` | `background` |
-| `color/primary-container` | `var(--primary-container)` | `primaryContainer` | `primaryContainer` |
-| `color/on-surface-variant` | `var(--on-surface-variant)` | `onSurfaceVariant` | `onSurfaceVariant` |
-| `color/surface-container-high` | `var(--surface-container-high)` | `surfaceContainerHigh` | `surfaceContainerHigh` |
-| `color/error-container` | `var(--error-container)` | `errorContainer` | `errorContainer` |
+| `color/background/bg` | `var(--background)` | `background` | `background` |
+| `color/background/fg` | `var(--foreground)` | `foreground` | `foreground` |
+| `color/background/bg-inverse` | `var(--background-inverse)` | `backgroundInverse` | `backgroundInverse` |
+| `color/background/fg-inverse` | `var(--foreground-inverse)` | `foregroundInverse` | `foregroundInverse` |
+| `color/surface/default` | `var(--surface)` | `surface` | `surface` |
+| `color/surface/raised` | `var(--surface-raised)` | `surfaceRaised` | `surfaceRaised` |
+| `color/surface/overlay` | `var(--surface-overlay)` | `surfaceOverlay` | `surfaceOverlay` |
+| `color/surface/fg` | `var(--on-surface)` | `onSurface` | `onSurface` |
+| `color/surface/fg-subtle` | `var(--on-surface-variant)` | `onSurfaceVariant` | `onSurfaceVariant` |
+| `color/surface/border` | `var(--border)` | `border` | `border` |
+| `color/surface/border-subtle` | `var(--border-subtle)` | `borderSubtle` | `borderSubtle` |
+| `color/primary/default` | `var(--primary)` | `primary` | `primary` |
+| `color/primary/fg` | `var(--primary-foreground)` | `primaryForeground` | `primaryForeground` |
+| `color/primary/tint` | `var(--primary-tint)` | `primaryTint` | `primaryTint` |
+| `color/primary/fg-on-tint` | `var(--on-primary-tint)` | `onPrimaryTint` | `onPrimaryTint` |
+| `color/secondary/default` | `var(--secondary)` | `secondary` | `secondary` |
+| `color/secondary/fg` | `var(--secondary-foreground)` | `secondaryForeground` | `secondaryForeground` |
+| `color/secondary/tint` | `var(--secondary-tint)` | `secondaryTint` | `secondaryTint` |
+| `color/secondary/fg-on-tint` | `var(--on-secondary-tint)` | `onSecondaryTint` | `onSecondaryTint` |
+| `color/tertiary/default` | `var(--tertiary)` | `tertiary` | `tertiary` |
+| `color/tertiary/fg` | `var(--on-tertiary)` | `onTertiary` | `onTertiary` |
+| `color/tertiary/tint` | `var(--accent)` | `accent` | `accent` |
+| `color/tertiary/fg-on-tint` | `var(--accent-foreground)` | `accentForeground` | `accentForeground` |
+| `color/status/error` | `var(--destructive)` | `destructive` | `destructive` |
+| `color/status/error-fg` | `var(--destructive-foreground)` | `destructiveForeground` | `destructiveForeground` |
+| `color/status/error-tint` | `var(--error-tint)` | `errorTint` | `errorTint` |
+| `color/status/error-fg-on-tint` | `var(--on-error-tint)` | `onErrorTint` | `onErrorTint` |
+| `color/component/input` | `var(--input)` | `input` | `input` |
+| `color/component/ring` | `var(--ring)` | `ring` | `ring` |
+| `color/component/sidebar` | `var(--sidebar)` | `sidebar` | `sidebar` |
+| `color/component/sidebar-fg` | `var(--sidebar-foreground)` | `sidebarForeground` | `sidebarForeground` |
+| `color/component/scrim` | `var(--scrim)` | `scrim` | `scrim` |
 
 ---
 
@@ -525,58 +524,51 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
     elevation/1600  16       var(--elevation-1600)  elevation1600
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
-  THEME  (51 tokens · 2 modes: Light / Dark)
+  THEME  (32 tokens · 2 modes: Light / Dark)
 ──────────────────────────────────────────────────────────────────────────────────────────────
-  Syntax: color/ prefix dropped from all outputs.
-    WEB: var(--{token-name})    e.g. var(--background), var(--on-surface-variant)
-    ANDROID / iOS: {camelCase}  e.g. background, onSurfaceVariant
+  codeSyntax is set explicitly per token — NOT derived from the variable path.
+  Groups in the Figma path (background/, surface/, etc.) are UI labels only.
 
-  Token                        Light        Dark         WEB                          ANDROID / iOS
-  color/background             {hex}        {hex}        var(--background)            background
-  color/foreground             {hex}        {hex}        var(--foreground)            foreground
-  color/primary                {hex}        {hex}        var(--primary)               primary
-  color/primary-foreground     {hex}        {hex}        var(--primary-foreground)    primaryForeground
-  color/primary-container      {hex}        {hex}        var(--primary-container)     primaryContainer
-  color/on-primary-container   {hex}        {hex}        var(--on-primary-container)  onPrimaryContainer
-  color/secondary              {hex}        {hex}        var(--secondary)             secondary
-  color/secondary-foreground   {hex}        {hex}        var(--secondary-foreground)  secondaryForeground
-  color/tertiary               {hex}        {hex}        var(--tertiary)              tertiary
-  color/on-tertiary            {hex}        {hex}        var(--on-tertiary)           onTertiary
-  color/error                  {hex}        {hex}        var(--error)                 error
-  color/destructive            {hex}        {hex}        var(--destructive)           destructive
-  color/on-error               {hex}        {hex}        var(--on-error)              onError
-  color/error-container        {hex}        {hex}        var(--error-container)       errorContainer
-  color/surface                {hex}        {hex}        var(--surface)               surface
-  color/on-surface             {hex}        {hex}        var(--on-surface)            onSurface
-  color/surface-variant        {hex}        {hex}        var(--surface-variant)       surfaceVariant
-  color/on-surface-variant     {hex}        {hex}        var(--on-surface-variant)    onSurfaceVariant
-  color/surface-container      {hex}        {hex}        var(--surface-container)     surfaceContainer
-  color/surface-container-low  {hex}        {hex}        var(--surface-container-low) surfaceContainerLow
-  color/surface-container-high {hex}        {hex}        var(--surface-container-high) surfaceContainerHigh
-  color/muted                  {hex}        {hex}        var(--muted)                 muted
-  color/muted-foreground       {hex}        {hex}        var(--muted-foreground)      mutedForeground
-  color/accent                 {hex}        {hex}        var(--accent)                accent
-  color/accent-foreground      {hex}        {hex}        var(--accent-foreground)     accentForeground
-  color/outline                {hex}        {hex}        var(--outline)               outline
-  color/outline-variant        {hex}        {hex}        var(--outline-variant)       outlineVariant
-  color/border                 {hex}        {hex}        var(--border)                border
-  color/card                   {hex}        {hex}        var(--card)                  card
-  color/card-foreground        {hex}        {hex}        var(--card-foreground)       cardForeground
-  color/popover                {hex}        {hex}        var(--popover)               popover
-  color/popover-foreground     {hex}        {hex}        var(--popover-foreground)    popoverForeground
-  color/input                  {hex}        {hex}        var(--input)                 input
-  color/ring                   {hex}        {hex}        var(--ring)                  ring
-  color/sidebar                {hex}        {hex}        var(--sidebar)               sidebar
-  color/sidebar-foreground     {hex}        {hex}        var(--sidebar-foreground)    sidebarForeground
-  color/inverse-surface        {hex}        {hex}        var(--inverse-surface)       inverseSurface
-  color/inverse-on-surface     {hex}        {hex}        var(--inverse-on-surface)    inverseOnSurface
-  color/inverse-primary        {hex}        {hex}        var(--inverse-primary)       inversePrimary
-  color/background-inverse     {hex}        {hex}        var(--background-inverse)    backgroundInverse
-  color/foreground-inverse     {hex}        {hex}        var(--foreground-inverse)    foregroundInverse
-  color/scrim                  rgba(0,0,0,0.32)          var(--scrim)                 scrim
-  (+ surface-container-lowest, surface-container-highest, secondary-container,
-     on-secondary-container, tertiary-container, on-tertiary-container,
-     on-error-container, surface-dim, surface-bright — full list in Step 6)
+  Figma variable                 Light        Dark         WEB                           ANDROID / iOS
+  — background/ (app canvas) —
+  color/background/bg            {hex}        {hex}        var(--background)             background
+  color/background/fg            {hex}        {hex}        var(--foreground)             foreground
+  color/background/bg-inverse    {hex}        {hex}        var(--background-inverse)     backgroundInverse
+  color/background/fg-inverse    {hex}        {hex}        var(--foreground-inverse)     foregroundInverse
+  — surface/ (component surfaces) —
+  color/surface/default          {hex}        {hex}        var(--surface)                surface
+  color/surface/raised           {hex}        {hex}        var(--surface-raised)         surfaceRaised
+  color/surface/overlay          {hex}        {hex}        var(--surface-overlay)        surfaceOverlay
+  color/surface/fg               {hex}        {hex}        var(--on-surface)             onSurface
+  color/surface/fg-subtle        {hex}        {hex}        var(--on-surface-variant)     onSurfaceVariant
+  color/surface/border           {hex}        {hex}        var(--border)                 border
+  color/surface/border-subtle    {hex}        {hex}        var(--border-subtle)          borderSubtle
+  — primary/ —
+  color/primary/default          {hex}        {hex}        var(--primary)                primary
+  color/primary/fg               {hex}        {hex}        var(--primary-foreground)     primaryForeground
+  color/primary/tint             {hex}        {hex}        var(--primary-tint)           primaryTint
+  color/primary/fg-on-tint       {hex}        {hex}        var(--on-primary-tint)        onPrimaryTint
+  — secondary/ —
+  color/secondary/default        {hex}        {hex}        var(--secondary)              secondary
+  color/secondary/fg             {hex}        {hex}        var(--secondary-foreground)   secondaryForeground
+  color/secondary/tint           {hex}        {hex}        var(--secondary-tint)         secondaryTint
+  color/secondary/fg-on-tint     {hex}        {hex}        var(--on-secondary-tint)      onSecondaryTint
+  — tertiary/ (decorative/accent) —
+  color/tertiary/default         {hex}        {hex}        var(--tertiary)               tertiary
+  color/tertiary/fg              {hex}        {hex}        var(--on-tertiary)            onTertiary
+  color/tertiary/tint            {hex}        {hex}        var(--accent)                 accent
+  color/tertiary/fg-on-tint      {hex}        {hex}        var(--accent-foreground)      accentForeground
+  — status/ (expandable: add warning/, success/, info/ as needed) —
+  color/status/error             {hex}        {hex}        var(--destructive)            destructive
+  color/status/error-fg          {hex}        {hex}        var(--destructive-foreground) destructiveForeground
+  color/status/error-tint        {hex}        {hex}        var(--error-tint)             errorTint
+  color/status/error-fg-on-tint  {hex}        {hex}        var(--on-error-tint)          onErrorTint
+  — component/ (shadcn 1:1 tokens) —
+  color/component/input          {hex}        {hex}        var(--input)                  input
+  color/component/ring           {hex}        {hex}        var(--ring)                   ring
+  color/component/sidebar        {hex}        {hex}        var(--sidebar)                sidebar
+  color/component/sidebar-fg     {hex}        {hex}        var(--sidebar-foreground)     sidebarForeground
+  color/component/scrim          rgba(0,0,0,0.32)          var(--scrim)                  scrim
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   TYPOGRAPHY  (48 variables · 8 scale modes)
@@ -853,80 +845,69 @@ Construct the full CSS file content using this exact structure and write it to `
   --radius: var(--radius-md);
 }
 
-/* ─── Theme — Light (default) ────────────────────────────────────────────── */
-:root,
-[data-theme="light"] {
-  /* Backgrounds & Foregrounds */
+/* ─── Theme — Light ─────────────────────────────────────────────────────── */
+:root, [data-theme="light"] {
+  /* background/ — App canvas */
   --background:         var(--color-neutral-50);
-  --background-inverse: var(--color-neutral-950);
   --foreground:         var(--color-neutral-900);
+  --background-inverse: var(--color-neutral-950);
   --foreground-inverse: var(--color-neutral-50);
 
-  /* Primary */
-  --primary:              var(--color-primary-500);
-  --primary-foreground:   var(--color-primary-50);
-  --primary-container:    var(--color-primary-100);
-  --on-primary-container: var(--color-primary-900);
+  /* surface/ — Component surfaces */
+  --surface:         var(--color-neutral-50);
+  --surface-raised:  var(--color-neutral-100);
+  --surface-overlay: var(--color-neutral-50);
+  --on-surface:         var(--color-neutral-900);
+  --on-surface-variant: var(--color-neutral-500);
+  --border:         var(--color-neutral-200);
+  --border-subtle:  var(--color-neutral-100);
 
-  /* Secondary */
-  --secondary:              var(--color-secondary-500);
-  --secondary-foreground:   var(--color-secondary-50);
-  --secondary-container:    var(--color-secondary-100);
-  --on-secondary-container: var(--color-secondary-900);
+  /* primary/ */
+  --primary:            var(--color-primary-500);
+  --primary-foreground: var(--color-primary-50);
+  --primary-tint:       var(--color-primary-100);
+  --on-primary-tint:    var(--color-primary-900);
 
-  /* Tertiary */
-  --tertiary:              var(--color-tertiary-500);
-  --on-tertiary:           var(--color-tertiary-50);
-  --tertiary-container:    var(--color-tertiary-100);
-  --on-tertiary-container: var(--color-tertiary-900);
+  /* secondary/ */
+  --secondary:            var(--color-secondary-500);
+  --secondary-foreground: var(--color-secondary-50);
+  --secondary-tint:       var(--color-secondary-100);
+  --on-secondary-tint:    var(--color-secondary-900);
 
-  /* Error / Destructive */
-  --error:               var(--color-error-600);
-  --destructive:         var(--color-error-600);  /* shadcn/ui alias */
-  --on-error:            var(--color-error-50);
-  --destructive-foreground: var(--color-error-50); /* shadcn/ui alias */
-  --error-container:     var(--color-error-100);
-  --on-error-container:  var(--color-error-900);
-
-  /* Muted & Accent */
-  --muted:             var(--color-neutral-100);
-  --muted-foreground:  var(--color-neutral-500);
+  /* tertiary/ */
+  --tertiary:          var(--color-tertiary-500);
+  --on-tertiary:       var(--color-tertiary-50);
   --accent:            var(--color-tertiary-100);
   --accent-foreground: var(--color-tertiary-900);
 
-  /* Surface Hierarchy */
-  --surface:                     var(--color-neutral-50);
-  --on-surface:                  var(--color-neutral-900);
-  --surface-variant:             var(--color-neutral-100);
-  --on-surface-variant:          var(--color-neutral-700);
-  --surface-container-lowest:    var(--color-neutral-50);
-  --surface-container-low:       var(--color-neutral-100);
-  --surface-container:           var(--color-neutral-200);
-  --surface-container-high:      var(--color-neutral-200);
-  --surface-container-highest:   var(--color-neutral-300);
+  /* status/ */
+  --destructive:            var(--color-error-600);
+  --destructive-foreground: var(--color-error-50);
+  --error-tint:             var(--color-error-100);
+  --on-error-tint:          var(--color-error-900);
 
-  /* Outline / Border */
-  --outline:         var(--color-neutral-300);
-  --outline-variant: var(--color-neutral-200);
-  --border:          var(--color-neutral-300); /* shadcn/ui alias */
-
-  /* UI Component Tokens */
-  --card:               var(--color-neutral-50);
-  --card-foreground:    var(--color-neutral-900);
-  --popover:            var(--color-neutral-50);
-  --popover-foreground: var(--color-neutral-900);
+  /* component/ */
   --input:              var(--color-neutral-200);
   --ring:               var(--color-primary-500);
   --sidebar:            var(--color-neutral-100);
   --sidebar-foreground: var(--color-neutral-900);
-
-  /* Inverse */
-  --inverse-surface:    var(--color-neutral-900);
-  --inverse-on-surface: var(--color-neutral-100);
-  --inverse-primary:    var(--color-primary-300);
-
-  /* Overlay */
   --scrim: rgba(0, 0, 0, 0.32);
+
+  /* shadcn/ui compatibility aliases */
+  --card:               var(--surface);
+  --card-foreground:    var(--on-surface);
+  --popover:            var(--surface-overlay);
+  --popover-foreground: var(--on-surface);
+  --muted:              var(--surface-raised);
+  --muted-foreground:   var(--on-surface-variant);
+  --primary-container:  var(--primary-tint);
+  --on-primary-container: var(--on-primary-tint);
+  --secondary-container: var(--secondary-tint);
+  --on-secondary-container: var(--on-secondary-tint);
+  --error:              var(--destructive);
+  --error-container:    var(--error-tint);
+  --on-error:           var(--destructive-foreground);
+  --on-error-container: var(--on-error-tint);
 
   /* Effects */
   --shadow-color:    rgba(0, 0, 0, 0.10);
@@ -940,64 +921,42 @@ Construct the full CSS file content using this exact structure and write it to `
 /* ─── Theme — Dark ───────────────────────────────────────────────────────── */
 [data-theme="dark"] {
   --background:         var(--color-neutral-950);
-  --background-inverse: var(--color-neutral-50);
   --foreground:         var(--color-neutral-100);
+  --background-inverse: var(--color-neutral-50);
   --foreground-inverse: var(--color-neutral-900);
 
-  --primary:              var(--color-primary-400);
-  --primary-foreground:   var(--color-primary-50);
-  --primary-container:    var(--color-primary-800);
-  --on-primary-container: var(--color-primary-100);
+  --surface:         var(--color-neutral-900);
+  --surface-raised:  var(--color-neutral-800);
+  --surface-overlay: var(--color-neutral-800);
+  --on-surface:         var(--color-neutral-50);
+  --on-surface-variant: var(--color-neutral-400);
+  --border:         var(--color-neutral-700);
+  --border-subtle:  var(--color-neutral-800);
 
-  --secondary:              var(--color-secondary-400);
-  --secondary-foreground:   var(--color-secondary-50);
-  --secondary-container:    var(--color-secondary-800);
-  --on-secondary-container: var(--color-secondary-100);
+  --primary:            var(--color-primary-400);
+  --primary-foreground: var(--color-primary-50);
+  --primary-tint:       var(--color-primary-800);
+  --on-primary-tint:    var(--color-primary-100);
 
-  --tertiary:              var(--color-tertiary-400);
-  --on-tertiary:           var(--color-tertiary-50);
-  --tertiary-container:    var(--color-tertiary-800);
-  --on-tertiary-container: var(--color-tertiary-100);
+  --secondary:            var(--color-secondary-400);
+  --secondary-foreground: var(--color-secondary-50);
+  --secondary-tint:       var(--color-secondary-800);
+  --on-secondary-tint:    var(--color-secondary-100);
 
-  --error:               var(--color-error-400);
-  --destructive:         var(--color-error-400);
-  --on-error:            var(--color-error-50);
-  --destructive-foreground: var(--color-error-50);
-  --error-container:     var(--color-error-900);
-  --on-error-container:  var(--color-error-100);
-
-  --muted:             var(--color-neutral-800);
-  --muted-foreground:  var(--color-neutral-400);
+  --tertiary:          var(--color-tertiary-400);
+  --on-tertiary:       var(--color-tertiary-50);
   --accent:            var(--color-tertiary-800);
   --accent-foreground: var(--color-tertiary-100);
 
-  --surface:                   var(--color-neutral-900);
-  --on-surface:                var(--color-neutral-50);
-  --surface-variant:           var(--color-neutral-800);
-  --on-surface-variant:        var(--color-neutral-300);
-  --surface-container-lowest:  var(--color-neutral-900);
-  --surface-container-low:     var(--color-neutral-800);
-  --surface-container:         var(--color-neutral-800);
-  --surface-container-high:    var(--color-neutral-700);
-  --surface-container-highest: var(--color-neutral-700);
+  --destructive:            var(--color-error-400);
+  --destructive-foreground: var(--color-error-50);
+  --error-tint:             var(--color-error-900);
+  --on-error-tint:          var(--color-error-100);
 
-  --outline:         var(--color-neutral-600);
-  --outline-variant: var(--color-neutral-700);
-  --border:          var(--color-neutral-600);
-
-  --card:               var(--color-neutral-900);
-  --card-foreground:    var(--color-neutral-50);
-  --popover:            var(--color-neutral-900);
-  --popover-foreground: var(--color-neutral-50);
   --input:              var(--color-neutral-700);
   --ring:               var(--color-primary-400);
   --sidebar:            var(--color-neutral-900);
   --sidebar-foreground: var(--color-neutral-100);
-
-  --inverse-surface:    var(--color-neutral-100);
-  --inverse-on-surface: var(--color-neutral-900);
-  --inverse-primary:    var(--color-primary-700);
-
   --scrim: rgba(0, 0, 0, 0.32);
 
   --shadow-color:    rgba(0, 0, 0, 0.30);
@@ -1012,54 +971,36 @@ Construct the full CSS file content using this exact structure and write it to `
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --background:         var(--color-neutral-950);
-    --background-inverse: var(--color-neutral-50);
     --foreground:         var(--color-neutral-100);
+    --background-inverse: var(--color-neutral-50);
     --foreground-inverse: var(--color-neutral-900);
-    --primary:              var(--color-primary-400);
-    --primary-foreground:   var(--color-primary-50);
-    --primary-container:    var(--color-primary-800);
-    --on-primary-container: var(--color-primary-100);
-    --secondary:              var(--color-secondary-400);
-    --secondary-foreground:   var(--color-secondary-50);
-    --secondary-container:    var(--color-secondary-800);
-    --on-secondary-container: var(--color-secondary-100);
-    --tertiary:              var(--color-tertiary-400);
-    --on-tertiary:           var(--color-tertiary-50);
-    --tertiary-container:    var(--color-tertiary-800);
-    --on-tertiary-container: var(--color-tertiary-100);
-    --error:               var(--color-error-400);
-    --destructive:         var(--color-error-400);
-    --on-error:            var(--color-error-50);
-    --destructive-foreground: var(--color-error-50);
-    --error-container:     var(--color-error-900);
-    --on-error-container:  var(--color-error-100);
-    --muted:             var(--color-neutral-800);
-    --muted-foreground:  var(--color-neutral-400);
+    --surface:         var(--color-neutral-900);
+    --surface-raised:  var(--color-neutral-800);
+    --surface-overlay: var(--color-neutral-800);
+    --on-surface:         var(--color-neutral-50);
+    --on-surface-variant: var(--color-neutral-400);
+    --border:         var(--color-neutral-700);
+    --border-subtle:  var(--color-neutral-800);
+    --primary:            var(--color-primary-400);
+    --primary-foreground: var(--color-primary-50);
+    --primary-tint:       var(--color-primary-800);
+    --on-primary-tint:    var(--color-primary-100);
+    --secondary:            var(--color-secondary-400);
+    --secondary-foreground: var(--color-secondary-50);
+    --secondary-tint:       var(--color-secondary-800);
+    --on-secondary-tint:    var(--color-secondary-100);
+    --tertiary:          var(--color-tertiary-400);
+    --on-tertiary:       var(--color-tertiary-50);
     --accent:            var(--color-tertiary-800);
     --accent-foreground: var(--color-tertiary-100);
-    --surface:                   var(--color-neutral-900);
-    --on-surface:                var(--color-neutral-50);
-    --surface-variant:           var(--color-neutral-800);
-    --on-surface-variant:        var(--color-neutral-300);
-    --surface-container-lowest:  var(--color-neutral-900);
-    --surface-container-low:     var(--color-neutral-800);
-    --surface-container:         var(--color-neutral-800);
-    --surface-container-high:    var(--color-neutral-700);
-    --surface-container-highest: var(--color-neutral-700);
-    --outline:         var(--color-neutral-600);
-    --outline-variant: var(--color-neutral-700);
-    --border:          var(--color-neutral-600);
-    --card:               var(--color-neutral-900);
-    --card-foreground:    var(--color-neutral-50);
-    --popover:            var(--color-neutral-900);
-    --popover-foreground: var(--color-neutral-50);
+    --destructive:            var(--color-error-400);
+    --destructive-foreground: var(--color-error-50);
+    --error-tint:             var(--color-error-900);
+    --on-error-tint:          var(--color-error-100);
     --input:              var(--color-neutral-700);
     --ring:               var(--color-primary-400);
     --sidebar:            var(--color-neutral-900);
     --sidebar-foreground: var(--color-neutral-100);
-    --inverse-surface:    var(--color-neutral-100);
-    --inverse-on-surface: var(--color-neutral-900);
-    --inverse-primary:    var(--color-primary-700);
     --scrim: rgba(0, 0, 0, 0.32);
     --shadow-color:    rgba(0, 0, 0, 0.30);
     --shadow-sm-blur:  calc(var(--elevation-100) * 1px);
@@ -1230,13 +1171,17 @@ elevation/400           → 4
 
 ### Theme examples
 ```
-color/background        Light → color/neutral/50    Dark → color/neutral/950
-color/primary           Light → color/primary/500   Dark → color/primary/400
-color/on-surface        Light → color/neutral/900   Dark → color/neutral/50
-color/surface-container Light → color/neutral/200   Dark → color/neutral/800
-color/error             Light → color/error/600     Dark → color/error/400
-color/outline           Light → color/neutral/300   Dark → color/neutral/600
-color/ring              Light → color/primary/500   Dark → color/primary/400
+color/background/bg          Light → color/neutral/50    Dark → color/neutral/950
+color/background/fg          Light → color/neutral/900   Dark → color/neutral/100
+color/surface/default        Light → color/neutral/50    Dark → color/neutral/900
+color/surface/raised         Light → color/neutral/100   Dark → color/neutral/800
+color/surface/overlay        Light → color/neutral/50    Dark → color/neutral/800
+color/surface/border         Light → color/neutral/200   Dark → color/neutral/700
+color/primary/default        Light → color/primary/500   Dark → color/primary/400
+color/primary/tint           Light → color/primary/100   Dark → color/primary/800
+color/status/error           Light → color/error/600     Dark → color/error/400
+color/status/error-tint      Light → color/error/100     Dark → color/error/900
+color/component/ring         Light → color/primary/500   Dark → color/primary/400
 ```
 
 ### Typography examples
@@ -1269,22 +1214,24 @@ Apply to every variable in every collection.
 
 ### Step-by-step derivation
 
-1. Take the full variable name: e.g. `color/on-surface-variant` or `Display/LG/font-size`
-2. Split on `/`, `-`, and spaces into word tokens: `["color","on","surface","variant"]` or `["Display","LG","font","size"]`
-3. **WEB:** lowercase all tokens, join with `-`, wrap: `var(--color-on-surface-variant)` / `var(--display-lg-font-size)`
-   - Exception for Theme: drop the leading `color` word, so `color/background` → `var(--background)` not `var(--color-background)`
+1. Take the full variable name: e.g. `color/primary/500` or `Display/LG/font-size`
+2. Split on `/`, `-`, and spaces into word tokens: `["color","primary","500"]` or `["Display","LG","font","size"]`
+3. **WEB:** lowercase all tokens, join with `-`, wrap: `var(--color-primary-500)` / `var(--display-lg-font-size)`
+   - Exception for Primitives: this derivation applies. For Theme: see rule 6 — codeSyntax is set explicitly from the Step 6 table, not derived.
 4. **ANDROID:** lowercase all tokens, capitalize each word after the first, join (camelCase): `colorOnSurfaceVariant` / `displayLgFontSize`
-   - Exception for Theme: drop the leading `color` word → `background`, `primaryContainer`, `onSurfaceVariant`
-5. **iOS:** same camelCase as ANDROID with two exceptions:
-   - Exception for Theme: drop the leading `color` word → same as ANDROID (`background`, `onSurfaceVariant`)
-   - Exception for Primitives color ramps: drop the leading `color` word → `primary500` not `colorPrimary500` (Swift API Design Guidelines: don't repeat the type in the property name)
+   - Exception for Primitives color ramps: retain the `color` word → `colorPrimary500`
+5. **iOS:** same camelCase as ANDROID with one exception:
+   - Exception for Primitives color ramps: drop the `color` word → `primary500` (Swift API Design Guidelines)
+6. **Theme (all platforms):** codeSyntax is set EXPLICITLY per token from the table in Step 6. The Figma path is a designer label; do not derive codeSyntax from it. `color/surface/fg-subtle` has codeSyntax `onSurfaceVariant` — the path and the code name are intentionally different.
 
 ### Platform exception summary
 
-**Theme (both ANDROID and iOS — `color/` prefix dropped):**
-- `color/background` → WEB `var(--background)`, ANDROID `background`, iOS `background`
-- `color/on-surface-variant` → WEB `var(--on-surface-variant)`, ANDROID `onSurfaceVariant`, iOS `onSurfaceVariant`
-- `color/primary-container` → WEB `var(--primary-container)`, ANDROID `primaryContainer`, iOS `primaryContainer`
+**Theme (all platforms — codeSyntax set explicitly, NOT derived from path):**
+- `color/background/bg` → WEB `var(--background)`, ANDROID `background`, iOS `background`
+- `color/surface/fg-subtle` → WEB `var(--on-surface-variant)`, ANDROID `onSurfaceVariant`, iOS `onSurfaceVariant`
+- `color/primary/tint` → WEB `var(--primary-tint)`, ANDROID `primaryTint`, iOS `primaryTint`
+- `color/tertiary/tint` → WEB `var(--accent)`, ANDROID `accent`, iOS `accent`
+- `color/status/error` → WEB `var(--destructive)`, ANDROID `destructive`, iOS `destructive`
 
 **Primitives color ramps (ANDROID retains `color` prefix; iOS drops it):**
 - `color/primary/500` → WEB `var(--color-primary-500)`, ANDROID `colorPrimary500`, iOS `primary500`
