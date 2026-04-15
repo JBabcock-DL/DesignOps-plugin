@@ -701,7 +701,30 @@ For **UPDATE** passes (collection already exists from the registry in Step 4), u
 
 ### Variables array
 
-Each entry: `{ "id": "TEMP_VAR_{NAME}", "name": "...", "variableCollectionId": "...", "resolvedType": "COLOR|FLOAT|STRING", "action": "CREATE", "codeSyntax": { "WEB": "...", "ANDROID": "...", "iOS": "..." } }`
+> **codeSyntax is MANDATORY on every variable. Never omit it, never leave it empty. A variable pushed without codeSyntax is broken — it will not resolve to any platform token name.** Use the tables in Steps 5–9 to look up each value; do NOT derive from the Figma path for Theme variables.
+
+Each entry:
+```json
+{
+  "id": "TEMP_VAR_{NAME}",
+  "name": "...",
+  "variableCollectionId": "...",
+  "resolvedType": "COLOR|FLOAT|STRING",
+  "action": "CREATE",
+  "codeSyntax": {
+    "WEB":     "<exact value from Step 5–9 table>",
+    "ANDROID": "<exact value from Step 5–9 table>",
+    "iOS":     "<exact value from Step 5–9 table>"
+  }
+}
+```
+
+Look up each variable's three codeSyntax values from the appropriate step:
+- Primitives (`color/*`, `Space/*`, `Corner/*`, `elevation/*`) → Step 5 codeSyntax rules
+- Theme (`color/background/*`, `color/surface/*`, `color/primary/*`, `color/secondary/*`, `color/tertiary/*`, `color/status/*`, `color/component/*`) → Step 6 codeSyntax table (use the exact row — do NOT derive from path)
+- Typography (`Display/*`, `Headline/*`, `Body/*`, `Label/*`) → Step 7 codeSyntax rules
+- Layout (`space/*`, `radius/*`) → Step 8 codeSyntax rules
+- Effects (`shadow/*`) → Step 9 codeSyntax rules
 
 ### variableModeValues array
 
@@ -733,6 +756,16 @@ Confirm:
 - `Typography` has exactly 8 modes: `85`, `100`, `110`, `120`, `130`, `150`, `175`, `200`
 - `Primitives` contains the expected 5 color ramps (primary, secondary, tertiary, error, neutral)
 - No `Web`, `Android/M3`, or `iOS/HIG` collections were created
+
+**codeSyntax spot-check — verify at least these three variables have all three platform values populated:**
+
+| Variable | Expected WEB | Expected ANDROID | Expected iOS |
+|---|---|---|---|
+| `color/background/bg` (Theme) | `var(--background)` | `background` | `systemBackground` |
+| `color/status/error` (Theme) | `var(--error)` | `error` | `systemRed` |
+| `color/primary/500` (Primitives) | `var(--color-primary-500)` | `colorPrimary500` | `primary500` |
+
+If any `codeSyntax` field is missing or empty on any variable in the GET response, the write was incomplete. Re-issue a `PUT` with only the affected variables, including their full `codeSyntax` object, before proceeding to Step 13.
 
 Report any expected variables absent from the verified response.
 
@@ -1301,12 +1334,33 @@ Apply to every variable in every collection.
 
 ### Platform exception summary
 
-**Theme (all platforms — codeSyntax set explicitly, NOT derived from path):**
-- `color/background/bg` → WEB `var(--background)`, ANDROID `background`, iOS `background`
-- `color/surface/fg-subtle` → WEB `var(--on-surface-variant)`, ANDROID `onSurfaceVariant`, iOS `onSurfaceVariant`
-- `color/primary/tint` → WEB `var(--primary-tint)`, ANDROID `primaryTint`, iOS `primaryTint`
-- `color/tertiary/tint` → WEB `var(--accent)`, ANDROID `accent`, iOS `accent`
-- `color/status/error` → WEB `var(--destructive)`, ANDROID `destructive`, iOS `destructive`
+**Theme (all platforms — codeSyntax set EXPLICITLY from the Step 6 table, NOT derived from path):**
+
+The Figma token path is a designer-friendly label. The codeSyntax name is different by design. Always read from the Step 6 table — never generate Theme codeSyntax by transforming the path.
+
+Selected examples showing intentional name divergence:
+
+| Figma token path | WEB | ANDROID (M3) | iOS (HIG) |
+|---|---|---|---|
+| `color/background/bg` | `var(--background)` | `background` | `systemBackground` |
+| `color/background/fg` | `var(--on-background)` | `onBackground` | `label` |
+| `color/background/bg-inverse` | `var(--inverse-surface)` | `inverseSurface` | `inverseSurface` |
+| `color/background/inverse-primary` | `var(--inverse-primary)` | `inversePrimary` | `inversePrimary` |
+| `color/surface/raised` | `var(--surface-variant)` | `surfaceVariant` | `tertiarySystemBackground` |
+| `color/surface/overlay` | `var(--surface-container-highest)` | `surfaceContainerHighest` | `systemGroupedBackground` |
+| `color/surface/fg-subtle` | `var(--on-surface-variant)` | `onSurfaceVariant` | `secondaryLabel` |
+| `color/surface/border` | `var(--outline)` | `outline` | `separator` |
+| `color/surface/border-subtle` | `var(--outline-variant)` | `outlineVariant` | `opaqueSeparator` |
+| `color/primary/fg` | `var(--on-primary)` | `onPrimary` | `onPrimary` |
+| `color/primary/tint` | `var(--primary-container)` | `primaryContainer` | `primaryContainer` |
+| `color/primary/fg-on-tint` | `var(--on-primary-container)` | `onPrimaryContainer` | `onPrimaryContainer` |
+| `color/tertiary/tint` | `var(--tertiary-container)` | `tertiaryContainer` | `tertiaryContainer` |
+| `color/tertiary/fg-on-tint` | `var(--on-tertiary-container)` | `onTertiaryContainer` | `onTertiaryContainer` |
+| `color/status/error` | `var(--error)` | `error` | `systemRed` |
+| `color/status/error-fg` | `var(--on-error)` | `onError` | `onError` |
+| `color/status/error-tint` | `var(--error-container)` | `errorContainer` | `errorContainer` |
+
+The full 33-row table is in Step 6 — this is just a reminder that path ≠ codeSyntax for Theme.
 
 **Primitives color ramps (ANDROID retains `color` prefix; iOS drops it):**
 - `color/primary/500` → WEB `var(--color-primary-500)`, ANDROID `colorPrimary500`, iOS `primary500`
