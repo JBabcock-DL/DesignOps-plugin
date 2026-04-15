@@ -7,9 +7,9 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 **Who it is for:** Detroit Labs designers who work in Figma and want to automate recurring setup and maintenance tasks (project scaffolding, design system creation, token sync, component building, localization, and accessibility auditing) without leaving their terminal or switching to manual Figma workflows.
 
 **How it works:**
-1. The designer invokes a skill command in Claude Code (e.g. `/new-project`).
-2. Claude Code loads the corresponding SKILL.md from `plugin/skills/<skill-name>/`.
-3. The agent follows the SKILL.md instructions, calling Figma MCP tools (`mcp__claude_ai_Figma__*`) and reading the local filesystem as needed.
+1. The designer invokes a skill command in Claude Code (e.g. `/create-design-system`).
+2. Claude Code loads the corresponding SKILL.md from `skills/<skill-name>/`.
+3. The agent follows the SKILL.md instructions, calling Figma MCP tools (`mcp__claude_ai_Figma__*`), the Figma Variables REST API, and reading/writing the local filesystem as needed.
 4. The agent reports results (created file links, diff summaries, audit reports) back to the designer inline.
 
 ---
@@ -19,25 +19,25 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 | Requirement | Notes |
 |---|---|
 | Claude Code (latest) | Install via `npm install -g @anthropic-ai/claude-code` |
-| Figma MCP connector | Configured inside Claude Code — handles all Figma authentication for file creation and canvas operations. |
-| Organization-tier Figma account | Required for the Figma Variables REST API write endpoint used by `/create-design-system` and `/sync-design-system`. |
-| Git clone of this repo | Plugin files must be present locally so Claude Code can read SKILL.md files. |
+| Figma MCP connector | Configured inside Claude Code — handles all Figma authentication for file creation and canvas operations |
+| Organization-tier Figma account | Required for the Figma Variables REST API write endpoint used by `/create-design-system` and `/sync-design-system` |
+| Git clone of this repo | Plugin files must be present locally so Claude Code can read SKILL.md files |
 
-**No PAT or environment variable is needed for `/new-project`.** File creation and page scaffolding use the Figma MCP connector exclusively. Other skills that call the Variables REST API (`/create-design-system`, `/sync-design-system`) also use the MCP connector's OAuth session.
+**No PAT or environment variable is needed for `/new-project`.** File creation and page scaffolding use the Figma MCP connector exclusively. Other skills that call the Variables REST API also use the MCP connector's OAuth session.
 
 ---
 
 ## 3. Skill Overview
 
-| Skill | Invocation | Description | Required Arguments |
-|---|---|---|---|
-| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy (tokens, style guide, brand, atoms, all component groups), and provides a single bulk move instruction to place the file in the team's Design-Systems/ folder. | None (agent prompts interactively) |
-| Create Design System | `/create-design-system` | Pushes brand tokens into the Primitives variable collection and the target platform alias collection in a Figma file. | `platform` — `web`, `android`, `ios`, or `all` |
-| Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction. | None (reads `tokens.json` by default; path configurable in settings) |
-| Create Component | `/create-component` | Installs shadcn/ui components locally, draws structure to the Figma canvas, binds token variables, and optionally links Code Connect. | `components` — list of shadcn component names |
-| Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings. | None |
-| New Language | `/new-language` | Localizes a Figma frame into a new language by duplicating it, translating text inline via Claude, and writing strings back. | `locale` — BCP 47 code (e.g. `es`, `fr`, `ar`) |
-| Accessibility Check | `/accessibility-check` | Runs a WCAG 2.1 AA audit: contrast ratios, text size minimums, iOS Dynamic Type simulation, Android font scaling simulation. | None |
+| Skill | Invocation | Description |
+|---|---|---|
+| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, and provides a move instruction to the Design-Systems/ folder |
+| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects) and writes `tokens.css` to the local codebase |
+| Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction |
+| Create Component | `/create-component` | Installs shadcn/ui components, wires `tokens.css` into `globals.css`, draws components to the Figma canvas with token bindings, and optionally chains Code Connect |
+| Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings after designer review |
+| New Language | `/new-language` | Localizes a Figma frame into a new language by duplicating it, translating text inline via Claude, and writing strings back |
+| Accessibility Check | `/accessibility-check` | Runs a WCAG 2.1 AA audit: contrast ratios, text size minimums, iOS Dynamic Type simulation, Android font scaling simulation |
 
 ---
 
@@ -68,17 +68,15 @@ All Figma operations in this plugin go through the official Figma MCP server (`m
 
 ## 5. Detroit Labs Figma Project Structure
 
-The Detroit Labs standard folder hierarchy is below. `/new-project` currently scaffolds the Foundations file only — additional file types will be added to the skill in future iterations.
-
 ```
 <Team Space>/
   Design-Systems/
-    <ProjectName> — Foundations     (Design file, created via MCP + page-scaffolded)
+    <ProjectName> — Foundations     (Design file — created via MCP, page-scaffolded)
 ```
 
 **Folder naming convention:** Folders use title case. File names follow the pattern `<ProjectName> — <FileType>` (em dash, not hyphen).
 
-**File placement:** `/new-project` creates files in Drafts via `create_new_file` and scaffolds pages via `use_figma`. The designer moves the file to the correct project folder using Figma's right-click → Move to Project UI. The Figma REST API does not expose a public endpoint for programmatic file placement.
+**File placement:** `/new-project` creates files in Drafts and scaffolds pages via `use_figma`. The designer moves the file to the correct project folder using Figma's right-click → Move to Project UI. The Figma REST API does not expose a public endpoint for programmatic file placement.
 
 **Foundations template reference** (used to source the page hierarchy — not cloned at runtime):
 
@@ -90,29 +88,50 @@ The Detroit Labs standard folder hierarchy is below. `/new-project` currently sc
 
 ## 6. Token Architecture
 
-Detroit Labs design systems use a two-layer token architecture implemented as Figma variable collections.
+Detroit Labs design systems use a five-collection Figma variable architecture paired with a single `tokens.css` file in the local codebase.
 
-### Layer 1 — Primitives Collection
+### Figma Variable Collections
 
-Raw, platform-agnostic values derived from the Tailwind CSS default scale. Every token in alias collections ultimately resolves to a Primitive.
-
-Categories: `color`, `spacing`, `typography/font-size`, `typography/font-weight`, `typography/line-height`, `border-radius`, `shadow`, `z-index`
-
-### Layer 2 — Platform Alias Collections
-
-Semantic tokens that alias Primitives (or override them) for a specific platform's design conventions.
-
-| Collection | Platform | Design Convention |
+| Collection | Modes | Contents |
 |---|---|---|
-| `Web` | Web / React | Tailwind-derived semantic tokens (e.g. `color/surface`, `color/on-surface`) |
-| `Android/M3` | Android | Material Design 3 role names (e.g. `md.sys.color.surface`, `md.sys.color.on-surface`) |
-| `iOS/HIG` | iOS / SwiftUI | Apple Human Interface Guidelines semantic tokens (e.g. `systemBackground`, `label`) |
+| `Primitives` | Default | Raw color ramps (primary, secondary, tertiary, error, neutral — 50–950), Space scale, Corner scale, elevation floats |
+| `Theme` | Light / Dark | 51 semantic color aliases pointing to Primitives per mode |
+| `Typography` | 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200 | 12 type style slots × 4 properties; sizes scale per mode on Android's font-scale curve |
+| `Layout` | Default | `space/*` and `radius/*` semantic aliases into Primitives |
+| `Effects` | Light / Dark | Shadow color (opacity per mode) and blur aliases into elevation Primitives |
 
-**How `/create-design-system` uses this architecture:**
-1. Agent prompts for brand colors, typefaces, and spacing overrides.
-2. Agent writes raw values into the `Primitives` collection.
-3. Based on the `platform` argument, agent generates the corresponding alias collection (`Web`, `Android/M3`, or `iOS/HIG`) with semantic aliases pointing back to Primitives.
-4. All collections are written to the target Figma file via the Figma Variables REST API.
+**Platform mapping** is encoded as `codeSyntax` on every variable — there are no separate Web, Android/M3, or iOS/HIG collections. Each token carries three code names inline:
+
+| Token | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `color/background` | `var(--background)` | `background` | `background` |
+| `color/on-surface-variant` | `var(--on-surface-variant)` | `onSurfaceVariant` | `onSurfaceVariant` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
+| `space/md` | `var(--space-md)` | `spaceMd` | `spaceMd` |
+
+### tokens.css — Local Codebase File
+
+`/create-design-system` writes a `tokens.css` file (default path `src/styles/tokens.css`) that mirrors the Figma variable structure as CSS custom properties:
+
+- **Primitives block** — raw hex and px values in `:root`
+- **Layout block** — semantic `--space-*` and `--radius-*` aliases in `:root`
+- **Theme Light block** — 51 semantic tokens in `:root, [data-theme="light"]` using `var(--color-*)` references
+- **Theme Dark block** — same tokens in `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`
+- **Typography base block** — all 48 properties at 100% scale in `:root`
+- **Typography scale blocks** — 7 `[data-font-scale="N"]` blocks (85, 110, 120, 130, 150, 175, 200) with only font-size and line-height overrides
+
+CSS custom property names match shadcn/ui conventions (`--background`, `--primary`, `--destructive`, `--border`, `--radius`, etc.) so shadcn components resolve design system tokens with no additional mapping.
+
+Dark mode toggle: `data-theme="dark"` on `<html>`.  
+Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `<html>`.
+
+### How `/create-design-system` uses this architecture
+
+1. Agent prompts for brand colors (primary, secondary, neutral, tertiary, error), typefaces, and base spacing/radius values
+2. Generates five color ramps via Tailwind HSL lightness interpolation
+3. Writes all five collections to the target Figma file via the Variables REST API
+4. Writes `tokens.css` to the local codebase
+5. Records `token_css_path` in `agent-handoff.md` for downstream skills
 
 ---
 
@@ -121,8 +140,6 @@ Semantic tokens that alias Primitives (or override them) for a specific platform
 | Key Name | File Key | Used By | Purpose |
 |---|---|---|---|
 | `foundations` | `rJQsr4aou5yjzUhaEM0I2f` | `/new-project`, `/create-design-system` | Page structure source for scaffolding; token variable reference |
-
-The Workshop, Summary, and Master File keys are retained in `settings.local.json` for future use when those file types are added back to `/new-project`. They are not used at runtime today.
 
 These keys are stored in `plugin/.claude/settings.local.json` under `template_file_keys`. Do not change these values unless the source template files in Figma have been replaced.
 
@@ -135,22 +152,12 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 | Skill | Syntax | Arguments | Description |
 |---|---|---|---|
 | /new-project | `/new-project` | none (interactive) | Scaffolds a full DL Figma project |
-| /create-design-system | `/create-design-system [platform]` | platform: web\|android\|ios\|all | Creates token collections in a Foundations file |
+| /create-design-system | `/create-design-system` | none | Creates five token collections in Figma and writes `tokens.css` locally |
 | /sync-design-system | `/sync-design-system` | none (interactive) | Diffs and syncs Figma variables with local tokens |
-| /create-component | `/create-component [components...]` | components: shadcn component names | Installs shadcn components and draws them to canvas |
+| /create-component | `/create-component [components...]` | components: shadcn component names | Installs components, wires tokens.css, draws to canvas |
 | /code-connect | `/code-connect` | none | Finds and publishes missing Code Connect mappings |
-| /new-language | `/new-language [locale]` | locale: BCP 47 code (e.g. es, fr, ar) | Duplicates a frame for a new locale with translations |
-| /accessibility-check | `/accessibility-check` | none (interactive) | Runs WCAG AA + Dynamic Type + Android font scale audit |
-
----
-
-### Prerequisites
-
-- Claude Code installed and configured
-- Figma MCP connector configured in Claude Code (handles all Figma auth — no PAT needed)
-- Organization-tier Figma account (required for REST Variables API write operations)
-- For `/create-component`: a shadcn-compatible project (Next.js, Vite, Remix, etc.)
-- For `/sync-design-system`: a local token file (`tokens.json` or `tailwind.config.js`)
+| /new-language | `/new-language [locale] [node_id]` | locale: BCP 47 code, node_id: Figma node | Duplicates a frame for a new locale with inline translations |
+| /accessibility-check | `/accessibility-check [node_id]` | node_id: Figma node | Runs WCAG AA + Dynamic Type + Android font scale audit |
 
 ---
 
@@ -158,19 +165,20 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 
 A complete new project setup runs the skills in this sequence:
 
-1. Run `/new-project` → scaffolds all Figma files (Workshop, Summary, Foundations, Master Files) into the correct team folder hierarchy
-2. Run `/create-design-system web` (or `/create-design-system all` for Web + Android/M3 + iOS/HIG aliases on the same file) → collects brand colors, typefaces, and spacing, then populates the Foundations file with Primitives and the platform alias collection(s)
-3. Run `/create-component button input card` → installs the listed shadcn/ui components locally and draws them onto the Figma canvas with token variable bindings
-4. Run `/code-connect` → lists unmapped Figma components, generates Code Connect mappings, confirms with the designer, and publishes via `send_code_connect_mappings`
-5. Run `/accessibility-check` → audits the selected frame for WCAG 2.1 AA contrast, font size minimums, iOS Dynamic Type, and Android font scaling before handoff
+1. `/new-project` → scaffolds the Foundations file with full page hierarchy in Figma
+2. `/create-design-system` → collects brand tokens, writes five variable collections to Figma, writes `tokens.css` to the local codebase
+3. `/create-component button input card` → installs shadcn components, wires `tokens.css` into `globals.css`, draws components to canvas with token bindings
+4. `/code-connect` → maps Figma components to code files, confirms with designer, publishes via `send_code_connect_mappings`
+5. `/accessibility-check` → audits for WCAG 2.1 AA contrast, font size minimums, iOS Dynamic Type, and Android scaling before handoff
 
 ---
 
 ### Skill Chaining
 
-Many skills offer to chain into the next skill automatically at completion. For example:
+Many skills offer to chain into the next skill automatically at completion:
 
-- `/new-project` offers to run `/create-design-system` immediately after the four Figma files are created.
-- `/create-component` offers to run `/code-connect` after drawing components to the canvas.
+- `/new-project` offers to run `/create-design-system` after the Foundations file is created
+- `/create-design-system` offers to run `/create-component` after tokens are pushed and `tokens.css` is written
+- `/create-component` offers to run `/code-connect` after drawing components to the canvas
 
-When a skill prompts to chain, you can accept to continue the workflow without re-invoking the next command manually. All chained skills share the same session context (active file key, project name) so you do not need to re-enter that information.
+When a skill prompts to chain, you can accept to continue the workflow without re-invoking the next command. All chained skills share session context via `agent-handoff.md` (active file key, project name, token CSS path) — no information needs to be re-entered.
