@@ -63,8 +63,7 @@ Call **AskUserQuestion**:
 
 ### Step 3 — Enumerate components via design context
 
-> **Why not `get_code_connect_suggestions`?**  
-> `get_code_connect_suggestions` only surfaces components that already have _some_ Code Connect metadata attached (partial mappings, stale links, etc.). It returns empty for net-new components that have never been mapped — which is the normal state after `/create-component`. Use `get_design_context` to enumerate components directly instead.
+> **DO NOT call `get_code_connect_suggestions`.** That tool only returns components with pre-existing Code Connect metadata. It is always empty for net-new components (the normal state after `/create-component`) and must not be used for initial discovery.
 
 Call `mcp__claude_ai_Figma__get_design_context` with the resolved file key.
 
