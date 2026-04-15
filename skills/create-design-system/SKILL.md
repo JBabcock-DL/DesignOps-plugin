@@ -13,7 +13,7 @@ You are the Create Design System agent for the Detroit Labs DesignOps plugin. Yo
 
 ## Interactive input contract
 
-- For **Steps 1–4**, **Step 10** when the API returns partial write errors, and **Step 14**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
+- For **Steps 1–4**, **Step 10** (plan approval), **Step 11** when the API returns partial write errors, and **Step 15**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
 - **Do not** print a block of multiple questions as plain markdown before the first AskUserQuestion.
 - After any AskUserQuestion, you may show a brief acknowledgment in prose; do not bundle the next question in that same message — call AskUserQuestion again.
 
@@ -443,7 +443,136 @@ The blur FLOAT variables alias the corresponding Primitive elevation by ID; thei
 
 ---
 
-## Step 10 — Push all collections to Figma
+## Step 10 — Present design system plan and get approval
+
+Before writing anything to Figma or the filesystem, present a full summary of every token that will be created and call **AskUserQuestion** to get explicit approval or change requests.
+
+### 10a — Build and display the plan
+
+Show the plan using this exact structure. Substitute all `{…}` placeholders with the actual computed values from Steps 5–9.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  DESIGN SYSTEM PLAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Figma file: {TARGET_FILE_KEY}
+  CSS output: {TOKEN_CSS_PATH}
+
+──────────────────────────────────────────────────
+  PRIMITIVES
+──────────────────────────────────────────────────
+  Color ramps — 5 ramps × 11 stops
+
+    Primary   {inputHex}
+      50 {hex}  100 {hex}  200 {hex}  300 {hex}  400 {hex}
+     500 {hex}  600 {hex}  700 {hex}  800 {hex}  900 {hex}  950 {hex}
+
+    Secondary {inputHex}
+      50 {hex} … 950 {hex}
+
+    Tertiary  {inputHex}
+      50 {hex} … 950 {hex}
+
+    Error     {inputHex}
+      50 {hex} … 950 {hex}
+
+    Neutral   {inputHex}
+      50 {hex} … 950 {hex}
+
+  Spacing — base {N}px
+    Space/100 {N}px  Space/200 {N}px  Space/300 {N}px  Space/400 {N}px
+    Space/600 {N}px  Space/800 {N}px  Space/1200 {N}px  Space/1600 {N}px  …
+
+  Radius — base {N}px
+    Corner/None 0  Corner/Extra-small {N}px  Corner/Small {N}px
+    Corner/Medium {N}px  Corner/Large {N}px  Corner/Extra-large 28px  Corner/Full 9999px
+
+──────────────────────────────────────────────────
+  THEME  (51 tokens · 2 modes: Light / Dark)
+──────────────────────────────────────────────────
+  Token                        Light        Dark
+  color/background             {hex}        {hex}
+  color/foreground             {hex}        {hex}
+  color/primary                {hex}        {hex}
+  color/primary-container      {hex}        {hex}
+  color/secondary              {hex}        {hex}
+  color/tertiary               {hex}        {hex}
+  color/error                  {hex}        {hex}
+  color/surface                {hex}        {hex}
+  color/on-surface             {hex}        {hex}
+  color/surface-container      {hex}        {hex}
+  color/outline                {hex}        {hex}
+  color/muted                  {hex}        {hex}
+  color/muted-foreground       {hex}        {hex}
+  color/card                   {hex}        {hex}
+  color/input                  {hex}        {hex}
+  color/ring                   {hex}        {hex}
+  color/scrim                  rgba(0,0,0,0.32)
+  … + 34 more tokens (full list above in Step 6)
+
+──────────────────────────────────────────────────
+  TYPOGRAPHY  (48 variables · 8 scale modes)
+──────────────────────────────────────────────────
+  Body font:    {bodyFont}
+  Display font: {displayFont}
+
+  Slot            100 (default)    130 (large)    200 (max)
+  Display/LG      57px / 400       {N}px / 400    {N}px / 400
+  Display/MD      45px / 400       {N}px / 400    {N}px / 400
+  Display/SM      36px / 400       {N}px / 400    {N}px / 400
+  Headline/LG     32px / 400       {N}px / 400    {N}px / 400
+  Headline/MD     28px / 400       {N}px / 400    {N}px / 400
+  Headline/SM     24px / 400       {N}px / 400    {N}px / 400
+  Body/LG         16px / 400       {N}px / 400    {N}px / 400
+  Body/MD         14px / 400       {N}px / 400    {N}px / 400
+  Body/SM         12px / 400       {N}px / 400    {N}px / 400
+  Label/LG        14px / 500       {N}px / 500    {N}px / 500
+  Label/MD        12px / 500       {N}px / 500    {N}px / 500
+  Label/SM        11px / 500       {N}px / 500    {N}px / 500
+  (font-family constant across all modes)
+
+──────────────────────────────────────────────────
+  LAYOUT  (15 tokens · Default mode)
+──────────────────────────────────────────────────
+  space/xs {N}px  space/sm {N}px  space/md {N}px  space/lg {N}px
+  space/xl {N}px  space/2xl {N}px  space/3xl {N}px  space/4xl {N}px
+  radius/none 0  radius/xs {N}px  radius/sm {N}px  radius/md {N}px
+  radius/lg {N}px  radius/xl 28px  radius/full 9999px
+
+──────────────────────────────────────────────────
+  EFFECTS  (6 tokens · 2 modes: Light / Dark)
+──────────────────────────────────────────────────
+  shadow/color       Light rgba(0,0,0,0.10)  Dark rgba(0,0,0,0.30)
+  shadow/sm/blur     1px (both modes)
+  shadow/md/blur     2px (both modes)
+  shadow/lg/blur     4px (both modes)
+  shadow/xl/blur     8px (both modes)
+  shadow/2xl/blur    16px (both modes)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Show the full hex values for all 11 stops in each color ramp — do not abbreviate with `…`. Show the computed (rounded) font sizes for the `100`, `130`, and `200` modes for every typography slot to give a clear sense of the scaling range.
+
+### 10b — Ask for approval
+
+Call **AskUserQuestion**:
+
+> "Does this design system look correct? Reply **yes** to push to Figma and write the CSS file, or describe any changes (e.g. 'change primary to #E63946', 'use Geist for body font', 'base radius 8px')."
+
+**If the designer replies yes:** proceed to Step 11.
+
+**If the designer requests changes:** identify which inputs need to change and loop back to the appropriate step:
+- Color changes → recompute the affected ramp(s) in Step 5, then re-derive all Theme aliases that reference that ramp in Step 6, then re-display the updated plan section and call **AskUserQuestion** again
+- Font changes → update typography values in Step 7, re-display the typography table, call **AskUserQuestion** again
+- Spacing or radius changes → recompute the affected scale in Step 5 and layout aliases in Step 8, re-display the relevant sections, call **AskUserQuestion** again
+- CSS path change → update `TOKEN_CSS_PATH`, re-display the header line, call **AskUserQuestion** again
+
+Do not proceed to Step 11 until the designer has explicitly replied **yes** (or an equivalent affirmative).
+
+---
+
+## Step 11 — Push all collections to Figma
 
 Assemble a single `PUT /v1/files/{TARGET_FILE_KEY}/variables` payload covering all five collections.
 
@@ -501,7 +630,7 @@ If the API returns `200` with an `errors` array, retry each failed variable indi
 
 ---
 
-## Step 11 — Verify the write
+## Step 12 — Verify the write
 
 After the PUT completes, call the GET endpoint again:
 
@@ -520,11 +649,11 @@ Report any expected variables absent from the verified response.
 
 ---
 
-## Step 12 — Write CSS token file
+## Step 13 — Write CSS token file
 
 Using all token values resolved in Steps 5–9, generate a `tokens.css` file and write it to the local codebase. This file is the code-side source of truth that `/create-component` and `/code-connect` depend on.
 
-### 12a — Resolve output path
+### 13a — Resolve output path
 
 Call **AskUserQuestion**:
 
@@ -534,7 +663,7 @@ If the designer presses enter or replies with the default, use `src/styles/token
 
 Store the resolved path as `TOKEN_CSS_PATH`.
 
-### 12b — Generate and write the CSS file
+### 13b — Generate and write the CSS file
 
 Construct the full CSS file content using this exact structure and write it to `TOKEN_CSS_PATH`. Substitute all `{…}` placeholders with the resolved brand token values from your working context.
 
@@ -948,7 +1077,7 @@ Construct the full CSS file content using this exact structure and write it to `
 - Primitives block comes first so that all `var(--color-*)` references in Theme/Layout/Effects resolve within the same file.
 - The `@media (prefers-color-scheme: dark)` block duplicates the dark values so the system preference works without JavaScript. This duplication is intentional.
 
-### 12c — Update agent handoff and report
+### 13c — Update agent handoff and report
 
 After writing `tokens.css`:
 
@@ -958,7 +1087,7 @@ After writing `tokens.css`:
 
 ---
 
-## Step 13 — Confirm success
+## Step 14 — Confirm success
 
 Report using this shape:
 
@@ -983,7 +1112,7 @@ Open in Figma: https://figma.com/design/{TARGET_FILE_KEY}
 
 ---
 
-## Step 14 — Offer next step
+## Step 15 — Offer next step
 
 Call **AskUserQuestion**:
 
