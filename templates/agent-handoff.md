@@ -3,6 +3,7 @@ active_file_key: ""
 active_project_name: ""
 last_skill_run: ""
 variable_slot_catalog_path: ""
+token_css_path: ""
 open_items: []
 ---
 
@@ -18,6 +19,7 @@ This document is the standardized context transfer template for the DesignOps Pl
 | `active_project_name` | The human-readable project name as it appears (or will appear) in the Figma team space (e.g. `Acme Mobile App`). |
 | `last_skill_run` | The skill that was last executed (e.g. `new-project`, `create-design-system`). |
 | `variable_slot_catalog_path` | Path to `research/variable-slots.md` if the Figma Agent Kit variable slots have been cataloged (required before running `/create-design-system`). Leave empty if Step 6 has not been completed. |
+| `token_css_path` | Relative path to the CSS token file written by `/create-design-system` (e.g. `src/styles/tokens.css`). Read by `/create-component` to wire the import into `globals.css`. |
 | `open_items` | A list of things the next skill invocation should be aware of — unresolved questions, manual steps the designer still needs to take, or decisions deferred from the previous run. |
 
 ## How to Use This Handoff
