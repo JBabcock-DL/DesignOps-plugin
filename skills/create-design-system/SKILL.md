@@ -179,12 +179,15 @@ Apply to every Primitives variable:
 
 | Example variable | WEB | ANDROID | iOS |
 |---|---|---|---|
-| `color/primary/500` | `var(--color-primary-500)` | `colorPrimary500` | `colorPrimary500` |
+| `color/primary/500` | `var(--color-primary-500)` | `colorPrimary500` | `primary500` |
 | `Space/400` | `var(--space-400)` | `space400` | `space400` |
 | `Corner/Medium` | `var(--corner-medium)` | `cornerMedium` | `cornerMedium` |
 | `elevation/400` | `var(--elevation-400)` | `elevation400` | `elevation400` |
 
-**Derivation rule:** strip the collection name, join all path segments with `-`, lowercase → WEB `var(--result)`. CamelCase (capitalize each word after the first, join) → ANDROID and iOS.
+**Derivation rule:** strip the collection name, join all path segments with `-`, lowercase → WEB `var(--result)`. CamelCase → ANDROID and iOS.
+- **ANDROID color ramps:** retain the `color` word → `colorPrimary500` (matches Android XML resource naming convention)
+- **iOS color ramps:** drop the leading `color` word → `primary500` (Swift API Design Guidelines: don't repeat the type in a property name)
+- **All other Primitives (Space, Corner, elevation):** ANDROID and iOS are identical camelCase
 
 ---
 
@@ -459,14 +462,15 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   CSS output: {TOKEN_CSS_PATH}
 
   Code syntax pattern: every variable includes WEB / ANDROID / iOS tokens.
-  ANDROID and iOS are identical (camelCase) unless noted otherwise.
+  ANDROID and iOS differ for Primitive color ramps (see below); identical elsewhere.
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   PRIMITIVES
 ──────────────────────────────────────────────────────────────────────────────────────────────
   Syntax pattern:
-    WEB: var(--color-{name}-{stop})   →  e.g. var(--color-primary-500)
-    ANDROID / iOS: color{Name}{Stop}  →  e.g. colorPrimary500
+    WEB:     var(--color-{name}-{stop})  →  e.g. var(--color-primary-500)
+    ANDROID: color{Name}{Stop}           →  e.g. colorPrimary500
+    iOS:     {name}{Stop}                →  e.g. primary500  (Swift: no type prefix)
 
   Color ramps — 5 ramps × 11 stops
 
@@ -1269,17 +1273,26 @@ Apply to every variable in every collection.
 2. Split on `/`, `-`, and spaces into word tokens: `["color","on","surface","variant"]` or `["Display","LG","font","size"]`
 3. **WEB:** lowercase all tokens, join with `-`, wrap: `var(--color-on-surface-variant)` / `var(--display-lg-font-size)`
    - Exception for Theme: drop the leading `color` word, so `color/background` → `var(--background)` not `var(--color-background)`
-4. **ANDROID / iOS:** lowercase all tokens, capitalize each word after the first, join (camelCase): `colorOnSurfaceVariant` / `displayLgFontSize`
-   - Exception for Theme: drop the leading `color` word, so `color/background` → `background`, `color/primary-container` → `primaryContainer`
+4. **ANDROID:** lowercase all tokens, capitalize each word after the first, join (camelCase): `colorOnSurfaceVariant` / `displayLgFontSize`
+   - Exception for Theme: drop the leading `color` word → `background`, `primaryContainer`, `onSurfaceVariant`
+5. **iOS:** same camelCase as ANDROID with two exceptions:
+   - Exception for Theme: drop the leading `color` word → same as ANDROID (`background`, `onSurfaceVariant`)
+   - Exception for Primitives color ramps: drop the leading `color` word → `primary500` not `colorPrimary500` (Swift API Design Guidelines: don't repeat the type in the property name)
 
-### Theme exception summary
+### Platform exception summary
 
-For all Theme variables the `color/` prefix is invisible in codeSyntax outputs:
+**Theme (both ANDROID and iOS — `color/` prefix dropped):**
 - `color/background` → WEB `var(--background)`, ANDROID `background`, iOS `background`
 - `color/on-surface-variant` → WEB `var(--on-surface-variant)`, ANDROID `onSurfaceVariant`, iOS `onSurfaceVariant`
+- `color/primary-container` → WEB `var(--primary-container)`, ANDROID `primaryContainer`, iOS `primaryContainer`
 
-For Primitives, the `color/` prefix is retained:
-- `color/primary/500` → WEB `var(--color-primary-500)`, ANDROID `colorPrimary500`, iOS `colorPrimary500`
+**Primitives color ramps (ANDROID retains `color` prefix; iOS drops it):**
+- `color/primary/500` → WEB `var(--color-primary-500)`, ANDROID `colorPrimary500`, iOS `primary500`
+- `color/neutral/100` → WEB `var(--color-neutral-100)`, ANDROID `colorNeutral100`, iOS `neutral100`
+
+**All other tokens (Space, Corner, elevation, Typography, Layout, Effects — identical):**
+- `space/md` → WEB `var(--space-md)`, ANDROID `spaceMd`, iOS `spaceMd`
+- `Display/LG/font-size` → WEB `var(--display-lg-font-size)`, ANDROID `displayLgFontSize`, iOS `displayLgFontSize`
 
 ---
 
