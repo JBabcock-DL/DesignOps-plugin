@@ -53,10 +53,9 @@ All Figma operations in this plugin go through the official Figma MCP server (`m
 | `get_metadata` | `/create-design-system` | Read team and project metadata before writes |
 | `get_variable_defs` | `/create-design-system`, `/sync-design-system` | Read current variable collection state from a Figma file |
 | `use_figma` | `/new-project`, `/create-design-system`, `/sync-design-system`, `/create-component`, `/new-language`, `/accessibility-check` | General-purpose Figma write/read operations (scaffold pages, create frames, update variables, write text nodes) |
-| `get_code_connect_suggestions` | `/code-connect` | List Figma components not yet mapped to code |
-| `get_context_for_code_connect` | `/code-connect` | Retrieve component context needed to generate a mapping |
+| `get_context_for_code_connect` | `/code-connect` | Retrieve component context (props, variants) for a specific node ID |
 | `send_code_connect_mappings` | `/code-connect` | Publish finalized Code Connect mappings |
-| `get_design_context` | `/accessibility-check`, `/create-component` | Read frame/node layout and style data for processing |
+| `get_design_context` | `/code-connect`, `/accessibility-check`, `/create-component` | Enumerate component nodes for Code Connect discovery; read frame/node layout and style data for accessibility and component drawing |
 | `get_screenshot` | `/accessibility-check` | Capture rendered frame for visual diff |
 
 **Auth notes:**

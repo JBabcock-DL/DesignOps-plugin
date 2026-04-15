@@ -22,7 +22,7 @@ When you need a Figma file key or publish confirmation, use **AskUserQuestion** 
 - **Active Figma file open** — The agent needs the Figma file key for the project. This is read from the handoff context (`plugin/templates/agent-handoff.md`) or prompted from the designer.
 - **Library published** — Components must be published to a Figma team library before Code Connect can map them. The Figma REST API does not support programmatic publishing — the designer must publish manually from the Figma UI. See Step 2 for the exact steps and the agent gate.
 - **Local codebase present** — Component source files must exist locally (e.g., installed via `/create-component` or checked in to the project repo). The agent searches the filesystem by component name to find matching files.
-- **Figma MCP connector authenticated** — The primary MCP path uses `mcp__claude_ai_Figma__*` tools and requires no PAT. If `get_code_connect_suggestions` returns empty after two retries (common on Professional/Starter plans), the skill automatically escalates to the CLI path (Step 3b).
+- **Figma MCP connector authenticated** — The primary MCP path uses `mcp__claude_ai_Figma__*` tools and requires no PAT. The CLI path (Step 3b) is used only when `get_design_context` or `send_code_connect_mappings` is unavailable or returns a persistent error.
 - **Figma Personal Access Token (CLI path only)** — Required only when the CLI path is used. The PAT must have `Code Connect → Write` scope. The designer creates it during Step 3b-3; it is not needed up front.
 
 ---
@@ -37,7 +37,7 @@ When you need a Figma file key or publish confirmation, use **AskUserQuestion** 
 
 ### Step 2 — Gate: confirm the library is published
 
-Code Connect requires every component to be published to a Figma team library. The Figma REST API has no endpoint for programmatic publishing — this must be done manually in the Figma UI. Do not call `get_code_connect_suggestions` until the designer confirms the library is published; the tool returns no results (or unreliable results) for unpublished components.
+Code Connect requires every component to be published to a Figma team library. The Figma REST API has no endpoint for programmatic publishing — this must be done manually in the Figma UI. Confirm the library is published before proceeding — `get_design_context` can enumerate component nodes in any file, but `send_code_connect_mappings` will fail with a component-not-found error if the library has not been published.
 
 Display the following instructions as a markdown block, then call **AskUserQuestion**:
 
@@ -270,8 +270,8 @@ Do not commit the PAT. If the project has a `.env` file, store it there as `FIGM
 
 ## Notes
 
-- **Library must be published before this skill can run.** Step 2 is an explicit gate — the agent displays publish instructions and waits for confirmation before calling any Figma Code Connect API. Skipping this step causes `get_code_connect_suggestions` to return empty results or stale data.
-- **Figma library indexing delay.** After publishing, Figma can take up to 60 seconds to index components. Step 3 handles the retry loop if `get_code_connect_suggestions` comes back empty immediately after publishing.
+- **Library must be published before this skill can run.** Step 2 is an explicit gate — the agent displays publish instructions and waits for confirmation before proceeding. `send_code_connect_mappings` returns a component-not-found error for unpublished components.
+- **`get_design_context` is the component discovery tool, not `get_code_connect_suggestions`.** `get_code_connect_suggestions` only surfaces components with pre-existing Code Connect metadata — it returns empty for net-new components, which is the normal state after `/create-component`.
 - **Primary path uses Figma MCP tools exclusively.** The `get_design_context` → `get_context_for_code_connect` → `send_code_connect_mappings` sequence handles the full workflow without a PAT or CLI. `get_code_connect_suggestions` is not used — it only surfaces components with pre-existing Code Connect metadata, not net-new components.
 - **Designer confirmation is required before publishing.** The agent will never call `send_code_connect_mappings` without an explicit affirmative response.
 - **Prop mapping is best-effort.** The agent maps props by matching Figma variant property names to component prop names. Review the proposed mappings before confirming — manual correction is expected for non-obvious mappings.

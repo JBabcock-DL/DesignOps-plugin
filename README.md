@@ -226,15 +226,17 @@ Map Figma components to their codebase counterparts using Figma Code Connect.
 
 **What it does**
 
-1. Calls `get_code_connect_suggestions` to list components that have no current mapping
-2. Calls `get_context_for_code_connect` for each unmapped component to gather props and variants
-3. Generates Code Connect mapping configurations
-4. Presents all proposed mappings to the designer for review
+1. Calls `get_design_context` to enumerate all `COMPONENT` and `COMPONENT_SET` nodes in the file
+2. Calls `get_context_for_code_connect` on each component node to gather props and variants
+3. Searches the local codebase for the matching source file for each component
+4. Generates Code Connect mapping configurations and presents them for designer review
 5. Publishes confirmed mappings via `send_code_connect_mappings`
 
 **Important:** Claude will never publish Code Connect mappings without explicit designer confirmation.
 
-**CLI fallback:** If the MCP path is unavailable, the `@figma/code-connect` CLI can be used manually with a PAT that has the `code_connect:write` scope.
+**Note:** `get_code_connect_suggestions` is not used — it only surfaces components with pre-existing Code Connect metadata and returns empty for net-new components. `get_design_context` discovers all components regardless of prior Code Connect state.
+
+**CLI fallback (Step 3b):** If the MCP path is unavailable, the skill automatically falls back to writing `.figma.tsx` files and publishing with `npx figma connect publish --token=<PAT>`. The PAT must have `code_connect:write` scope and is collected interactively — it is not needed up front.
 
 ---
 
