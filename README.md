@@ -32,8 +32,8 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
 
 Each skill is an instruction file (`SKILL.md`) that tells the Claude Code agent exactly how to perform a design ops task. When you invoke a skill, Claude reads the instructions and executes the steps using:
 
-- **Figma MCP connector** — all Figma API calls (reading files, writing variables, managing components, publishing Code Connect mappings)
-- **Figma REST API** — file duplication, project folder management, variable write-back
+- **Figma MCP connector** — all Figma file creation, canvas writes (pages, frames, variables, components), Code Connect, and read operations
+- **Figma REST API** — variable write-back for `/create-design-system` and `/sync-design-system`
 - **Filesystem access** — reading local token files (`tokens.json`, `tailwind.config.js`) for sync operations
 - **Claude's built-in capabilities** — inline translation for localization, WCAG contrast calculations for accessibility
 
@@ -46,8 +46,8 @@ Skills pass context to each other through `templates/agent-handoff.md`, so you c
 | Requirement | Notes |
 |---|---|
 | **Claude Code** | CLI or desktop app — this is a Claude Code plugin, not a Figma plugin |
-| **Figma MCP connector** | Must be active in Claude Code (Settings → MCP → Figma). Handles all Figma authentication — no personal access token or env var needed |
-| **Organization-tier Figma account** | Required for the Variables REST API (write) and the Files REST API (duplicate). The free and Professional tiers do not support these endpoints |
+| **Figma MCP connector** | Must be active in Claude Code (Settings → MCP → Figma). Handles all Figma authentication — no personal access token needed for `/new-project` |
+| **Organization-tier Figma account** | Required for the Variables REST API (write) used by `/create-design-system` and `/sync-design-system` |
 | **Node.js** (for `/create-component`) | Required to run `npx shadcn@latest add` locally |
 
 ---
@@ -72,7 +72,7 @@ Skills pass context to each other through `templates/agent-handoff.md`, so you c
 
 ### /new-project
 
-Scaffold a complete Detroit Labs Figma project by cloning the standard template files into the correct team folder hierarchy.
+Create and scaffold a `<Project Name> — Foundations` design system file using the Figma MCP connector. The file is created in Drafts, page structure is built automatically, and a single move instruction is provided at the end.
 
 **Syntax**
 ```
@@ -84,23 +84,34 @@ Scaffold a complete Detroit Labs Figma project by cloning the standard template 
 
 | Argument | Description |
 |---|---|
-| `--team` | Exact Figma team name (case-sensitive) |
-| `--name` | Project name — used in all file titles |
-| `--platform` | `web`, `android`, `ios`, `all`, or `skip` — used if `/create-design-system` is chained (`all` runs `/create-design-system all`) |
+| `--team` | Figma team display name — used in file titles |
+| `--name` | Project name — appears in the file title |
+| `--platform` | `web`, `android`, `ios`, `all`, or `skip` — determines which platform alias collections `/create-design-system` will generate when chained |
 
 **What it creates**
 
-| File | Folder | Source |
+| File | Target Folder | Method |
 |---|---|---|
-| `<Project Name> — Discovery Workshop` | `Strategy/` | Clone from Workshop FigJam template |
-| `<Project Name> — Discovery Summary` | `Strategy/` | Clone from Summary Slides template |
-| `<Project Name> — Wireframes` | `Strategy/` | New blank Design file |
-| `<Project Name> — Foundations` | `Design-Systems/` | Clone from Foundations Agent Kit |
-| `<Project Name> — iOS Masterfile` | `Master-Files/` | Clone from Masterfile template |
-| `<Project Name> — Android Masterfile` | `Master-Files/` | Clone from Masterfile template |
-| `<Project Name> — RIVE Masterfile` | `Master-Files/` | Clone from Masterfile template |
+| `<Project Name> — Foundations` | `Design-Systems/` | Created via MCP `create_new_file`, pages scaffolded via `use_figma` |
 
-After creating all files, Claude presents a results table with direct Figma URLs and offers to chain into `/create-design-system`.
+The file lands in Drafts. At the end of the run Claude provides a one-step move instruction: right-click the file in Figma → Move to Project → Design-Systems/.
+
+**Page hierarchy** — sourced from the Detroit Labs Foundations template and extended with shadcn/ui component pages, organized into atomic design groups:
+
+- Token & Style Docs (Table of Contents, Token Overview, MCP Tokens)
+- Style Guide (Primitives, Theme, Layout, Text Styles, Effects)
+- Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
+- Atoms (Typography, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)
+- Buttons & Controls (Buttons, Button Group, Toggle, Toggle Group, Segmented Controller)
+- Inputs & Forms (Text Field, Textarea, Input Group, Input OTP, Checkbox, Radio, Switch, Select, Combobox, Slider, Calendar, Date Picker, and more)
+- Feedback & Status (Alerts, Toast, Sonner, Progress, Loaders, Skeleton, Blank states, Error States, and more)
+- Overlays (Dialogue, Drawer, Sheets, Popover, Hover Card, Tooltips, Dropdown Menu, Command)
+- Navigation (Top/Bottom/Tablet Nav, Sidebar, Menubar, Breadcrumb, Tabs bar, Pagination, and more)
+- Data Display (Data Table, Lists, Chart, Stat block, Widgets, Video player)
+- Content Containers (Cards, Tiles, Carousel, Accordion, Collapsible, Resizable, Scroll Area)
+- Native & Platform (Native Device Parts)
+
+After creating and scaffolding the file, Claude offers to chain into `/create-design-system`.
 
 **File naming convention:** All titles use an em dash (`—`) with a space on each side: `<Project Name> — <File Type>`
 
@@ -309,7 +320,7 @@ Run a WCAG 2.1 AA accessibility audit on a selected Figma frame, including contr
 A complete project setup from scratch through production-ready components:
 
 ```
-# 1. Scaffold the project (creates all 7 Figma files)
+# 1. Scaffold the Foundations design system file
 /new-project --team "Client Team" --name "Acme Mobile App" --platform web
 
 # 2. Populate the Foundations file with brand tokens
@@ -390,19 +401,11 @@ Detroit Labs projects use a standardized three-folder hierarchy within each Figm
 
 ```
 <Team Name>
-  ├── Strategy/
-  │     ├── <Project Name> — Discovery Workshop  (FigJam)
-  │     ├── <Project Name> — Discovery Summary   (Slides)
-  │     └── <Project Name> — Wireframes          (Design)
-  ├── Design-Systems/
-  │     └── <Project Name> — Foundations         (Design)
-  └── Master-Files/
-        ├── <Project Name> — iOS Masterfile      (Design)
-        ├── <Project Name> — Android Masterfile  (Design)
-        └── <Project Name> — RIVE Masterfile     (Design)
+  └── Design-Systems/
+        └── <Project Name> — Foundations         (Design — created and page-scaffolded by /new-project)
 ```
 
-The `/new-project` skill creates this folder structure if it does not already exist, then places each cloned file into the correct folder.
+`/new-project` currently scaffolds the Foundations file only. The file is created in Drafts via the Figma MCP and moved into the Design-Systems/ folder manually using Figma's right-click → Move to Project UI. Figma's public REST API does not expose a file placement endpoint, so programmatic folder placement is not possible.
 
 ---
 
@@ -442,10 +445,9 @@ The `/new-project` skill creates this folder structure if it does not already ex
 
 | Template | Key |
 |---|---|
-| Discovery Workshop (FigJam) | `hnCK8gpGtxzBoBakRX8QLn` |
-| Discovery Summary (Slides) | `8YBZtQLCnt7sbmlCKpMO1Y` |
 | Foundations Agent Kit | `rJQsr4aou5yjzUhaEM0I2f` |
-| Master Files | `C9C0XpIdj1WS3klOugVzGM` |
+
+The Workshop, Summary, and Master File keys (`hnCK8gpGtxzBoBakRX8QLn`, `8YBZtQLCnt7sbmlCKpMO1Y`, `C9C0XpIdj1WS3klOugVzGM`) are retained in `settings.local.json` for future use.
 
 ---
 

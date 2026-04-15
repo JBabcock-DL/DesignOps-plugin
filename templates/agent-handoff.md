@@ -36,12 +36,12 @@ This document is the standardized context transfer template for the DesignOps Pl
 
 ```yaml
 ---
-active_file_key: "rJQsr4aou5yjzUhaEM0I2f"
+active_file_key: "aBcDeFgHiJkLmNoP"
 active_project_name: "Acme Mobile App"
 last_skill_run: "new-project"
-variable_slot_catalog_path: "research/variable-slots.md"
+variable_slot_catalog_path: ""
 open_items:
-  - "Foundations file was duplicated but not yet renamed — agent should rename to 'Acme Mobile App — Foundations' before proceeding."
+  - "Foundations file created and page-scaffolded in Drafts — designer still needs to move it to Design-Systems/ in the team."
   - "Designer confirmed web platform only for this project — skip android and ios alias collections."
   - "Brand primary color: #E63946. All other tokens use Tailwind defaults."
 ---

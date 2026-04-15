@@ -19,11 +19,11 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 | Requirement | Notes |
 |---|---|
 | Claude Code (latest) | Install via `npm install -g @anthropic-ai/claude-code` |
-| Figma MCP connector | Configured inside Claude Code — handles all Figma authentication. No personal access token (PAT) setup required. |
+| Figma MCP connector | Configured inside Claude Code — handles all Figma authentication for file creation and canvas operations. |
 | Organization-tier Figma account | Required for the Figma Variables REST API write endpoint used by `/create-design-system` and `/sync-design-system`. |
 | Git clone of this repo | Plugin files must be present locally so Claude Code can read SKILL.md files. |
 
-**No environment variables or secret storage is needed.** The Figma MCP connector handles authentication transparently via Claude Code. Designers do not configure PATs, `.env` files, or `clientStorage` entries.
+**No PAT or environment variable is needed for `/new-project`.** File creation and page scaffolding use the Figma MCP connector exclusively. Other skills that call the Variables REST API (`/create-design-system`, `/sync-design-system`) also use the MCP connector's OAuth session.
 
 ---
 
@@ -31,7 +31,7 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 
 | Skill | Invocation | Description | Required Arguments |
 |---|---|---|---|
-| New Project | `/new-project` | Duplicates the four standard Detroit Labs Figma template files and places them into the correct team folder hierarchy. | None (agent prompts interactively) |
+| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy (tokens, style guide, brand, atoms, all component groups), and provides a single bulk move instruction to place the file in the team's Design-Systems/ folder. | None (agent prompts interactively) |
 | Create Design System | `/create-design-system` | Pushes brand tokens into the Primitives variable collection and the target platform alias collection in a Figma file. | `platform` — `web`, `android`, `ios`, or `all` |
 | Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction. | None (reads `tokens.json` by default; path configurable in settings) |
 | Create Component | `/create-component` | Installs shadcn/ui components locally, draws structure to the Figma canvas, binds token variables, and optionally links Code Connect. | `components` — list of shadcn component names |
@@ -49,9 +49,10 @@ All Figma operations in this plugin go through the official Figma MCP server (`m
 
 | MCP Tool | Used By | Purpose |
 |---|---|---|
-| `get_metadata` | `/new-project`, `/create-design-system` | Read team and project metadata before writes |
+| `create_new_file` | `/new-project` | Create blank Figma design files in Drafts |
+| `get_metadata` | `/create-design-system` | Read team and project metadata before writes |
 | `get_variable_defs` | `/create-design-system`, `/sync-design-system` | Read current variable collection state from a Figma file |
-| `use_figma` | `/create-design-system`, `/sync-design-system`, `/create-component`, `/new-language`, `/accessibility-check` | General-purpose Figma write/read operations (create frames, update variables, write text nodes) |
+| `use_figma` | `/new-project`, `/create-design-system`, `/sync-design-system`, `/create-component`, `/new-language`, `/accessibility-check` | General-purpose Figma write/read operations (scaffold pages, create frames, update variables, write text nodes) |
 | `get_code_connect_suggestions` | `/code-connect` | List Figma components not yet mapped to code |
 | `get_context_for_code_connect` | `/code-connect` | Retrieve component context needed to generate a mapping |
 | `send_code_connect_mappings` | `/code-connect` | Publish finalized Code Connect mappings |
@@ -67,29 +68,23 @@ All Figma operations in this plugin go through the official Figma MCP server (`m
 
 ## 5. Detroit Labs Figma Project Structure
 
-The `/new-project` skill creates the following folder and file layout inside the designer's Figma team space. This hierarchy is the Detroit Labs standard and must be preserved across all projects.
+The Detroit Labs standard folder hierarchy is below. `/new-project` currently scaffolds the Foundations file only — additional file types will be added to the skill in future iterations.
 
 ```
 <Team Space>/
-  Strategy/
-    <ProjectName> — Discovery Workshop    (FigJam, duplicated from Workshop template)
-    <ProjectName> — Discovery Summary     (Slides, duplicated from Summary template)
   Design-Systems/
-    <ProjectName> — Foundations           (Design file, duplicated from Foundations/Agent Kit template)
-  Master-Files/
-    <ProjectName> — Master Files          (Design file, duplicated from Master Files template)
+    <ProjectName> — Foundations     (Design file, created via MCP + page-scaffolded)
 ```
 
 **Folder naming convention:** Folders use title case. File names follow the pattern `<ProjectName> — <FileType>` (em dash, not hyphen).
 
-**Template file keys (confirmed):**
+**File placement:** `/new-project` creates files in Drafts via `create_new_file` and scaffolds pages via `use_figma`. The designer moves the file to the correct project folder using Figma's right-click → Move to Project UI. The Figma REST API does not expose a public endpoint for programmatic file placement.
+
+**Foundations template reference** (used to source the page hierarchy — not cloned at runtime):
 
 | Template | File Key | Figma File Type |
 |---|---|---|
-| Discovery Workshop | `hnCK8gpGtxzBoBakRX8QLn` | FigJam |
-| Discovery Summary | `8YBZtQLCnt7sbmlCKpMO1Y` | Slides |
 | Foundations / Agent Kit | `rJQsr4aou5yjzUhaEM0I2f` | Design |
-| Master Files | `C9C0XpIdj1WS3klOugVzGM` | Design |
 
 ---
 
@@ -123,14 +118,13 @@ Semantic tokens that alias Primitives (or override them) for a specific platform
 
 ## 7. Template File Keys Reference
 
-| Key Name | File Key | Used By |
-|---|---|---|
-| `workshop` | `hnCK8gpGtxzBoBakRX8QLn` | `/new-project` |
-| `summary` | `8YBZtQLCnt7sbmlCKpMO1Y` | `/new-project` |
-| `foundations` | `rJQsr4aou5yjzUhaEM0I2f` | `/new-project`, `/create-design-system` |
-| `master_files` | `C9C0XpIdj1WS3klOugVzGM` | `/new-project` |
+| Key Name | File Key | Used By | Purpose |
+|---|---|---|---|
+| `foundations` | `rJQsr4aou5yjzUhaEM0I2f` | `/new-project`, `/create-design-system` | Page structure source for scaffolding; token variable reference |
 
-These keys are stored in `plugin/.claude/settings.local.json` under `template_file_keys` and are read by skills at runtime. Do not change these values unless the source template files in Figma have been replaced.
+The Workshop, Summary, and Master File keys are retained in `settings.local.json` for future use when those file types are added back to `/new-project`. They are not used at runtime today.
+
+These keys are stored in `plugin/.claude/settings.local.json` under `template_file_keys`. Do not change these values unless the source template files in Figma have been replaced.
 
 ---
 
