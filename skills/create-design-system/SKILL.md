@@ -370,8 +370,51 @@ Create the `iOS/HIG` collection if it does not exist. Write Apple HIG semantic a
 Assemble the full `PUT /v1/files/{TARGET_FILE_KEY}/variables` payload. The payload must include:
 
 - `variableCollections`: array of collections to create or update, each with `id` (use existing ID from Step 5 registry, or `"TEMP_COLLECTION_{NAME}"` for new ones), `name`, and `action` (`CREATE` or `UPDATE`)
-- `variables`: array of variable definitions, each with collection ID, name, resolved type, and value or alias reference
+- `variables`: array of variable definitions, each with collection ID, name, resolved type, value or alias reference, **and `codeSyntax`**
 - `variableModes`: include at least one mode per new collection (name it `Default` for new collections)
+
+### Code Syntax Generation
+
+Include a `codeSyntax` object on every variable using the rules below. Platforms are `WEB`, `ANDROID`, and `iOS`.
+
+**Conversion rules (apply to all collections):**
+
+1. Strip collection-specific wrappers: remove `var(--` prefix and `)` suffix from Web variable names before deriving ANDROID/iOS values.
+2. **Kebab form**: replace `/` and spaces with `-`, lowercase everything → used for WEB (`var(--kebab-form)`).
+3. **Camel form**: split on `/`, `-`, and spaces, capitalize each word after the first, join → used for ANDROID and iOS.
+
+**Primitives collection** — set all three platforms:
+
+| Example variable name | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `color/primary/500` | `var(--color-primary-500)` | `colorPrimary500` | `colorPrimary500` |
+| `Space/400` | `var(--space-400)` | `space400` | `space400` |
+| `Corner/Medium` | `var(--corner-medium)` | `cornerMedium` | `cornerMedium` |
+| `Title/LG/Font Family` | `var(--title-lg-font-family)` | `titleLgFontFamily` | `titleLgFontFamily` |
+| `elevation/400` | `var(--elevation-400)` | `elevation400` | `elevation400` |
+
+**Web collection** — variable names are already CSS custom properties:
+
+| Example variable name | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `var(--background)` | `var(--background)` | `background` | `background` |
+| `var(--primary)` | `var(--primary)` | `primary` | `primary` |
+| `var(--gap-md)` | `var(--gap-md)` | `gapMd` | `gapMd` |
+| `var(--radius-sm)` | `var(--radius-sm)` | `radiusSm` | `radiusSm` |
+
+**Android/M3 collection** — camelCase path for ANDROID, kebab `var(--)` for WEB, same camelCase for iOS:
+
+| Example variable name | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `md/sys/color/primary` | `var(--md-sys-color-primary)` | `mdSysColorPrimary` | `mdSysColorPrimary` |
+| `md/sys/spacing/medium` | `var(--md-sys-spacing-medium)` | `mdSysSpacingMedium` | `mdSysSpacingMedium` |
+
+**iOS/HIG collection** — camelCase path for iOS, kebab `var(--)` for WEB, same camelCase for ANDROID:
+
+| Example variable name | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `ios/color/system-background` | `var(--ios-color-system-background)` | `iosColorSystemBackground` | `iosColorSystemBackground` |
+| `ios/spacing/medium` | `var(--ios-spacing-medium)` | `iosSpacingMedium` | `iosSpacingMedium` |
 
 Execute the write via `mcp__claude_ai_Figma__use_figma` or the REST endpoint directly through the Figma MCP connector.
 

@@ -66,13 +66,140 @@ If a component install fails, log the error, mark it `failed`, and continue to t
 
 For each successfully installed component:
 
-1. Call `mcp__claude_ai_Figma__get_design_context` with the file key to confirm the file is accessible and to read any existing component structure.
-2. Use `mcp__claude_ai_Figma__use_figma` to create a component frame on the canvas with:
-   - **Frame name:** Match the shadcn component name exactly (e.g. `Button`, `Input`, `Card`, `Dialog`). Use PascalCase.
-   - **Variant structure:** Include at minimum a default state. Where the shadcn component has documented variants (e.g. Button has `default`, `destructive`, `outline`, `secondary`, `ghost`, `link`), create a variant property group with one frame per variant.
-   - **Token variable bindings:** Bind fill, stroke, and text color properties to the corresponding variables from the active `Web` variable collection (e.g. `color/primary` for primary action fills, `color/surface` for card backgrounds, `color/foreground` for text). If the `Web` collection is not present, apply the raw Tailwind hex values from the shadcn defaults and log a warning.
-   - **Layout:** Use auto-layout with sensible defaults (horizontal padding 16px, vertical padding 8px for interactive components; adjust for layout components like Card).
-3. If the draw operation fails for a component, mark it `draw_failed` and continue.
+1. Call `mcp__claude_ai_Figma__get_design_context` with the file key to confirm the file is accessible and to read the page list.
+2. **Resolve the target page** using the routing table below. Before drawing, call `use_figma` to navigate to the correct page:
+   ```js
+   const page = figma.root.children.find(p => p.name === "<target page name>");
+   if (page) await figma.setCurrentPageAsync(page);
+   ```
+   If the target page does not exist (e.g. the file was not scaffolded by `/new-project`), fall back to the current active page and log a warning: "Page '↳ X' not found — drawing on current page."
+
+   **Component → Page routing:**
+
+   | Component(s) | Target Page |
+   |---|---|
+   | `button` | `↳ Buttons` |
+   | `toggle` | `↳ Toggle` |
+   | `toggle-group` | `↳ Toggle Group` |
+   | `input` | `↳ Text Field` |
+   | `textarea` | `↳ Textarea` |
+   | `checkbox` | `↳ Checkbox` |
+   | `radio-group` | `↳ Radio` |
+   | `select` | `↳ Select` |
+   | `switch` | `↳ Switch` |
+   | `slider` | `↳ Slider` |
+   | `form` | `↳ Form Composite Groups` |
+   | `label` | `↳ Label` |
+   | `input-otp` | `↳ Input OTP` |
+   | `calendar` | `↳ Calendar` |
+   | `date-picker` | `↳ Date Picker` |
+   | `card` | `↳ Cards` |
+   | `separator` | `↳ Dividers` |
+   | `aspect-ratio` | `↳ Aspect Ratio` |
+   | `scroll-area` | `↳ Scroll Area` |
+   | `resizable` | `↳ Resizable` |
+   | `dialog`, `alert-dialog` | `↳ Dialogue` |
+   | `drawer` | `↳ Drawer` |
+   | `sheet` | `↳ Sheets` |
+   | `popover` | `↳ Popover` |
+   | `tooltip` | `↳ Tooltips` |
+   | `hover-card` | `↳ Hover Card` |
+   | `context-menu` | `↳ Context Menu` |
+   | `dropdown-menu` | `↳ Dropdown Menu` |
+   | `command` | `↳ Command` |
+   | `navigation-menu` | `↳ Navigation Menu` |
+   | `menubar` | `↳ Menubar` |
+   | `tabs` | `↳ Tabs bar` |
+   | `breadcrumb` | `↳ Breadcrumb` |
+   | `pagination` | `↳ Pagination` |
+   | `alert` | `↳ Alerts` |
+   | `badge` | `↳ Badge` |
+   | `progress` | `↳ Progress Bar` |
+   | `skeleton` | `↳ Skeleton` |
+   | `sonner` | `↳ Sonner` |
+   | `toast` | `↳ Toast` |
+   | `table` | `↳ Data Table` |
+   | `accordion` | `↳ Accordion` |
+   | `collapsible` | `↳ Collapsible` |
+   | `avatar` | `↳ Avatar` |
+
+3. Use `mcp__claude_ai_Figma__use_figma` to create a **Figma component** (not a plain frame) on the target page. Always use `figma.createComponent()` — never `figma.createFrame()`.
+
+   **Single-state components** (no variants): create one component, set its name to PascalCase (e.g. `Separator`, `Label`).
+
+   ```js
+   const comp = figma.createComponent();
+   comp.name = "Separator";
+   // apply auto-layout, fills, etc.
+   figma.currentPage.appendChild(comp);
+   ```
+
+   **Multi-variant components** (button, input, badge, etc.): create one `figma.createComponent()` per variant, name each using Figma's `property=value` convention, then combine into a component set with `figma.combineAsVariants()`. The component set name is the PascalCase component name.
+
+   ```js
+   const variants = ["default", "destructive", "outline", "secondary", "ghost", "link"];
+   const nodes = variants.map(v => {
+     const c = figma.createComponent();
+     c.name = `variant=${v}`;
+     // apply fills, auto-layout, text per variant
+     return c;
+   });
+   const compSet = figma.combineAsVariants(nodes, figma.currentPage);
+   compSet.name = "Button";
+   ```
+
+   The component set **must** be appended to `figma.currentPage` (already set in step 2) — do not append to a different page node.
+
+   **Variant definitions by component** (add only the properties the shadcn component actually exposes):
+
+   | Component | Variant properties |
+   |---|---|
+   | `button` | `variant` = default, destructive, outline, secondary, ghost, link; `size` = default, sm, lg, icon |
+   | `badge` | `variant` = default, secondary, destructive, outline |
+   | `input` | `state` = default, focus, disabled, error |
+   | `textarea` | `state` = default, focus, disabled, error |
+   | `checkbox` | `checked` = false, true, indeterminate; `disabled` = false, true |
+   | `radio-group` | `selected` = false, true; `disabled` = false, true |
+   | `switch` | `checked` = false, true; `disabled` = false, true |
+   | `select` | `state` = default, open, disabled |
+   | `alert` | `variant` = default, destructive |
+   | `avatar` | `size` = sm, md, lg |
+   | `progress` | `value` = 0, 25, 50, 75, 100 |
+   | `skeleton` | `shape` = line, circle, rect |
+   | `tabs` | `state` = active, inactive |
+   | `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` = open, closed |
+   | `accordion`, `collapsible` | `state` = open, closed |
+   | `toggle`, `toggle-group` | `pressed` = false, true |
+   | `breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast` | single state (no variant property needed) |
+
+   - **Token variable bindings:** Look up variables by name from the `Web` collection via `figma.variables.getLocalVariables()`. Bind **all** applicable design properties — not just color. Use `node.setBoundVariable(field, variable)` for each field listed below.
+
+     **Color fields:**
+     | `setBoundVariable` field | Web variable to bind |
+     |---|---|
+     | `fills` | `var(--primary)` (primary action), `var(--background)` (surface), `var(--muted)` (subtle fill) |
+     | `strokes` | `var(--border-primary)` or `var(--border-secondary)` |
+     | text node `fills` | `var(--foreground)`, `var(--primary-foreground)`, or `var(--muted-foreground)` |
+
+     **Spacing fields** (padding and gap):
+     | `setBoundVariable` field | Web variable to bind |
+     |---|---|
+     | `paddingLeft`, `paddingRight` | `var(--padding-md)` for standard components; `var(--p-xs)` for compact |
+     | `paddingTop`, `paddingBottom` | `var(--p-xs)` for interactive components |
+     | `itemSpacing` | `var(--gap-sm)` for tight layouts; `var(--gap-md)` for standard |
+
+     **Border radius fields:**
+     | `setBoundVariable` field | Web variable to bind |
+     |---|---|
+     | `topLeftRadius`, `topRightRadius`, `bottomLeftRadius`, `bottomRightRadius` | `var(--radius-md)` for standard components; `var(--radius-sm)` for compact; `var(--radius-lg)` for cards/sheets |
+
+     Bind all four corner radius fields individually — Figma does not accept a single `borderRadius` variable binding.
+
+     If the `Web` collection is not present, apply raw Tailwind hex/px values and log a warning.
+
+   - **Layout:** Set `layoutMode = "HORIZONTAL"`, `primaryAxisSizingMode = "AUTO"`, `counterAxisSizingMode = "AUTO"` on every component. Do **not** set `paddingLeft`, `paddingRight`, `paddingTop`, `paddingBottom`, or `itemSpacing` as hard-coded numbers — set them only via `setBoundVariable` so the variable binding is the source of truth. Adjust radius target variable for layout-only components (card → `var(--radius-lg)`; separator → no radius binding).
+
+4. If the draw operation fails for a component, mark it `draw_failed` and continue.
 
 ### Step 6 — Offer Code Connect chaining
 
@@ -137,7 +264,7 @@ The following shadcn/ui components are supported. Pass any of these names to the
 
 ## Notes
 
-- **No manual Figma community kit import required.** Components are installed from the shadcn CLI into the local codebase, and the agent draws the resulting structure directly to the Figma canvas using Figma MCP write tools.
-- **Canvas placement** uses `use_figma` for general frame and variant creation. The agent targets the current page of the active Figma file unless the handoff context specifies a different page.
+- **No manual Figma community kit import required.** Components are installed from the shadcn CLI into the local codebase, and the agent draws them directly to the Figma canvas as proper Figma components using `figma.createComponent()` and `figma.combineAsVariants()`. These are real Figma components with component keys — required for Code Connect to resolve mappings.
+- **Canvas placement** uses `use_figma` for general frame and variant creation. The agent routes each component to its designated page in the Detroit Labs Foundations scaffold (see Step 5 routing table) using `figma.setCurrentPageAsync`. If the file was not scaffolded by `/new-project`, it falls back to the current active page with a warning.
 - **Token bindings** are a best-effort match based on variable names in the `Web` collection. Review bindings in Figma after the skill completes and adjust any that do not match your intended semantic mapping.
 - **shadcn/ui version:** Always installs the latest release via `npx shadcn@latest`. To pin a version, the designer should configure the shadcn version in `package.json` before invoking this skill.
