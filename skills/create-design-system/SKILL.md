@@ -1,58 +1,25 @@
 ---
 name: create-design-system
-description: Push brand tokens into the Primitives variable collection and the target platform alias collection (Web, Android/M3, or iOS/HIG) in a Figma file. Accepts web, android, ios, or all (web then android then ios on the same file).
-argument-hint: "[web|android|ios|all]"
+description: Push brand tokens into five Figma variable collections — Primitives, Theme (Light/Dark modes), Typography (8 Android-curve scale modes), Layout, and Effects. Platform mapping (Web/Android/iOS) is encoded as codeSyntax on every variable instead of separate alias collections.
+argument-hint: ""
 agent: general-purpose
 ---
 
-# Skill — `/create-design-system [web|android|ios|all]`
+# Skill — `/create-design-system`
 
-You are the Create Design System agent for the Detroit Labs DesignOps plugin. Your job is to collect brand tokens from the designer, map them to the correct Figma variable collections, and push the result to the target Figma file.
+You are the Create Design System agent for the Detroit Labs DesignOps plugin. Your job is to collect brand tokens from the designer, build five variable collections with proper Light/Dark and typography scale modes, and push the result to the target Figma file.
 
 ---
 
 ## Interactive input contract
 
-- For **Steps 1-4**, **Step 8** when the API returns partial write errors, and **Step 11**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
+- For **Steps 1–4**, **Step 10** when the API returns partial write errors, and **Step 13**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
 - **Do not** print a block of multiple questions as plain markdown before the first AskUserQuestion.
 - After any AskUserQuestion, you may show a brief acknowledgment in prose; do not bundle the next question in that same message — call AskUserQuestion again.
 
 ---
 
-## Multi-platform (`all`)
-
-If the resolved platform is **`all`** (from `$ARGUMENTS` or AskUserQuestion):
-
-1. Complete **Steps 2-4 once** (file key and tokens). Do not re-prompt Steps 2-4 between passes.
-2. Set `PLATFORM_QUEUE = [web, android, ios]`. Before Step 5, set **`EFFECTIVE_PLATFORM`** to the first queue entry. After each full Step 10 for that entry, shift the queue: set `EFFECTIVE_PLATFORM` to the next platform until the queue is exhausted.
-3. Run **Steps 5-10** once per `EFFECTIVE_PLATFORM` value. Each pass uses the same `TARGET_FILE_KEY` and the same token values. Throughout Steps 5-10, use **`EFFECTIVE_PLATFORM`** anywhere this skill refers to the platform from Step 1 (especially Step 7).
-4. On the **second and third** passes, Step 5 re-reads the registry; Step 6 should **update** existing Primitives in place (idempotent) rather than failing on duplicate names. Step 7 always targets the alias collection for the **current** `EFFECTIVE_PLATFORM` (`Web`, `Android/M3`, or `iOS/HIG`).
-5. **Step 10** reports after **each** pass which collections were updated, then a **final** short summary listing all three platforms when the queue finishes.
-6. Run **Step 11 once** after the queue is exhausted (do not offer `/create-component` between web/android/ios passes).
-
-If the resolved platform is **not** `all`, set **`EFFECTIVE_PLATFORM`** to that single platform and run Steps 5-10 once, then Step 11 once.
-
----
-
-## Step 1 — Resolve the platform argument
-
-Parse `$ARGUMENTS` (first token, case-insensitive) for a platform: `web`, `android`, `ios`, or `all`.
-
-If a valid value is present, use it and proceed to Step 2.
-
-If `$ARGUMENTS` is empty or unrecognized, call **AskUserQuestion**:
-
-> "Which platform are you targeting?
-> - **web** — Web / Tailwind-style `var(--*)` aliases
-> - **android** — Android / Material 3 (`md/sys/*`)
-> - **ios** — iOS / HIG (`ios/*`)
-> - **all** — Run web, then android, then ios on the same file (shared Primitives, three alias collections)"
-
-Do not proceed until a valid platform is confirmed.
-
----
-
-## Step 2 — Resolve the Figma file key
+## Step 1 — Resolve the Figma file key
 
 1. Check `plugin/templates/agent-handoff.md` for `active_file_key`.
 
@@ -60,22 +27,20 @@ Do not proceed until a valid platform is confirmed.
 
    > "I'll use the Foundations file from the last `/new-project` run: `<active_file_key>`. Use this file? Reply **yes** or paste a different Figma file key."
 
-   - If the reply is **yes** (or equivalent), set `TARGET_FILE_KEY` to `active_file_key`.
-   - If the reply is a different key string, validate it (alphanumerics and hyphens only). If valid, set `TARGET_FILE_KEY`. If invalid, call **AskUserQuestion** again with the same prompt shape until you have a valid key.
+   - If **yes**, set `TARGET_FILE_KEY` to `active_file_key`.
+   - If the reply is a different key string, validate it (alphanumerics and hyphens only). If valid, set `TARGET_FILE_KEY`. If invalid, call **AskUserQuestion** again until valid.
 
 3. **If `active_file_key` is missing**, call **AskUserQuestion**:
 
    > "What is the Figma file key for your design system file? (The segment after `figma.com/design/` in the file URL, before the next `/`.)"
 
-   Validate the reply. If malformed, call **AskUserQuestion** again (same question) until `TARGET_FILE_KEY` is valid.
+   Validate the reply. If malformed, call **AskUserQuestion** again until `TARGET_FILE_KEY` is valid.
 
 Do not proceed without `TARGET_FILE_KEY`.
 
-**If the designer cannot find the file key:** In the AskUserQuestion prompt text, remind them to open the file in a browser and copy only the segment between `/design/` and the next `/`.
-
 ---
 
-## Step 3 — Check for existing brand tokens
+## Step 2 — Check for existing brand tokens
 
 Call **AskUserQuestion**:
 
@@ -88,384 +53,497 @@ Call **AskUserQuestion**:
    - Primary brand color (hex)
    - Secondary/accent color (hex)
    - Neutral/gray base color (hex)
+   - Tertiary/accent color (hex) — optional; default to secondary color if skipped
+   - Error/danger color (hex) — optional; default `#EF4444` if skipped
    - Body font family name
    - Display/heading font family name
    - Base font size in px
    - Base spacing unit in px
    - Border radius base in px
 
-**If no:** Go to Step 4 and use AskUserQuestion for each wizard field (do not paste Step 4’s full question list into chat at once).
+**If no:** Go to Step 3.
 
 ---
 
-## Step 4 — Interactive setup wizard (when no tokens supplied)
+## Step 3 — Interactive setup wizard (when no tokens supplied)
 
-When Step 3 was **no**, collect each value with **AskUserQuestion**, one call at a time, in this order. Use the stated default only when the designer explicitly asks for the default or leaves the answer empty (treat empty as default where noted).
+Collect each value with **AskUserQuestion**, one call at a time, in this order. Use the stated default only when the designer explicitly asks for the default or leaves the answer empty.
 
-1. Call **AskUserQuestion**: "What is your primary brand color? (hex, e.g. `#3B82F6`)" — required, no default.
-2. Call **AskUserQuestion**: "What is your secondary or accent color? (hex)" — required, no default.
-3. Call **AskUserQuestion**: "What is your neutral or gray base color? (hex, e.g. `#6B7280`)" — required, no default.
-4. Call **AskUserQuestion**: "What font family for body text? (e.g. `Inter`, `Roboto`; default `Inter` if unspecified)"
-5. Call **AskUserQuestion**: "What font family for display and headings? (default: same as body if unspecified)"
-6. Call **AskUserQuestion**: "Base font size in px? (default: 16)"
-7. Call **AskUserQuestion**: "Base spacing unit in px? (default: 4)"
-8. Call **AskUserQuestion**: "Base border radius in px? (default: 4)"
+1. **AskUserQuestion**: "What is your primary brand color? (hex, e.g. `#3B82F6`)" — required, no default.
+2. **AskUserQuestion**: "What is your secondary or accent color? (hex)" — required, no default.
+3. **AskUserQuestion**: "What is your neutral or gray base color? (hex, e.g. `#6B7280`)" — required, no default.
+4. **AskUserQuestion**: "What is your tertiary or third accent color? (hex, optional — press enter to use secondary color)"
+5. **AskUserQuestion**: "What is your error or danger color? (hex, optional — default `#EF4444`)"
+6. **AskUserQuestion**: "What font family for body text? (e.g. `Inter`, `Roboto`; default `Inter` if unspecified)"
+7. **AskUserQuestion**: "What font family for display and headings? (default: same as body if unspecified)"
+8. **AskUserQuestion**: "Base font size in px? (default: 16)"
+9. **AskUserQuestion**: "Base spacing unit in px? (default: 4)"
+10. **AskUserQuestion**: "Base border radius in px? (default: 4)"
 
-Then call **AskUserQuestion** to confirm the full summary:
+Then call **AskUserQuestion** to confirm:
 
-> "Collected: Primary `{…}` · Secondary `{…}` · Neutral `{…}` · Body `{…}` · Display `{…}` · Font size `{…}px` · Spacing `{…}px` · Radius `{…}px`. Proceed with **yes**, or reply **edit** and name which fields to change."
+> "Collected: Primary `{…}` · Secondary `{…}` · Neutral `{…}` · Tertiary `{…}` · Error `{…}` · Body `{…}` · Display `{…}` · Font size `{…}px` · Spacing `{…}px` · Radius `{…}px`. Proceed with **yes**, or reply **edit** and name which fields to change."
 
 If the designer replies **edit**, call **AskUserQuestion** once per field they name to change, then AskUserQuestion for confirmation again until they answer **yes**.
 
 ---
 
-## Step 5 — Read current Figma variable state
+## Step 4 — Read current Figma variable state
 
-Before writing anything for the current `EFFECTIVE_PLATFORM` pass, call the Figma Variables REST API to read the full variable registry of the target file. This is required to know which collections and variable IDs already exist.
+Before writing anything, call the Figma Variables REST API to read the full variable registry of the target file:
 
 ```
 GET https://api.figma.com/v1/files/{TARGET_FILE_KEY}/variables/local
 ```
 
-Execute this via the Figma MCP connector using `mcp__claude_ai_Figma__use_figma` or an equivalent REST call.
+Execute via `mcp__claude_ai_Figma__use_figma` or the REST endpoint directly.
 
 Parse the response and identify:
 - Existing collection names and their IDs
 - Existing variable names and their IDs within each collection
-- Any collections that match `Primitives`, `Web`, `Android/M3`, or `iOS/HIG`
+- Any collections that match `Primitives`, `Theme`, `Typography`, `Layout`, or `Effects`
 
-Also call `mcp__claude_ai_Figma__get_variable_defs` on the file's Table of Contents node (or main page) to cross-check slot names visible on canvas against the REST registry.
+**Error — 403:** Authentication or tier issue. Report the full error message and abort:
+> "The Figma MCP connector does not have write access to this file. Check authentication and that your Figma org is on Organization or Enterprise tier."
 
-**Error — permission denied (403):**
-> "The Figma MCP connector does not have write access to this file. Check that:
-> 1. You are authenticated in Claude Code's Figma MCP connector.
-> 2. Your Figma account has edit access to the file.
-> 3. Your Figma organization is on an Organization or Enterprise tier (required for Variables REST API write).
-> Re-authenticate the Figma MCP connector in Claude Code settings, then run this skill again."
-
-Abort if a 403 is returned.
-
-**Error — file not found (404):**
-> "The file key `{TARGET_FILE_KEY}` was not found. Double-check the key from the Figma URL and run the skill again."
-
-Abort on 404.
+**Error — 404:** File not found. Abort with the file key and instructions to re-check the URL.
 
 ---
 
-## Step 6 — Generate the Primitives collection variables
+## Step 5 — Generate the Primitives collection
 
-Using the collected brand tokens, generate the full set of Primitive variables. Write these into the `Primitives` collection (create it if it does not exist in the registry from Step 5).
+Write raw, platform-agnostic values into the `Primitives` collection (create if it does not exist; update in place if it does).
 
-### Color ramp generation
+### Color ramps — 5 ramps, 11 stops each
 
-For each brand color (primary, secondary, neutral), generate a 10-stop ramp using the Tailwind lightness interpolation approach described in the "Tailwind Color Ramp Generation" section at the bottom of this file. Produce stops: `50`, `100`, `200`, `300`, `400`, `500`, `600`, `700`, `800`, `900`, `950`.
+Generate ramps for: **primary**, **secondary**, **tertiary**, **error**, **neutral**.
 
-Use the following variable name pattern: `color/{name}/{stop}`
+For tertiary: if the designer skipped the tertiary input, alias each `color/tertiary/{stop}` to the corresponding `color/secondary/{stop}` value.
+For error: use the provided hex or `#EF4444` as the `500` anchor.
 
-Examples:
-- `color/primary/50`, `color/primary/100`, … `color/primary/950`
-- `color/secondary/50`, … `color/secondary/950`
-- `color/neutral/50`, … `color/neutral/950`
+Use the Tailwind lightness interpolation approach from the "Color Ramp Generation" section at the bottom. Variable name pattern: `color/{name}/{stop}`
+
+Examples: `color/primary/50` … `color/primary/950`, `color/error/100`, `color/neutral/900`
 
 ### Spacing scale
 
-Using the base spacing unit (default 4px), generate the Tailwind 4px-base spacing scale. Use `Space/{scale}` naming where the scale number equals the value in multiples of 4 (matching the Agent Kit convention observed in the variable slot catalog):
+Using the base spacing unit (default 4px), generate the scale below. Variable name: `Space/{scale}`.
 
-| Variable Name | Value |
+| Variable | Value |
 |---|---|
-| `Space/100` | base × 1 (e.g. 4px) |
-| `Space/200` | base × 2 (e.g. 8px) |
-| `Space/300` | base × 3 (e.g. 12px) |
-| `Space/400` | base × 4 (e.g. 16px) |
-| `Space/500` | base × 5 (e.g. 20px) |
-| `Space/600` | base × 6 (e.g. 24px) |
-| `Space/700` | base × 7 (e.g. 28px) |
-| `Space/800` | base × 8 (e.g. 32px) |
-| `Space/900` | base × 9 (e.g. 36px) |
-| `Space/1000` | base × 10 (e.g. 40px) |
-| `Space/1100` | base × 11 (e.g. 44px) |
-| `Space/1200` | base × 12 (e.g. 48px) |
-| `Space/1600` | base × 16 (e.g. 64px) |
-| `Space/2000` | base × 20 (e.g. 80px) |
-| `Space/2400` | base × 24 (e.g. 96px) |
+| `Space/100` | base × 1 |
+| `Space/200` | base × 2 |
+| `Space/300` | base × 3 |
+| `Space/400` | base × 4 |
+| `Space/500` | base × 5 |
+| `Space/600` | base × 6 |
+| `Space/700` | base × 7 |
+| `Space/800` | base × 8 |
+| `Space/900` | base × 9 |
+| `Space/1000` | base × 10 |
+| `Space/1100` | base × 11 |
+| `Space/1200` | base × 12 |
+| `Space/1600` | base × 16 |
+| `Space/2000` | base × 20 |
+| `Space/2400` | base × 24 |
 
 ### Border radius scale
 
-Use `Corner/{size}` naming:
+Variable name: `Corner/{size}`.
 
-| Variable Name | Value |
+| Variable | Value |
 |---|---|
 | `Corner/None` | 0 |
-| `Corner/Extra-small` | base × 1 (e.g. 4px) |
-| `Corner/Small` | base × 2 (e.g. 8px) |
-| `Corner/Medium` | base × 3 (e.g. 12px) |
-| `Corner/Large` | base × 4 (e.g. 16px) |
+| `Corner/Extra-small` | base × 1 |
+| `Corner/Small` | base × 2 |
+| `Corner/Medium` | base × 3 |
+| `Corner/Large` | base × 4 |
 | `Corner/Extra-large` | 28px |
 | `Corner/Full` | 9999px |
 
-### Typography scale
+### Elevation scale
 
-Use the collected font families and the base font size to populate the Typography collection slots. Use the `{Style}/{Size}/{Property}` naming convention observed in the Agent Kit:
-
-| Variable Name | Type | Value |
+| Variable | Type | Value |
 |---|---|---|
-| `Title/LG/Font Family` | STRING | display font |
-| `Title/LG/Font Size` | FLOAT | base × 1.375 (e.g. 22px at 16 base) |
-| `Title/LG/Font Weight` | FLOAT | 600 |
-| `Title/LG/Line Height` | FLOAT | base × 1.75 (e.g. 28px) |
-| `Label/LG/Font Family` | STRING | body font |
-| `Label/LG/Font Size` | FLOAT | base × 0.875 (e.g. 14px) |
-| `Label/LG/Font Weight` | FLOAT | 500 |
-| `Label/LG/Line Height` | FLOAT | base × 1.25 (e.g. 20px) |
-| `Headline/MD/Font Family` | STRING | display font |
-| `Headline/MD/Font Size` | FLOAT | base × 1.875 (e.g. 30px) |
-| `Headline/MD/Font Weight` | FLOAT | 600 |
-| `Headline/MD/Line Height` | FLOAT | base × 2.25 (e.g. 36px) |
-
-### Shadow / Elevation
-
-| Variable Name | Type | Value |
-|---|---|---|
-| `var(--shadow-default)` | COLOR | `#000000` |
 | `elevation/100` | FLOAT | 1 |
 | `elevation/200` | FLOAT | 2 |
 | `elevation/400` | FLOAT | 4 |
 | `elevation/800` | FLOAT | 8 |
 | `elevation/1600` | FLOAT | 16 |
 
-Note: If the target file contains the malformed token `var--{shadow-default)`, write the corrected name `var(--shadow-default)` and update any effect references that previously pointed to the malformed name.
+**Note:** Typography variables are no longer stored in Primitives — they live in the Typography collection (Step 7).
 
----
+### codeSyntax for Primitives
 
-## Step 7 — Create or update the platform alias collection
+Apply to every Primitives variable:
 
-Based on **`EFFECTIVE_PLATFORM`** (see Multi-platform section), write the corresponding alias collection. Each alias variable must reference its Primitives counterpart by variable ID (Figma alias), not by hard-coded hex value.
-
-If the collection does not exist in the registry from Step 5, create it first using `PUT /v1/files/{TARGET_FILE_KEY}/variables` with a `variableCollections` create payload before writing the aliases.
-
-### Platform: `web` — Web Collection (`var(--*)` pattern)
-
-Write or update the `Web` collection. Map semantic roles to Primitives using variable aliases:
-
-| Variable Name | Aliases → Primitive |
-|---|---|
-| `var(--background)` | `color/neutral/50` |
-| `var(--background-inverse)` | `color/neutral/950` |
-| `var(--foreground)` | `color/neutral/900` |
-| `var(--foreground-inverse)` | `color/neutral/50` |
-| `var(--on-background-primary)` | `color/primary/50` |
-| `var(--on-button-secondary)` | `color/secondary/950` |
-| `var(--primary)` | `color/primary/500` |
-| `var(--primary-foreground)` | `color/primary/50` |
-| `var(--secondary)` | `color/secondary/500` |
-| `var(--secondary-foreground)` | `color/secondary/50` |
-| `var(--muted)` | `color/neutral/100` |
-| `var(--muted-foreground)` | `color/neutral/500` |
-| `var(--border-primary)` | `color/primary/500` |
-| `var(--border-secondary)` | `color/neutral/200` |
-| `var(--gap-xs)` | `Space/100` |
-| `var(--gap-sm)` | `Space/200` |
-| `var(--gap-md)` | `Space/300` |
-| `var(--gap-lg)` | `Space/400` |
-| `var(--p-xs)` | `Space/100` |
-| `var(--padding-md)` | `Space/300` |
-| `var(--radius-none)` | `Corner/None` |
-| `var(--radius-sm)` | `Corner/Extra-small` |
-| `var(--radius-md)` | `Corner/Medium` |
-| `var(--radius-lg)` | `Corner/Large` |
-| `var(--shadow-default)` | `var(--shadow-default)` (Primitives) |
-
-### Platform: `android` — Android/M3 Collection
-
-Create the `Android/M3` collection if it does not exist. Write Material Design 3 `md/sys/*` role aliases pointing to Primitives:
-
-| Variable Name | Aliases → Primitive |
-|---|---|
-| `md/sys/color/primary` | `color/primary/500` |
-| `md/sys/color/on-primary` | `color/primary/50` |
-| `md/sys/color/primary-container` | `color/primary/100` |
-| `md/sys/color/on-primary-container` | `color/primary/900` |
-| `md/sys/color/secondary` | `color/secondary/500` |
-| `md/sys/color/on-secondary` | `color/secondary/50` |
-| `md/sys/color/secondary-container` | `color/secondary/100` |
-| `md/sys/color/on-secondary-container` | `color/secondary/900` |
-| `md/sys/color/background` | `color/neutral/50` |
-| `md/sys/color/on-background` | `color/primary/50` |
-| `md/sys/color/surface` | `color/neutral/100` |
-| `md/sys/color/on-surface` | `color/neutral/900` |
-| `md/sys/color/surface-variant` | `color/neutral/200` |
-| `md/sys/color/on-surface-variant` | `color/neutral/700` |
-| `md/sys/color/outline` | `color/primary/500` |
-| `md/sys/color/outline-variant` | `color/neutral/200` |
-| `md/sys/color/error` | `color/primary/700` |
-| `md/sys/color/on-error` | `color/primary/50` |
-| `md/sys/spacing/extra-small` | `Space/100` |
-| `md/sys/spacing/small` | `Space/200` |
-| `md/sys/spacing/medium` | `Space/300` |
-| `md/sys/spacing/large` | `Space/400` |
-| `md/sys/spacing/extra-large` | `Space/600` |
-| `md/sys/shape/corner/extra-small` | `Corner/Extra-small` |
-| `md/sys/shape/corner/small` | `Corner/Small` |
-| `md/sys/shape/corner/medium` | `Corner/Medium` |
-| `md/sys/shape/corner/large` | `Corner/Large` |
-| `md/sys/shape/corner/extra-large` | `Corner/Extra-large` |
-| `md/sys/shape/corner/full` | `Corner/Full` |
-| `md/sys/typescale/title-large/font-family` | `Title/LG/Font Family` |
-| `md/sys/typescale/title-large/font-size` | `Title/LG/Font Size` |
-| `md/sys/typescale/title-large/font-weight` | `Title/LG/Font Weight` |
-| `md/sys/typescale/title-large/line-height` | `Title/LG/Line Height` |
-| `md/sys/typescale/label-large/font-family` | `Label/LG/Font Family` |
-| `md/sys/typescale/label-large/font-size` | `Label/LG/Font Size` |
-| `md/sys/typescale/label-large/font-weight` | `Label/LG/Font Weight` |
-| `md/sys/typescale/label-large/line-height` | `Label/LG/Line Height` |
-| `md/sys/typescale/headline-medium/font-family` | `Headline/MD/Font Family` |
-| `md/sys/typescale/headline-medium/font-size` | `Headline/MD/Font Size` |
-| `md/sys/typescale/headline-medium/font-weight` | `Headline/MD/Font Weight` |
-| `md/sys/typescale/headline-medium/line-height` | `Headline/MD/Line Height` |
-
-### Platform: `ios` — iOS/HIG Collection
-
-Create the `iOS/HIG` collection if it does not exist. Write Apple HIG semantic aliases pointing to Primitives:
-
-| Variable Name | Aliases → Primitive |
-|---|---|
-| `ios/color/system-background` | `color/neutral/50` |
-| `ios/color/secondary-system-background` | `color/neutral/100` |
-| `ios/color/tertiary-system-background` | `color/neutral/200` |
-| `ios/color/label` | `color/neutral/950` |
-| `ios/color/secondary-label` | `color/primary/50` |
-| `ios/color/tertiary-label` | `color/neutral/500` |
-| `ios/color/tint` | `color/primary/500` |
-| `ios/color/separator` | `color/neutral/200` |
-| `ios/color/opaque-separator` | `color/neutral/300` |
-| `ios/color/system-fill` | `color/neutral/100` |
-| `ios/color/secondary-system-fill` | `color/neutral/200` |
-| `ios/color/system-red` | `color/primary/600` |
-| `ios/spacing/extra-small` | `Space/100` |
-| `ios/spacing/small` | `Space/200` |
-| `ios/spacing/medium` | `Space/300` |
-| `ios/spacing/large` | `Space/400` |
-| `ios/spacing/extra-large` | `Space/600` |
-| `ios/shape/corner-small` | `Corner/Small` |
-| `ios/shape/corner-medium` | `Corner/Medium` |
-| `ios/shape/corner-large` | `Corner/Large` |
-| `ios/shape/corner-full` | `Corner/Full` |
-| `ios/typescale/large-title/font-family` | `Headline/MD/Font Family` |
-| `ios/typescale/large-title/font-size` | `Headline/MD/Font Size` |
-| `ios/typescale/large-title/line-height` | `Headline/MD/Line Height` |
-| `ios/typescale/title1/font-family` | `Title/LG/Font Family` |
-| `ios/typescale/title1/font-size` | `Title/LG/Font Size` |
-| `ios/typescale/title1/line-height` | `Title/LG/Line Height` |
-| `ios/typescale/title2/font-family` | `Title/LG/Font Family` |
-| `ios/typescale/title2/font-size` | `Title/LG/Font Size` |
-| `ios/typescale/title2/line-height` | `Title/LG/Line Height` |
-| `ios/typescale/callout/font-family` | `Label/LG/Font Family` |
-| `ios/typescale/callout/font-size` | `Label/LG/Font Size` |
-| `ios/typescale/callout/line-height` | `Label/LG/Line Height` |
-
----
-
-## Step 8 — Push variables to Figma
-
-Assemble the full `PUT /v1/files/{TARGET_FILE_KEY}/variables` payload. The payload must include:
-
-- `variableCollections`: array of collections to create or update, each with `id` (use existing ID from Step 5 registry, or `"TEMP_COLLECTION_{NAME}"` for new ones), `name`, and `action` (`CREATE` or `UPDATE`)
-- `variables`: array of variable definitions, each with collection ID, name, resolved type, value or alias reference, **and `codeSyntax`**
-- `variableModes`: include at least one mode per new collection (name it `Default` for new collections)
-
-### Code Syntax Generation
-
-Include a `codeSyntax` object on every variable using the rules below. Platforms are `WEB`, `ANDROID`, and `iOS`.
-
-**Conversion rules (apply to all collections):**
-
-1. Strip collection-specific wrappers: remove `var(--` prefix and `)` suffix from Web variable names before deriving ANDROID/iOS values.
-2. **Kebab form**: replace `/` and spaces with `-`, lowercase everything → used for WEB (`var(--kebab-form)`).
-3. **Camel form**: split on `/`, `-`, and spaces, capitalize each word after the first, join → used for ANDROID and iOS.
-
-**Primitives collection** — set all three platforms:
-
-| Example variable name | WEB | ANDROID | iOS |
+| Example variable | WEB | ANDROID | iOS |
 |---|---|---|---|
 | `color/primary/500` | `var(--color-primary-500)` | `colorPrimary500` | `colorPrimary500` |
 | `Space/400` | `var(--space-400)` | `space400` | `space400` |
 | `Corner/Medium` | `var(--corner-medium)` | `cornerMedium` | `cornerMedium` |
-| `Title/LG/Font Family` | `var(--title-lg-font-family)` | `titleLgFontFamily` | `titleLgFontFamily` |
 | `elevation/400` | `var(--elevation-400)` | `elevation400` | `elevation400` |
 
-**Web collection** — variable names are already CSS custom properties:
-
-| Example variable name | WEB | ANDROID | iOS |
-|---|---|---|---|
-| `var(--background)` | `var(--background)` | `background` | `background` |
-| `var(--primary)` | `var(--primary)` | `primary` | `primary` |
-| `var(--gap-md)` | `var(--gap-md)` | `gapMd` | `gapMd` |
-| `var(--radius-sm)` | `var(--radius-sm)` | `radiusSm` | `radiusSm` |
-
-**Android/M3 collection** — camelCase path for ANDROID, kebab `var(--)` for WEB, same camelCase for iOS:
-
-| Example variable name | WEB | ANDROID | iOS |
-|---|---|---|---|
-| `md/sys/color/primary` | `var(--md-sys-color-primary)` | `mdSysColorPrimary` | `mdSysColorPrimary` |
-| `md/sys/spacing/medium` | `var(--md-sys-spacing-medium)` | `mdSysSpacingMedium` | `mdSysSpacingMedium` |
-
-**iOS/HIG collection** — camelCase path for iOS, kebab `var(--)` for WEB, same camelCase for ANDROID:
-
-| Example variable name | WEB | ANDROID | iOS |
-|---|---|---|---|
-| `ios/color/system-background` | `var(--ios-color-system-background)` | `iosColorSystemBackground` | `iosColorSystemBackground` |
-| `ios/spacing/medium` | `var(--ios-spacing-medium)` | `iosSpacingMedium` | `iosSpacingMedium` |
-
-Execute the write via `mcp__claude_ai_Figma__use_figma` or the REST endpoint directly through the Figma MCP connector.
-
-**Error — partial write failure:**
-If the API returns a `200` with a `errors` array in the response body, some variables failed to write. For each error:
-1. Log the variable name and error message.
-2. Retry the failed variables individually in a second `PUT` call.
-3. If the retry also fails, call **AskUserQuestion**: "These variables failed after retry: {names}. Reply **skip** to continue without them, or **abort** to stop the skill."
-
-Do not silently suppress partial failures.
+**Derivation rule:** strip the collection name, join all path segments with `-`, lowercase → WEB `var(--result)`. CamelCase (capitalize each word after the first, join) → ANDROID and iOS.
 
 ---
 
-## Step 9 — Verify the write
+## Step 6 — Generate the Theme collection (Light / Dark modes)
 
-After the PUT completes, call the GET endpoint again to verify:
+Create (or update) the `Theme` collection with **two modes: `Light` and `Dark`**.
+
+Every Theme variable is a COLOR type that aliases a Primitive variable by ID. Use the table below — `Light →` and `Dark →` columns name the Primitive path to alias.
+
+### Backgrounds & Foregrounds (4 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/background` | `color/neutral/50` | `color/neutral/950` |
+| `color/background-inverse` | `color/neutral/950` | `color/neutral/50` |
+| `color/foreground` | `color/neutral/900` | `color/neutral/100` |
+| `color/foreground-inverse` | `color/neutral/50` | `color/neutral/900` |
+
+### Primary (4 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/primary` | `color/primary/500` | `color/primary/400` |
+| `color/primary-foreground` | `color/primary/50` | `color/primary/50` |
+| `color/primary-container` | `color/primary/100` | `color/primary/800` |
+| `color/on-primary-container` | `color/primary/900` | `color/primary/100` |
+
+### Secondary (4 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/secondary` | `color/secondary/500` | `color/secondary/400` |
+| `color/secondary-foreground` | `color/secondary/50` | `color/secondary/50` |
+| `color/secondary-container` | `color/secondary/100` | `color/secondary/800` |
+| `color/on-secondary-container` | `color/secondary/900` | `color/secondary/100` |
+
+### Tertiary / Accent (4 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/tertiary` | `color/tertiary/500` | `color/tertiary/400` |
+| `color/on-tertiary` | `color/tertiary/50` | `color/tertiary/50` |
+| `color/tertiary-container` | `color/tertiary/100` | `color/tertiary/800` |
+| `color/on-tertiary-container` | `color/tertiary/900` | `color/tertiary/100` |
+
+### Error / Destructive (4 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/error` | `color/error/600` | `color/error/400` |
+| `color/on-error` | `color/error/50` | `color/error/50` |
+| `color/error-container` | `color/error/100` | `color/error/900` |
+| `color/on-error-container` | `color/error/900` | `color/error/100` |
+
+### Muted & Accent (4 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/muted` | `color/neutral/100` | `color/neutral/800` |
+| `color/muted-foreground` | `color/neutral/500` | `color/neutral/400` |
+| `color/accent` | `color/tertiary/100` | `color/tertiary/800` |
+| `color/accent-foreground` | `color/tertiary/900` | `color/tertiary/100` |
+
+### Surface Hierarchy (9 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/surface` | `color/neutral/50` | `color/neutral/900` |
+| `color/on-surface` | `color/neutral/900` | `color/neutral/50` |
+| `color/surface-variant` | `color/neutral/100` | `color/neutral/800` |
+| `color/on-surface-variant` | `color/neutral/700` | `color/neutral/300` |
+| `color/surface-container-lowest` | `color/neutral/50` | `color/neutral/900` |
+| `color/surface-container-low` | `color/neutral/100` | `color/neutral/800` |
+| `color/surface-container` | `color/neutral/200` | `color/neutral/800` |
+| `color/surface-container-high` | `color/neutral/200` | `color/neutral/700` |
+| `color/surface-container-highest` | `color/neutral/300` | `color/neutral/700` |
+
+### Outline / Border (2 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/outline` | `color/neutral/300` | `color/neutral/600` |
+| `color/outline-variant` | `color/neutral/200` | `color/neutral/700` |
+
+### UI Component Tokens — Tailwind/shadcn (8 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/card` | `color/neutral/50` | `color/neutral/900` |
+| `color/card-foreground` | `color/neutral/900` | `color/neutral/50` |
+| `color/popover` | `color/neutral/50` | `color/neutral/900` |
+| `color/popover-foreground` | `color/neutral/900` | `color/neutral/50` |
+| `color/input` | `color/neutral/200` | `color/neutral/700` |
+| `color/ring` | `color/primary/500` | `color/primary/400` |
+| `color/sidebar` | `color/neutral/100` | `color/neutral/900` |
+| `color/sidebar-foreground` | `color/neutral/900` | `color/neutral/100` |
+
+### Inverse / Dark Surfaces (3 variables)
+
+| Variable | Light → | Dark → |
+|---|---|---|
+| `color/inverse-surface` | `color/neutral/900` | `color/neutral/100` |
+| `color/inverse-on-surface` | `color/neutral/100` | `color/neutral/900` |
+| `color/inverse-primary` | `color/primary/300` | `color/primary/700` |
+
+### Overlay (1 variable)
+
+| Variable | Light | Dark |
+|---|---|---|
+| `color/scrim` | `color/neutral/950` at 32% opacity | `color/neutral/950` at 32% opacity |
+
+Write `color/scrim` as a hard-coded COLOR value (not an alias) with `#000000` at 32% alpha in both modes. Figma variable aliases cannot carry opacity; use the resolved RGBA.
+
+### codeSyntax for Theme
+
+Strip the `color/` prefix, convert remaining path to kebab, wrap in `var(--)` for WEB; camelCase for ANDROID and iOS. The `color/` prefix is dropped from all three outputs.
+
+| Variable | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `color/background` | `var(--background)` | `background` | `background` |
+| `color/primary-container` | `var(--primary-container)` | `primaryContainer` | `primaryContainer` |
+| `color/on-surface-variant` | `var(--on-surface-variant)` | `onSurfaceVariant` | `onSurfaceVariant` |
+| `color/surface-container-high` | `var(--surface-container-high)` | `surfaceContainerHigh` | `surfaceContainerHigh` |
+| `color/error-container` | `var(--error-container)` | `errorContainer` | `errorContainer` |
+
+---
+
+## Step 7 — Generate the Typography collection (8 scale modes)
+
+Create (or update) the `Typography` collection with **eight modes** named exactly:
+`85`, `100`, `110`, `120`, `130`, `150`, `175`, `200`
+
+The `100` mode is the base/default.
+
+### Style slots (12 slots × 4 properties = 48 variables)
+
+Each slot has four variables: `font-family` (STRING), `font-size` (FLOAT), `font-weight` (FLOAT), `line-height` (FLOAT).
+
+Slots: `Display/LG`, `Display/MD`, `Display/SM`, `Headline/LG`, `Headline/MD`, `Headline/SM`, `Body/LG`, `Body/MD`, `Body/SM`, `Label/LG`, `Label/MD`, `Label/SM`
+
+Example variable names: `Display/LG/font-size`, `Body/MD/font-family`, `Label/SM/font-weight`
+
+### Base values (mode `100`)
+
+| Style | font-family | font-size | font-weight | line-height |
+|---|---|---|---|---|
+| `Display/LG` | display font | 57 | 400 | 64 |
+| `Display/MD` | display font | 45 | 400 | 52 |
+| `Display/SM` | display font | 36 | 400 | 44 |
+| `Headline/LG` | display font | 32 | 400 | 40 |
+| `Headline/MD` | display font | 28 | 400 | 36 |
+| `Headline/SM` | display font | 24 | 400 | 32 |
+| `Body/LG` | body font | 16 | 400 | 24 |
+| `Body/MD` | body font | 14 | 400 | 20 |
+| `Body/SM` | body font | 12 | 400 | 16 |
+| `Label/LG` | body font | 14 | 500 | 20 |
+| `Label/MD` | body font | 12 | 500 | 16 |
+| `Label/SM` | body font | 11 | 500 | 16 |
+
+### Scaling rules for non-base modes
+
+**Font family** and **font-weight** values are **identical across all 8 modes** — do not scale them.
+
+For **font-size** and **line-height**, compute the value for each mode:
+
+```
+scaleFactor = mode / 100   (e.g. mode "130" → 1.30)
+
+if (baseSize < 24 OR scaleFactor <= 1.3):
+  scaledSize = round(baseSize × scaleFactor)
+else:
+  scaledSize = round(baseSize × √(scaleFactor))   ← nonlinear for large text at high scale
+```
+
+Apply the same formula to `line-height`. Always round to the nearest integer.
+
+The nonlinear rule (Android 14 behaviour) prevents very large display text from becoming unmanageably large at accessibility scale levels.
+
+### codeSyntax for Typography
+
+Strip `/`, lowercase, kebab the slot+property: `Display/LG/font-size` → `display-lg-font-size`
+- WEB: `var(--display-lg-font-size)`, ANDROID: `displayLgFontSize`, iOS: `displayLgFontSize`
+
+Full derivation: split name on `/`, `-`, and spaces → lowercase each word → join with `-` for WEB `var(--result)` → CamelCase (capitalize each word after the first, join) for ANDROID and iOS.
+
+---
+
+## Step 8 — Generate the Layout collection
+
+Create (or update) the `Layout` collection with a single **`Default`** mode.
+
+All Layout variables are FLOAT type aliases that point to Primitives by ID.
+
+### Spacing aliases
+
+| Variable | → Primitive |
+|---|---|
+| `space/xs` | `Space/100` |
+| `space/sm` | `Space/200` |
+| `space/md` | `Space/300` |
+| `space/lg` | `Space/400` |
+| `space/xl` | `Space/600` |
+| `space/2xl` | `Space/800` |
+| `space/3xl` | `Space/1200` |
+| `space/4xl` | `Space/1600` |
+
+### Radius aliases
+
+| Variable | → Primitive |
+|---|---|
+| `radius/none` | `Corner/None` |
+| `radius/xs` | `Corner/Extra-small` |
+| `radius/sm` | `Corner/Small` |
+| `radius/md` | `Corner/Medium` |
+| `radius/lg` | `Corner/Large` |
+| `radius/xl` | `Corner/Extra-large` |
+| `radius/full` | `Corner/Full` |
+
+### codeSyntax for Layout
+
+Strip the group prefix (`space/`, `radius/`), kebab the remainder:
+
+| Variable | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `space/xs` | `var(--space-xs)` | `spaceXs` | `spaceXs` |
+| `space/2xl` | `var(--space-2xl)` | `space2xl` | `space2xl` |
+| `radius/md` | `var(--radius-md)` | `radiusMd` | `radiusMd` |
+| `radius/full` | `var(--radius-full)` | `radiusFull` | `radiusFull` |
+
+---
+
+## Step 9 — Generate the Effects collection
+
+Create (or update) the `Effects` collection with **two modes: `Light` and `Dark`**.
+
+| Variable | Type | Light value | Dark value |
+|---|---|---|---|
+| `shadow/color` | COLOR | `#000000` at 10% alpha | `#000000` at 30% alpha |
+| `shadow/sm/blur` | FLOAT | aliases `elevation/100` | aliases `elevation/100` |
+| `shadow/md/blur` | FLOAT | aliases `elevation/200` | aliases `elevation/200` |
+| `shadow/lg/blur` | FLOAT | aliases `elevation/400` | aliases `elevation/400` |
+| `shadow/xl/blur` | FLOAT | aliases `elevation/800` | aliases `elevation/800` |
+| `shadow/2xl/blur` | FLOAT | aliases `elevation/1600` | aliases `elevation/1600` |
+
+`shadow/color` is a hard-coded COLOR value (not an alias — opacity cannot be carried on an alias). Write it as RGBA directly in both modes.
+
+The blur FLOAT variables alias the corresponding Primitive elevation by ID; their values are identical in both modes (only the color opacity changes between Light and Dark).
+
+### codeSyntax for Effects
+
+| Variable | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `shadow/color` | `var(--shadow-color)` | `shadowColor` | `shadowColor` |
+| `shadow/sm/blur` | `var(--shadow-sm-blur)` | `shadowSmBlur` | `shadowSmBlur` |
+| `shadow/2xl/blur` | `var(--shadow-2xl-blur)` | `shadow2xlBlur` | `shadow2xlBlur` |
+
+---
+
+## Step 10 — Push all collections to Figma
+
+Assemble a single `PUT /v1/files/{TARGET_FILE_KEY}/variables` payload covering all five collections.
+
+### Payload structure
+
+```json
+{
+  "variableCollections": [
+    { "id": "TEMP_COLLECTION_PRIMITIVES", "name": "Primitives", "action": "CREATE" },
+    { "id": "TEMP_COLLECTION_THEME", "name": "Theme", "action": "CREATE" },
+    { "id": "TEMP_COLLECTION_TYPOGRAPHY", "name": "Typography", "action": "CREATE" },
+    { "id": "TEMP_COLLECTION_LAYOUT", "name": "Layout", "action": "CREATE" },
+    { "id": "TEMP_COLLECTION_EFFECTS", "name": "Effects", "action": "CREATE" }
+  ],
+  "variableModes": [
+    { "id": "TEMP_MODE_PRIM_DEFAULT",   "variableCollectionId": "TEMP_COLLECTION_PRIMITIVES", "name": "Default", "action": "CREATE" },
+    { "id": "TEMP_MODE_THEME_LIGHT",    "variableCollectionId": "TEMP_COLLECTION_THEME",      "name": "Light",   "action": "CREATE" },
+    { "id": "TEMP_MODE_THEME_DARK",     "variableCollectionId": "TEMP_COLLECTION_THEME",      "name": "Dark",    "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_85",        "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "85",      "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_100",       "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "100",     "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_110",       "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "110",     "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_120",       "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "120",     "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_130",       "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "130",     "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_150",       "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "150",     "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_175",       "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "175",     "action": "CREATE" },
+    { "id": "TEMP_MODE_TYPE_200",       "variableCollectionId": "TEMP_COLLECTION_TYPOGRAPHY", "name": "200",     "action": "CREATE" },
+    { "id": "TEMP_MODE_LAYOUT_DEFAULT", "variableCollectionId": "TEMP_COLLECTION_LAYOUT",     "name": "Default", "action": "CREATE" },
+    { "id": "TEMP_MODE_FX_LIGHT",       "variableCollectionId": "TEMP_COLLECTION_EFFECTS",    "name": "Light",   "action": "CREATE" },
+    { "id": "TEMP_MODE_FX_DARK",        "variableCollectionId": "TEMP_COLLECTION_EFFECTS",    "name": "Dark",    "action": "CREATE" }
+  ],
+  "variables": [ ... ],
+  "variableModeValues": [ ... ]
+}
+```
+
+For **UPDATE** passes (collection already exists from the registry in Step 4), use the real existing collection and mode IDs instead of `TEMP_*` strings, and set `"action": "UPDATE"` on each collection entry.
+
+### Variables array
+
+Each entry: `{ "id": "TEMP_VAR_{NAME}", "name": "...", "variableCollectionId": "...", "resolvedType": "COLOR|FLOAT|STRING", "action": "CREATE", "codeSyntax": { "WEB": "...", "ANDROID": "...", "iOS": "..." } }`
+
+### variableModeValues array
+
+Each entry: `{ "variableId": "TEMP_VAR_{NAME}", "modeId": "TEMP_MODE_{...}", "value": <value> }`
+
+For alias values: `"value": { "type": "VARIABLE_ALIAS", "id": "<primitive-variable-id>" }`
+For hard-coded COLOR: `"value": { "r": 0, "g": 0, "b": 0, "a": 0.32 }` (Figma COLOR uses 0–1 float channels)
+For hard-coded FLOAT: `"value": 57`
+
+**Execution:** call `mcp__claude_ai_Figma__use_figma` or the REST endpoint directly.
+
+### Error — partial write failure
+
+If the API returns `200` with an `errors` array, retry each failed variable individually in a second `PUT`. If retry fails, call **AskUserQuestion**: "These variables failed after retry: {names}. Reply **skip** to continue without them, or **abort** to stop the skill."
+
+---
+
+## Step 11 — Verify the write
+
+After the PUT completes, call the GET endpoint again:
 
 ```
 GET https://api.figma.com/v1/files/{TARGET_FILE_KEY}/variables/local
 ```
 
-Confirm that:
-- The Primitives collection exists and contains the expected color, spacing, radius, and typography variables.
-- The platform alias collection (`Web`, `Android/M3`, or `iOS/HIG`) exists and its variables alias the correct Primitives.
+Confirm:
+- All five collections exist: `Primitives`, `Theme`, `Typography`, `Layout`, `Effects`
+- `Theme` has exactly 2 modes: `Light` and `Dark`
+- `Typography` has exactly 8 modes: `85`, `100`, `110`, `120`, `130`, `150`, `175`, `200`
+- `Primitives` contains the expected 5 color ramps (primary, secondary, tertiary, error, neutral)
+- No `Web`, `Android/M3`, or `iOS/HIG` collections were created
 
-Report any variables present in the expected set but absent in the verified response.
+Report any expected variables absent from the verified response.
 
 ---
 
-## Step 10 — Confirm success
+## Step 12 — Confirm success
 
-After each **Steps 5-9** pass, report to the designer using this shape (substitute real counts and the current `EFFECTIVE_PLATFORM`):
+Report using this shape:
 
 ```
 Design system written to Figma file {TARGET_FILE_KEY}
 
 Collections created or updated:
-  Primitives        — {N} variables written
-  {Platform alias collection name}   — {N} variables written
+  Primitives   — {N} variables  (1 mode: Default)
+  Theme        — {N} variables  (2 modes: Light, Dark)
+  Typography   — {N} variables  (8 modes: 85, 100, 110, 120, 130, 150, 175, 200)
+  Layout       — {N} variables  (1 mode: Default)
+  Effects      — {N} variables  (2 modes: Light, Dark)
 
-Platform (this pass): {EFFECTIVE_PLATFORM}
-Total variables (this pass): {N}
+Total variables: {N}
+
+Platform mapping is embedded as codeSyntax on every variable (WEB / ANDROID / iOS).
 
 Open in Figma: https://figma.com/design/{TARGET_FILE_KEY}
 ```
 
-When the original request was **`all`**, after the **third** pass add one line: `All platforms complete: web, android, ios.`
-
 ---
 
-## Step 11 — Offer next step
+## Step 13 — Offer next step
 
 Call **AskUserQuestion**:
 
@@ -477,73 +555,86 @@ If **yes**, invoke `/create-component` with the same Figma file context. If **no
 
 ## Token Naming Reference
 
-### Primitives collection — examples
-
+### Primitives examples
 ```
-color/primary/50        → #EFF6FF  (lightest tint)
-color/primary/500       → #3B82F6  (brand anchor — input hex)
-color/primary/900       → #1E3A8A  (darkest shade)
-color/secondary/500     → #8B5CF6
-color/neutral/100       → #F3F4F6
-color/neutral/900       → #111827
-Space/400               → 16px
+color/primary/50        → lightest tint
+color/primary/500       → brand anchor (input hex)
+color/primary/950       → darkest shade
+color/error/600         → error red
+color/neutral/100       → near-white gray
+color/tertiary/500      → tertiary brand anchor
+Space/400               → 16px (base 4 × 4)
 Space/600               → 24px
 Corner/Medium           → 12px
-Corner/Extra-large      → 28px
-Title/LG/Font Size      → 22
-Title/LG/Font Family    → "Inter"
-Headline/MD/Font Weight → 600
+Corner/Full             → 9999px
 elevation/400           → 4
-var(--shadow-default)   → #000000
 ```
 
-### Web collection — examples
-
+### Theme examples
 ```
-var(--background)           → aliases color/neutral/50
-var(--foreground)           → aliases color/neutral/900
-var(--primary)              → aliases color/primary/500
-var(--primary-foreground)   → aliases color/primary/50
-var(--border-primary)       → aliases color/primary/500
-var(--border-secondary)     → aliases color/neutral/200
-var(--gap-md)               → aliases Space/300
-var(--radius-md)            → aliases Corner/Medium
+color/background        Light → color/neutral/50    Dark → color/neutral/950
+color/primary           Light → color/primary/500   Dark → color/primary/400
+color/on-surface        Light → color/neutral/900   Dark → color/neutral/50
+color/surface-container Light → color/neutral/200   Dark → color/neutral/800
+color/error             Light → color/error/600     Dark → color/error/400
+color/outline           Light → color/neutral/300   Dark → color/neutral/600
+color/ring              Light → color/primary/500   Dark → color/primary/400
 ```
 
-### Android/M3 collection — examples
-
+### Typography examples
 ```
-md/sys/color/primary                    → aliases color/primary/500
-md/sys/color/primary-container          → aliases color/primary/100
-md/sys/color/on-primary                 → aliases color/primary/50
-md/sys/color/background                 → aliases color/neutral/50
-md/sys/color/outline                    → aliases color/primary/500
-md/sys/shape/corner/medium              → aliases Corner/Medium
-md/sys/spacing/medium                   → aliases Space/300
-md/sys/typescale/title-large/font-size  → aliases Title/LG/Font Size
+Headline/LG/font-size   mode 100 → 32    mode 130 → 42    mode 200 → 45 (nonlinear)
+Headline/LG/font-family all modes → display font (constant)
+Body/MD/font-size       mode 100 → 14    mode 150 → 21    mode 200 → 28
+Label/SM/font-weight    all modes → 500 (constant)
 ```
 
-### iOS/HIG collection — examples
-
+### Layout examples
 ```
-ios/color/system-background     → aliases color/neutral/50
-ios/color/label                 → aliases color/neutral/950
-ios/color/tint                  → aliases color/primary/500
-ios/color/separator             → aliases color/neutral/200
-ios/spacing/medium              → aliases Space/300
-ios/shape/corner-medium         → aliases Corner/Medium
-ios/typescale/large-title/font-size → aliases Headline/MD/Font Size
-ios/typescale/callout/font-family   → aliases Label/LG/Font Family
+space/md    → aliases Space/300 (12px)
+space/lg    → aliases Space/400 (16px)
+radius/md   → aliases Corner/Medium (12px)
+radius/full → aliases Corner/Full (9999px)
+```
+
+### Effects examples
+```
+shadow/color       Light → #000 @ 10%    Dark → #000 @ 30%
+shadow/lg/blur     → aliases elevation/400 (4) in both modes
 ```
 
 ---
 
-## Tailwind Color Ramp Generation
+## codeSyntax Derivation Rules
 
-When the designer provides a single hex color as the brand anchor, generate the full 11-stop ramp (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950) using the following lightness interpolation approach:
+Apply to every variable in every collection.
+
+### Step-by-step derivation
+
+1. Take the full variable name: e.g. `color/on-surface-variant` or `Display/LG/font-size`
+2. Split on `/`, `-`, and spaces into word tokens: `["color","on","surface","variant"]` or `["Display","LG","font","size"]`
+3. **WEB:** lowercase all tokens, join with `-`, wrap: `var(--color-on-surface-variant)` / `var(--display-lg-font-size)`
+   - Exception for Theme: drop the leading `color` word, so `color/background` → `var(--background)` not `var(--color-background)`
+4. **ANDROID / iOS:** lowercase all tokens, capitalize each word after the first, join (camelCase): `colorOnSurfaceVariant` / `displayLgFontSize`
+   - Exception for Theme: drop the leading `color` word, so `color/background` → `background`, `color/primary-container` → `primaryContainer`
+
+### Theme exception summary
+
+For all Theme variables the `color/` prefix is invisible in codeSyntax outputs:
+- `color/background` → WEB `var(--background)`, ANDROID `background`, iOS `background`
+- `color/on-surface-variant` → WEB `var(--on-surface-variant)`, ANDROID `onSurfaceVariant`, iOS `onSurfaceVariant`
+
+For Primitives, the `color/` prefix is retained:
+- `color/primary/500` → WEB `var(--color-primary-500)`, ANDROID `colorPrimary500`, iOS `colorPrimary500`
+
+---
+
+## Color Ramp Generation
+
+When the designer provides a single hex color as the brand anchor, generate the full 11-stop ramp (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950) using the Tailwind lightness interpolation approach:
 
 1. Convert the input hex to HSL. The input hex becomes the `500` stop.
-2. Assign target lightness values for each stop (approximating Tailwind's perceptual scale):
+2. Assign target lightness values per stop:
 
    | Stop | Target L (HSL %) |
    |---|---|
@@ -559,23 +650,20 @@ When the designer provides a single hex color as the brand anchor, generate the 
    | 900 | input L − 40 |
    | 950 | input L − 47 |
 
-3. Keep the hue (H) constant across all stops. Slightly desaturate lighter stops (S − 2% per stop above 500) and slightly increase saturation for darker stops (S + 2% per stop below 500), clamped to [10%, 100%].
-4. Clamp L to [5%, 98%] to avoid pure black or white.
-5. Convert each HSL value back to hex.
+3. Keep H constant. Slightly desaturate lighter stops (S − 2% per stop above 500) and increase saturation for darker stops (S + 2% per stop below 500), clamped to [10%, 100%].
+4. Clamp L to [5%, 98%].
+5. Convert each HSL back to hex.
 
-**When to deviate:** If the designer provides explicit hex values for specific stops (e.g., "use `#1D4ED8` for 700"), use those exact values and interpolate only the unspecified stops. Always prefer designer-supplied values over generated ones.
-
-The lightness interpolation is a practical approximation — it is not required to be mathematically perfect. The goal is a usable ramp, not a colorimetrically precise one. If the designer is unsatisfied with the generated ramp, they can override individual stops after the write.
+If the designer provides explicit hex values for specific stops, use those and interpolate only unspecified stops.
 
 ---
 
-## Error Guidance Summary
+## Error Guidance
 
-| Error Condition | Cause | Resolution |
+| Error | Cause | Resolution |
 |---|---|---|
-| Missing file key | Designer did not provide or cannot find the Figma file key | Call **AskUserQuestion** with instructions to open the file in a browser and copy the key from the URL |
-| 403 Permission denied | MCP connector not authenticated, or account lacks edit access or Organization tier | Re-authenticate Figma MCP connector in Claude Code settings; confirm Figma tier |
-| 404 File not found | File key is wrong or the file was deleted | Verify the key matches the current Figma URL; re-run `/new-project` if the file is missing |
-| Partial write failures (errors in 200 response) | One or more variable payloads were malformed or referenced a non-existent alias | Retry the failed variables; report names and reasons to the designer if retry fails |
-| Variable alias resolution failure | Alias references a Primitive variable ID that does not exist in the file | Confirm Primitives collection was written successfully before writing alias collections; re-run the Primitives write step if IDs are missing |
-| Shadow token naming conflict | Target file contains malformed `var--{shadow-default)` token | Write corrected name `var(--shadow-default)` and update all effect references that used the malformed name |
+| 403 Permission denied | MCP connector not authenticated or insufficient Figma tier | Re-authenticate in Claude Code settings; confirm Organization/Enterprise tier |
+| 404 File not found | File key is wrong or file was deleted | Verify key from URL; re-run `/new-project` if needed |
+| Partial write failures (errors in 200 response) | Malformed variable payload or non-existent alias ID | Retry failed variables; report names and reasons if retry fails |
+| Variable alias resolution failure | Alias references a Primitive ID that doesn't exist | Confirm Primitives collection was written before alias collections; re-run Primitives step if IDs are missing |
+| Typography mode count mismatch | Fewer than 8 modes on Typography collection | Verify all 8 mode names were sent (85, 100, 110, 120, 130, 150, 175, 200) |

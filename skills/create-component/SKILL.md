@@ -64,142 +64,219 @@ If a component install fails, log the error, mark it `failed`, and continue to t
 
 ### Step 5 — Draw components to Figma canvas
 
-For each successfully installed component:
+> **Critical rule:** Every component's page navigation, creation, and all variable bindings must happen inside a **single `use_figma` call**. Each call runs in an isolated plugin context — page state set in one call does NOT carry over to the next call.
 
-1. Call `mcp__claude_ai_Figma__get_design_context` with the file key to confirm the file is accessible and to read the page list.
-2. **Resolve the target page** using the routing table below. Before drawing, call `use_figma` to navigate to the correct page:
-   ```js
-   const page = figma.root.children.find(p => p.name === "<target page name>");
-   if (page) await figma.setCurrentPageAsync(page);
-   ```
-   If the target page does not exist (e.g. the file was not scaffolded by `/new-project`), fall back to the current active page and log a warning: "Page '↳ X' not found — drawing on current page."
+For each successfully installed component, make **one `use_figma` call** using the complete template below.
 
-   **Component → Page routing:**
+**Component → Page routing** (resolve `TARGET_PAGE_NAME` before writing the code):
 
-   | Component(s) | Target Page |
-   |---|---|
-   | `button` | `↳ Buttons` |
-   | `toggle` | `↳ Toggle` |
-   | `toggle-group` | `↳ Toggle Group` |
-   | `input` | `↳ Text Field` |
-   | `textarea` | `↳ Textarea` |
-   | `checkbox` | `↳ Checkbox` |
-   | `radio-group` | `↳ Radio` |
-   | `select` | `↳ Select` |
-   | `switch` | `↳ Switch` |
-   | `slider` | `↳ Slider` |
-   | `form` | `↳ Form Composite Groups` |
-   | `label` | `↳ Label` |
-   | `input-otp` | `↳ Input OTP` |
-   | `calendar` | `↳ Calendar` |
-   | `date-picker` | `↳ Date Picker` |
-   | `card` | `↳ Cards` |
-   | `separator` | `↳ Dividers` |
-   | `aspect-ratio` | `↳ Aspect Ratio` |
-   | `scroll-area` | `↳ Scroll Area` |
-   | `resizable` | `↳ Resizable` |
-   | `dialog`, `alert-dialog` | `↳ Dialogue` |
-   | `drawer` | `↳ Drawer` |
-   | `sheet` | `↳ Sheets` |
-   | `popover` | `↳ Popover` |
-   | `tooltip` | `↳ Tooltips` |
-   | `hover-card` | `↳ Hover Card` |
-   | `context-menu` | `↳ Context Menu` |
-   | `dropdown-menu` | `↳ Dropdown Menu` |
-   | `command` | `↳ Command` |
-   | `navigation-menu` | `↳ Navigation Menu` |
-   | `menubar` | `↳ Menubar` |
-   | `tabs` | `↳ Tabs bar` |
-   | `breadcrumb` | `↳ Breadcrumb` |
-   | `pagination` | `↳ Pagination` |
-   | `alert` | `↳ Alerts` |
-   | `badge` | `↳ Badge` |
-   | `progress` | `↳ Progress Bar` |
-   | `skeleton` | `↳ Skeleton` |
-   | `sonner` | `↳ Sonner` |
-   | `toast` | `↳ Toast` |
-   | `table` | `↳ Data Table` |
-   | `accordion` | `↳ Accordion` |
-   | `collapsible` | `↳ Collapsible` |
-   | `avatar` | `↳ Avatar` |
+| Component(s) | Target Page |
+|---|---|
+| `button` | `↳ Buttons` |
+| `toggle` | `↳ Toggle` |
+| `toggle-group` | `↳ Toggle Group` |
+| `input` | `↳ Text Field` |
+| `textarea` | `↳ Textarea` |
+| `checkbox` | `↳ Checkbox` |
+| `radio-group` | `↳ Radio` |
+| `select` | `↳ Select` |
+| `switch` | `↳ Switch` |
+| `slider` | `↳ Slider` |
+| `form` | `↳ Form Composite Groups` |
+| `label` | `↳ Label` |
+| `input-otp` | `↳ Input OTP` |
+| `calendar` | `↳ Calendar` |
+| `date-picker` | `↳ Date Picker` |
+| `card` | `↳ Cards` |
+| `separator` | `↳ Dividers` |
+| `aspect-ratio` | `↳ Aspect Ratio` |
+| `scroll-area` | `↳ Scroll Area` |
+| `resizable` | `↳ Resizable` |
+| `dialog`, `alert-dialog` | `↳ Dialogue` |
+| `drawer` | `↳ Drawer` |
+| `sheet` | `↳ Sheets` |
+| `popover` | `↳ Popover` |
+| `tooltip` | `↳ Tooltips` |
+| `hover-card` | `↳ Hover Card` |
+| `context-menu` | `↳ Context Menu` |
+| `dropdown-menu` | `↳ Dropdown Menu` |
+| `command` | `↳ Command` |
+| `navigation-menu` | `↳ Navigation Menu` |
+| `menubar` | `↳ Menubar` |
+| `tabs` | `↳ Tabs bar` |
+| `breadcrumb` | `↳ Breadcrumb` |
+| `pagination` | `↳ Pagination` |
+| `alert` | `↳ Alerts` |
+| `badge` | `↳ Badge` |
+| `progress` | `↳ Progress Bar` |
+| `skeleton` | `↳ Skeleton` |
+| `sonner` | `↳ Sonner` |
+| `toast` | `↳ Toast` |
+| `table` | `↳ Data Table` |
+| `accordion` | `↳ Accordion` |
+| `collapsible` | `↳ Collapsible` |
+| `avatar` | `↳ Avatar` |
 
-3. Use `mcp__claude_ai_Figma__use_figma` to create a **Figma component** (not a plain frame) on the target page. Always use `figma.createComponent()` — never `figma.createFrame()`.
+**Complete `use_figma` code template** (substitute component-specific values where indicated):
 
-   **Single-state components** (no variants): create one component, set its name to PascalCase (e.g. `Separator`, `Label`).
+```js
+// ── 1. Navigate to target page (must be in same call as creation) ──
+const targetPage = figma.root.children.find(p => p.name === "TARGET_PAGE_NAME")
+  ?? figma.currentPage;
+await figma.setCurrentPageAsync(targetPage);
 
-   ```js
-   const comp = figma.createComponent();
-   comp.name = "Separator";
-   // apply auto-layout, fills, etc.
-   figma.currentPage.appendChild(comp);
-   ```
+// ── 2. Load fonts (required before setting text.characters) ─────────
+await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+await figma.loadFontAsync({ family: "Inter", style: "Medium" });
 
-   **Multi-variant components** (button, input, badge, etc.): create one `figma.createComponent()` per variant, name each using Figma's `property=value` convention, then combine into a component set with `figma.combineAsVariants()`. The component set name is the PascalCase component name.
+// ── 3. Resolve Web variable collection ──────────────────────────────
+const collections = figma.variables.getLocalVariableCollections();
+const webCol = collections.find(c => c.name === 'Web');
+const webVars = webCol
+  ? figma.variables.getLocalVariables().filter(v => v.variableCollectionId === webCol.id)
+  : [];
+const getVar = name => webVars.find(v => v.name === name) ?? null;
 
-   ```js
-   const variants = ["default", "destructive", "outline", "secondary", "ghost", "link"];
-   const nodes = variants.map(v => {
-     const c = figma.createComponent();
-     c.name = `variant=${v}`;
-     // apply fills, auto-layout, text per variant
-     return c;
-   });
-   const compSet = figma.combineAsVariants(nodes, figma.currentPage);
-   compSet.name = "Button";
-   ```
+// ── 4. Binding helpers ───────────────────────────────────────────────
 
-   The component set **must** be appended to `figma.currentPage` (already set in step 2) — do not append to a different page node.
+// Color binding: fills/strokes use boundVariables on the paint object.
+// Do NOT use setBoundVariable for color — that API is for numeric fields only.
+function bindColor(node, varName, fallbackHex, target = 'fills') {
+  const variable = getVar(varName);
+  const hex = fallbackHex.replace('#','');
+  const paint = {
+    type: 'SOLID',
+    color: {
+      r: parseInt(hex.slice(0,2),16)/255,
+      g: parseInt(hex.slice(2,4),16)/255,
+      b: parseInt(hex.slice(4,6),16)/255
+    }
+  };
+  if (variable) {
+    paint.boundVariables = { color: figma.variables.createVariableAlias(variable) };
+  }
+  node[target] = [paint];
+}
 
-   **Variant definitions by component** (add only the properties the shadcn component actually exposes):
+// Spacing/radius binding: always set the fallback number first so the node
+// has a valid value even if the variable lookup or setBoundVariable fails.
+function bindNum(node, field, varName, fallback) {
+  node[field] = fallback;
+  const variable = getVar(varName);
+  if (variable) {
+    try { node.setBoundVariable(field, variable); } catch(_) {}
+  }
+}
 
-   | Component | Variant properties |
-   |---|---|
-   | `button` | `variant` = default, destructive, outline, secondary, ghost, link; `size` = default, sm, lg, icon |
-   | `badge` | `variant` = default, secondary, destructive, outline |
-   | `input` | `state` = default, focus, disabled, error |
-   | `textarea` | `state` = default, focus, disabled, error |
-   | `checkbox` | `checked` = false, true, indeterminate; `disabled` = false, true |
-   | `radio-group` | `selected` = false, true; `disabled` = false, true |
-   | `switch` | `checked` = false, true; `disabled` = false, true |
-   | `select` | `state` = default, open, disabled |
-   | `alert` | `variant` = default, destructive |
-   | `avatar` | `size` = sm, md, lg |
-   | `progress` | `value` = 0, 25, 50, 75, 100 |
-   | `skeleton` | `shape` = line, circle, rect |
-   | `tabs` | `state` = active, inactive |
-   | `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` = open, closed |
-   | `accordion`, `collapsible` | `state` = open, closed |
-   | `toggle`, `toggle-group` | `pressed` = false, true |
-   | `breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast` | single state (no variant property needed) |
+// Build a fully complete single ComponentNode — layout, spacing, radius,
+// color, and label text all applied and bound before this function returns.
+// Call this once per variant. Combine the results with combineAsVariants afterward.
+//
+// label:      text to show inside the component (pass null to skip)
+// labelVar:   Web variable for the label text color
+// strokeVar:  Web variable for stroke color (pass null for no stroke)
+// radiusVar:  Web variable for corner radius
+function buildVariant(name, fillVar, fallbackFill, {
+  label = null,
+  labelVar = 'var(--foreground)',
+  strokeVar = null,
+  radiusVar = 'var(--radius-md)'
+} = {}) {
+  const c = figma.createComponent();
+  c.name = name;
 
-   - **Token variable bindings:** Look up variables by name from the `Web` collection via `figma.variables.getLocalVariables()`. Bind **all** applicable design properties — not just color. Use `node.setBoundVariable(field, variable)` for each field listed below.
+  // Auto-layout
+  c.layoutMode = 'HORIZONTAL';
+  c.primaryAxisSizingMode = 'AUTO';
+  c.counterAxisSizingMode = 'AUTO';
+  c.primaryAxisAlignItems = 'CENTER';
+  c.counterAxisAlignItems = 'CENTER';
 
-     **Color fields:**
-     | `setBoundVariable` field | Web variable to bind |
-     |---|---|
-     | `fills` | `var(--primary)` (primary action), `var(--background)` (surface), `var(--muted)` (subtle fill) |
-     | `strokes` | `var(--border-primary)` or `var(--border-secondary)` |
-     | text node `fills` | `var(--foreground)`, `var(--primary-foreground)`, or `var(--muted-foreground)` |
+  // Spacing — bound on the individual component before any combining
+  bindNum(c, 'paddingLeft',   'var(--padding-md)', 16);
+  bindNum(c, 'paddingRight',  'var(--padding-md)', 16);
+  bindNum(c, 'paddingTop',    'var(--p-xs)',         8);
+  bindNum(c, 'paddingBottom', 'var(--p-xs)',         8);
+  bindNum(c, 'itemSpacing',   'var(--gap-sm)',        8);
 
-     **Spacing fields** (padding and gap):
-     | `setBoundVariable` field | Web variable to bind |
-     |---|---|
-     | `paddingLeft`, `paddingRight` | `var(--padding-md)` for standard components; `var(--p-xs)` for compact |
-     | `paddingTop`, `paddingBottom` | `var(--p-xs)` for interactive components |
-     | `itemSpacing` | `var(--gap-sm)` for tight layouts; `var(--gap-md)` for standard |
+  // Border radius — all four corners individually
+  ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+    .forEach(f => bindNum(c, f, radiusVar, 6));
 
-     **Border radius fields:**
-     | `setBoundVariable` field | Web variable to bind |
-     |---|---|
-     | `topLeftRadius`, `topRightRadius`, `bottomLeftRadius`, `bottomRightRadius` | `var(--radius-md)` for standard components; `var(--radius-sm)` for compact; `var(--radius-lg)` for cards/sheets |
+  // Fill
+  bindColor(c, fillVar, fallbackFill, 'fills');
 
-     Bind all four corner radius fields individually — Figma does not accept a single `borderRadius` variable binding.
+  // Optional stroke
+  if (strokeVar) {
+    bindColor(c, strokeVar, '#e5e7eb', 'strokes');
+    c.strokeWeight = 1;
+  }
 
-     If the `Web` collection is not present, apply raw Tailwind hex/px values and log a warning.
+  // Optional text label (requires loadFontAsync to have run already)
+  if (label) {
+    const txt = figma.createText();
+    txt.fontName = { family: "Inter", style: "Medium" };
+    txt.characters = label;
+    txt.fontSize = 14;
+    bindColor(txt, labelVar, '#000000', 'fills');
+    c.appendChild(txt);
+  }
 
-   - **Layout:** Set `layoutMode = "HORIZONTAL"`, `primaryAxisSizingMode = "AUTO"`, `counterAxisSizingMode = "AUTO"` on every component. Do **not** set `paddingLeft`, `paddingRight`, `paddingTop`, `paddingBottom`, or `itemSpacing` as hard-coded numbers — set them only via `setBoundVariable` so the variable binding is the source of truth. Adjust radius target variable for layout-only components (card → `var(--radius-lg)`; separator → no radius binding).
+  // Append to current page before combining
+  figma.currentPage.appendChild(c);
+  return c;
+}
 
-4. If the draw operation fails for a component, mark it `draw_failed` and continue.
+// ── 5a. MULTI-VARIANT pattern (Button example) ──────────────────────
+// Build each variant fully, then combine into a component set.
+// Substitute the correct variant names, fills, labels, and options per component.
+
+const nodes = [
+  buildVariant('variant=default',     'var(--primary)',     '#000000', { label: 'Button',  labelVar: 'var(--primary-foreground)' }),
+  buildVariant('variant=destructive', 'var(--primary)',     '#ef4444', { label: 'Button',  labelVar: 'var(--primary-foreground)' }),
+  buildVariant('variant=outline',     'var(--background)', '#ffffff',  { label: 'Button',  labelVar: 'var(--foreground)', strokeVar: 'var(--border-secondary)' }),
+  buildVariant('variant=secondary',   'var(--secondary)',  '#6b7280',  { label: 'Button',  labelVar: 'var(--foreground)' }),
+  buildVariant('variant=ghost',       'var(--background)', '#ffffff',  { label: 'Button',  labelVar: 'var(--foreground)' }),
+  buildVariant('variant=link',        'var(--background)', '#ffffff',  { label: 'Button',  labelVar: 'var(--primary)' }),
+];
+
+// Combine fully-built components into a variant set
+const compSet = figma.combineAsVariants(nodes, figma.currentPage);
+compSet.name = "Button"; // PascalCase component name
+
+// ── 5b. SINGLE-STATE pattern ─────────────────────────────────────────
+// For components with no variants (separator, label, card, etc.):
+// build the one component fully — no combining needed.
+
+const comp = buildVariant("COMPONENT_NAME", 'var(--background)', '#ffffff', { label: 'Label text' });
+// comp is already appended to the page by buildVariant
+```
+
+**Variant definitions** — use these as the `buildVariant` calls for each component:
+
+| Component | Variant properties and values |
+|---|---|
+| `button` | `variant` = default, destructive, outline, secondary, ghost, link; `size` = default, sm, lg, icon |
+| `badge` | `variant` = default, secondary, destructive, outline |
+| `input` | `state` = default, focus, disabled, error |
+| `textarea` | `state` = default, focus, disabled, error |
+| `checkbox` | `checked` = false, true, indeterminate; `disabled` = false, true |
+| `radio-group` | `selected` = false, true; `disabled` = false, true |
+| `switch` | `checked` = false, true; `disabled` = false, true |
+| `select` | `state` = default, open, disabled |
+| `alert` | `variant` = default, destructive |
+| `avatar` | `size` = sm, md, lg |
+| `progress` | `value` = 0, 25, 50, 75, 100 |
+| `skeleton` | `shape` = line, circle, rect |
+| `tabs` | `state` = active, inactive |
+| `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` = open, closed |
+| `accordion`, `collapsible` | `state` = open, closed |
+| `toggle`, `toggle-group` | `pressed` = false, true |
+| `breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast` | single state — use pattern 4b |
+
+If the `Web` collection is not present (`webCol` is null), `getVar` returns null and all bindings fall back to hardcoded hex/px values automatically — no separate branch needed.
+
+If the `use_figma` call throws, mark the component `draw_failed` and continue to the next.
 
 ### Step 6 — Offer Code Connect chaining
 

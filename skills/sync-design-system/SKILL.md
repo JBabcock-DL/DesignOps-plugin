@@ -76,9 +76,20 @@ GET /v1/files/:key/variables/local
 ```
 
 Parse the response to build a flat map of `{ "collection/token-name": "value" }`
-pairs covering all variable collections in the file (Primitives, Web,
-Android/M3, iOS/HIG). Resolve alias tokens to their final primitive values for
-diff purposes.
+pairs covering all variable collections in the file (`Primitives`, `Theme`,
+`Typography`, `Layout`, `Effects`). Resolve alias tokens to their final
+primitive values for diff purposes.
+
+**Mode-aware flattening:** For collections with multiple modes, flatten each
+mode into a separate key using the pattern `collection/mode/token-name`:
+- Theme (2 modes): `theme/light/color/background`, `theme/dark/color/background`
+- Typography (8 modes): `typography/100/Headline-LG-font-size`, `typography/200/Headline-LG-font-size`, etc.
+- Effects (2 modes): `effects/light/shadow-color`, `effects/dark/shadow-color`
+- Primitives and Layout (1 mode each): `primitives/color-primary-500`, `layout/space-md`
+
+If the file contains legacy collections (`Web`, `Android/M3`, `iOS/HIG`) from a
+pre-refactor run, include them in the read but flag them in the diff output as
+deprecated.
 
 If the API call fails, report the error to the designer (see "Error Guidance").
 
@@ -175,9 +186,15 @@ Payload structure (Figma Variables bulk write format):
 ```
 
 - For NEW tokens, create the variable in the correct collection before setting
-  its value. Infer the collection from the token name prefix
-  (`color/*`, `spacing/*`, etc. → Primitives; semantic aliases → Web/Android/iOS
-  per the active platform).
+  its value. Infer the collection from the token name prefix using these rules:
+  - `color/{ramp}/{stop}` (e.g. `color/primary/500`) → `Primitives`
+  - `Space/*`, `Corner/*`, `elevation/*` → `Primitives`
+  - `color/{semantic}` (e.g. `color/background`, `color/on-surface`) → `Theme`
+  - `Display/*`, `Headline/*`, `Body/*`, `Label/*` → `Typography`
+  - `space/*`, `radius/*` (lowercase) → `Layout`
+  - `shadow/*` → `Effects`
+  - When creating a Theme variable, write values for both `Light` and `Dark` modes.
+  - When creating a Typography variable, write values for all 8 modes (`85`, `100`, `110`, `120`, `130`, `150`, `175`, `200`).
 - For CONFLICT tokens, update the existing variable's value.
 - Report: "Pushed N tokens to Figma."
 
@@ -283,6 +300,11 @@ Map `colors.*` → `color/*`, `spacing.*` → `spacing/*`,
 Parse all `--<name>: <value>` declarations inside `:root` blocks.
 Convert kebab-case names to slash-notation:
 `--color-primary` → `color/primary`, `--spacing-4` → `spacing/4`.
+
+When parsing CSS custom properties that match the new semantic token names
+(e.g. `--background`, `--on-surface`, `--primary-container`), map them to
+`color/{name}` in the flat map so they diff correctly against the Theme collection.
+Platform-prefixed names (`--md-sys-*`, `--ios-*`) are legacy — skip them with a warning.
 
 ---
 
