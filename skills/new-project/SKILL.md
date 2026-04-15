@@ -1,55 +1,26 @@
 ---
 name: new-project
-description: Scaffold a new Detroit Labs Figma project by duplicating the standard template files into the correct team folder hierarchy (Strategy/, Design-Systems/, Master-Files/).
+description: Scaffold a new Detroit Labs Foundations design system file via the Figma MCP, creating the file in Drafts with the full page hierarchy from the Detroit Labs Foundations template.
 argument-hint: "Optional: --team \"Team Name\" --name \"Project Name\" --platform web|android|ios|all|skip. All arguments are optional — any that are omitted will be prompted interactively."
 agent: general-purpose
 ---
 
 # /new-project
 
-You are scaffolding a new Detroit Labs Figma project.
+You are scaffolding a new Detroit Labs Foundations design system file in Figma.
 
 Your first action is to collect the required inputs using AskUserQuestion — do not output any text before the first AskUserQuestion call.
+
+> **Platform note:** Figma's public REST API does not support creating project folders or moving files between projects. The file is created in Drafts via the Figma MCP connector and page structure is built automatically. The user receives a single move instruction at the end to place it into the correct project folder. Do not attempt any REST API calls for folder creation or file moves.
+
+---
 
 ## Step 1 — Collect Project Details
 
 Parse `$ARGUMENTS` for `--team`, `--name`, and `--platform`. For each value not already provided, call AskUserQuestion. Ask one at a time and wait for each reply before asking the next.
 
-**Always ask first — PAT is required before any API calls can proceed.** Call AskUserQuestion:
-> "I need a Figma Personal Access Token to create project folders and files via the Figma REST API. To generate one: Figma → Account Settings → Security → Personal access tokens → Generate new token.
->
-> **Required scopes:** File content (read + write), Projects (read + write), and Teams (read).
->
-> Please paste your token here."
-
-Store the token as `FIGMA_PAT`. Use it as the `X-Figma-Token` header in **all** REST API calls:
-```
-X-Figma-Token: <FIGMA_PAT>
-```
-Do **not** use `Authorization: Bearer` — the Figma REST API does not accept that format for PATs.
-
-**Always ask next — project folder IDs must be collected one at a time.** Figma's REST API has no endpoint for creating project folders. Each folder must exist in Figma before files can be placed there.
-
-To find a project ID: open the project in Figma and read the number from the URL — `https://www.figma.com/files/project/123456789/Strategy`.
-
-Call AskUserQuestion for each folder in order, waiting for a reply before asking the next:
-
-1. > "First, open your Figma team and create a project called **Strategy** if it doesn't already exist. Then click into it and paste the project URL or ID here. (URL format: `figma.com/files/project/123456789/Strategy`)"
-
-   Store the extracted number as `PROJECT_ID_STRATEGY`.
-
-2. > "Next, create a project called **Design-Systems** if it doesn't already exist, then paste its project URL or ID here."
-
-   Store as `PROJECT_ID_DESIGN_SYSTEMS`.
-
-3. > "Finally, create a project called **Master-Files** if it doesn't already exist, then paste its project URL or ID here."
-
-   Store as `PROJECT_ID_MASTER_FILES`.
-
-Accept either a full URL or a bare number — parse the ID from the URL if a full URL is pasted.
-
 **If `--team` is missing**, call AskUserQuestion:
-> "What is the display name of the Figma team? (Used for file titles and confirmation.)"
+> "What is the name of the Figma team this project lives under? (Used for file titles.)"
 
 **If `--name` is missing**, call AskUserQuestion:
 > "What is the project name? (e.g. `Acme Mobile App`) This will appear in the title of every file created."
@@ -66,161 +37,248 @@ Use the Project Name verbatim in all file titles — do not normalize or reforma
 
 ---
 
-#---
+## Step 2 — Confirm the File
 
-## Step 2 — Confirm the File List
+Before creating anything, show the user what will be created and ask for confirmation. Wait for their reply before proceeding.
 
-Before creating anything, show the user the full file list and ask for confirmation. Wait for their reply before proceeding.
+> Here is what I will create for "\<Project Name\>" in the "\<Team Name\>" team:
+>
+> | File | Figma Type | Target Folder |
+> |---|---|---|
+> | \<Project Name\> — Foundations | Design | Design-Systems/ |
+>
+> The file will be created in your Drafts with the full Detroit Labs Foundations page hierarchy pre-built. You'll get a single move instruction at the end to place it in your Design-Systems/ project folder.
+>
+> Shall I proceed? (yes / no / edit)
 
-Present the following table (substituting the actual Project Name and Team Name). The Masterfile rows are conditional — only include the rows for platforms the user selected:
-
-Here is the full list of files I will create for "\<Project Name\>" in the "\<Team Name\>" team:
-
-| # | File Title | Figma Type | Folder | Source |
-|---|---|---|---|---|
-| 1 | \<Project Name\> — Discovery Workshop | FigJam | Strategy/ | Clone from template |
-| 2 | \<Project Name\> — Discovery Summary | Slides | Strategy/ | Clone from template |
-| 3 | \<Project Name\> — Wireframes | Design | Strategy/ | New blank file |
-| 4 | \<Project Name\> — Foundations | Design | Design-Systems/ | Clone from template |
-| 5 _(if platform = ios or all)_ | \<Project Name\> — iOS Masterfile | Design | Master-Files/ | Clone from template |
-| 6 _(if platform = android or all)_ | \<Project Name\> — Android Masterfile | Design | Master-Files/ | Clone from template |
-| 7 _(if platform = web or all)_ | \<Project Name\> — Web Masterfile | Design | Master-Files/ | Clone from template |
-
-Omit any Masterfile row whose platform condition is not met. If platform is `skip`, omit all three Masterfile rows.
-
-Shall I proceed? (yes / no / edit)
-
-If the designer responds `edit` or requests a change, update the plan and re-present the table. Only continue to Step 3 after receiving an explicit `yes`.
+If the designer responds `edit` or requests a change, update the plan and re-present. Only continue to Step 3 after receiving an explicit `yes`.
 
 ---
 
-### Step 3 — Confirm Project Folder IDs
+## Step 3 — Get Plan Key
 
-The three project folder IDs (`PROJECT_ID_STRATEGY`, `PROJECT_ID_DESIGN_SYSTEMS`, `PROJECT_ID_MASTER_FILES`) were collected in Step 1. No API calls are needed here.
+Call `whoami` to retrieve the available plans. If the user has one plan, use its `key` field automatically. If multiple plans exist, call AskUserQuestion:
+> "I found multiple Figma plans on your account. Which team or organization should I create the file under?"
 
-Figma's REST API does not provide an endpoint for creating project folders, and reading projects requires approved API access (Tier 2, gated since April 2025). Project folders must always be created manually by the user in Figma.
-
-Proceed directly to Step 4 using the IDs provided.
+Store the selected value as `PLAN_KEY`.
 
 ---
 
-### Step 4 — Clone Template Files
+## Step 4 — Create the Foundations File
 
-For each of the template-based files, call the Figma REST API duplicate endpoint via `use_figma` or the REST connector.
-
-**Do not use `team_id` in the duplicate body — it does not place the file in a project folder. Instead, resolve the project IDs in Step 3 first and pass `project_id` directly so the file lands in the correct folder in one call.**
-
+Call `create_new_file`:
 ```
-POST /v1/files/:templateKey/duplicate
+fileName: "<Project Name> — Foundations"
+editorType: "design"
+planKey: PLAN_KEY
 ```
 
-Use the following request body for each call:
+Capture the returned `fileKey`. This is the file you will scaffold in Step 5.
 
-```json
-{
-  "name": "<Project Name> — <File Title>",
-  "project_id": "<resolved project ID for this file's folder>"
+---
+
+## Step 5 — Scaffold the Page Hierarchy
+
+Immediately call `use_figma` with the `fileKey` from Step 4. This creates the full page hierarchy matching the Detroit Labs Foundations template exactly.
+
+```javascript
+const pages = [
+  // ── Meta ──────────────────────────────────────────
+  "Thumbnail",
+
+  // ── Token & Style Docs ────────────────────────────
+  "---",
+  "📝 Table of Contents",
+  "↳ Token Overview",
+  "↳ MCP Tokens",
+
+  // ── Style Guide ───────────────────────────────────
+  "---",
+  "🖍️ Style Guide",
+  "↳ Primitives",
+  "↳ Theme",
+  "↳ Layout",
+  "↳ Text Styles",
+  "↳ Effects",
+
+  // ── Brand ─────────────────────────────────────────
+  "---",
+  "🖼️ Brand Assets",
+  "↳ Logo Marks",
+  "↳ Vector Patterns",
+  "↳ Icons",
+  "↳ Imagery",
+  "↳ Motion",
+
+  // ── Atoms ─────────────────────────────────────────
+  "---",
+  "⚛️ Atoms",
+  "↳ Typography",
+  "↳ Text blocks",
+  "↳ Label",
+  "↳ Kbd",
+  "↳ Dividers",
+  "↳ Avatar",
+  "↳ Badge",
+  "↳ Chips",
+  "↳ Tags",
+  "↳ Counters",
+  "↳ Aspect Ratio",
+
+  // ── Buttons & Controls ────────────────────────────
+  "---",
+  "🔘 Buttons & Controls",
+  "↳ Buttons",
+  "↳ Button Group",
+  "↳ Toggle",
+  "↳ Toggle Group",
+  "↳ Segmented Controller",
+
+  // ── Inputs & Forms ────────────────────────────────
+  "---",
+  "📝 Inputs & Forms",
+  "↳ Text Field",
+  "↳ Textarea",
+  "↳ Number Input",
+  "↳ Input Group",
+  "↳ Input OTP",
+  "↳ Checkbox",
+  "↳ Radio",
+  "↳ Switch",
+  "↳ Select",
+  "↳ Native Select",
+  "↳ Combobox",
+  "↳ Slider",
+  "↳ Keypad",
+  "↳ Image Select",
+  "↳ Calendar",
+  "↳ Date Picker",
+  "↳ Field",
+  "↳ Form Composite Groups",
+
+  // ── Feedback & Status ─────────────────────────────
+  "---",
+  "💬 Feedback & Status",
+  "↳ Alerts",
+  "↳ Toast",
+  "↳ Sonner",
+  "↳ Notifications",
+  "↳ Progress Bar",
+  "↳ Progress Dial",
+  "↳ Loaders",
+  "↳ Skeleton",
+  "↳ Spinner",
+  "↳ Blank states",
+  "↳ Error States",
+
+  // ── Overlays ──────────────────────────────────────
+  "---",
+  "🗂️ Overlays",
+  "↳ Dialogue",
+  "↳ Drawer",
+  "↳ Sheets",
+  "↳ Sheet Sockets",
+  "↳ Popover",
+  "↳ Hover Card",
+  "↳ Tooltips",
+  "↳ Context Menu",
+  "↳ Dropdown Menu",
+  "↳ Command",
+
+  // ── Navigation ────────────────────────────────────
+  "---",
+  "🧭 Navigation",
+  "↳ Top Navigation",
+  "↳ Bottom Navigation",
+  "↳ Tablet Navigation",
+  "↳ Sidebar",
+  "↳ Navigation Menu",
+  "↳ Menubar",
+  "↳ Action bars",
+  "↳ Tabs bar",
+  "↳ Breadcrumb",
+  "↳ Pagination",
+  "↳ Intra-app Navigation",
+
+  // ── Data Display ──────────────────────────────────
+  "---",
+  "📊 Data Display",
+  "↳ Data Table",
+  "↳ Lists",
+  "↳ Chart",
+  "↳ Stat block",
+  "↳ Widgets",
+  "↳ Video player",
+
+  // ── Content Containers ────────────────────────────
+  "---",
+  "🗃️ Content Containers",
+  "↳ Cards",
+  "↳ Tiles",
+  "↳ Select Tile",
+  "↳ Carousel",
+  "↳ Scroll Area",
+  "↳ Accordion",
+  "↳ Collapsible",
+  "↳ Resizable",
+
+  // ── Native & Platform ─────────────────────────────
+  "---",
+  "📱 Native & Platform",
+  "↳ Native Device Parts",
+
+  // ── Utility ───────────────────────────────────────
+  "---",
+  "Documentation components",
+  "Grids",
+  "parking lot"
+];
+
+// Rename the default first page rather than deleting it
+figma.root.children[0].name = pages[0];
+
+// Create remaining pages in order
+for (let i = 1; i < pages.length; i++) {
+  const page = figma.createPage();
+  page.name = pages[i];
 }
 ```
 
-If the Figma API does not accept `project_id` on the duplicate endpoint (returns 400 or ignores it), fall back to the two-step move:
-1. Duplicate with just `name` in the body — the file lands in Drafts.
-2. Immediately move it using:
-   ```
-   PUT /v1/files/:new_file_key
-   Body: { "name": "<Project Name> — <File Title>", "project_id": "<folder_project_id>" }
-   ```
-   **You must include `name` in every PUT body — omitting it silently clears the file name on some Figma API versions and the move may be ignored.**
-
-Execute template clones in this order. Masterfile rows are conditional — only clone the files whose platform condition is met:
-
-| # | Title | Template Key | Project Folder | Condition |
-|---|---|---|---|---|
-| 1 | `<Project Name> — Discovery Workshop` | `hnCK8gpGtxzBoBakRX8QLn` | `Strategy/` project ID | Always |
-| 2 | `<Project Name> — Discovery Summary` | `8YBZtQLCnt7sbmlCKpMO1Y` | `Strategy/` project ID | Always |
-| 3 | `<Project Name> — Foundations` | `rJQsr4aou5yjzUhaEM0I2f` | `Design-Systems/` project ID | Always |
-| 4 | `<Project Name> — iOS Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID | platform = `ios` or `all` |
-| 5 | `<Project Name> — Android Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID | platform = `android` or `all` |
-| 6 | `<Project Name> — Web Masterfile` | `C9C0XpIdj1WS3klOugVzGM` | `Master-Files/` project ID | platform = `web` or `all` |
-
-If platform is `skip`, skip all three Masterfile rows entirely.
-
-Record the new file key returned by each duplicate call. You will use these keys to build file URLs in Step 6.
-
-**Verification:** After each duplicate+move, call `GET /v1/projects/:project_id/files` and confirm the new file key appears in the project. If it does not appear, the file is still in Drafts — retry the PUT move before continuing.
-
 ---
 
-### Step 5 — Create the Wireframes File (No Template)
+## Step 6 — Report Result and Move Instruction
 
-The `Strategy/Wireframes` file has no template source. Create a new blank Design file using the Figma REST API:
-
-```
-POST /v1/files
-Body:
-{
-  "name": "<Project Name> — Wireframes",
-  "project_id": "<Strategy folder project ID>"
-}
-```
-
-Alternatively, use the Figma MCP tool `create_new_file` if the REST endpoint is unavailable:
+Present the result and move instruction:
 
 ```
-mcp__claude_ai_Figma__create_new_file
-Arguments: { "name": "<Project Name> — Wireframes", "file_type": "design" }
-```
+✅ Foundations file created for "<Project Name>".
 
-If using `create_new_file`, move the resulting file into the `Strategy/` project folder using:
-
-```
-PUT /v1/files/:new_file_key
-Body: { "name": "<Project Name> — Wireframes", "project_id": "<Strategy project ID>" }
-```
-
-**Always include `name` in the PUT body — omitting it may silently clear the file name on some Figma API versions.**
-
-Record the file key of the new Wireframes file.
-
----
-
-### Step 6 — Report Created File URLs
-
-Once all files have been created, collect each file key and construct the Figma URL:
-
-```
-https://www.figma.com/design/<file_key>/
-```
-
-Present a results table to the designer. Only include Masterfile rows for platforms that were selected:
-
-```
-All files have been created for "<Project Name>" in the "<Team Name>" team.
-
-| File | Folder | URL |
+| File | Target Folder | URL |
 |---|---|---|
-| <Project Name> — Discovery Workshop | Strategy/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — Discovery Summary | Strategy/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — Wireframes | Strategy/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — Foundations | Design-Systems/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — iOS Masterfile (if created) | Master-Files/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — Android Masterfile (if created) | Master-Files/ | https://www.figma.com/design/<key>/ |
-| <Project Name> — Web Masterfile (if created) | Master-Files/ | https://www.figma.com/design/<key>/ |
+| <Project Name> — Foundations | Design-Systems/ | https://www.figma.com/design/<fileKey>/ |
+
+**One last step — move the file into your team project folder:**
+
+1. Open Figma and go to your Drafts
+2. Right-click **<Project Name> — Foundations** → Move to Project
+3. Select your team's **Design-Systems/** project
+   (If Design-Systems/ doesn't exist yet, right-click your team → New Project → name it "Design-Systems" first)
 ```
 
 ---
 
-### Step 7 — Offer Design System Initialization
+## Step 7 — Offer Design System Initialization
 
-After presenting the results table, call AskUserQuestion:
+After presenting the result, call AskUserQuestion:
 
 > "Would you like to run /create-design-system now to populate the Foundations file with your brand tokens? (yes / no)"
 
 Wait for the reply. If the designer responds **yes**, invoke the `/create-design-system` skill:
-- Pass the file key for `<Project Name> — Foundations` as the active file context.
+- Pass the Foundations `fileKey` as the active file context.
 - Use `plugin/templates/agent-handoff.md` to carry state: set `active_file_key` to the Foundations file key, `active_project_name` to the Project Name, and `last_skill_run` to `new-project`.
-- If platform is `all`, invoke `/create-design-system all` once with the same Foundations file key in handoff context (that skill runs web → android → ios internally).
-- If platform is a single value (`web`, `android`, or `ios`), pass it directly (e.g. `/create-design-system web`). If platform is `skip` or unset, prompt the designer for a platform before proceeding.
+- If platform is `all`, invoke `/create-design-system all`.
+- If platform is a single value (`web`, `android`, or `ios`), pass it directly.
+- If platform is `skip`, prompt the designer for a platform before proceeding.
 
 If the designer responds **no**, conclude the skill run. Remind them they can run `/create-design-system` at any time by passing the Foundations file key.
 
@@ -228,32 +286,10 @@ If the designer responds **no**, conclude the skill run. Remind them they can ru
 
 ## Error Handling
 
-If any API call fails, do not abort the entire run silently. Report the failure inline, skip that file, and continue with the remaining files. After completing all remaining steps, show a summary of any failures at the end.
-
-### Common Errors
-
 | Error | Likely Cause | What to Say |
 |---|---|---|
-| `401 Unauthorized` or `403 Invalid token` on any REST call | Wrong auth header format or invalid PAT. The Figma REST API requires `X-Figma-Token`, not `Authorization: Bearer`. | "The Figma REST API rejected the token. Ensure all requests use the header `X-Figma-Token: <PAT>` — not `Authorization: Bearer`. If the header is correct, regenerate the token with File content, Projects, and Teams scopes, then re-run `/new-project`." |
-| `403 Forbidden` on `POST /v1/files/:key/duplicate` | The authenticated user does not have access to the template file, or the Organization tier is not active. | "I was unable to duplicate the [file title] template (`<key>`). This usually means the Figma MCP connector account does not have access to the source template, or your Figma plan does not permit file duplication via API. Please verify your account tier and that the template is shared with your organization, then retry." |
-| `404 Not Found` on the template key | The template file has been moved or deleted. | "The template file for [file title] could not be found (key: `<key>`). The source file may have been deleted or its key may have changed. Please check `plugin/.claude/settings.local.json` and verify the key against the current Figma file." |
-| Wrong project ID provided | User copied the wrong number from the Figma URL. | "The file could not be placed in the [folder name] folder — the project ID may be incorrect. Please re-open that project in Figma, check the URL (`figma.com/files/project/:id/...`), and confirm the ID." |
-| `400 Bad Request` on file creation | Malformed request body or unsupported file type for the account tier. | "The request to create [file title] was rejected by Figma. This may indicate a plan limitation or a malformed request. Check the Figma API response for details and retry, or create the file manually in Figma." |
-| MCP connector auth error | Figma MCP connector session has expired. | "The Figma MCP connector returned an authentication error. Please re-authenticate the Figma connector in Claude Code settings (Settings → MCP → Figma → Reconnect) and then re-run `/new-project`." |
-
-### Partial Completion
-
-If some files were created successfully and others failed, present the results table with a status column:
-
-```
-| File | Folder | Status | URL |
-|---|---|---|---|
-| <Project Name> — Discovery Workshop | Strategy/ | Created | https://... |
-| <Project Name> — Discovery Summary | Strategy/ | FAILED — see error above | — |
-| ... | | | |
-```
-
-Tell the designer which files need to be created manually or retried.
+| `create_new_file` fails | MCP connector session expired or no active plan found. | "File creation failed. Please ensure the Figma MCP connector is active (Settings → MCP → Figma → Reconnect) and re-run `/new-project`." |
+| `use_figma` page scaffold fails | File not yet accessible after creation. | "Page scaffolding failed. The file was created — open it in Figma and the pages can be added manually. File URL: https://www.figma.com/design/<fileKey>/" |
 
 ---
 
@@ -261,23 +297,30 @@ Tell the designer which files need to be created manually or retried.
 
 | Requirement | Notes |
 |---|---|
-| Figma MCP connector configured | The connector must be active in Claude Code for canvas operations (screenshots, node reads). |
-| Figma Personal Access Token (PAT) | Required for file duplication and file moves via the REST API. Collected interactively at the start of Step 1. Generate at: Figma → Account Settings → Security → Personal access tokens. Required scope: **File content (read + write)**. Use the `X-Figma-Token` header — not `Authorization: Bearer`. |
-| Organization-tier Figma account | Required to use the Figma REST Files API `duplicate` endpoint and to create files in team project folders. |
-| Team already exists in Figma | The target team must already be created in the Figma organization. This skill creates folders and files within an existing team — it does not create the team itself. |
+| Figma MCP connector configured and authenticated | Required for `create_new_file` and `use_figma`. Re-authenticate at: Settings → MCP → Figma → Reconnect. |
+| Team and Design-Systems/ project folder exist in Figma | The move instruction in Step 6 guides the user to create the folder if needed. |
 
 ---
 
-## Template Keys Reference
+## Page Structure Reference
 
-| Template | File Key | Figma File Type | Destination Folder |
-|---|---|---|---|
-| Discovery Workshop | `hnCK8gpGtxzBoBakRX8QLn` | FigJam | `Strategy/` |
-| Discovery Summary | `8YBZtQLCnt7sbmlCKpMO1Y` | Slides | `Strategy/` |
-| Foundations / Agent Kit | `rJQsr4aou5yjzUhaEM0I2f` | Design | `Design-Systems/` |
-| Masterfile (iOS / Android / Web) | `C9C0XpIdj1WS3klOugVzGM` | Design | `Master-Files/` |
+The following pages are sourced directly from the Detroit Labs Foundations template (`rJQsr4aou5yjzUhaEM0I2f`) and hardcoded in Step 5. To update them, run `use_figma` on the template file with `figma.root.children.map(p => p.name)` and replace the array in Step 5.
 
-These keys are also stored in `plugin/.claude/settings.local.json` under `template_file_keys`.
+**Sections:**
+- Thumbnail
+- Table of Contents (Token Overview, MCP Tokens)
+- Style Guide (Primitives, Theme, Layout, Text Styles, Effects)
+- Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
+- Atoms (Typography, Text blocks, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)
+- Buttons & Controls (Buttons, Button Group, Toggle, Toggle Group, Segmented Controller)
+- Inputs & Forms (Text Field, Textarea, Number Input, Input Group, Input OTP, Checkbox, Radio, Switch, Select, Native Select, Combobox, Slider, Keypad, Image Select, Calendar, Date Picker, Field, Form Composite Groups)
+- Feedback & Status (Alerts, Toast, Sonner, Notifications, Progress Bar, Progress Dial, Loaders, Skeleton, Spinner, Blank states, Error States)
+- Overlays (Dialogue, Drawer, Sheets, Sheet Sockets, Popover, Hover Card, Tooltips, Context Menu, Dropdown Menu, Command)
+- Navigation (Top Navigation, Bottom Navigation, Tablet Navigation, Sidebar, Navigation Menu, Menubar, Action bars, Tabs bar, Breadcrumb, Pagination, Intra-app Navigation)
+- Data Display (Data Table, Lists, Chart, Stat block, Widgets, Video player)
+- Content Containers (Cards, Tiles, Select Tile, Carousel, Scroll Area, Accordion, Collapsible, Resizable)
+- Native & Platform (Native Device Parts)
+- Documentation components, Grids, parking lot
 
 ---
 
@@ -285,13 +328,13 @@ These keys are also stored in `plugin/.claude/settings.local.json` under `templa
 
 All file titles follow this pattern: `<Project Name> — <File Type>`
 
-The separator is an **em dash** (`—`, Unicode U+2014) with a single space on each side — not a hyphen or double-dash. This matches the Detroit Labs Figma naming standard documented in `plugin/workflow.md`.
+The separator is an **em dash** (`—`, Unicode U+2014) with a single space on each side — not a hyphen or double-dash.
 
 ---
 
 ## Handoff
 
-At the end of a successful run, populate `plugin/templates/agent-handoff.md` with the current state so that subsequent skills (e.g. `/create-design-system`) can pick up where this skill left off:
+At the end of a successful run, populate `plugin/templates/agent-handoff.md`:
 
 ```yaml
 ---
@@ -301,6 +344,6 @@ last_skill_run: "new-project"
 variable_slot_catalog_path: ""
 open_items:
   - "Foundations file is ready for /create-design-system — file key: <key>"
-  - "iOS, Android, and Web Masterfiles (whichever were created) duplicated from the same source template — verify naming is correct in Figma before distributing to the team."
+  - "File is in Drafts — user needs to move it to Design-Systems/ in their team."
 ---
 ```
