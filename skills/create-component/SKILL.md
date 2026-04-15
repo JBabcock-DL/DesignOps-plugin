@@ -20,7 +20,7 @@ When this skill needs designer input (component list, Figma file key, shadcn ini
 ## Prerequisites
 
 - **shadcn-compatible project** — Next.js, Vite, Remix, or any React framework supported by shadcn/ui. The project must have a `package.json` at its root.
-- **`/create-design-system` run first** — Token variable bindings applied during canvas drawing come from the `Web` variable collection created by `/create-design-system`. If that collection does not exist in the target Figma file, components will be drawn without token bindings and a warning will be reported.
+- **`/create-design-system` run first** — Token variable bindings come from the `Theme` (colors), `Layout` (spacing/radius), and `Typography` (font family) collections created by `/create-design-system`. If those collections are absent, components are drawn with hardcoded fallback values and a warning is reported.
 - **Active Figma file open** — The agent needs a target Figma file key. This is taken from the handoff context (`plugin/templates/agent-handoff.md`) or prompted from the designer.
 - **Figma MCP connector authenticated** — All canvas writes use `mcp__claude_ai_Figma__*` tools. No separate PAT setup required.
 
@@ -120,37 +120,69 @@ For each successfully installed component, make **one `use_figma` call** using t
 **Complete `use_figma` code template** (substitute component-specific values where indicated):
 
 ```js
-// ── 1. Navigate to target page (must be in same call as creation) ──
+// ── 1. Navigate to target page (must be in same call as creation) ──────
 const targetPage = figma.root.children.find(p => p.name === "TARGET_PAGE_NAME")
   ?? figma.currentPage;
 await figma.setCurrentPageAsync(targetPage);
 
-// ── 2. Load fonts (required before setting text.characters) ─────────
-await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-await figma.loadFontAsync({ family: "Inter", style: "Medium" });
-
-// ── 3. Resolve Web variable collection ──────────────────────────────
+// ── 2. Resolve variable collections ─────────────────────────────────────
 const collections = figma.variables.getLocalVariableCollections();
-const webCol = collections.find(c => c.name === 'Web');
-const webVars = webCol
-  ? figma.variables.getLocalVariables().filter(v => v.variableCollectionId === webCol.id)
-  : [];
-const getVar = name => webVars.find(v => v.name === name) ?? null;
+const allVars = figma.variables.getLocalVariables();
 
-// ── 4. Binding helpers ───────────────────────────────────────────────
+// Theme → color tokens  (color/primary, color/background, color/foreground, …)
+const themeCol = collections.find(c => c.name === 'Theme');
+const themeVars = themeCol ? allVars.filter(v => v.variableCollectionId === themeCol.id) : [];
+const getColorVar = name => themeVars.find(v => v.name === name) ?? null;
 
-// Color binding: fills/strokes use boundVariables on the paint object.
+// Layout → spacing and radius tokens  (space/xs, space/md, radius/md, …)
+const layoutCol = collections.find(c => c.name === 'Layout');
+const layoutVars = layoutCol ? allVars.filter(v => v.variableCollectionId === layoutCol.id) : [];
+const getLayoutVar = name => layoutVars.find(v => v.name === name) ?? null;
+
+// Typography → font-family STRING tokens  (Label/LG/font-family, Body/MD/font-family, …)
+const typoCol = collections.find(c => c.name === 'Typography');
+const typoVars = typoCol ? allVars.filter(v => v.variableCollectionId === typoCol.id) : [];
+const getTypoVar = name => typoVars.find(v => v.name === name) ?? null;
+
+// ── 3. Read font-family names from Typography collection ─────────────────
+// We must know the actual font family name before calling loadFontAsync.
+// Read the base mode ("100") value; fall back to "Inter" if absent.
+function readTypoString(variable) {
+  if (!variable || !typoCol) return null;
+  const baseMode = typoCol.modes.find(m => m.name === '100');
+  if (!baseMode) return null;
+  const val = variable.valuesByMode[baseMode.modeId];
+  return (typeof val === 'string' && val.length > 0) ? val : null;
+}
+
+const labelFontVar   = getTypoVar('Label/LG/font-family');
+const displayFontVar = getTypoVar('Display/LG/font-family');
+const labelFont   = readTypoString(labelFontVar)   ?? 'Inter';
+const displayFont = readTypoString(displayFontVar) ?? labelFont;
+
+// ── 4. Load fonts (must precede any text.characters assignment) ──────────
+await figma.loadFontAsync({ family: labelFont,   style: 'Regular' });
+await figma.loadFontAsync({ family: labelFont,   style: 'Medium'  });
+if (displayFont !== labelFont) {
+  await figma.loadFontAsync({ family: displayFont, style: 'Regular' });
+  await figma.loadFontAsync({ family: displayFont, style: 'Medium'  });
+}
+
+// ── 5. Binding helpers ───────────────────────────────────────────────────
+
+// Color binding: fills/strokes must use boundVariables on the paint object.
+// varName is a Theme path e.g. 'color/primary', 'color/background'.
 // Do NOT use setBoundVariable for color — that API is for numeric fields only.
 function bindColor(node, varName, fallbackHex, target = 'fills') {
-  const variable = getVar(varName);
-  const hex = fallbackHex.replace('#','');
+  const variable = getColorVar(varName);
+  const hex = fallbackHex.replace('#', '');
   const paint = {
     type: 'SOLID',
     color: {
-      r: parseInt(hex.slice(0,2),16)/255,
-      g: parseInt(hex.slice(2,4),16)/255,
-      b: parseInt(hex.slice(4,6),16)/255
-    }
+      r: parseInt(hex.slice(0, 2), 16) / 255,
+      g: parseInt(hex.slice(2, 4), 16) / 255,
+      b: parseInt(hex.slice(4, 6), 16) / 255,
+    },
   };
   if (variable) {
     paint.boundVariables = { color: figma.variables.createVariableAlias(variable) };
@@ -158,49 +190,59 @@ function bindColor(node, varName, fallbackHex, target = 'fills') {
   node[target] = [paint];
 }
 
-// Spacing/radius binding: always set the fallback number first so the node
-// has a valid value even if the variable lookup or setBoundVariable fails.
+// Spacing / radius binding: varName is a Layout path e.g. 'space/md', 'radius/md'.
+// Always set the fallback number first so the node has a valid value even if
+// the Layout collection is absent or setBoundVariable throws.
 function bindNum(node, field, varName, fallback) {
   node[field] = fallback;
-  const variable = getVar(varName);
+  const variable = getLayoutVar(varName);
   if (variable) {
-    try { node.setBoundVariable(field, variable); } catch(_) {}
+    try { node.setBoundVariable(field, variable); } catch (_) {}
   }
 }
 
-// Build a fully complete single ComponentNode — layout, spacing, radius,
-// color, and label text all applied and bound before this function returns.
-// Call this once per variant. Combine the results with combineAsVariants afterward.
+// Build one fully complete ComponentNode — layout, spacing, radius, color,
+// and text label all applied and bound before this function returns.
+// Call once per variant. Pass results to combineAsVariants afterward.
 //
-// label:      text to show inside the component (pass null to skip)
-// labelVar:   Web variable for the label text color
-// strokeVar:  Web variable for stroke color (pass null for no stroke)
-// radiusVar:  Web variable for corner radius
+// name:       Figma variant name — single-property 'variant=default' or
+//             cross-product 'variant=default, size=sm' (comma+space separator)
+// fillVar:    Theme path for background fill e.g. 'color/primary'
+// fallbackFill: hex used when Theme collection is absent
+// options:
+//   label     — text to show inside the component (null = no text child)
+//   labelVar  — Theme path for label text color
+//   strokeVar — Theme path for stroke (null = no stroke)
+//   radiusVar — Layout path for corner radius
+//   padH      — Layout path for horizontal padding
+//   padV      — Layout path for vertical padding
 function buildVariant(name, fillVar, fallbackFill, {
-  label = null,
-  labelVar = 'var(--foreground)',
+  label     = null,
+  labelVar  = 'color/foreground',
   strokeVar = null,
-  radiusVar = 'var(--radius-md)'
+  radiusVar = 'radius/md',
+  padH      = 'space/md',
+  padV      = 'space/xs',
 } = {}) {
   const c = figma.createComponent();
   c.name = name;
 
   // Auto-layout
-  c.layoutMode = 'HORIZONTAL';
+  c.layoutMode            = 'HORIZONTAL';
   c.primaryAxisSizingMode = 'AUTO';
   c.counterAxisSizingMode = 'AUTO';
   c.primaryAxisAlignItems = 'CENTER';
   c.counterAxisAlignItems = 'CENTER';
 
-  // Spacing — bound on the individual component before any combining
-  bindNum(c, 'paddingLeft',   'var(--padding-md)', 16);
-  bindNum(c, 'paddingRight',  'var(--padding-md)', 16);
-  bindNum(c, 'paddingTop',    'var(--p-xs)',         8);
-  bindNum(c, 'paddingBottom', 'var(--p-xs)',         8);
-  bindNum(c, 'itemSpacing',   'var(--gap-sm)',        8);
+  // Spacing — bind via Layout collection before combining
+  bindNum(c, 'paddingLeft',   padH,       16);
+  bindNum(c, 'paddingRight',  padH,       16);
+  bindNum(c, 'paddingTop',    padV,        8);
+  bindNum(c, 'paddingBottom', padV,        8);
+  bindNum(c, 'itemSpacing',  'space/sm',   8);
 
-  // Border radius — all four corners individually
-  ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+  // Border radius — all four corners individually (Figma requires each separately)
+  ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
     .forEach(f => bindNum(c, f, radiusVar, 6));
 
   // Fill
@@ -212,69 +254,109 @@ function buildVariant(name, fillVar, fallbackFill, {
     c.strokeWeight = 1;
   }
 
-  // Optional text label (requires loadFontAsync to have run already)
+  // Optional text label
   if (label) {
     const txt = figma.createText();
-    txt.fontName = { family: "Inter", style: "Medium" };
+    txt.fontName   = { family: labelFont, style: 'Medium' };
     txt.characters = label;
-    txt.fontSize = 14;
+    txt.fontSize   = 14;
+    // Bind font-family to Typography collection variable
+    if (labelFontVar) {
+      try { txt.setBoundVariable('fontFamily', labelFontVar); } catch (_) {}
+    }
     bindColor(txt, labelVar, '#000000', 'fills');
     c.appendChild(txt);
   }
 
-  // Append to current page before combining
+  // Append to current page before any combining
   figma.currentPage.appendChild(c);
   return c;
 }
 
-// ── 5a. MULTI-VARIANT pattern (Button example) ──────────────────────
-// Build each variant fully, then combine into a component set.
-// Substitute the correct variant names, fills, labels, and options per component.
+// ── 6a. CROSS-PRODUCT MULTI-VARIANT pattern (Button — 24 variants) ──────
+// For components with two variant properties, generate every combination.
+// Variant name format: 'variant=default, size=sm'  (comma + space, no quotes)
 
-const nodes = [
-  buildVariant('variant=default',     'var(--primary)',     '#000000', { label: 'Button',  labelVar: 'var(--primary-foreground)' }),
-  buildVariant('variant=destructive', 'var(--primary)',     '#ef4444', { label: 'Button',  labelVar: 'var(--primary-foreground)' }),
-  buildVariant('variant=outline',     'var(--background)', '#ffffff',  { label: 'Button',  labelVar: 'var(--foreground)', strokeVar: 'var(--border-secondary)' }),
-  buildVariant('variant=secondary',   'var(--secondary)',  '#6b7280',  { label: 'Button',  labelVar: 'var(--foreground)' }),
-  buildVariant('variant=ghost',       'var(--background)', '#ffffff',  { label: 'Button',  labelVar: 'var(--foreground)' }),
-  buildVariant('variant=link',        'var(--background)', '#ffffff',  { label: 'Button',  labelVar: 'var(--primary)' }),
-];
+const BUTTON_VARIANTS = ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'];
+const BUTTON_SIZES    = ['default', 'sm', 'lg', 'icon'];
 
-// Combine fully-built components into a variant set
+const BUTTON_STYLE = {
+  default:     { fill: 'color/primary',    fallback: '#1a1a1a', lv: 'color/primary-foreground',   stroke: null },
+  destructive: { fill: 'color/error',      fallback: '#ef4444', lv: 'color/on-error',              stroke: null },
+  outline:     { fill: 'color/background', fallback: '#ffffff', lv: 'color/foreground',            stroke: 'color/outline-variant' },
+  secondary:   { fill: 'color/secondary',  fallback: '#6b7280', lv: 'color/secondary-foreground',  stroke: null },
+  ghost:       { fill: 'color/background', fallback: '#ffffff', lv: 'color/foreground',            stroke: null },
+  link:        { fill: 'color/background', fallback: '#ffffff', lv: 'color/primary',               stroke: null },
+};
+const BUTTON_PAD_H = { default: 'space/md', sm: 'space/xs', lg: 'space/lg', icon: 'space/xs' };
+
+const nodes = [];
+for (const v of BUTTON_VARIANTS) {
+  for (const s of BUTTON_SIZES) {
+    const st = BUTTON_STYLE[v];
+    nodes.push(buildVariant(
+      `variant=${v}, size=${s}`,
+      st.fill, st.fallback,
+      { label: s === 'icon' ? '⬡' : 'Button', labelVar: st.lv, strokeVar: st.stroke,
+        radiusVar: 'radius/md', padH: BUTTON_PAD_H[s] }
+    ));
+  }
+}
 const compSet = figma.combineAsVariants(nodes, figma.currentPage);
-compSet.name = "Button"; // PascalCase component name
+compSet.name = "Button";
 
-// ── 5b. SINGLE-STATE pattern ─────────────────────────────────────────
-// For components with no variants (separator, label, card, etc.):
-// build the one component fully — no combining needed.
+// ── 6b. SINGLE-PROPERTY MULTI-VARIANT pattern (Badge — 4 variants) ──────
+// Use this pattern when the component has exactly one variant dimension.
 
-const comp = buildVariant("COMPONENT_NAME", 'var(--background)', '#ffffff', { label: 'Label text' });
-// comp is already appended to the page by buildVariant
+const badgeNodes = [
+  buildVariant('variant=default',     'color/primary',    '#1a1a1a', { label: 'Badge', labelVar: 'color/primary-foreground' }),
+  buildVariant('variant=secondary',   'color/secondary',  '#6b7280', { label: 'Badge', labelVar: 'color/secondary-foreground' }),
+  buildVariant('variant=destructive', 'color/error',      '#ef4444', { label: 'Badge', labelVar: 'color/on-error' }),
+  buildVariant('variant=outline',     'color/background', '#ffffff', { label: 'Badge', labelVar: 'color/foreground', strokeVar: 'color/outline-variant' }),
+];
+const badgeSet = figma.combineAsVariants(badgeNodes, figma.currentPage);
+badgeSet.name = "Badge";
+
+// ── 6c. SINGLE-STATE pattern ─────────────────────────────────────────────
+// For components with no variants (separator, label, card, etc.).
+
+const comp = buildVariant('Card', 'color/card', '#ffffff',
+  { label: 'Card', labelVar: 'color/card-foreground', radiusVar: 'radius/lg' });
+// comp is already appended to the page by buildVariant — no combining needed.
 ```
 
-**Variant definitions** — use these as the `buildVariant` calls for each component:
+**Cross-product variant matrix** — for multi-property components, generate every combination. Use `'propA=valueA, propB=valueB'` (comma + space) as the variant name:
 
-| Component | Variant properties and values |
-|---|---|
-| `button` | `variant` = default, destructive, outline, secondary, ghost, link; `size` = default, sm, lg, icon |
-| `badge` | `variant` = default, secondary, destructive, outline |
-| `input` | `state` = default, focus, disabled, error |
-| `textarea` | `state` = default, focus, disabled, error |
-| `checkbox` | `checked` = false, true, indeterminate; `disabled` = false, true |
-| `radio-group` | `selected` = false, true; `disabled` = false, true |
-| `switch` | `checked` = false, true; `disabled` = false, true |
-| `select` | `state` = default, open, disabled |
-| `alert` | `variant` = default, destructive |
-| `avatar` | `size` = sm, md, lg |
-| `progress` | `value` = 0, 25, 50, 75, 100 |
-| `skeleton` | `shape` = line, circle, rect |
-| `tabs` | `state` = active, inactive |
-| `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` = open, closed |
-| `accordion`, `collapsible` | `state` = open, closed |
-| `toggle`, `toggle-group` | `pressed` = false, true |
-| `breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast` | single state — use pattern 4b |
+| Component | Properties | Total variants | Example name |
+|---|---|---|---|
+| `button` | `variant`(6) × `size`(4) | 24 | `variant=outline, size=sm` |
+| `checkbox` | `checked`(false/true/indeterminate) × `disabled`(false/true) | 6 | `checked=true, disabled=false` |
+| `radio-group` | `selected`(false/true) × `disabled`(false/true) | 4 | `selected=true, disabled=false` |
+| `switch` | `checked`(false/true) × `disabled`(false/true) | 4 | `checked=true, disabled=false` |
 
-If the `Web` collection is not present (`webCol` is null), `getVar` returns null and all bindings fall back to hardcoded hex/px values automatically — no separate branch needed.
+**Single-property variant list** — one `buildVariant` call per value, then `combineAsVariants`:
+
+| Component | Property | Values | Fill variable guidance |
+|---|---|---|---|
+| `badge` | `variant` | default, secondary, destructive, outline | default→`color/primary`, secondary→`color/secondary`, destructive→`color/error`, outline→`color/background`+stroke |
+| `input` | `state` | default, focus, disabled, error | all→`color/input`; error adds stroke `color/error` |
+| `textarea` | `state` | default, focus, disabled, error | same as input |
+| `select` | `state` | default, open, disabled | `color/background`; open adds stroke `color/ring` |
+| `alert` | `variant` | default, destructive | default→`color/surface-variant`; destructive→`color/error-container` |
+| `avatar` | `size` | sm, md, lg | `color/muted`; vary `padH`: sm→`space/xs`, md→`space/sm`, lg→`space/md` |
+| `progress` | `value` | 0, 25, 50, 75, 100 | track→`color/muted`; indicator→`color/primary` |
+| `skeleton` | `shape` | line, circle, rect | `color/muted` |
+| `tabs` | `state` | active, inactive | active→`color/background`+stroke `color/primary`; inactive→`color/muted` |
+| `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` | open, closed | `color/popover`; `radius/lg` |
+| `accordion`, `collapsible` | `state` | open, closed | `color/background` |
+| `toggle`, `toggle-group` | `pressed` | false, true | false→`color/background`; true→`color/accent` |
+
+**Single-state components** (no variants — use pattern 6c):
+`breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast`
+
+For cards and sheets use `radiusVar: 'radius/lg'`. For compact items (label, separator) use `padH: 'space/xs'`.
+
+If any collection is absent, `getColorVar`/`getLayoutVar`/`getTypoVar` return null and all bindings automatically fall back to the hardcoded hex/px fallback values — no separate branch needed.
 
 If the `use_figma` call throws, mark the component `draw_failed` and continue to the next.
 
@@ -300,7 +382,7 @@ Follow with:
 - Total installed: N
 - Total drawn to canvas: N
 - Skipped / failed: N (list names and reasons)
-- Token binding status: "Web collection found — bindings applied" or "Web collection not found — raw hex values used"
+- Token binding status: "Theme/Layout/Typography collections found — bindings applied" or list which collections were absent and that raw fallback values were used
 
 ---
 
@@ -343,5 +425,5 @@ The following shadcn/ui components are supported. Pass any of these names to the
 
 - **No manual Figma community kit import required.** Components are installed from the shadcn CLI into the local codebase, and the agent draws them directly to the Figma canvas as proper Figma components using `figma.createComponent()` and `figma.combineAsVariants()`. These are real Figma components with component keys — required for Code Connect to resolve mappings.
 - **Canvas placement** uses `use_figma` for general frame and variant creation. The agent routes each component to its designated page in the Detroit Labs Foundations scaffold (see Step 5 routing table) using `figma.setCurrentPageAsync`. If the file was not scaffolded by `/new-project`, it falls back to the current active page with a warning.
-- **Token bindings** are a best-effort match based on variable names in the `Web` collection. Review bindings in Figma after the skill completes and adjust any that do not match your intended semantic mapping.
+- **Token bindings** are a best-effort match based on variable names in the `Theme`, `Layout`, and `Typography` collections created by `/create-design-system`. Review bindings in Figma after the skill completes and adjust any that do not match your intended semantic mapping.
 - **shadcn/ui version:** Always installs the latest release via `npx shadcn@latest`. To pin a version, the designer should configure the shadcn version in `package.json` before invoking this skill.
