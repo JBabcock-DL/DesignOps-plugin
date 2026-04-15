@@ -306,6 +306,36 @@ function buildVariant(name, fillVar, fallbackFill, {
   return c;
 }
 
+// ── Layout helper — call after combineAsVariants to prevent stacking ─────
+// Applies wrapping auto-layout to the component set and places it on canvas.
+// startX / startY: canvas coordinates for the top-left of the set.
+function layoutSet(set, name, startX = 100, startY = 100) {
+  set.name = name;
+  // Enable wrapping auto-layout so variants form a readable grid
+  set.layoutMode         = 'HORIZONTAL';
+  set.layoutWrap         = 'WRAP';
+  set.itemSpacing        = 32;
+  set.counterAxisSpacing = 32;
+  set.paddingTop         = 40;
+  set.paddingBottom      = 40;
+  set.paddingLeft        = 40;
+  set.paddingRight       = 40;
+  // Place at explicit canvas position
+  set.x = startX;
+  set.y = startY;
+}
+
+// Pre-position helper — space nodes out before combining so Figma doesn't
+// stack them at (0, 0). combineAsVariants respects existing x/y values.
+function spreadNodes(nodes) {
+  let cx = 0;
+  for (const n of nodes) {
+    n.x = cx;
+    n.y = 0;
+    cx += (n.width || 120) + 16;
+  }
+}
+
 // ── 6a. CROSS-PRODUCT MULTI-VARIANT pattern (Button — 24 variants) ──────
 // For components with two variant properties, generate every combination.
 // Variant name format: 'variant=default, size=sm'  (comma + space, no quotes)
@@ -335,8 +365,9 @@ for (const v of BUTTON_VARIANTS) {
     ));
   }
 }
+spreadNodes(nodes);
 const compSet = figma.combineAsVariants(nodes, figma.currentPage);
-compSet.name = "Button";
+layoutSet(compSet, "Button", 100, 100);
 
 // ── 6b. SINGLE-PROPERTY MULTI-VARIANT pattern (Badge — 4 variants) ──────
 // Use this pattern when the component has exactly one variant dimension.
@@ -347,15 +378,18 @@ const badgeNodes = [
   buildVariant('variant=destructive', 'color/error',      '#ef4444', { label: 'Badge', labelVar: 'color/on-error' }),
   buildVariant('variant=outline',     'color/background', '#ffffff', { label: 'Badge', labelVar: 'color/foreground', strokeVar: 'color/outline-variant' }),
 ];
+spreadNodes(badgeNodes);
 const badgeSet = figma.combineAsVariants(badgeNodes, figma.currentPage);
-badgeSet.name = "Badge";
+layoutSet(badgeSet, "Badge", 100, 100);
 
 // ── 6c. SINGLE-STATE pattern ─────────────────────────────────────────────
 // For components with no variants (separator, label, card, etc.).
 
 const comp = buildVariant('Card', 'color/card', '#ffffff',
   { label: 'Card', labelVar: 'color/card-foreground', radiusVar: 'radius/lg' });
-// comp is already appended to the page by buildVariant — no combining needed.
+// Position single-state components explicitly — they land at (0,0) by default.
+comp.x = 100;
+comp.y = 100;
 ```
 
 **Cross-product variant matrix** — for multi-property components, generate every combination. Use `'propA=valueA, propB=valueB'` (comma + space) as the variant name:
