@@ -22,10 +22,34 @@ Parse `$ARGUMENTS` for `--team`, `--name`, and `--platform`. For each value not 
 >
 > Please paste your token here."
 
-Store the token as `FIGMA_PAT`. Use it as a Bearer token in all REST API calls: `Authorization: Bearer <FIGMA_PAT>`.
+Store the token as `FIGMA_PAT`. Use it as the `X-Figma-Token` header in **all** REST API calls:
+```
+X-Figma-Token: <FIGMA_PAT>
+```
+Do **not** use `Authorization: Bearer` — the Figma REST API does not accept that format for PATs.
+
+**Always ask next — project folder IDs must be collected one at a time.** Figma's REST API has no endpoint for creating project folders. Each folder must exist in Figma before files can be placed there.
+
+To find a project ID: open the project in Figma and read the number from the URL — `https://www.figma.com/files/project/123456789/Strategy`.
+
+Call AskUserQuestion for each folder in order, waiting for a reply before asking the next:
+
+1. > "First, open your Figma team and create a project called **Strategy** if it doesn't already exist. Then click into it and paste the project URL or ID here. (URL format: `figma.com/files/project/123456789/Strategy`)"
+
+   Store the extracted number as `PROJECT_ID_STRATEGY`.
+
+2. > "Next, create a project called **Design-Systems** if it doesn't already exist, then paste its project URL or ID here."
+
+   Store as `PROJECT_ID_DESIGN_SYSTEMS`.
+
+3. > "Finally, create a project called **Master-Files** if it doesn't already exist, then paste its project URL or ID here."
+
+   Store as `PROJECT_ID_MASTER_FILES`.
+
+Accept either a full URL or a bare number — parse the ID from the URL if a full URL is pasted.
 
 **If `--team` is missing**, call AskUserQuestion:
-> "What is the exact name of the Figma team this project lives under? (Case-sensitive — must match exactly as it appears in Figma.)"
+> "What is the display name of the Figma team? (Used for file titles and confirmation.)"
 
 **If `--name` is missing**, call AskUserQuestion:
 > "What is the project name? (e.g. `Acme Mobile App`) This will appear in the title of every file created."
@@ -70,28 +94,13 @@ If the designer responds `edit` or requests a change, update the plan and re-pre
 
 ---
 
-### Step 3 — Resolve the Team and Project Folder IDs
+### Step 3 — Confirm Project Folder IDs
 
-Use the Figma MCP tool `get_metadata` (or `use_figma`) to look up the team ID for the named team. You need the team ID to create project folders via the REST API.
+The three project folder IDs (`PROJECT_ID_STRATEGY`, `PROJECT_ID_DESIGN_SYSTEMS`, `PROJECT_ID_MASTER_FILES`) were collected in Step 1. No API calls are needed here.
 
-Use the Figma REST API to list existing projects in the team:
+Figma's REST API does not provide an endpoint for creating project folders, and reading projects requires approved API access (Tier 2, gated since April 2025). Project folders must always be created manually by the user in Figma.
 
-```
-GET /v1/teams/:team_id/projects
-```
-
-Check whether `Strategy`, `Design-Systems`, and `Master-Files` folders already exist. If they do, record their project IDs. If any folder does not exist, create it:
-
-```
-POST /v1/teams/:team_id/projects
-Body: { "name": "Strategy" }
-POST /v1/teams/:team_id/projects
-Body: { "name": "Design-Systems" }
-POST /v1/teams/:team_id/projects
-Body: { "name": "Master-Files" }
-```
-
-Record the project ID for each folder. You will need these IDs when placing duplicated files.
+Proceed directly to Step 4 using the IDs provided.
 
 ---
 
@@ -225,11 +234,10 @@ If any API call fails, do not abort the entire run silently. Report the failure 
 
 | Error | Likely Cause | What to Say |
 |---|---|---|
-| `401 Unauthorized` on any REST call | Missing or invalid PAT. | "The Figma REST API returned a 401. Your Personal Access Token may be missing, expired, or lack the required scope. Please generate a new token (File content + write scope) and re-run `/new-project`." |
+| `401 Unauthorized` or `403 Invalid token` on any REST call | Wrong auth header format or invalid PAT. The Figma REST API requires `X-Figma-Token`, not `Authorization: Bearer`. | "The Figma REST API rejected the token. Ensure all requests use the header `X-Figma-Token: <PAT>` — not `Authorization: Bearer`. If the header is correct, regenerate the token with File content, Projects, and Teams scopes, then re-run `/new-project`." |
 | `403 Forbidden` on `POST /v1/files/:key/duplicate` | The authenticated user does not have access to the template file, or the Organization tier is not active. | "I was unable to duplicate the [file title] template (`<key>`). This usually means the Figma MCP connector account does not have access to the source template, or your Figma plan does not permit file duplication via API. Please verify your account tier and that the template is shared with your organization, then retry." |
 | `404 Not Found` on the template key | The template file has been moved or deleted. | "The template file for [file title] could not be found (key: `<key>`). The source file may have been deleted or its key may have changed. Please check `plugin/.claude/settings.local.json` and verify the key against the current Figma file." |
-| `404 Not Found` on `POST /v1/teams/:team_id/projects` | PAT is missing the Projects write scope — this is the most common cause even on Org accounts. A 404 here does **not** mean the team wasn't found (GET worked) or that the plan is insufficient. | "Project folder creation returned 404. This almost always means the Personal Access Token is missing the **Projects (read + write)** scope. Please regenerate the token with File content, Projects, and Teams scopes enabled, then re-run `/new-project`." |
-| `403 Forbidden` on project folder creation | The PAT user does not have Editor access to the team. | "I could not create the '[folder name]' project folder in the '[Team Name]' team. Please verify that your Figma account has Editor access to this team, then retry." |
+| Wrong project ID provided | User copied the wrong number from the Figma URL. | "The file could not be placed in the [folder name] folder — the project ID may be incorrect. Please re-open that project in Figma, check the URL (`figma.com/files/project/:id/...`), and confirm the ID." |
 | `400 Bad Request` on file creation | Malformed request body or unsupported file type for the account tier. | "The request to create [file title] was rejected by Figma. This may indicate a plan limitation or a malformed request. Check the Figma API response for details and retry, or create the file manually in Figma." |
 | MCP connector auth error | Figma MCP connector session has expired. | "The Figma MCP connector returned an authentication error. Please re-authenticate the Figma connector in Claude Code settings (Settings → MCP → Figma → Reconnect) and then re-run `/new-project`." |
 
@@ -254,7 +262,7 @@ Tell the designer which files need to be created manually or retried.
 | Requirement | Notes |
 |---|---|
 | Figma MCP connector configured | The connector must be active in Claude Code for canvas operations (screenshots, node reads). |
-| Figma Personal Access Token (PAT) | Required for all Figma REST API calls (folder creation, file duplication, file moves). Collected interactively at the start of Step 1. Generate at: Figma → Account Settings → Security → Personal access tokens. Required scopes: **File content (read + write)**, **Projects (read + write)**, **Teams (read)**. Missing Projects scope is the most common cause of 404 on project folder creation. |
+| Figma Personal Access Token (PAT) | Required for file duplication and file moves via the REST API. Collected interactively at the start of Step 1. Generate at: Figma → Account Settings → Security → Personal access tokens. Required scope: **File content (read + write)**. Use the `X-Figma-Token` header — not `Authorization: Bearer`. |
 | Organization-tier Figma account | Required to use the Figma REST Files API `duplicate` endpoint and to create files in team project folders. |
 | Team already exists in Figma | The target team must already be created in the Figma organization. This skill creates folders and files within an existing team — it does not create the team itself. |
 

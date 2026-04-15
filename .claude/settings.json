@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Read(~/.claude/plugins/**)",
-      "Read(//c/Users/jbabc/.claude/**)"
+      "Read(//c/Users/jbabc/.claude/**)",
+      "WebSearch",
+      "WebFetch(domain:developers.figma.com)"
     ],
     "additionalDirectories": [
       "~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/.claude-plugin",
