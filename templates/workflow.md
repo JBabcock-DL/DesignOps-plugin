@@ -95,17 +95,22 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 | Collection | Modes | Contents |
 |---|---|---|
 | `Primitives` | Default | Raw color ramps (primary, secondary, tertiary, error, neutral — 50–950), Space scale, Corner scale, elevation floats |
-| `Theme` | Light / Dark | 51 semantic color aliases pointing to Primitives per mode |
+| `Theme` | Light / Dark | 33 semantic color aliases in 7 groups (background/, surface/, primary/, secondary/, tertiary/, status/, component/) pointing to Primitives per mode |
 | `Typography` | 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200 | 12 type style slots × 4 properties; sizes scale per mode on Android's font-scale curve |
 | `Layout` | Default | `space/*` and `radius/*` semantic aliases into Primitives |
 | `Effects` | Light / Dark | Shadow color (opacity per mode) and blur aliases into elevation Primitives |
 
-**Platform mapping** is encoded as `codeSyntax` on every variable — there are no separate Web, Android/M3, or iOS/HIG collections. Each token carries three code names inline:
+**Platform mapping** is encoded as `codeSyntax` on every variable — there are no separate Web, Android/M3, or iOS/HIG collections. Each token carries three code names inline.
 
-| Token | WEB | ANDROID | iOS |
+**ANDROID** uses exact **Material Design 3** color role names. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+
+| Token | WEB | ANDROID (M3) | iOS (HIG) |
 |---|---|---|---|
-| `color/background` | `var(--background)` | `background` | `background` |
-| `color/on-surface-variant` | `var(--on-surface-variant)` | `onSurfaceVariant` | `onSurfaceVariant` |
+| `color/background/bg` | `var(--background)` | `background` | `systemBackground` |
+| `color/background/fg` | `var(--on-background)` | `onBackground` | `label` |
+| `color/surface/border` | `var(--outline)` | `outline` | `separator` |
+| `color/primary/tint` | `var(--primary-container)` | `primaryContainer` | `primaryContainer` |
+| `color/status/error` | `var(--error)` | `error` | `systemRed` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
 | `space/md` | `var(--space-md)` | `spaceMd` | `spaceMd` |
 
@@ -115,12 +120,12 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 
 - **Primitives block** — raw hex and px values in `:root`
 - **Layout block** — semantic `--space-*` and `--radius-*` aliases in `:root`
-- **Theme Light block** — 51 semantic tokens in `:root, [data-theme="light"]` using `var(--color-*)` references
-- **Theme Dark block** — same tokens in `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`
+- **Theme Light block** — 33 M3 semantic tokens in `:root, [data-theme="light"]` using `var(--color-*)` references, plus shadcn/ui compatibility aliases (`--foreground`, `--border`, `--destructive`, `--accent`, etc.) that point back to the M3 primary vars
+- **Theme Dark block** — same structure in `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`
 - **Typography base block** — all 48 properties at 100% scale in `:root`
 - **Typography scale blocks** — 7 `[data-font-scale="N"]` blocks (85, 110, 120, 130, 150, 175, 200) with only font-size and line-height overrides
 
-CSS custom property names match shadcn/ui conventions (`--background`, `--primary`, `--destructive`, `--border`, `--radius`, etc.) so shadcn components resolve design system tokens with no additional mapping.
+Primary CSS var names use M3 role conventions (`--on-background`, `--outline`, `--primary-container`, `--error`, etc.). shadcn/ui names (`--foreground`, `--border`, `--destructive`, `--accent`, etc.) are alias vars that resolve to the M3 primaries, so shadcn components resolve correctly with no additional mapping.
 
 Dark mode toggle: `data-theme="dark"` on `<html>`.  
 Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `<html>`.

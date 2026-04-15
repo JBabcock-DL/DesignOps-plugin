@@ -125,7 +125,7 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 1. Checks `templates/agent-handoff.md` for an active file key before prompting
 2. Collects brand tokens interactively (primary, secondary, neutral, tertiary, and error colors; body and display font families; base font size, spacing unit, and border radius)
 3. Generates the `Primitives` collection: five full color ramps (primary, secondary, tertiary, error, neutral — 50–950 stops via Tailwind HSL interpolation), `Space/*` spacing scale, `Corner/*` radius scale, elevation floats
-4. Creates the `Theme` collection (Light / Dark modes): 51 semantic color aliases covering backgrounds, primary/secondary/tertiary/error role sets, surface hierarchy, muted, accent, outline/border, card, popover, input, ring, sidebar, inverse colors, and a scrim overlay — all aliasing Primitives per mode
+4. Creates the `Theme` collection (Light / Dark modes): 33 semantic color aliases across 7 groups — `background/` (app canvas + inverse roles), `surface/` (component surfaces, borders), `primary/`, `secondary/`, `tertiary/`, `status/` (error), and `component/` (input, ring, sidebar, scrim) — all aliasing Primitives per mode
 5. Creates the `Typography` collection (8 scale modes): 12 type style slots (Display, Headline, Body, Label — each in LG/MD/SM) × 4 properties (font-family, font-size, font-weight, line-height). Font sizes scale across 8 modes modeled on Android's font-scale curve: 85%, 100% (default), 110%, 120%, 130%, 150%, 175%, 200%. Large text uses nonlinear scaling (Android 14 behaviour) at high multipliers.
 6. Creates the `Layout` collection (Default mode): `space/*` and `radius/*` semantic aliases into Primitives
 7. Creates the `Effects` collection (Light / Dark modes): shadow color (opacity changes per mode) and blur aliases into elevation Primitives
@@ -377,7 +377,7 @@ Theme  (Light mode / Dark mode)
   ├── color/on-surface        → neutral/900    | neutral/50
   ├── color/error             → error/600      | error/400
   ├── color/outline           → neutral/300    | neutral/600
-  └── … 51 semantic tokens total
+  └── … 33 semantic tokens total (7 groups)
 
 Typography  (8 scale modes: 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200)
   ├── Display/LG–SM / font-family, font-size, font-weight, line-height
@@ -396,10 +396,16 @@ Effects  (Light mode / Dark mode)
 
 Every variable carries `codeSyntax` for all three platforms. There are no separate Web, Android/M3, or iOS/HIG alias collections — platform naming lives inline on each token.
 
-| Token | WEB | ANDROID | iOS |
+**ANDROID** uses exact **Material Design 3** color role names. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+
+| Token | WEB | ANDROID (M3) | iOS (HIG) |
 |---|---|---|---|
-| `color/background` | `var(--background)` | `background` | `background` |
-| `color/on-surface-variant` | `var(--on-surface-variant)` | `onSurfaceVariant` | `onSurfaceVariant` |
+| `color/background/bg` | `var(--background)` | `background` | `systemBackground` |
+| `color/background/fg` | `var(--on-background)` | `onBackground` | `label` |
+| `color/surface/raised` | `var(--surface-variant)` | `surfaceVariant` | `tertiarySystemBackground` |
+| `color/surface/border` | `var(--outline)` | `outline` | `separator` |
+| `color/primary/tint` | `var(--primary-container)` | `primaryContainer` | `primaryContainer` |
+| `color/status/error` | `var(--error)` | `error` | `systemRed` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
 | `space/md` | `var(--space-md)` | `spaceMd` | `spaceMd` |
 
@@ -415,12 +421,24 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
   --corner-medium: 12px;
 }
 
-/* Theme — Light (default) */
+/* Theme — Light (M3 primary vars, shadcn aliases) */
 :root, [data-theme="light"] {
-  --background:   var(--color-neutral-50);
-  --primary:      var(--color-primary-500);
-  --on-surface:   var(--color-neutral-900);
-  /* …51 tokens… */
+  /* M3 primary names */
+  --background:      var(--color-neutral-50);
+  --on-background:   var(--color-neutral-900);
+  --primary:         var(--color-primary-500);
+  --on-primary:      var(--color-primary-50);
+  --primary-container: var(--color-primary-100);
+  --error:           var(--color-error-600);
+  --outline:         var(--color-neutral-200);
+  /* …33 M3 tokens… */
+
+  /* shadcn/ui compatibility aliases pointing to M3 vars above */
+  --foreground:      var(--on-background);
+  --border:          var(--outline);
+  --destructive:     var(--error);
+  --accent:          var(--tertiary-container);
+  /* …aliases… */
 }
 
 /* Theme — Dark */
@@ -442,7 +460,7 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
 :root { --space-md: var(--space-300); --radius-md: var(--corner-medium); }
 ```
 
-The CSS custom property names match shadcn/ui's conventions exactly (`--background`, `--primary`, `--destructive`, `--border`, `--radius`, etc.), so `/create-component` only needs to import `tokens.css` in `globals.css` — no additional variable mapping required.
+**Primary CSS vars use M3 role names** (`--on-background`, `--outline`, `--primary-container`, `--error`, etc.). shadcn/ui compatibility aliases (`--foreground`, `--border`, `--destructive`, `--accent`, etc.) are defined as aliases pointing back to the M3 vars, so shadcn components resolve correctly with no additional mapping.
 
 **Dark mode** is toggled by adding `data-theme="dark"` to the `<html>` element. **Font scaling** is toggled by adding `data-font-scale="130"` (or any of the 8 scale values) to `<html>`.
 
