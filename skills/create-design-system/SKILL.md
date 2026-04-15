@@ -452,107 +452,192 @@ Before writing anything to Figma or the filesystem, present a full summary of ev
 Show the plan using this exact structure. Substitute all `{…}` placeholders with the actual computed values from Steps 5–9.
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   DESIGN SYSTEM PLAN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Figma file: {TARGET_FILE_KEY}
   CSS output: {TOKEN_CSS_PATH}
 
-──────────────────────────────────────────────────
+  Code syntax pattern: every variable includes WEB / ANDROID / iOS tokens.
+  ANDROID and iOS are identical (camelCase) unless noted otherwise.
+
+──────────────────────────────────────────────────────────────────────────────────────────────
   PRIMITIVES
-──────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Syntax pattern:
+    WEB: var(--color-{name}-{stop})   →  e.g. var(--color-primary-500)
+    ANDROID / iOS: color{Name}{Stop}  →  e.g. colorPrimary500
+
   Color ramps — 5 ramps × 11 stops
 
     Primary   {inputHex}
-      50 {hex}  100 {hex}  200 {hex}  300 {hex}  400 {hex}
-     500 {hex}  600 {hex}  700 {hex}  800 {hex}  900 {hex}  950 {hex}
+       50 {hex}  100 {hex}  200 {hex}  300 {hex}  400 {hex}
+      500 {hex}  600 {hex}  700 {hex}  800 {hex}  900 {hex}  950 {hex}
 
     Secondary {inputHex}
-      50 {hex} … 950 {hex}
+       50 {hex}  100 {hex}  200 {hex}  300 {hex}  400 {hex}
+      500 {hex}  600 {hex}  700 {hex}  800 {hex}  900 {hex}  950 {hex}
 
     Tertiary  {inputHex}
-      50 {hex} … 950 {hex}
+       50 {hex}  100 {hex}  200 {hex}  300 {hex}  400 {hex}
+      500 {hex}  600 {hex}  700 {hex}  800 {hex}  900 {hex}  950 {hex}
 
     Error     {inputHex}
-      50 {hex} … 950 {hex}
+       50 {hex}  100 {hex}  200 {hex}  300 {hex}  400 {hex}
+      500 {hex}  600 {hex}  700 {hex}  800 {hex}  900 {hex}  950 {hex}
 
     Neutral   {inputHex}
-      50 {hex} … 950 {hex}
+       50 {hex}  100 {hex}  200 {hex}  300 {hex}  400 {hex}
+      500 {hex}  600 {hex}  700 {hex}  800 {hex}  900 {hex}  950 {hex}
 
   Spacing — base {N}px
-    Space/100 {N}px  Space/200 {N}px  Space/300 {N}px  Space/400 {N}px
-    Space/600 {N}px  Space/800 {N}px  Space/1200 {N}px  Space/1600 {N}px  …
+    Token          Value    WEB                  ANDROID / iOS
+    Space/100      {N}px    var(--space-100)      space100
+    Space/200      {N}px    var(--space-200)      space200
+    Space/300      {N}px    var(--space-300)      space300
+    Space/400      {N}px    var(--space-400)      space400
+    Space/600      {N}px    var(--space-600)      space600
+    Space/800      {N}px    var(--space-800)      space800
+    Space/1200     {N}px    var(--space-1200)     space1200
+    Space/1600     {N}px    var(--space-1600)     space1600
+    (+ Space/500, 700, 900, 1000, 1100, 2000, 2400)
 
   Radius — base {N}px
-    Corner/None 0  Corner/Extra-small {N}px  Corner/Small {N}px
-    Corner/Medium {N}px  Corner/Large {N}px  Corner/Extra-large 28px  Corner/Full 9999px
+    Token                Value    WEB                       ANDROID / iOS
+    Corner/None          0px      var(--corner-none)        cornerNone
+    Corner/Extra-small   {N}px    var(--corner-extra-small) cornerExtraSmall
+    Corner/Small         {N}px    var(--corner-small)       cornerSmall
+    Corner/Medium        {N}px    var(--corner-medium)      cornerMedium
+    Corner/Large         {N}px    var(--corner-large)       cornerLarge
+    Corner/Extra-large   28px     var(--corner-extra-large) cornerExtraLarge
+    Corner/Full          9999px   var(--corner-full)        cornerFull
 
-──────────────────────────────────────────────────
+  Elevation
+    Token           Value    WEB                    ANDROID / iOS
+    elevation/100   1        var(--elevation-100)   elevation100
+    elevation/200   2        var(--elevation-200)   elevation200
+    elevation/400   4        var(--elevation-400)   elevation400
+    elevation/800   8        var(--elevation-800)   elevation800
+    elevation/1600  16       var(--elevation-1600)  elevation1600
+
+──────────────────────────────────────────────────────────────────────────────────────────────
   THEME  (51 tokens · 2 modes: Light / Dark)
-──────────────────────────────────────────────────
-  Token                        Light        Dark
-  color/background             {hex}        {hex}
-  color/foreground             {hex}        {hex}
-  color/primary                {hex}        {hex}
-  color/primary-container      {hex}        {hex}
-  color/secondary              {hex}        {hex}
-  color/tertiary               {hex}        {hex}
-  color/error                  {hex}        {hex}
-  color/surface                {hex}        {hex}
-  color/on-surface             {hex}        {hex}
-  color/surface-container      {hex}        {hex}
-  color/outline                {hex}        {hex}
-  color/muted                  {hex}        {hex}
-  color/muted-foreground       {hex}        {hex}
-  color/card                   {hex}        {hex}
-  color/input                  {hex}        {hex}
-  color/ring                   {hex}        {hex}
-  color/scrim                  rgba(0,0,0,0.32)
-  … + 34 more tokens (full list above in Step 6)
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Syntax: color/ prefix dropped from all outputs.
+    WEB: var(--{token-name})    e.g. var(--background), var(--on-surface-variant)
+    ANDROID / iOS: {camelCase}  e.g. background, onSurfaceVariant
 
-──────────────────────────────────────────────────
+  Token                        Light        Dark         WEB                          ANDROID / iOS
+  color/background             {hex}        {hex}        var(--background)            background
+  color/foreground             {hex}        {hex}        var(--foreground)            foreground
+  color/primary                {hex}        {hex}        var(--primary)               primary
+  color/primary-foreground     {hex}        {hex}        var(--primary-foreground)    primaryForeground
+  color/primary-container      {hex}        {hex}        var(--primary-container)     primaryContainer
+  color/on-primary-container   {hex}        {hex}        var(--on-primary-container)  onPrimaryContainer
+  color/secondary              {hex}        {hex}        var(--secondary)             secondary
+  color/secondary-foreground   {hex}        {hex}        var(--secondary-foreground)  secondaryForeground
+  color/tertiary               {hex}        {hex}        var(--tertiary)              tertiary
+  color/on-tertiary            {hex}        {hex}        var(--on-tertiary)           onTertiary
+  color/error                  {hex}        {hex}        var(--error)                 error
+  color/destructive            {hex}        {hex}        var(--destructive)           destructive
+  color/on-error               {hex}        {hex}        var(--on-error)              onError
+  color/error-container        {hex}        {hex}        var(--error-container)       errorContainer
+  color/surface                {hex}        {hex}        var(--surface)               surface
+  color/on-surface             {hex}        {hex}        var(--on-surface)            onSurface
+  color/surface-variant        {hex}        {hex}        var(--surface-variant)       surfaceVariant
+  color/on-surface-variant     {hex}        {hex}        var(--on-surface-variant)    onSurfaceVariant
+  color/surface-container      {hex}        {hex}        var(--surface-container)     surfaceContainer
+  color/surface-container-low  {hex}        {hex}        var(--surface-container-low) surfaceContainerLow
+  color/surface-container-high {hex}        {hex}        var(--surface-container-high) surfaceContainerHigh
+  color/muted                  {hex}        {hex}        var(--muted)                 muted
+  color/muted-foreground       {hex}        {hex}        var(--muted-foreground)      mutedForeground
+  color/accent                 {hex}        {hex}        var(--accent)                accent
+  color/accent-foreground      {hex}        {hex}        var(--accent-foreground)     accentForeground
+  color/outline                {hex}        {hex}        var(--outline)               outline
+  color/outline-variant        {hex}        {hex}        var(--outline-variant)       outlineVariant
+  color/border                 {hex}        {hex}        var(--border)                border
+  color/card                   {hex}        {hex}        var(--card)                  card
+  color/card-foreground        {hex}        {hex}        var(--card-foreground)       cardForeground
+  color/popover                {hex}        {hex}        var(--popover)               popover
+  color/popover-foreground     {hex}        {hex}        var(--popover-foreground)    popoverForeground
+  color/input                  {hex}        {hex}        var(--input)                 input
+  color/ring                   {hex}        {hex}        var(--ring)                  ring
+  color/sidebar                {hex}        {hex}        var(--sidebar)               sidebar
+  color/sidebar-foreground     {hex}        {hex}        var(--sidebar-foreground)    sidebarForeground
+  color/inverse-surface        {hex}        {hex}        var(--inverse-surface)       inverseSurface
+  color/inverse-on-surface     {hex}        {hex}        var(--inverse-on-surface)    inverseOnSurface
+  color/inverse-primary        {hex}        {hex}        var(--inverse-primary)       inversePrimary
+  color/background-inverse     {hex}        {hex}        var(--background-inverse)    backgroundInverse
+  color/foreground-inverse     {hex}        {hex}        var(--foreground-inverse)    foregroundInverse
+  color/scrim                  rgba(0,0,0,0.32)          var(--scrim)                 scrim
+  (+ surface-container-lowest, surface-container-highest, secondary-container,
+     on-secondary-container, tertiary-container, on-tertiary-container,
+     on-error-container, surface-dim, surface-bright — full list in Step 6)
+
+──────────────────────────────────────────────────────────────────────────────────────────────
   TYPOGRAPHY  (48 variables · 8 scale modes)
-──────────────────────────────────────────────────
-  Body font:    {bodyFont}
-  Display font: {displayFont}
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Body font: {bodyFont}   Display font: {displayFont}
+  Syntax pattern: {slot}/{property} → kebab → WEB var(--{slot}-{property}) · ANDROID/iOS camelCase
 
-  Slot            100 (default)    130 (large)    200 (max)
-  Display/LG      57px / 400       {N}px / 400    {N}px / 400
-  Display/MD      45px / 400       {N}px / 400    {N}px / 400
-  Display/SM      36px / 400       {N}px / 400    {N}px / 400
-  Headline/LG     32px / 400       {N}px / 400    {N}px / 400
-  Headline/MD     28px / 400       {N}px / 400    {N}px / 400
-  Headline/SM     24px / 400       {N}px / 400    {N}px / 400
-  Body/LG         16px / 400       {N}px / 400    {N}px / 400
-  Body/MD         14px / 400       {N}px / 400    {N}px / 400
-  Body/SM         12px / 400       {N}px / 400    {N}px / 400
-  Label/LG        14px / 500       {N}px / 500    {N}px / 500
-  Label/MD        12px / 500       {N}px / 500    {N}px / 500
-  Label/SM        11px / 500       {N}px / 500    {N}px / 500
-  (font-family constant across all modes)
+  Slot          Prop          WEB syntax                      ANDROID / iOS
+  Display/LG    font-size     var(--display-lg-font-size)     displayLgFontSize
+                font-family   var(--display-lg-font-family)   displayLgFontFamily
+                font-weight   var(--display-lg-font-weight)   displayLgFontWeight
+                line-height   var(--display-lg-line-height)   displayLgLineHeight
+  (pattern repeats for all 12 slots)
 
-──────────────────────────────────────────────────
+  Sizes — 100 (default) / 130 (large) / 200 (max):
+  Slot           100      130      200
+  Display/LG     57px     {N}px    {N}px
+  Display/MD     45px     {N}px    {N}px
+  Display/SM     36px     {N}px    {N}px
+  Headline/LG    32px     {N}px    {N}px
+  Headline/MD    28px     {N}px    {N}px
+  Headline/SM    24px     {N}px    {N}px
+  Body/LG        16px     {N}px    {N}px
+  Body/MD        14px     {N}px    {N}px
+  Body/SM        12px     {N}px    {N}px
+  Label/LG       14px     {N}px    {N}px
+  Label/MD       12px     {N}px    {N}px
+  Label/SM       11px     {N}px    {N}px
+  (font-family and font-weight constant across all 8 modes)
+
+──────────────────────────────────────────────────────────────────────────────────────────────
   LAYOUT  (15 tokens · Default mode)
-──────────────────────────────────────────────────
-  space/xs {N}px  space/sm {N}px  space/md {N}px  space/lg {N}px
-  space/xl {N}px  space/2xl {N}px  space/3xl {N}px  space/4xl {N}px
-  radius/none 0  radius/xs {N}px  radius/sm {N}px  radius/md {N}px
-  radius/lg {N}px  radius/xl 28px  radius/full 9999px
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Token        Value    WEB                   ANDROID / iOS
+  space/xs     {N}px    var(--space-xs)        spaceXs
+  space/sm     {N}px    var(--space-sm)        spaceSm
+  space/md     {N}px    var(--space-md)        spaceMd
+  space/lg     {N}px    var(--space-lg)        spaceLg
+  space/xl     {N}px    var(--space-xl)        spaceXl
+  space/2xl    {N}px    var(--space-2xl)       space2xl
+  space/3xl    {N}px    var(--space-3xl)       space3xl
+  space/4xl    {N}px    var(--space-4xl)       space4xl
+  radius/none  0px      var(--radius-none)     radiusNone
+  radius/xs    {N}px    var(--radius-xs)       radiusXs
+  radius/sm    {N}px    var(--radius-sm)       radiusSm
+  radius/md    {N}px    var(--radius-md)       radiusMd
+  radius/lg    {N}px    var(--radius-lg)       radiusLg
+  radius/xl    28px     var(--radius-xl)       radiusXl
+  radius/full  9999px   var(--radius-full)     radiusFull
 
-──────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────────────────
   EFFECTS  (6 tokens · 2 modes: Light / Dark)
-──────────────────────────────────────────────────
-  shadow/color       Light rgba(0,0,0,0.10)  Dark rgba(0,0,0,0.30)
-  shadow/sm/blur     1px (both modes)
-  shadow/md/blur     2px (both modes)
-  shadow/lg/blur     4px (both modes)
-  shadow/xl/blur     8px (both modes)
-  shadow/2xl/blur    16px (both modes)
+──────────────────────────────────────────────────────────────────────────────────────────────
+  Token            Light              Dark               WEB                     ANDROID / iOS
+  shadow/color     rgba(0,0,0,0.10)   rgba(0,0,0,0.30)   var(--shadow-color)     shadowColor
+  shadow/sm/blur   1px                1px                var(--shadow-sm-blur)   shadowSmBlur
+  shadow/md/blur   2px                2px                var(--shadow-md-blur)   shadowMdBlur
+  shadow/lg/blur   4px                4px                var(--shadow-lg-blur)   shadowLgBlur
+  shadow/xl/blur   8px                8px                var(--shadow-xl-blur)   shadowXlBlur
+  shadow/2xl/blur  16px               16px               var(--shadow-2xl-blur)  shadow2xlBlur
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Show the full hex values for all 11 stops in each color ramp — do not abbreviate with `…`. Show the computed (rounded) font sizes for the `100`, `130`, and `200` modes for every typography slot to give a clear sense of the scaling range.
+Show the full hex values for all 11 stops in each color ramp — do not abbreviate. Show the computed (rounded) font sizes for the `100`, `130`, and `200` modes for every typography slot. Resolve all `{hex}` and `{N}px` values from the token data computed in Steps 5–9 — do not print placeholder text.
 
 ### 10b — Ask for approval
 
