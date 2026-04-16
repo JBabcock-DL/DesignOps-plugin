@@ -230,6 +230,120 @@ Sync complete.
   Tokens skipped:           J
 ```
 
+**Canvas follow-up (same skill run, after the summary above):** when Step **9b**’s trigger applies (Figma received token writes in Step 8), execute **Step 9b** then **Step 9c** before ending the skill. When Step 9b is skipped (direction **2** only, or zero tokens written to Figma), skip **9c** as well.
+
+---
+
+## Step 9b — Redraw Affected Style Guide Pages
+
+**Trigger:** Run this step only when the designer chose direction **1** (Push to Figma), **3** (Push both), or **4** (manual conflict review with a confirmed push). Skip entirely for direction **2** (Push to code) or if no tokens were written to Figma.
+
+### 1. Determine which collections were affected
+
+Inspect the push payload — the set of tokens that were actually written to Figma in Step 8. Map each token path to its collection using these rules:
+
+| Token path pattern | Collection | Style Guide page to redraw |
+|---|---|---|
+| `color/{ramp}/{stop}` (e.g. `color/primary/500`) | Primitives | `↳ Primitives` |
+| `Space/*`, `Corner/*`, `elevation/*` | Primitives | `↳ Primitives` |
+| `color/{group}/{token}` (e.g. `color/background/bg`) | Theme | `↳ Theme` |
+| `Display/*`, `Headline/*`, `Body/*`, `Label/*` | Typography | `↳ Text Styles` |
+| `space/*`, `radius/*` (lowercase) | Layout | `↳ Layout` |
+| `shadow/*` | Effects | `↳ Effects` |
+
+Build a deduplicated list of affected pages (e.g. if ten `color/primary/*` tokens were pushed, `↳ Primitives` appears in the list once).
+
+### 2. Re-read affected collections from Figma
+
+For each collection in the affected list, call:
+
+```
+GET /v1/files/:key/variables/local
+```
+
+Read only the variables belonging to affected collections. Resolve all alias tokens to their final primitive values (hex, px numbers). Do not use the pre-diff snapshot — fetch the current live state so the redrawn pages reflect what was just pushed.
+
+### 3. Redraw each affected page
+
+For each affected page, execute the following inside a single `use_figma` call (loop through all affected pages in one execution context so page state carries over):
+
+1. Navigate to the page: `figma.setCurrentPageAsync(page)` — locate the page by its exact name (e.g. `↳ Primitives`).
+2. Delete all frames with `y > 360` on that page (preserving the doc header at y ≤ 360).
+3. Redraw the full content area using the same drawing spec as **create-design-system Step 15** for that page. The spec for each page is summarised below; refer to the create-design-system SKILL.md for the authoritative detail.
+
+**↳ Primitives** — color ramp swatches (5 ramps × 11 stops, 120×160px cards), Space scale bars (width = value px, capped 800px), Corner radius squares (120×120px with radius applied). All values from the live Primitives collection.
+
+**↳ Theme** — one section-header strip per semantic group (7 groups), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
+
+**↳ Text Styles** — vertical list of 12 type slots (Display/LG through Label/SM). Each row: specimen text rendered at the actual font-size and weight for the `100` (default) mode, plus a 320px metadata column showing slot name, size/weight/line-height values, CSS var, and mode scale range. All values from the live Typography collection.
+
+**↳ Layout** — 4-column grid. Spacing section: horizontal bars scaled 1px = 3px visual (max 240px), token name, WEB/ANDROID/iOS names, px value, bound-to primitive. Radius section: 120×120px squares with radius applied, same metadata columns. All values from the live Layout collection.
+
+**↳ Effects** — one card per shadow group (shadow/sm through shadow/2xl + shadow/color). Each card: 200×200px frame, 80×80px white circle with shadow applied using Light mode values, token name and blur/opacity labels, Light | Dark cards side by side. All values from the live Effects collection.
+
+### 4. Report
+
+After all redraws complete, output:
+
+> "Style guide updated: {comma-separated list of redrawn page names}"
+
+---
+
+## Step 9c — Redraw MCP Tokens Page
+
+**Trigger:** Same condition as Step 9b — run only when direction was **1**, **3**, or **4** (push to Figma occurred). Skip for direction **2**.
+
+### 1. Navigate to the MCP Tokens page
+
+In a `use_figma` call, navigate to the `↳ MCP Tokens` page: `figma.setCurrentPageAsync(page)` — locate by exact name `↳ MCP Tokens`.
+
+### 2. Delete the existing manifest frame
+
+If a frame named `[MCP] Token Manifest` exists on the page, delete it entirely. Do not delete the doc header (y ≤ 360).
+
+### 3. Rebuild the manifest from scratch
+
+Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440, auto-height, white fill. Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
+
+- In the `[MCP] JSON Manifest` text node, set `"skill": "sync-design-system"` (not `"create-design-system"`).
+- Set `"generated"` to the current ISO-8601 datetime at the time this step executes.
+
+The manifest structure is:
+
+**[MCP] JSON Manifest text node** (at y=0 within the root frame) — a single monospaced Label/SM text block named `[MCP] JSON Manifest` containing the full token manifest as a minified JSON string in this shape:
+
+```json
+{
+  "meta": { "generated": "<ISO-8601 now>", "skill": "sync-design-system", "file": "<TARGET_FILE_KEY>" },
+  "collections": {
+    "Primitives": { "<path>": { "type": "COLOR|FLOAT", "value": "<resolved>", "web": "...", "android": "...", "ios": "..." }, ... },
+    "Theme": {
+      "light": { "<path>": { "type": "COLOR", "value": "<resolved>", "web": "...", "android": "...", "ios": "..." }, ... },
+      "dark": { ... }
+    },
+    "Typography": { "<mode>": { "<path>": { "type": "FLOAT", "value": "<resolved>", ... } }, ... },
+    "Layout": { "<path>": { "type": "FLOAT", "value": "<resolved>", ... }, ... },
+    "Effects": { "<mode>": { "<path>": { "type": "COLOR|FLOAT", "value": "<resolved>", ... } }, ... }
+  }
+}
+```
+
+All values are fully resolved (no alias references). Use the same live variable data fetched in Step 9b if available; otherwise call `GET /v1/files/:key/variables/local` once to get current values for all collections.
+
+**Five collection table sub-frames** stacked vertically below the JSON node, each following the table layout from create-design-system Step 16:
+
+- `[MCP] Primitives` — 7-column table: `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. One row per variable, named `token/primitives/{path}`. Swatch = 16×16px colored rectangle.
+- `[MCP] Theme` — two sub-blocks `[MCP] Theme/Light` and `[MCP] Theme/Dark`. 8-column table: `PATH | MODE | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. Rows named `token/theme/{mode}/{path}`.
+- `[MCP] Typography` — 7-column table: `PATH | PROPERTY | MODE | VALUE | WEB | ANDROID | iOS`. One row per variable per mode, grouped by slot. Rows named `token/typography/{mode}/{path}`.
+- `[MCP] Layout` — 7-column table: `PATH | TYPE | VALUE | BOUND TO | WEB | ANDROID | iOS`. Rows named `token/layout/{path}`.
+- `[MCP] Effects` — 7-column table: `PATH | MODE | TYPE | VALUE | WEB | ANDROID | iOS`. Rows named `token/effects/{mode}/{path}`.
+
+All text uses Label/SM monospace (or closest available). Column headers are bold.
+
+### 4. Report
+
+> "MCP Tokens page updated."
+
 ---
 
 ## Conflict Resolution

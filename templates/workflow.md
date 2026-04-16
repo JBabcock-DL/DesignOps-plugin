@@ -31,9 +31,9 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 
 | Skill | Invocation | Description |
 |---|---|---|
-| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, and provides a move instruction to the Design-Systems/ folder |
-| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects) and writes `tokens.css` to the local codebase |
-| Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction |
+| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, draws documentation UI on the canvas (headers, TOC, Token Overview skeleton, Thumbnail cover + file thumbnail), and provides a move instruction to the Design-Systems/ folder |
+| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), writes `tokens.css` to the local codebase, then refreshes Figma canvas docs (style guide pages, MCP token manifest, Token Overview content, brand-colored cover thumbnail) |
+| Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction; after pushes to Figma, can redraw affected style guide pages and the MCP Tokens manifest so canvas matches variables |
 | Create Component | `/create-component` | Installs shadcn/ui components, wires `tokens.css` into `globals.css`, draws components to the Figma canvas with token bindings, and optionally chains Code Connect |
 | Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings after designer review |
 | New Language | `/new-language` | Localizes a Figma frame into a new language by duplicating it, translating text inline via Claude, and writing strings back |
@@ -52,7 +52,7 @@ All Figma operations in this plugin go through the official Figma MCP server (`m
 | `create_new_file` | `/new-project` | Create blank Figma design files in Drafts |
 | `get_metadata` | `/create-design-system` | Read team and project metadata before writes |
 | `get_variable_defs` | `/create-design-system`, `/sync-design-system` | Read current variable collection state from a Figma file |
-| `use_figma` | `/new-project`, `/create-design-system`, `/sync-design-system`, `/create-component`, `/new-language`, `/accessibility-check` | General-purpose Figma write/read operations (scaffold pages, create frames, update variables, write text nodes) |
+| `use_figma` | `/new-project`, `/create-design-system`, `/sync-design-system`, `/create-component`, `/new-language`, `/accessibility-check` | General-purpose Figma write/read operations (scaffold pages, doc headers, style guide layouts, token manifest frames, components, text nodes). Load the **figma-use** skill before every `use_figma` call when your environment requires it. |
 | `get_context_for_code_connect` | `/code-connect` | Retrieve component context (props, variants) for a specific node ID |
 | `send_code_connect_mappings` | `/code-connect` | Publish finalized Code Connect mappings |
 | `get_design_context` | `/code-connect`, `/accessibility-check`, `/create-component` | Enumerate component nodes for Code Connect discovery; read frame/node layout and style data for accessibility and component drawing |
@@ -122,7 +122,7 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 - **Theme Light block** — 33 M3 semantic tokens in `:root, [data-theme="light"]` using `var(--color-*)` references, plus shadcn/ui compatibility aliases (`--foreground`, `--border`, `--destructive`, `--accent`, etc.) that point back to the M3 primary vars
 - **Theme Dark block** — same structure in `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`
 - **Typography base block** — all 48 properties at 100% scale in `:root`
-- **Typography scale blocks** — 7 `[data-font-scale="N"]` blocks (85, 110, 120, 130, 150, 175, 200) with only font-size and line-height overrides
+- **Typography scale blocks** — 8 `[data-font-scale="N"]` blocks (85, 100, 110, 120, 130, 150, 175, 200) with only font-size and line-height overrides
 
 Primary CSS var names use M3 role conventions (`--on-background`, `--outline`, `--primary-container`, `--error`, etc.). shadcn/ui names (`--foreground`, `--border`, `--destructive`, `--accent`, etc.) are alias vars that resolve to the M3 primaries, so shadcn components resolve correctly with no additional mapping.
 
@@ -133,9 +133,24 @@ Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `
 
 1. Agent prompts for brand colors (primary, secondary, neutral, tertiary, error), typefaces, and base spacing/radius values
 2. Generates five color ramps via Tailwind HSL lightness interpolation
-3. Writes all five collections to the target Figma file via the Variables REST API
-4. Writes `tokens.css` to the local codebase
-5. Records `token_css_path` in `agent-handoff.md` for downstream skills
+3. Writes all five collections to the target Figma file via the Variables REST API (`PUT` — not `use_figma`; `codeSyntax` must be set here)
+4. Verifies the registry with a Variables GET, then writes `tokens.css` to the local codebase
+5. Records `token_css_path` in `templates/agent-handoff.md` for downstream skills
+6. Runs **`use_figma`** to draw or refresh **style guide** pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`), the **`[MCP] Token Manifest`** on `↳ MCP Tokens`, **Token Overview** populated from live variables, and the **Thumbnail** `Cover` gradient from brand primaries + `setFileThumbnailNodeAsync`
+
+### How `/new-project` prepares the Foundations file
+
+1. **`create_new_file`** — new design file in Drafts
+2. **`use_figma` Step 5** — full page list (Thumbnail, section dividers, style guide, brand, atoms, components, utilities)
+3. **`use_figma` Step 5b** — `_Header` + `_Content` on every page **except** `Thumbnail` (cover-only meta page)
+4. **`use_figma` Step 5c** — Table of Contents grid on `📝 Table of Contents` with `toc-link/{exact page name}` rows for agents
+5. **`use_figma` Step 5d** — Token Overview skeleton on `↳ Token Overview` (`placeholder/*` nodes removed when `/create-design-system` runs)
+6. **`use_figma` Step 5e** — `Cover` frame on `Thumbnail` and file thumbnail
+7. **Step 6–7** — move instructions, optional chain to `/create-design-system` with handoff YAML
+
+### How `/sync-design-system` updates canvas after a Figma push
+
+When the designer pushes token changes **to Figma** (options 1, 3, or 4 with confirmed push), the skill also runs **`use_figma`** to **redraw affected style guide pages** (Step 9b) and **rebuild the MCP Tokens manifest** (Step 9c), using the same layout rules as `/create-design-system`. Pushes **to code only** (option 2) skip canvas redraws.
 
 ---
 
@@ -155,9 +170,9 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 
 | Skill | Syntax | Arguments | Description |
 |---|---|---|---|
-| /new-project | `/new-project` | none (interactive) | Scaffolds a full DL Figma project |
-| /create-design-system | `/create-design-system` | none | Creates five token collections in Figma and writes `tokens.css` locally |
-| /sync-design-system | `/sync-design-system` | none (interactive) | Diffs and syncs Figma variables with local tokens |
+| /new-project | `/new-project` | none (interactive) | Scaffolds a full DL Figma project with documentation canvas (headers, TOC, Token Overview skeleton, cover) |
+| /create-design-system | `/create-design-system` | none | Creates five token collections, writes `tokens.css`, redraws style guide + MCP manifest + Token Overview + cover |
+| /sync-design-system | `/sync-design-system` | none (interactive) | Diffs and syncs Figma variables with local tokens; redraws style pages + MCP manifest after pushes to Figma |
 | /create-component | `/create-component [components...]` | components: shadcn component names | Installs components, wires tokens.css, draws to canvas |
 | /code-connect | `/code-connect` | none | Finds and publishes missing Code Connect mappings |
 | /new-language | `/new-language [locale] [node_id]` | locale: BCP 47 code, node_id: Figma node | Duplicates a frame for a new locale with inline translations |
@@ -169,8 +184,8 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 
 A complete new project setup runs the skills in this sequence:
 
-1. `/new-project` → scaffolds the Foundations file with full page hierarchy in Figma
-2. `/create-design-system` → collects brand tokens, writes five variable collections to Figma, writes `tokens.css` to the local codebase
+1. `/new-project` → scaffolds the Foundations file with full page hierarchy, documentation headers, TOC, Token Overview skeleton, and Thumbnail cover in Figma
+2. `/create-design-system` → collects brand tokens, writes five variable collections to Figma, writes `tokens.css` to the local codebase, then draws style guide + MCP manifest + updates Token Overview and cover
 3. `/create-component button input card` → installs shadcn components, wires `tokens.css` into `globals.css`, draws components to canvas with token bindings
 4. `/code-connect` → maps Figma components to code files, confirms with designer, publishes via `send_code_connect_mappings`
 5. `/accessibility-check` → audits for WCAG 2.1 AA contrast, font size minimums, iOS Dynamic Type, and Android scaling before handoff
@@ -185,4 +200,4 @@ Many skills offer to chain into the next skill automatically at completion:
 - `/create-design-system` offers to run `/create-component` after tokens are pushed and `tokens.css` is written
 - `/create-component` offers to run `/code-connect` after drawing components to the canvas
 
-When a skill prompts to chain, you can accept to continue the workflow without re-invoking the next command. All chained skills share session context via `agent-handoff.md` (active file key, project name, token CSS path) — no information needs to be re-entered.
+When a skill prompts to chain, you can accept to continue the workflow without re-invoking the next command. All chained skills share session context via `templates/agent-handoff.md` (active file key, project name, token CSS path) — no information needs to be re-entered.

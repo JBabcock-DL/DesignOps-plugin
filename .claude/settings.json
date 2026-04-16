@@ -4,7 +4,8 @@
       "Read(~/.claude/plugins/**)",
       "Read(//c/Users/jbabc/.claude/**)",
       "WebSearch",
-      "WebFetch(domain:developers.figma.com)"
+      "WebFetch(domain:developers.figma.com)",
+      "mcp__claude_ai_Figma__get_screenshot"
     ],
     "additionalDirectories": [
       "~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/.claude-plugin",

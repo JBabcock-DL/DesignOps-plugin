@@ -72,7 +72,7 @@ Skills pass context to each other through `templates/agent-handoff.md`, so you c
 
 ### /new-project
 
-Create and scaffold a `<Project Name> — Foundations` design system file using the Figma MCP connector. The file is created in Drafts, page structure is built automatically, and a single move instruction is provided at the end.
+Create and scaffold a `<Project Name> — Foundations` design system file using the Figma MCP connector. The file is created in Drafts, the full page tree is created, **documentation canvas** is drawn (headers, table of contents, token overview skeleton, cover + file thumbnail), then a single move instruction is provided at the end.
 
 **Syntax**
 ```
@@ -84,9 +84,20 @@ Create and scaffold a `<Project Name> — Foundations` design system file using 
 
 | File | Target Folder | Method |
 |---|---|---|
-| `<Project Name> — Foundations` | `Design-Systems/` | Created via MCP `create_new_file`, pages scaffolded via `use_figma` |
+| `<Project Name> — Foundations` | `Design-Systems/` | Created via MCP `create_new_file`, pages and canvas via sequential `use_figma` calls |
 
 The file lands in Drafts. At the end of the run Claude provides a one-step move instruction: right-click the file in Figma → Move to Project → Design-Systems/.
+
+**Scaffold sequence (see `skills/new-project/SKILL.md`)**
+
+| Step | What happens |
+|---|---|
+| 5 | Rename first page, create all pages from the Detroit Labs hierarchy |
+| 5b | Doc header (`_Header`) + dashed `_Content` region on **every page except `Thumbnail`** (cover is the meta surface for that page) |
+| 5c | **Table of Contents** on `📝 Table of Contents` — two-column section cards; link rows named `toc-link/{exact Figma page name}` for automation |
+| 5d | **Token Overview** skeleton on `↳ Token Overview` — architecture, mapping table, mode panels, binding tips, Claude commands; `placeholder/*` nodes cleared when `/create-design-system` runs |
+| 5e | **Thumbnail** — full-bleed `Cover` (gradient, project title, chips, mark) and `setFileThumbnailNodeAsync` |
+| 6–7 | Move instructions; optional chain to `/create-design-system` with `templates/agent-handoff.md` |
 
 **Page hierarchy** — sourced from the Detroit Labs Foundations template and extended with shadcn/ui component pages, organized into atomic design groups:
 
@@ -102,6 +113,7 @@ The file lands in Drafts. At the end of the run Claude provides a one-step move 
 - Data Display (Data Table, Lists, Chart, Stat block, Widgets, Video player)
 - Content Containers (Cards, Tiles, Carousel, Accordion, Collapsible, Resizable, Scroll Area)
 - Native & Platform (Native Device Parts)
+- Utility (`Documentation components`, `Grids`, `parking lot`)
 
 After creating and scaffolding the file, Claude offers to chain into `/create-design-system`.
 
@@ -132,7 +144,11 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 8. Writes all five collections to Figma via the Variables REST API with `codeSyntax` (WEB/ANDROID/iOS) on every variable
 9. Verifies the write with a GET call and reports final variable counts
 10. **Writes `tokens.css`** to the local codebase — the CSS source of truth for the project (see [Token Architecture](#token-architecture))
-11. Updates `agent-handoff.md` with `token_css_path` so `/create-component` can locate the file automatically
+11. Updates `templates/agent-handoff.md` with `token_css_path` so `/create-component` can locate the file automatically
+12. **`use_figma` — Style guide** — redraws token visualization on `↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects` (content below the doc header; see skill for layout spec)
+13. **`use_figma` — MCP Tokens** — builds `[MCP] Token Manifest` with JSON + tables for machine and human audit
+14. **`use_figma` — Token Overview** — replaces skeleton data, updates swatches and tables from live variables, removes `placeholder/*` notes
+15. **`use_figma` — Thumbnail** — updates `Cover` gradient stops from `color/primary/500` and `color/secondary/500`, re-applies file thumbnail
 
 **Requires:** Organization-tier Figma account for the Variables REST API write endpoint.
 
@@ -172,6 +188,7 @@ Diff a local token file against the current Figma variable state and push change
    - **Push both** — sync in both directions (only available when there are no conflicts)
    - **Review manually** — resolve each conflict one at a time before pushing
 5. Flags any legacy `Web`, `Android/M3`, or `iOS/HIG` collections as deprecated if found
+6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** to **redraw affected style guide pages** so swatches match the new variable values, then **rebuilds the `[MCP] Token Manifest`** on `↳ MCP Tokens`. Skipped when only pushing to code (option 2).
 
 ---
 
@@ -303,11 +320,10 @@ Run a WCAG 2.1 AA accessibility audit on a selected Figma frame, including contr
 A complete project setup from scratch through production-ready, code-connected components:
 
 ```
-# 1. Scaffold the Foundations design system file in Figma
+# 1. Scaffold the Foundations file in Figma (pages + doc UI + cover thumbnail)
 /new-project --team "Client Team" --name "Acme App"
 
-# 2. Collect brand tokens, push 5 variable collections to Figma,
-#    and write tokens.css to the local codebase
+# 2. Push variables + tokens.css, then refresh style guide + MCP manifest + Token Overview + cover
 /create-design-system
 
 # 3. Install shadcn/ui components, wire tokens.css into globals.css,
@@ -340,7 +356,7 @@ Skills pass context to each other through `templates/agent-handoff.md`. This fil
 | `active_file_key` | The Figma file key currently being worked on |
 | `active_project_name` | The project name as it appears in the Figma team space |
 | `last_skill_run` | The last skill that was executed |
-| `variable_slot_catalog_path` | Path to the variable slot catalog (populated after `/create-design-system`) |
+| `variable_slot_catalog_path` | Optional path to a variable slot catalog; usually empty unless your workflow uses one |
 | `token_css_path` | Path to `tokens.css` written by `/create-design-system` — read by `/create-component` to wire the import into `globals.css` |
 | `open_items` | Notes and unresolved items for the next skill to address |
 
@@ -527,7 +543,7 @@ This plugin is distributed internally via this Git repository. To add or modify 
 
 1. Edit the corresponding `skills/<skill-name>/SKILL.md` file — the instructions are plain Markdown, no compilation required
 2. If adding a new skill, add an entry to `.claude-plugin/plugin.json` with the skill `name`, `description`, `path`, and `arguments` schema
-3. Update `templates/workflow.md` if the change affects plugin-wide conventions
+3. Update `templates/workflow.md` and this `README.md` if the change affects designer-facing behavior or conventions
 4. Test with a live Figma file using the Figma MCP connector before committing
 
 All Figma operations require the Figma MCP connector to be active and authenticated with an Organization-tier account. The Variables REST API write endpoint (`PUT /v1/files/:key/variables`) is the most common source of plan-tier errors — verify your account tier if `/create-design-system` or `/sync-design-system` fails with a `403`.
