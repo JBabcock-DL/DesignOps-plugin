@@ -82,7 +82,7 @@ primitive values for diff purposes.
 
 **Mode-aware flattening:** For collections with multiple modes, flatten each
 mode into a separate key using the pattern `collection/mode/token-name`:
-- Theme (2 modes): `theme/light/color/background/default`, `theme/dark/color/background/default`, `theme/light/color/background/variant`, `theme/light/color/status/error`, etc.
+- Theme (2 modes): `theme/light/color/background/default`, `theme/dark/color/background/default`, `theme/light/color/background/variant`, `theme/light/color/error/default`, etc.
 - Typography (8 modes): `typography/100/Headline-LG-font-size`, `typography/200/Headline-LG-font-size`, etc.
 - Effects (2 modes): `effects/light/shadow/color`, `effects/dark/shadow/color`
 - Primitives and Layout (1 mode each): `primitives/color-primary-500`, `layout/space-md`
@@ -189,7 +189,7 @@ Payload structure (Figma Variables bulk write format):
   its value. Infer the collection from the token name prefix using these rules:
   - `color/{ramp}/{stop}` (e.g. `color/primary/500`) → `Primitives`
   - `Space/*`, `Corner/*`, `elevation/*` → `Primitives`
-  - `color/{group}/{token}` (e.g. `color/background/default`, `color/background/fg`, `color/border/default`, `color/primary/default`) → `Theme`
+  - `color/{group}/{token}` (e.g. `color/background/default`, `color/background/content`, `color/border/default`, `color/primary/default`) → `Theme`
   - `Display/*`, `Headline/*`, `Body/*`, `Label/*` → `Typography`
   - `space/*`, `radius/*` (lowercase) → `Layout`
   - `shadow/*` → `Effects`
@@ -273,7 +273,7 @@ For each affected page, execute the following inside a single `use_figma` call (
 
 **↳ Primitives** — color ramp swatches (5 ramps × 11 stops, 120×160px cards), Space scale bars (width = value px, capped 800px), Corner radius squares (120×120px with radius applied). All values from the live Primitives collection.
 
-**↳ Theme** — one section-header strip per semantic group (6 groups: `surface/`, `primary/`, `secondary/`, `tertiary/`, `status/`, `component/`), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
+**↳ Theme** — one section-header strip per semantic group (6 groups: `background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
 
 **↳ Text Styles** — vertical list of 12 type slots (Display/LG through Label/SM). Each row: specimen text rendered at the actual font-size and weight for the `100` (default) mode, plus a 320px metadata column showing slot name, size/weight/line-height values, CSS var, and mode scale range. All values from the live Typography collection.
 
@@ -426,17 +426,17 @@ When parsing CSS custom properties that match Theme semantic token names, map th
 - `--color-background-container-high` → `color/background/container-high`
 - `--color-background-container-highest` → `color/background/container-highest`
 - `--color-background-variant` → `color/background/variant`
-- `--color-content` → `color/background/fg`
-- `--color-content-muted` → `color/background/fg-subtle`
+- `--color-content` → `color/background/content`
+- `--color-content-muted` → `color/background/content-muted`
 - `--color-border` → `color/border/default`
 - `--color-border-subtle` → `color/border/subtle`
 - `--color-inverse-surface` → `color/background/inverse`
-- `--color-inverse-content` → `color/background/inverse-fg`
+- `--color-inverse-content` → `color/background/inverse-content`
 - `--color-inverse-brand` → `color/background/inverse-primary`
 - `--color-scrim` → `color/background/scrim`
 - `--color-shadow-tint` → `color/background/shadow`
 - `--color-primary` → `color/primary/default`
-- `--color-on-primary` → `color/primary/fg`
+- `--color-on-primary` → `color/primary/content`
 - `--color-primary-subtle` → `color/primary/subtle`
 - `--color-on-primary-subtle` → `color/primary/on-subtle`
 - `--color-primary-fixed` → `color/primary/fixed`
@@ -444,7 +444,7 @@ When parsing CSS custom properties that match Theme semantic token names, map th
 - `--color-on-primary-fixed` → `color/primary/on-fixed`
 - `--color-on-primary-fixed-muted` → `color/primary/on-fixed-variant`
 - `--color-secondary` → `color/secondary/default`
-- `--color-on-secondary` → `color/secondary/fg`
+- `--color-on-secondary` → `color/secondary/content`
 - `--color-secondary-subtle` → `color/secondary/subtle`
 - `--color-on-secondary-subtle` → `color/secondary/on-subtle`
 - `--color-secondary-fixed` → `color/secondary/fixed`
@@ -452,25 +452,25 @@ When parsing CSS custom properties that match Theme semantic token names, map th
 - `--color-on-secondary-fixed` → `color/secondary/on-fixed`
 - `--color-on-secondary-fixed-muted` → `color/secondary/on-fixed-variant`
 - `--color-accent` → `color/tertiary/default`
-- `--color-on-accent` → `color/tertiary/fg`
+- `--color-on-accent` → `color/tertiary/content`
 - `--color-accent-subtle` → `color/tertiary/subtle`
 - `--color-on-accent-subtle` → `color/tertiary/on-subtle`
 - `--color-accent-fixed` → `color/tertiary/fixed`
 - `--color-accent-fixed-dim` → `color/tertiary/fixed-dim`
 - `--color-on-accent-fixed` → `color/tertiary/on-fixed`
 - `--color-on-accent-fixed-muted` → `color/tertiary/on-fixed-variant`
-- `--color-danger` → `color/status/error`
-- `--color-on-danger` → `color/status/error-fg`
-- `--color-danger-subtle` → `color/status/error-subtle`
-- `--color-on-danger-subtle` → `color/status/error-on-subtle`
-- `--color-danger-fixed` → `color/status/error-fixed`
-- `--color-danger-fixed-dim` → `color/status/error-fixed-dim`
-- `--color-on-danger-fixed` → `color/status/error-on-fixed`
-- `--color-on-danger-fixed-muted` → `color/status/error-on-fixed-variant`
+- `--color-danger` → `color/error/default`
+- `--color-on-danger` → `color/error/content`
+- `--color-danger-subtle` → `color/error/subtle`
+- `--color-on-danger-subtle` → `color/error/on-subtle`
+- `--color-danger-fixed` → `color/error/fixed`
+- `--color-danger-fixed-dim` → `color/error/fixed-dim`
+- `--color-on-danger-fixed` → `color/error/on-fixed`
+- `--color-on-danger-fixed-muted` → `color/error/on-fixed-variant`
 - `--color-field` → `color/component/input`
 - `--color-focus-ring` → `color/component/ring`
 - `--color-sidebar` → `color/component/sidebar`
-- `--color-on-sidebar` → `color/component/sidebar-fg`
+- `--color-on-sidebar` → `color/component/sidebar-content`
 
 **Skip during diff** — shadcn/ui and legacy names that duplicate `--color-*`:
 `--background`, `--on-background`, `--foreground`, `--background-inverse`, `--foreground-inverse`, `--surface-raised`, `--surface-overlay`, `--border`, `--border-subtle`, `--primary`, `--on-primary`, `--primary-container`, `--on-primary-container`, `--primary-foreground`, `--primary-subtle`, `--on-primary-subtle`, `--secondary`, `--on-secondary`, `--secondary-container`, `--on-secondary-container`, `--secondary-foreground`, `--secondary-subtle`, `--on-secondary-subtle`, `--tertiary`, `--on-tertiary`, `--tertiary-container`, `--on-tertiary-container`, `--accent`, `--accent-foreground`, `--error`, `--on-error`, `--error-container`, `--on-error-container`, `--destructive`, `--destructive-foreground`, `--error-subtle`, `--on-error-subtle`, `--input`, `--ring`, `--sidebar`, `--sidebar-foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`

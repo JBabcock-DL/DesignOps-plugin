@@ -196,7 +196,7 @@ await figma.setCurrentPageAsync(targetPage);
 const collections = figma.variables.getLocalVariableCollections();
 const allVars = figma.variables.getLocalVariables();
 
-// Theme → color tokens  (color/primary/default, color/background/default, color/background/fg, …)
+// Theme → color tokens  (color/primary/default, color/background/default, color/background/content, …)
 const themeCol = collections.find(c => c.name === 'Theme');
 const themeVars = themeCol ? allVars.filter(v => v.variableCollectionId === themeCol.id) : [];
 const getColorVar = name => themeVars.find(v => v.name === name) ?? null;
@@ -285,7 +285,7 @@ function bindNum(node, field, varName, fallback) {
 //   padV      — Layout path for vertical padding
 function buildVariant(name, fillVar, fallbackFill, {
   label     = null,
-  labelVar  = 'color/background/fg',
+  labelVar  = 'color/background/content',
   strokeVar = null,
   radiusVar = 'radius/md',
   padH      = 'space/md',
@@ -378,11 +378,11 @@ const BUTTON_VARIANTS = ['default', 'destructive', 'outline', 'secondary', 'ghos
 const BUTTON_SIZES    = ['default', 'sm', 'lg', 'icon'];
 
 const BUTTON_STYLE = {
-  default:     { fill: 'color/primary/default',    fallback: '#1a1a1a', lv: 'color/primary/fg',             stroke: null },
-  destructive: { fill: 'color/status/error',       fallback: '#ef4444', lv: 'color/status/error-fg',        stroke: null },
-  outline:     { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/background/fg',          stroke: 'color/border/default' },
-  secondary:   { fill: 'color/secondary/default',  fallback: '#6b7280', lv: 'color/secondary/fg',           stroke: null },
-  ghost:       { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/background/fg',          stroke: null },
+  default:     { fill: 'color/primary/default',    fallback: '#1a1a1a', lv: 'color/primary/content',             stroke: null },
+  destructive: { fill: 'color/error/default',       fallback: '#ef4444', lv: 'color/error/content',        stroke: null },
+  outline:     { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/background/content',          stroke: 'color/border/default' },
+  secondary:   { fill: 'color/secondary/default',  fallback: '#6b7280', lv: 'color/secondary/content',           stroke: null },
+  ghost:       { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/background/content',          stroke: null },
   link:        { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/primary/default',        stroke: null },
 };
 const BUTTON_PAD_H = { default: 'space/md', sm: 'space/xs', lg: 'space/lg', icon: 'space/xs' };
@@ -407,10 +407,10 @@ layoutSet(compSet, "Button", 100, 100);
 // Use this pattern when the component has exactly one variant dimension.
 
 const badgeNodes = [
-  buildVariant('variant=default',     'color/primary/default',   '#1a1a1a', { label: 'Badge', labelVar: 'color/primary/fg' }),
-  buildVariant('variant=secondary',   'color/secondary/default', '#6b7280', { label: 'Badge', labelVar: 'color/secondary/fg' }),
-  buildVariant('variant=destructive', 'color/status/error',      '#ef4444', { label: 'Badge', labelVar: 'color/status/error-fg' }),
-  buildVariant('variant=outline',     'color/background/default', '#ffffff', { label: 'Badge', labelVar: 'color/background/fg', strokeVar: 'color/border/default' }),
+  buildVariant('variant=default',     'color/primary/default',   '#1a1a1a', { label: 'Badge', labelVar: 'color/primary/content' }),
+  buildVariant('variant=secondary',   'color/secondary/default', '#6b7280', { label: 'Badge', labelVar: 'color/secondary/content' }),
+  buildVariant('variant=destructive', 'color/error/default',      '#ef4444', { label: 'Badge', labelVar: 'color/error/content' }),
+  buildVariant('variant=outline',     'color/background/default', '#ffffff', { label: 'Badge', labelVar: 'color/background/content', strokeVar: 'color/border/default' }),
 ];
 spreadNodes(badgeNodes);
 const badgeSet = figma.combineAsVariants(badgeNodes, figma.currentPage);
@@ -420,7 +420,7 @@ layoutSet(badgeSet, "Badge", 100, 100);
 // For components with no variants (separator, label, card, etc.).
 
 const comp = buildVariant('Card', 'color/background/default', '#ffffff',
-  { label: 'Card', labelVar: 'color/background/fg', radiusVar: 'radius/lg' });
+  { label: 'Card', labelVar: 'color/background/content', radiusVar: 'radius/lg' });
 // Position single-state components explicitly — they land at (0,0) by default.
 comp.x = 100;
 comp.y = 100;
@@ -439,11 +439,11 @@ comp.y = 100;
 
 | Component | Property | Values | Fill variable guidance |
 |---|---|---|---|
-| `badge` | `variant` | default, secondary, destructive, outline | default→`color/primary/default`, secondary→`color/secondary/default`, destructive→`color/status/error`, outline→`color/background/default`+stroke |
-| `input` | `state` | default, focus, disabled, error | all→`color/component/input`; error adds stroke `color/status/error` |
+| `badge` | `variant` | default, secondary, destructive, outline | default→`color/primary/default`, secondary→`color/secondary/default`, destructive→`color/error/default`, outline→`color/background/default`+stroke |
+| `input` | `state` | default, focus, disabled, error | all→`color/component/input`; error adds stroke `color/error/default` |
 | `textarea` | `state` | default, focus, disabled, error | same as input |
 | `select` | `state` | default, open, disabled | `color/background/default`; open adds stroke `color/component/ring` |
-| `alert` | `variant` | default, destructive | default→`color/background/variant`; destructive→`color/status/error-subtle` |
+| `alert` | `variant` | default, destructive | default→`color/background/variant`; destructive→`color/error/subtle` |
 | `avatar` | `size` | sm, md, lg | `color/background/variant`; vary `padH`: sm→`space/xs`, md→`space/sm`, lg→`space/md` |
 | `progress` | `value` | 0, 25, 50, 75, 100 | track→`color/background/variant`; indicator→`color/primary/default` |
 | `skeleton` | `shape` | line, circle, rect | `color/background/variant` |

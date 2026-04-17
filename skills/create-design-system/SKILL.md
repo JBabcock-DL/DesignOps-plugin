@@ -325,10 +325,10 @@ Every Theme variable is a COLOR type that aliases a Primitive variable by ID. Us
 
 | Variable | Light → | Dark → |
 |---|---|---|
-| `color/background/fg` | `color/neutral/900` | `color/neutral/50` |
-| `color/background/fg-subtle` | `color/neutral/500` | `color/neutral/400` |
+| `color/background/content` | `color/neutral/900` | `color/neutral/50` |
+| `color/background/content-muted` | `color/neutral/500` | `color/neutral/400` |
 | `color/background/inverse` | `color/neutral/950` | `color/neutral/50` |
-| `color/background/inverse-fg` | `color/neutral/50` | `color/neutral/900` |
+| `color/background/inverse-content` | `color/neutral/50` | `color/neutral/900` |
 | `color/background/inverse-primary` | `color/primary/300` | `color/primary/700` |
 | `color/background/scrim` | *(hard-coded)* `#000000` @ 32% alpha | *(hard-coded)* `#000000` @ 32% alpha |
 | `color/background/shadow` | *(hard-coded)* `#000000` @ 15% alpha | *(hard-coded)* `#000000` @ 40% alpha |
@@ -344,12 +344,12 @@ Write `color/background/scrim` and `color/background/shadow` as hard-coded COLOR
 | `color/border/subtle` | `color/neutral/100` | `color/neutral/800` |
 
 ### primary/ — Primary brand (8 variables)
-*Standard roles: CTA fills, on-primary, **subtle** brand surfaces (`subtle` / `on-subtle` = M3 `primary-container` / `on-primary-container`), and **fixed** roles for hero brand moments that stay stable across light/dark (per M3 fixed palette).*
+*Standard roles: CTA fill (`default`), label/icon on that fill (`content`), **subtle** brand surfaces (`subtle` / `on-subtle` = M3 `primary-container` / `on-primary-container`), and **fixed** roles for hero brand moments that stay stable across light/dark (per M3 fixed palette).*
 
 | Variable | Light → | Dark → |
 |---|---|---|
 | `color/primary/default` | `color/primary/500` | `color/primary/400` |
-| `color/primary/fg` | `color/primary/50` | `color/primary/50` |
+| `color/primary/content` | `color/primary/50` | `color/primary/50` |
 | `color/primary/subtle` | `color/primary/100` | `color/primary/800` |
 | `color/primary/on-subtle` | `color/primary/900` | `color/primary/100` |
 | `color/primary/fixed` | `color/primary/100` | `color/primary/300` |
@@ -363,7 +363,7 @@ Write `color/background/scrim` and `color/background/shadow` as hard-coded COLOR
 | Variable | Light → | Dark → |
 |---|---|---|
 | `color/secondary/default` | `color/secondary/500` | `color/secondary/400` |
-| `color/secondary/fg` | `color/secondary/50` | `color/secondary/50` |
+| `color/secondary/content` | `color/secondary/50` | `color/secondary/50` |
 | `color/secondary/subtle` | `color/secondary/100` | `color/secondary/800` |
 | `color/secondary/on-subtle` | `color/secondary/900` | `color/secondary/100` |
 | `color/secondary/fixed` | `color/secondary/100` | `color/secondary/300` |
@@ -377,7 +377,7 @@ Write `color/background/scrim` and `color/background/shadow` as hard-coded COLOR
 | Variable | Light → | Dark → |
 |---|---|---|
 | `color/tertiary/default` | `color/tertiary/500` | `color/tertiary/400` |
-| `color/tertiary/fg` | `color/tertiary/50` | `color/tertiary/50` |
+| `color/tertiary/content` | `color/tertiary/50` | `color/tertiary/50` |
 | `color/tertiary/subtle` | `color/tertiary/100` | `color/tertiary/800` |
 | `color/tertiary/on-subtle` | `color/tertiary/900` | `color/tertiary/100` |
 | `color/tertiary/fixed` | `color/tertiary/100` | `color/tertiary/300` |
@@ -385,19 +385,19 @@ Write `color/background/scrim` and `color/background/shadow` as hard-coded COLOR
 | `color/tertiary/on-fixed` | `color/tertiary/900` | `color/tertiary/100` |
 | `color/tertiary/on-fixed-variant` | `color/tertiary/800` | `color/tertiary/200` |
 
-### status/ — Feedback states (8 variables)
-*Standard error roles + **fixed** error roles (M3). Expand with `warning/`, `success/`, `info/` using the same 8-token shape when needed.*
+### error/ — Error feedback (8 variables)
+*Same token shape as `primary/` (`default`, `content`, `subtle`, `on-subtle`, fixed roles). **Fixed** roles follow M3 error-fixed palette behavior. Add `color/warning/*`, `color/success/*`, or `color/info/*` groups with the same 8-token shape when needed.*
 
 | Variable | Light → | Dark → |
 |---|---|---|
-| `color/status/error` | `color/error/600` | `color/error/400` |
-| `color/status/error-fg` | `color/error/50` | `color/error/50` |
-| `color/status/error-subtle` | `color/error/100` | `color/error/900` |
-| `color/status/error-on-subtle` | `color/error/900` | `color/error/100` |
-| `color/status/error-fixed` | `color/error/100` | `color/error/300` |
-| `color/status/error-fixed-dim` | `color/error/200` | `color/error/800` |
-| `color/status/error-on-fixed` | `color/error/900` | `color/error/100` |
-| `color/status/error-on-fixed-variant` | `color/error/800` | `color/error/200` |
+| `color/error/default` | `color/error/600` | `color/error/400` |
+| `color/error/content` | `color/error/50` | `color/error/50` |
+| `color/error/subtle` | `color/error/100` | `color/error/900` |
+| `color/error/on-subtle` | `color/error/900` | `color/error/100` |
+| `color/error/fixed` | `color/error/100` | `color/error/300` |
+| `color/error/fixed-dim` | `color/error/200` | `color/error/800` |
+| `color/error/on-fixed` | `color/error/900` | `color/error/100` |
+| `color/error/on-fixed-variant` | `color/error/800` | `color/error/200` |
 
 ### component/ — shadcn component tokens (4 variables)
 *Named shadcn props only. **Scrim** and **shadow** live under `background/` as M3 `ColorScheme` roles (`scrim`, `shadow`).*
@@ -407,7 +407,7 @@ Write `color/background/scrim` and `color/background/shadow` as hard-coded COLOR
 | `color/component/input` | `color/neutral/200` | `color/neutral/700` |
 | `color/component/ring` | `color/primary/500` | `color/primary/400` |
 | `color/component/sidebar` | `color/neutral/100` | `color/neutral/900` |
-| `color/component/sidebar-fg` | `color/neutral/900` | `color/neutral/100` |
+| `color/component/sidebar-content` | `color/neutral/900` | `color/neutral/100` |
 
 ### codeSyntax for Theme
 
@@ -439,10 +439,10 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/background/container-high` | `var(--color-background-container-high)` | `surface-container-high` | `.Background.high` |
 | `color/background/container-highest` | `var(--color-background-container-highest)` | `surface-container-highest` | `.Background.highest` |
 | `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Background.variant` |
-| `color/background/fg` | `var(--color-content)` | `on-surface` | `.Foreground.primary` |
-| `color/background/fg-subtle` | `var(--color-content-muted)` | `on-surface-variant` | `.Foreground.secondary` |
+| `color/background/content` | `var(--color-content)` | `on-surface` | `.Foreground.primary` |
+| `color/background/content-muted` | `var(--color-content-muted)` | `on-surface-variant` | `.Foreground.secondary` |
 | `color/background/inverse` | `var(--color-inverse-surface)` | `inverse-surface` | `.Background.inverse` |
-| `color/background/inverse-fg` | `var(--color-inverse-content)` | `inverse-on-surface` | `.Foreground.inverse` |
+| `color/background/inverse-content` | `var(--color-inverse-content)` | `inverse-on-surface` | `.Foreground.inverse` |
 | `color/background/inverse-primary` | `var(--color-inverse-brand)` | `inverse-primary` | `.Primary.inverse` |
 | `color/background/scrim` | `var(--color-scrim)` | `scrim` | `.Effect.scrim` |
 | `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Background.shadowTint` |
@@ -459,7 +459,7 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | Figma variable | WEB | ANDROID | iOS (semantic) |
 |---|---|---|---|
 | `color/primary/default` | `var(--color-primary)` | `primary` | `.Primary.default` |
-| `color/primary/fg` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
+| `color/primary/content` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/primary/on-subtle` | `var(--color-on-primary-subtle)` | `on-primary-container` | `.Primary.onSubtle` |
 | `color/primary/fixed` | `var(--color-primary-fixed)` | `primary-fixed` | `.Primary.fixed` |
@@ -467,7 +467,7 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/primary/on-fixed` | `var(--color-on-primary-fixed)` | `on-primary-fixed` | `.Primary.onFixed` |
 | `color/primary/on-fixed-variant` | `var(--color-on-primary-fixed-muted)` | `on-primary-fixed-variant` | `.Primary.onFixedMuted` |
 | `color/secondary/default` | `var(--color-secondary)` | `secondary` | `.Secondary.default` |
-| `color/secondary/fg` | `var(--color-on-secondary)` | `on-secondary` | `.Secondary.on` |
+| `color/secondary/content` | `var(--color-on-secondary)` | `on-secondary` | `.Secondary.on` |
 | `color/secondary/subtle` | `var(--color-secondary-subtle)` | `secondary-container` | `.Secondary.subtle` |
 | `color/secondary/on-subtle` | `var(--color-on-secondary-subtle)` | `on-secondary-container` | `.Secondary.onSubtle` |
 | `color/secondary/fixed` | `var(--color-secondary-fixed)` | `secondary-fixed` | `.Secondary.fixed` |
@@ -475,21 +475,21 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/secondary/on-fixed` | `var(--color-on-secondary-fixed)` | `on-secondary-fixed` | `.Secondary.onFixed` |
 | `color/secondary/on-fixed-variant` | `var(--color-on-secondary-fixed-muted)` | `on-secondary-fixed-variant` | `.Secondary.onFixedMuted` |
 | `color/tertiary/default` | `var(--color-accent)` | `tertiary` | `.Tertiary.default` |
-| `color/tertiary/fg` | `var(--color-on-accent)` | `on-tertiary` | `.Tertiary.on` |
+| `color/tertiary/content` | `var(--color-on-accent)` | `on-tertiary` | `.Tertiary.on` |
 | `color/tertiary/subtle` | `var(--color-accent-subtle)` | `tertiary-container` | `.Tertiary.subtle` |
 | `color/tertiary/on-subtle` | `var(--color-on-accent-subtle)` | `on-tertiary-container` | `.Tertiary.onSubtle` |
 | `color/tertiary/fixed` | `var(--color-accent-fixed)` | `tertiary-fixed` | `.Tertiary.fixed` |
 | `color/tertiary/fixed-dim` | `var(--color-accent-fixed-dim)` | `tertiary-fixed-dim` | `.Tertiary.fixedDim` |
 | `color/tertiary/on-fixed` | `var(--color-on-accent-fixed)` | `on-tertiary-fixed` | `.Tertiary.onFixed` |
 | `color/tertiary/on-fixed-variant` | `var(--color-on-accent-fixed-muted)` | `on-tertiary-fixed-variant` | `.Tertiary.onFixedMuted` |
-| `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
-| `color/status/error-fg` | `var(--color-on-danger)` | `on-error` | `.Status.onError` |
-| `color/status/error-subtle` | `var(--color-danger-subtle)` | `error-container` | `.Status.errorSubtle` |
-| `color/status/error-on-subtle` | `var(--color-on-danger-subtle)` | `on-error-container` | `.Status.onErrorSubtle` |
-| `color/status/error-fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
-| `color/status/error-fixed-dim` | `var(--color-danger-fixed-dim)` | `error-fixed-dim` | `.Status.errorFixedDim` |
-| `color/status/error-on-fixed` | `var(--color-on-danger-fixed)` | `on-error-fixed` | `.Status.onErrorFixed` |
-| `color/status/error-on-fixed-variant` | `var(--color-on-danger-fixed-muted)` | `on-error-fixed-variant` | `.Status.onErrorFixedMuted` |
+| `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
+| `color/error/content` | `var(--color-on-danger)` | `on-error` | `.Status.onError` |
+| `color/error/subtle` | `var(--color-danger-subtle)` | `error-container` | `.Status.errorSubtle` |
+| `color/error/on-subtle` | `var(--color-on-danger-subtle)` | `on-error-container` | `.Status.onErrorSubtle` |
+| `color/error/fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
+| `color/error/fixed-dim` | `var(--color-danger-fixed-dim)` | `error-fixed-dim` | `.Status.errorFixedDim` |
+| `color/error/on-fixed` | `var(--color-on-danger-fixed)` | `on-error-fixed` | `.Status.onErrorFixed` |
+| `color/error/on-fixed-variant` | `var(--color-on-danger-fixed-muted)` | `on-error-fixed-variant` | `.Status.onErrorFixedMuted` |
 
 #### Extensions (not in core M3 baseline diagram — shadcn alignment)
 
@@ -498,7 +498,7 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/component/input` | `var(--color-field)` | `input` | `.Component.field` |
 | `color/component/ring` | `var(--color-focus-ring)` | `ring` | `.Component.ring` |
 | `color/component/sidebar` | `var(--color-sidebar)` | `sidebar` | `.Component.sidebar` |
-| `color/component/sidebar-fg` | `var(--color-on-sidebar)` | `sidebar-foreground` | `.Component.sidebarOn` |
+| `color/component/sidebar-content` | `var(--color-on-sidebar)` | `sidebar-foreground` | `.Component.sidebarOn` |
 
 ---
 
@@ -747,10 +747,10 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   color/background/container-high {hex}   {hex}   var(--color-background-container-high)   surface-container-high     .Background.high
   color/background/container-highest {hex} {hex}   var(--color-background-container-highest) surface-container-highest .Background.highest
   color/background/variant        {hex}   {hex}   var(--color-background-variant)  surface-variant            .Background.variant
-  color/background/fg             {hex}   {hex}   var(--color-content)             on-surface                 .Foreground.primary
-  color/background/fg-subtle      {hex}   {hex}   var(--color-content-muted)       on-surface-variant          .Foreground.secondary
+  color/background/content             {hex}   {hex}   var(--color-content)             on-surface                 .Foreground.primary
+  color/background/content-muted      {hex}   {hex}   var(--color-content-muted)       on-surface-variant          .Foreground.secondary
   color/background/inverse        {hex}   {hex}   var(--color-inverse-surface)     inverse-surface            .Background.inverse
-  color/background/inverse-fg     {hex}   {hex}   var(--color-inverse-content)     inverse-on-surface          .Foreground.inverse
+  color/background/inverse-content     {hex}   {hex}   var(--color-inverse-content)     inverse-on-surface          .Foreground.inverse
   color/background/inverse-primary {hex}  {hex}   var(--color-inverse-brand)       inverse-primary            .Primary.inverse
   color/background/scrim          rgba…   rgba…   var(--color-scrim)               scrim                     .Effect.scrim
   color/background/shadow         rgba…   rgba…   var(--color-shadow-tint)         shadow                    .Background.shadowTint
@@ -759,7 +759,7 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   color/border/subtle             {hex}   {hex}   var(--color-border-subtle)       outline-variant            .Border.subtle
   — primary/ —
   color/primary/default           {hex}   {hex}   var(--color-primary)             primary                   .Primary.default
-  color/primary/fg                {hex}   {hex}   var(--color-on-primary)          on-primary                 .Primary.on
+  color/primary/content                {hex}   {hex}   var(--color-on-primary)          on-primary                 .Primary.on
   color/primary/subtle              {hex}   {hex}   var(--color-primary-subtle)        primary-container          .Primary.subtle
   color/primary/on-subtle        {hex}   {hex}   var(--color-on-primary-subtle)     on-primary-container        .Primary.onSubtle
   color/primary/fixed             {hex}   {hex}   var(--color-primary-fixed)       primary-fixed              .Primary.fixed
@@ -768,7 +768,7 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   color/primary/on-fixed-variant  {hex}   {hex}   var(--color-on-primary-fixed-muted) on-primary-fixed-variant  .Primary.onFixedMuted
   — secondary/ —
   color/secondary/default         {hex}   {hex}   var(--color-secondary)           secondary                 .Secondary.default
-  color/secondary/fg              {hex}   {hex}   var(--color-on-secondary)        on-secondary               .Secondary.on
+  color/secondary/content              {hex}   {hex}   var(--color-on-secondary)        on-secondary               .Secondary.on
   color/secondary/subtle            {hex}   {hex}   var(--color-secondary-subtle)      secondary-container        .Secondary.subtle
   color/secondary/on-subtle      {hex}   {hex}   var(--color-on-secondary-subtle)   on-secondary-container      .Secondary.onSubtle
   color/secondary/fixed           {hex}   {hex}   var(--color-secondary-fixed)     secondary-fixed            .Secondary.fixed
@@ -777,27 +777,27 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   color/secondary/on-fixed-variant {hex}  {hex}   var(--color-on-secondary-fixed-muted) on-secondary-fixed-variant .Secondary.onFixedMuted
   — tertiary/ —
   color/tertiary/default          {hex}   {hex}   var(--color-accent)              tertiary                  .Tertiary.default
-  color/tertiary/fg               {hex}   {hex}   var(--color-on-accent)           on-tertiary                .Tertiary.on
+  color/tertiary/content               {hex}   {hex}   var(--color-on-accent)           on-tertiary                .Tertiary.on
   color/tertiary/subtle             {hex}   {hex}   var(--color-accent-subtle)         tertiary-container         .Tertiary.subtle
   color/tertiary/on-subtle       {hex}   {hex}   var(--color-on-accent-subtle)      on-tertiary-container       .Tertiary.onSubtle
   color/tertiary/fixed            {hex}   {hex}   var(--color-accent-fixed)        tertiary-fixed             .Tertiary.fixed
   color/tertiary/fixed-dim        {hex}   {hex}   var(--color-accent-fixed-dim)    tertiary-fixed-dim          .Tertiary.fixedDim
   color/tertiary/on-fixed         {hex}   {hex}   var(--color-on-accent-fixed)     on-tertiary-fixed           .Tertiary.onFixed
   color/tertiary/on-fixed-variant {hex}   {hex}   var(--color-on-accent-fixed-muted) on-tertiary-fixed-variant  .Tertiary.onFixedMuted
-  — status/ —
-  color/status/error              {hex}   {hex}   var(--color-danger)              error                     .Status.error
-  color/status/error-fg           {hex}   {hex}   var(--color-on-danger)           on-error                   .Status.onError
-  color/status/error-subtle         {hex}   {hex}   var(--color-danger-subtle)         error-container            .Status.errorSubtle
-  color/status/error-on-subtle   {hex}   {hex}   var(--color-on-danger-subtle)      on-error-container          .Status.onErrorSubtle
-  color/status/error-fixed        {hex}   {hex}   var(--color-danger-fixed)        error-fixed                .Status.errorFixed
-  color/status/error-fixed-dim    {hex}   {hex}   var(--color-danger-fixed-dim)    error-fixed-dim             .Status.errorFixedDim
-  color/status/error-on-fixed     {hex}   {hex}   var(--color-on-danger-fixed)     on-error-fixed              .Status.onErrorFixed
-  color/status/error-on-fixed-variant {hex} {hex} var(--color-on-danger-fixed-muted) on-error-fixed-variant    .Status.onErrorFixedMuted
+  — error/ —
+  color/error/default              {hex}   {hex}   var(--color-danger)              error                     .Status.error
+  color/error/content           {hex}   {hex}   var(--color-on-danger)           on-error                   .Status.onError
+  color/error/subtle         {hex}   {hex}   var(--color-danger-subtle)         error-container            .Status.errorSubtle
+  color/error/on-subtle   {hex}   {hex}   var(--color-on-danger-subtle)      on-error-container          .Status.onErrorSubtle
+  color/error/fixed        {hex}   {hex}   var(--color-danger-fixed)        error-fixed                .Status.errorFixed
+  color/error/fixed-dim    {hex}   {hex}   var(--color-danger-fixed-dim)    error-fixed-dim             .Status.errorFixedDim
+  color/error/on-fixed     {hex}   {hex}   var(--color-on-danger-fixed)     on-error-fixed              .Status.onErrorFixed
+  color/error/on-fixed-variant {hex} {hex} var(--color-on-danger-fixed-muted) on-error-fixed-variant    .Status.onErrorFixedMuted
   — component/ (shadcn extensions) —
   color/component/input           {hex}   {hex}   var(--color-field)               input                     .Component.field
   color/component/ring            {hex}   {hex}   var(--color-focus-ring)          ring                      .Component.ring
   color/component/sidebar         {hex}   {hex}   var(--color-sidebar)             sidebar                   .Component.sidebar
-  color/component/sidebar-fg      {hex}   {hex}   var(--color-on-sidebar)          sidebar-foreground         .Component.sidebarOn
+  color/component/sidebar-content      {hex}   {hex}   var(--color-on-sidebar)          sidebar-foreground         .Component.sidebarOn
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   TYPOGRAPHY  (48 variables · 8 scale modes)
@@ -947,7 +947,7 @@ The `"iOS"` value is a **semantic dot path** (e.g. `.Background.default`, `.Back
 
 Look up each variable's three codeSyntax values from the appropriate step:
 - Primitives (`color/*`, `Space/*`, `Corner/*`, `elevation/*`) → Step 5 codeSyntax rules
-- Theme (`color/background/*`, `color/border/*`, `color/primary/*`, `color/secondary/*`, `color/tertiary/*`, `color/status/*`, `color/component/*`) → Step 6 codeSyntax table (use the exact row — do NOT derive from path, do NOT copy ANDROID value into iOS)
+- Theme (`color/background/*`, `color/border/*`, `color/primary/*`, `color/secondary/*`, `color/tertiary/*`, `color/error/*`, `color/component/*`) → Step 6 codeSyntax table (use the exact row — do NOT derive from path, do NOT copy ANDROID value into iOS)
 - Typography (`Display/*`, `Headline/*`, `Body/*`, `Label/*`) → Step 7 codeSyntax rules
 - Layout (`space/*`, `radius/*`) → Step 8 codeSyntax rules
 - Effects (`shadow/*`) → Step 9 codeSyntax rules
@@ -990,7 +990,7 @@ Confirm:
 | Variable | Expected WEB | Expected ANDROID | Expected `"iOS"` key |
 |---|---|---|---|
 | `color/background/default` (Theme) | `var(--color-background)` | `surface` | `.Background.default` |
-| `color/status/error` (Theme) | `var(--color-danger)` | `error` | `.Status.error` |
+| `color/error/default` (Theme) | `var(--color-danger)` | `error` | `.Status.error` |
 | `color/primary/500` (Primitives) | `var(--color-primary-500)` | `color-primary-500` | `.Palette.primary.500` |
 
 If the `iOS` key is absent or its value **equals** the ANDROID value on Theme variables (e.g. both `surface` on `color/background/default` instead of iOS `.Background.default`), the write used wrong key casing or copied ANDROID into iOS. Re-issue a `PUT` with correct `"iOS"` casing on all affected variables before proceeding to Step 13.
@@ -1635,7 +1635,7 @@ After all color ramps, draw two more sections:
 
 **↳ Theme page**
 
-For each of the 7 semantic groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `status/`, `component/`):
+For each of the 7 semantic groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`):
 
 1. Draw a 1440×48px dark section label strip with the group name as text (e.g. `background/`), white, Label/LG, bold.
 2. Draw token cards in a 3-column grid (column width ~450px, 16px gutter, 8px corner radius, 1px stroke `color/neutral/200`, 16px padding):
@@ -1727,7 +1727,7 @@ Leave all other frame properties (size, position, text content, arrow connectors
 
 Find the table frame in Section 2. Verify that the 8 example rows match the actual codeSyntax values written to the Figma file. For each of the following token paths, read the codeSyntax that was written in Step 11 and update the WEB, ANDROID, and iOS cells in the table row if they differ:
 
-`color/background/default`, `color/primary/default`, `color/border/default`, `color/status/error`, `Headline/LG/font-size`, `space/md`, `radius/md`, `shadow/color`
+`color/background/default`, `color/primary/default`, `color/border/default`, `color/error/default`, `Headline/LG/font-size`, `space/md`, `radius/md`, `shadow/color`
 
 **Phone frames (Section 3)**
 
@@ -1797,12 +1797,12 @@ elevation/400           → 4
 color/background/default           Light → color/neutral/50    Dark → color/neutral/900
 color/background/container-highest Light → color/neutral/50    Dark → color/neutral/800
 color/background/variant           Light → color/neutral/100   Dark → color/neutral/800
-color/background/fg                Light → color/neutral/900   Dark → color/neutral/50
+color/background/content                Light → color/neutral/900   Dark → color/neutral/50
 color/background/inverse           Light → color/neutral/950   Dark → color/neutral/50
 color/border/default               Light → color/neutral/200   Dark → color/neutral/700
 color/primary/fixed              Light → color/primary/100   Dark → color/primary/300
 color/primary/default            Light → color/primary/500   Dark → color/primary/400
-color/status/error-on-fixed      Light → color/error/900     Dark → color/error/100
+color/error/on-fixed      Light → color/error/900     Dark → color/error/100
 color/component/ring             Light → color/primary/500   Dark → color/primary/400
 ```
 
@@ -1842,7 +1842,7 @@ Apply to every variable in every collection.
    - Exception for Primitives: this derivation applies. For Theme: see rule 6 — codeSyntax is set explicitly from the Step 6 table, not derived.
 4. **ANDROID:** for tokens that use derivation (Primitives layout-adjacent, Layout, Effects), use the **WEB token string without** `var(--` / `)` — **kebab-case** (e.g. `space-md`, `shadow-sm-blur`, `color-primary-500`).
 5. **iOS:** for derived tokens, use **dot paths** — see Step 5 (Primitives), Step 7 (Typography), Step 8 (Layout), Step 9 (Effects).
-6. **Theme (all platforms):** codeSyntax is set EXPLICITLY per token from the table in Step 6. The Figma path is a designer label; do not derive codeSyntax from it. Example: `color/background/fg-subtle` → WEB `var(--color-content-muted)`, ANDROID `on-surface-variant`, iOS `.Foreground.secondary` — path and all three codeSyntax columns are intentionally different.
+6. **Theme (all platforms):** codeSyntax is set EXPLICITLY per token from the table in Step 6. The Figma path is a designer label; do not derive codeSyntax from it. Example: `color/background/content-muted` → WEB `var(--color-content-muted)`, ANDROID `on-surface-variant`, iOS `.Foreground.secondary` — path and all three codeSyntax columns are intentionally different.
 
 ### Platform exception summary
 
@@ -1859,12 +1859,12 @@ Selected examples showing intentional name divergence:
 | `color/background/inverse` | `var(--color-inverse-surface)` | `inverse-surface` | `.Background.inverse` |
 | `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Background.shadowTint` |
 | `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Background.variant` |
-| `color/background/fg-subtle` | `var(--color-content-muted)` | `on-surface-variant` | `.Foreground.secondary` |
+| `color/background/content-muted` | `var(--color-content-muted)` | `on-surface-variant` | `.Foreground.secondary` |
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
 | `color/primary/fixed` | `var(--color-primary-fixed)` | `primary-fixed` | `.Primary.fixed` |
-| `color/primary/fg` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
-| `color/status/error-fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
-| `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
+| `color/primary/content` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
+| `color/error/fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
+| `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
 
 The full Theme codeSyntax table is in Step 6 — this is just a reminder that path ≠ codeSyntax for Theme.
 

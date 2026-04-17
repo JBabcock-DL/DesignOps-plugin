@@ -94,7 +94,7 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 | Collection | Modes | Contents |
 |---|---|---|
 | `Primitives` | Default | Raw color ramps (primary, secondary, tertiary, error, neutral — 50–950), Space scale, Corner scale, elevation floats |
-| `Theme` | Light / Dark | 54 semantic color aliases in 7 groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `status/`, `component/`) pointing to Primitives per mode |
+| `Theme` | Light / Dark | 54 semantic color aliases in 7 groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`) pointing to Primitives per mode |
 | `Typography` | 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200 | 12 type style slots × 4 properties; sizes scale per mode on Android's font-scale curve |
 | `Layout` | Default | `space/*` and `radius/*` semantic aliases into Primitives |
 | `Effects` | Light / Dark | Shadow color (opacity per mode) and blur aliases into elevation Primitives |
@@ -108,10 +108,10 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 | Token | WEB | ANDROID (M3 kebab) | iOS (semantic) |
 |---|---|---|---|
 | `color/background/default` | `var(--color-background)` | `surface` | `.Background.default` |
-| `color/background/fg` | `var(--color-content)` | `on-surface` | `.Foreground.primary` |
+| `color/background/content` | `var(--color-content)` | `on-surface` | `.Foreground.primary` |
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
-| `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
+| `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
