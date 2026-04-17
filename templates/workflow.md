@@ -101,7 +101,9 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 
 **Platform mapping** is encoded as `codeSyntax` on every variable — there are no separate Web, Android/M3, or iOS/HIG collections. Each token carries three code names inline.
 
-**ANDROID** uses exact **Material Design 3** color role names. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+**ANDROID (Theme)** uses [Material Design 3 static baseline](https://m3.material.io/styles/color/static/baseline) **`ColorScheme` role names** (flat camelCase). Do not treat the Figma folder `background/` as an M3 API scope — ANDROID `codeSyntax` is the role token (e.g. `background`), not `Background.background`. **`component/*`** rows use extension names for shadcn alignment (see `/create-design-system` Step 6). **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+
+`/create-design-system` accepts **`--theme baseline`** (M3 baseline seed ramps) or **`--theme brand`** (default); see the skill Step 2.5.
 
 | Token | WEB | ANDROID (M3) | iOS (HIG) |
 |---|---|---|---|
@@ -131,8 +133,8 @@ Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `
 
 ### How `/create-design-system` uses this architecture
 
-1. Agent prompts for brand colors (primary, secondary, neutral, tertiary, error), typefaces, and base spacing/radius values
-2. Generates five color ramps via Tailwind HSL lightness interpolation
+1. Agent resolves file key, optional pasted tokens, theme source (**brand** vs **baseline** / `--theme`), then prompts for brand colors when in brand mode (or skips color prompts in baseline mode), plus typefaces and base spacing/radius
+2. Generates five color ramps via Tailwind HSL lightness interpolation (designer anchors or M3 baseline seeds)
 3. Writes all five collections to the target Figma file via the Variables REST API (`PUT` — not `use_figma`; `codeSyntax` must be set here)
 4. Verifies the registry with a Variables GET, then writes `tokens.css` to the local codebase
 5. Records `token_css_path` in `templates/agent-handoff.md` for downstream skills

@@ -81,7 +81,9 @@ Capture the returned `fileKey`. This is the file you will scaffold in Step 5.
 
 Immediately call `use_figma` with the `fileKey` from Step 4. This creates the full page hierarchy matching the Detroit Labs Foundations template exactly.
 
-After Step 5 completes successfully, run **Steps 5b → 5e in order** — each step is its **own** `use_figma` invocation (plugin context resets between calls). Pass the same `fileKey` and inject the **Project Name** string anywhere a step shows `PROJECT_NAME`.
+After Step 5 completes successfully, run **Steps 5c → 5b → 5d → 5e → 5c-links in order** — each step is its **own** `use_figma` invocation (plugin context resets between calls). Pass the same `fileKey`. Inject the **Project Name** string anywhere a step shows `PROJECT_NAME`, and inject the **file key** string anywhere a step shows `FILE_KEY` (same literal pattern as `PROJECT_NAME` in Step 5e).
+
+**Why this order:** Step 5c draws the Table of Contents layout (no links). Step 5b creates the shared `_Header` component and places instances on every page (link targets for all doc pages). Steps 5d and 5e build Token Overview and the Thumbnail `Cover`. Step **5c-links runs last** so the `Thumbnail` row can link to the `Cover` frame (it does not exist until Step 5e) and every other row links to that page’s `_Header`.
 
 ```javascript
 const pages = [
@@ -248,9 +250,9 @@ for (let i = 1; i < pages.length; i++) {
 
 ---
 
-## Step 5b — Draw Documentation Headers
+## Step 5b — Draw Documentation Headers (shared component)
 
-Call `use_figma` with the `fileKey` from Step 4. Loop over every page in the file and draw a `_Header` documentation frame at y=0 on each page. All page navigation and drawing happens inside a single `use_figma` call.
+Call `use_figma` with the `fileKey` from Step 4. **Phase A (once):** On the `Documentation components` page, create a single master `_Header` with `figma.createComponent()` (components are scoped to their page — you must be on that page when creating it). **Phase B:** Loop all pages except `Thumbnail`; on each target page, append a `createInstance()` of that component at (0, 0) and override the `_title` / `_description` text nodes. **Phase C:** Append a plain `_Content` frame on every page (not a component instance). Skip placing a duplicate instance on `Documentation components` — the master component already provides the header there.
 
 ```javascript
 const descriptions = {
@@ -374,8 +376,75 @@ function cleanTitle(name) {
     .trim();
 }
 
+await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
+await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+
+// ── Phase A: master _Header component on Documentation components ──
+const docComponentsPage = figma.root.children.find(p => p.name === 'Documentation components');
+await figma.setCurrentPageAsync(docComponentsPage);
+
+const headerComponent = figma.createComponent();
+headerComponent.name         = '_Header';
+headerComponent.resize(1440, 320);
+headerComponent.x            = 0;
+headerComponent.y            = 0;
+headerComponent.fills        = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+headerComponent.cornerRadius = 24;
+docComponentsPage.appendChild(headerComponent);
+
+const logoCircle = figma.createEllipse();
+logoCircle.resize(40, 40);
+logoCircle.x     = 40;
+logoCircle.y     = 40;
+logoCircle.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+headerComponent.appendChild(logoCircle);
+
+const logoText = figma.createText();
+logoText.fontName    = { family: 'Inter', style: 'Bold' };
+logoText.fontSize    = 14;
+logoText.characters  = 'DL';
+logoText.fills       = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+logoText.textAlignHorizontal = 'CENTER';
+logoText.textAlignVertical   = 'CENTER';
+logoText.resize(40, 40);
+logoText.x = 40;
+logoText.y = 40;
+headerComponent.appendChild(logoText);
+
+const wordmark = figma.createText();
+wordmark.fontName        = { family: 'Inter', style: 'Semi Bold' };
+wordmark.fontSize        = 12;
+wordmark.letterSpacing   = { value: 2, unit: 'PIXELS' };
+wordmark.characters      = 'DETROIT LABS';
+wordmark.fills           = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+wordmark.textAlignHorizontal = 'RIGHT';
+wordmark.x = 1400 - wordmark.width;
+wordmark.y = 48;
+headerComponent.appendChild(wordmark);
+
+const titleMaster = figma.createText();
+titleMaster.name       = '_title';
+titleMaster.fontName   = { family: 'Inter', style: 'Bold' };
+titleMaster.fontSize   = 64;
+titleMaster.characters = 'Page Title';
+titleMaster.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+titleMaster.x = 40;
+titleMaster.y = 140;
+headerComponent.appendChild(titleMaster);
+
+const descMaster = figma.createText();
+descMaster.name       = '_description';
+descMaster.fontName   = { family: 'Inter', style: 'Regular' };
+descMaster.fontSize   = 16;
+descMaster.characters = 'Page description.';
+descMaster.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.7 }];
+descMaster.x = 40;
+descMaster.y = 240;
+headerComponent.appendChild(descMaster);
+
+// ── Phase B + C: instances + _Content on every page except Thumbnail ──
 for (const page of figma.root.children) {
-  // Thumbnail uses the full-bleed Cover (Step 5e) as the file thumbnail — skip doc chrome here to avoid stacking on the gradient.
   if (page.name === 'Thumbnail') continue;
 
   await figma.setCurrentPageAsync(page);
@@ -383,83 +452,30 @@ for (const page of figma.root.children) {
   const title = cleanTitle(page.name);
   const desc  = descriptions[page.name] || '';
 
-  // ── Header frame (1440×320, black, cornerRadius 24) ──────────────
-  const header = figma.createFrame();
-  header.name        = '_Header';
-  header.resize(1440, 320);
-  header.x           = 0;
-  header.y           = 0;
-  header.fills       = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-  header.cornerRadius = 24;
-  page.appendChild(header);
+  if (page.name !== 'Documentation components') {
+    const instance = headerComponent.createInstance();
+    instance.x = 0;
+    instance.y = 0;
+    page.appendChild(instance);
 
-  // ── DL logo: 40×40 white ellipse, top-left ────────────────────────
-  const logoCircle = figma.createEllipse();
-  logoCircle.resize(40, 40);
-  logoCircle.x     = 40;
-  logoCircle.y     = 40;
-  logoCircle.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-  header.appendChild(logoCircle);
+    const titleNode = instance.findOne(n => n.name === '_title' && n.type === 'TEXT');
+    if (titleNode) titleNode.characters = title;
 
-  const logoText = figma.createText();
-  await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
-  logoText.fontName    = { family: 'Inter', style: 'Bold' };
-  logoText.fontSize    = 14;
-  logoText.characters  = 'DL';
-  logoText.fills       = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-  logoText.textAlignHorizontal = 'CENTER';
-  logoText.textAlignVertical   = 'CENTER';
-  logoText.resize(40, 40);
-  logoText.x = 40;
-  logoText.y = 40;
-  header.appendChild(logoText);
-
-  // ── Wordmark: "DETROIT LABS", 12px 600, letterSpacing 2, white, right-aligned ──
-  await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
-  const wordmark = figma.createText();
-  wordmark.fontName        = { family: 'Inter', style: 'Semi Bold' };
-  wordmark.fontSize        = 12;
-  wordmark.letterSpacing   = { value: 2, unit: 'PIXELS' };
-  wordmark.characters      = 'DETROIT LABS';
-  wordmark.fills           = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-  wordmark.textAlignHorizontal = 'RIGHT';
-  wordmark.x = 1400 - wordmark.width;
-  wordmark.y = 48;
-  header.appendChild(wordmark);
-
-  // ── Title: page name (cleaned), 64px bold white ───────────────────
-  const titleNode = figma.createText();
-  await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
-  titleNode.fontName   = { family: 'Inter', style: 'Bold' };
-  titleNode.fontSize   = 64;
-  titleNode.characters = title;
-  titleNode.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-  titleNode.x = 40;
-  titleNode.y = 140;
-  header.appendChild(titleNode);
-
-  // ── Description: 16px regular white at 70% opacity ───────────────
-  if (desc) {
-    await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-    const descNode = figma.createText();
-    descNode.fontName   = { family: 'Inter', style: 'Regular' };
-    descNode.fontSize   = 16;
-    descNode.characters = desc;
-    descNode.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.7 }];
-    descNode.x = 40;
-    descNode.y = 240;
-    header.appendChild(descNode);
+    const descNode = instance.findOne(n => n.name === '_description' && n.type === 'TEXT');
+    if (descNode) descNode.characters = desc || '';
+  } else {
+    titleMaster.characters = title;
+    descMaster.characters = desc || '';
   }
 
-  // ── Content section: 1440×800 frame at y=360, #F7F7F7, dashed stroke ──
   const content = figma.createFrame();
-  content.name        = '_Content';
+  content.name         = '_Content';
   content.resize(1440, 800);
-  content.x           = 0;
-  content.y           = 360;
-  content.fills       = [{ type: 'SOLID', color: { r: 0.969, g: 0.969, b: 0.969 } }];
+  content.x            = 0;
+  content.y            = 360;
+  content.fills        = [{ type: 'SOLID', color: { r: 0.969, g: 0.969, b: 0.969 } }];
   content.cornerRadius = 16;
-  content.strokes     = [{ type: 'SOLID', color: { r: 0.8, g: 0.8, b: 0.8 } }];
+  content.strokes      = [{ type: 'SOLID', color: { r: 0.8, g: 0.8, b: 0.8 } }];
   content.strokeWeight = 1;
   content.dashPattern  = [8, 4];
   page.appendChild(content);
@@ -470,7 +486,7 @@ for (const page of figma.root.children) {
 
 ## Step 5c — Draw Table of Contents
 
-Call `use_figma` with the `fileKey` from Step 4. Navigate to the `📝 Table of Contents` page and draw a 2-column grid of section cards below the doc header, followed by a summary bar.
+Call `use_figma` with the `fileKey` from Step 4. Navigate to the `📝 Table of Contents` page. Wrap all TOC body content in a `_PageContent` vertical auto-layout frame at `y = 360` (below the header once Step 5b runs). Each section card and each two-column row is auto-layout so card height **hugs** its rows — do not precompute `cardHeight` or a running `currentY`. **Do not** set hyperlinks here; Step **5c-links** runs after Steps 5b, 5d, and 5e.
 
 ```javascript
 // Navigate to the Table of Contents page
@@ -540,76 +556,97 @@ const sections = [
 await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
 
-// Content area starts at y=400 (320px header + 80px gap)
-const CARD_WIDTH   = 680;
-const COL_GAP      = 32;
-const LEFT_MARGIN  = 40;
-const START_Y      = 400;
-const PADDING      = 24;
-const ROW_HEIGHT   = 40;
+const COL_GAP    = 32;
+const CARD_WIDTH = 664; // two cards + gap fit inside 1440 − 80px horizontal padding
+const PADDING    = 24;
+const ROW_HEIGHT = 40;
 
-let currentY = START_Y;
+const pageContent = figma.createFrame();
+pageContent.name = '_PageContent';
+pageContent.layoutMode = 'VERTICAL';
+pageContent.primaryAxisSizingMode = 'AUTO';
+pageContent.counterAxisSizingMode = 'FIXED';
+pageContent.resize(1440, 100);
+pageContent.paddingTop    = 40;
+pageContent.paddingBottom = 80;
+pageContent.paddingLeft   = 40;
+pageContent.paddingRight  = 40;
+pageContent.itemSpacing   = 40;
+pageContent.fills = [];
+pageContent.x = 0;
+pageContent.y = 360;
+tocPage.appendChild(pageContent);
+
 let totalPageCount = 0;
 
 for (let i = 0; i < sections.length; i += 2) {
   const leftSection  = sections[i];
   const rightSection = sections[i + 1];
   const rowSections  = rightSection ? [leftSection, rightSection] : [leftSection];
-  let maxCardHeight  = 0;
 
-  rowSections.forEach((section, colIndex) => {
-    const cardX = LEFT_MARGIN + colIndex * (CARD_WIDTH + COL_GAP);
+  const rowWrapper = figma.createFrame();
+  rowWrapper.name = `toc-row/${i}`;
+  rowWrapper.layoutMode = 'HORIZONTAL';
+  rowWrapper.primaryAxisSizingMode = 'AUTO';
+  rowWrapper.counterAxisSizingMode = 'AUTO';
+  rowWrapper.itemSpacing = COL_GAP;
+  rowWrapper.fills = [];
+  rowWrapper.layoutAlign = 'STRETCH';
+  pageContent.appendChild(rowWrapper);
 
-    // Calculate card height: section title row (48px) + one row per page (40px) + padding
-    const cardHeight = PADDING + 48 + section.pages.length * ROW_HEIGHT + PADDING;
-    maxCardHeight = Math.max(maxCardHeight, cardHeight);
+  rowSections.forEach((section) => {
     totalPageCount += section.pages.length;
 
-    // Card frame
     const card = figma.createFrame();
-    card.name        = `toc-card/${section.title}`;
-    card.resize(CARD_WIDTH, cardHeight);
-    card.x           = cardX;
-    card.y           = currentY;
+    card.name = `toc-card/${section.title}`;
+    card.layoutMode = 'VERTICAL';
+    card.primaryAxisSizingMode = 'AUTO';
+    card.counterAxisSizingMode = 'FIXED';
+    card.resize(CARD_WIDTH, 100);
+    card.paddingTop = card.paddingBottom = PADDING;
+    card.paddingLeft = card.paddingRight = PADDING;
+    card.itemSpacing = 0;
     card.fills       = [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }];
     card.cornerRadius = 16;
     card.strokes     = [{ type: 'SOLID', color: { r: 0.88, g: 0.88, b: 0.88 } }];
     card.strokeWeight = 1;
-    tocPage.appendChild(card);
+    rowWrapper.appendChild(card);
 
-    // Section title
     const sectionTitle = figma.createText();
     sectionTitle.fontName   = { family: 'Inter', style: 'Bold' };
     sectionTitle.fontSize   = 16;
     sectionTitle.characters = section.title;
     sectionTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-    sectionTitle.x = PADDING;
-    sectionTitle.y = PADDING;
+    sectionTitle.layoutAlign = 'STRETCH';
     card.appendChild(sectionTitle);
 
-    // Underline below section title
-    const underline = figma.createLine();
-    underline.resize(CARD_WIDTH - PADDING * 2, 0);
-    underline.x = PADDING;
-    underline.y = PADDING + 36;
-    underline.strokes     = [{ type: 'SOLID', color: { r: 0.88, g: 0.88, b: 0.88 } }];
-    underline.strokeWeight = 1;
+    const underline = figma.createRectangle();
+    underline.resize(CARD_WIDTH - PADDING * 2, 1);
+    underline.fills = [{ type: 'SOLID', color: { r: 0.88, g: 0.88, b: 0.88 } }];
+    underline.layoutAlign = 'STRETCH';
     card.appendChild(underline);
 
-    // Page link rows
-    section.pages.forEach((pageName, rowIndex) => {
-      const rowY = PADDING + 48 + rowIndex * ROW_HEIGHT;
+    const titleGap = figma.createFrame();
+    titleGap.name = 'toc-title-gap';
+    titleGap.resize(1, 12);
+    titleGap.fills = [];
+    titleGap.layoutAlign = 'STRETCH';
+    card.appendChild(titleGap);
 
-      // Named frame for the link row (toc-link/{page-name} convention for agent navigation)
+    section.pages.forEach((pageName, rowIndex) => {
       const linkRow = figma.createFrame();
-      linkRow.name        = `toc-link/${pageName}`;
+      linkRow.name = `toc-link/${pageName}`;
+      linkRow.layoutMode = 'HORIZONTAL';
+      linkRow.primaryAxisSizingMode = 'FIXED';
+      linkRow.counterAxisSizingMode = 'FIXED';
       linkRow.resize(CARD_WIDTH - PADDING * 2, ROW_HEIGHT);
-      linkRow.x           = PADDING;
-      linkRow.y           = rowY;
-      linkRow.fills       = [];
+      linkRow.itemSpacing = 8;
+      linkRow.primaryAxisAlignItems = 'CENTER';
+      linkRow.counterAxisAlignItems = 'CENTER';
+      linkRow.fills = [];
+      linkRow.layoutAlign = 'STRETCH';
       card.appendChild(linkRow);
 
-      // Page name text (strip ↳ for display; layer name keeps full page id)
       const displayName = pageName.replace(/^↳ /, '');
 
       const pageText = figma.createText();
@@ -617,46 +654,35 @@ for (let i = 0; i < sections.length; i += 2) {
       pageText.fontSize   = 14;
       pageText.characters = displayName;
       pageText.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
-      pageText.x = 0;
-      pageText.y = (ROW_HEIGHT - 14) / 2;
+      pageText.layoutGrow = 1;
       linkRow.appendChild(pageText);
 
-      // Arrow indicator
       const arrow = figma.createText();
       arrow.fontName   = { family: 'Inter', style: 'Regular' };
       arrow.fontSize   = 14;
       arrow.characters = '→';
       arrow.fills      = [{ type: 'SOLID', color: { r: 0.7, g: 0.7, b: 0.7 } }];
-      arrow.x = CARD_WIDTH - PADDING * 2 - 20;
-      arrow.y = (ROW_HEIGHT - 14) / 2;
       linkRow.appendChild(arrow);
 
-      // Row bottom border (except last row)
       if (rowIndex < section.pages.length - 1) {
-        const rowBorder = figma.createLine();
-        rowBorder.resize(CARD_WIDTH - PADDING * 2, 0);
-        rowBorder.x = PADDING;
-        rowBorder.y = rowY + ROW_HEIGHT;
-        rowBorder.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
-        rowBorder.strokeWeight = 1;
+        const rowBorder = figma.createRectangle();
+        rowBorder.resize(CARD_WIDTH - PADDING * 2, 1);
+        rowBorder.fills = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
+        rowBorder.layoutAlign = 'STRETCH';
         card.appendChild(rowBorder);
       }
     });
   });
-
-  currentY += maxCardHeight + COL_GAP;
 }
 
-// ── Summary bar ───────────────────────────────────────────────────
 const today = new Date().toISOString().slice(0, 10);
 const summaryBar = figma.createFrame();
-summaryBar.name        = 'toc-summary-bar';
+summaryBar.name = 'toc-summary-bar';
 summaryBar.resize(1360, 72);
-summaryBar.x           = LEFT_MARGIN;
-summaryBar.y           = currentY + 16;
 summaryBar.fills       = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
 summaryBar.cornerRadius = 12;
-tocPage.appendChild(summaryBar);
+summaryBar.layoutAlign = 'STRETCH';
+pageContent.appendChild(summaryBar);
 
 const summaryText = figma.createText();
 summaryText.fontName   = { family: 'Inter', style: 'Regular' };
@@ -665,8 +691,7 @@ summaryText.characters = `${totalPageCount} pages across ${sections.length} sect
 summaryText.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 summaryText.textAlignHorizontal = 'CENTER';
 summaryText.resize(1360, 72);
-summaryText.x = 0;
-summaryText.y = (72 - 13) / 2;
+summaryText.layoutAlign = 'STRETCH';
 summaryBar.appendChild(summaryText);
 ```
 
@@ -674,7 +699,7 @@ summaryBar.appendChild(summaryText);
 
 ## Step 5d — Draw Token Overview Skeleton
 
-Call `use_figma` with the `fileKey` from Step 4. Navigate to the `↳ Token Overview` page and draw five informational sections below the doc header (starting at y=360). Mark every placeholder element with an amber annotation text node named `placeholder/{section}` so that Step 18 in `/create-design-system` knows which elements to replace with real token values.
+Call `use_figma` with the `fileKey` from Step 4. Navigate to the `↳ Token Overview` page. Wrap all Token Overview body sections in a `_PageContent` vertical auto-layout frame at `y = 360` (same pattern as Step 5c). Each major section is a vertical auto-layout frame that **hugs** height; stack the platform-mapping **table rows** inside a vertical auto-layout inner container so the section height follows row count — **no** `sectionY` / `tableHeight` accumulators. Mark every placeholder element with an amber annotation text node named `placeholder/{section}` so that Step 18 in `/create-design-system` knows which elements to replace with real token values.
 
 ```javascript
 // Navigate to the Token Overview page
@@ -685,48 +710,77 @@ await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
 
-const SECTION_LEFT   = 40;
-const SECTION_WIDTH  = 1360;
-let sectionY         = 360;
-const SECTION_GAP    = 40;
+const SECTION_WIDTH = 1360;
 
-// ── Helper: amber placeholder annotation ─────────────────────────
-function addPlaceholder(parent, sectionName, x, y) {
+const pageContent = figma.createFrame();
+pageContent.name = '_PageContent';
+pageContent.layoutMode = 'VERTICAL';
+pageContent.primaryAxisSizingMode = 'AUTO';
+pageContent.counterAxisSizingMode = 'FIXED';
+pageContent.resize(1440, 100);
+pageContent.paddingTop    = 40;
+pageContent.paddingBottom = 80;
+pageContent.paddingLeft   = 40;
+pageContent.paddingRight  = 40;
+pageContent.itemSpacing   = 40;
+pageContent.fills = [];
+pageContent.x = 0;
+pageContent.y = 360;
+overviewPage.appendChild(pageContent);
+
+function sectionShell(name) {
+  const s = figma.createFrame();
+  s.name = name;
+  s.layoutMode = 'VERTICAL';
+  s.primaryAxisSizingMode = 'AUTO';
+  s.counterAxisSizingMode = 'FIXED';
+  s.resize(SECTION_WIDTH, 100);
+  s.paddingTop = s.paddingBottom = 32;
+  s.paddingLeft = s.paddingRight = 40;
+  s.itemSpacing = 16;
+  s.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+  s.cornerRadius = 16;
+  s.strokes = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
+  s.strokeWeight = 1;
+  s.layoutAlign = 'STRETCH';
+  pageContent.appendChild(s);
+  return s;
+}
+
+function addPlaceholder(parent, sectionName) {
   const note = figma.createText();
   note.name       = `placeholder/${sectionName}`;
   note.fontName   = { family: 'Inter', style: 'Semi Bold' };
   note.fontSize   = 11;
   note.characters = `⚠ Placeholder — run /create-design-system to populate`;
   note.fills      = [{ type: 'SOLID', color: { r: 0.98, g: 0.72, b: 0.07 } }];
-  note.x = x;
-  note.y = y;
+  note.layoutAlign = 'STRETCH';
   parent.appendChild(note);
 }
 
 // ────────────────────────────────────────────────────────────────
 // Section 1: Architecture Overview
 // ────────────────────────────────────────────────────────────────
-const arch = figma.createFrame();
-arch.name        = 'token-overview/architecture';
-arch.resize(SECTION_WIDTH, 340);
-arch.x           = SECTION_LEFT;
-arch.y           = sectionY;
-arch.fills       = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-arch.cornerRadius = 16;
-arch.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
-arch.strokeWeight = 1;
-overviewPage.appendChild(arch);
+const arch = sectionShell('token-overview/architecture');
 
 const archTitle = figma.createText();
 archTitle.fontName   = { family: 'Inter', style: 'Bold' };
 archTitle.fontSize   = 20;
 archTitle.characters = 'How the Token System Works';
 archTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-archTitle.x = 40;
-archTitle.y = 32;
+archTitle.layoutAlign = 'STRETCH';
 arch.appendChild(archTitle);
 
-// Five collection boxes: Primitives → Theme, Typography, Layout, Effects
+const archBoxesRow = figma.createFrame();
+archBoxesRow.name = 'arch-boxes-row';
+archBoxesRow.layoutMode = 'HORIZONTAL';
+archBoxesRow.primaryAxisSizingMode = 'AUTO';
+archBoxesRow.counterAxisSizingMode = 'AUTO';
+archBoxesRow.itemSpacing = 8;
+archBoxesRow.fills = [];
+archBoxesRow.layoutAlign = 'STRETCH';
+arch.appendChild(archBoxesRow);
+
 const collections = [
   { name: 'Primitives',   note: 'Raw values' },
   { name: 'Theme',        note: 'Light / Dark' },
@@ -737,21 +791,24 @@ const collections = [
 
 collections.forEach((col, i) => {
   const box = figma.createFrame();
-  box.name        = `arch-box/${col.name}`;
+  box.name = `arch-box/${col.name}`;
+  box.layoutMode = 'VERTICAL';
+  box.primaryAxisSizingMode = 'AUTO';
+  box.counterAxisSizingMode = 'FIXED';
   box.resize(200, 120);
-  box.x           = 40 + i * 240;
-  box.y           = 88;
+  box.paddingLeft = box.paddingRight = 16;
+  box.paddingTop = 32;
+  box.itemSpacing = 8;
   box.fills       = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
   box.cornerRadius = 12;
-  arch.appendChild(box);
+  archBoxesRow.appendChild(box);
 
   const colName = figma.createText();
   colName.fontName   = { family: 'Inter', style: 'Bold' };
   colName.fontSize   = 14;
   colName.characters = col.name;
   colName.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-  colName.x = 16;
-  colName.y = 32;
+  colName.layoutAlign = 'STRETCH';
   box.appendChild(colName);
 
   const colNote = figma.createText();
@@ -759,20 +816,16 @@ collections.forEach((col, i) => {
   colNote.fontSize   = 11;
   colNote.characters = col.note;
   colNote.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, opacity: 0.6 } }];
-  colNote.x = 16;
-  colNote.y = 56;
+  colNote.layoutAlign = 'STRETCH';
   box.appendChild(colNote);
 
-  // Arrow connector (except after last box)
   if (i < collections.length - 1) {
     const arrow = figma.createText();
     arrow.fontName   = { family: 'Inter', style: 'Bold' };
     arrow.fontSize   = 20;
     arrow.characters = '→';
     arrow.fills      = [{ type: 'SOLID', color: { r: 0.6, g: 0.6, b: 0.6 } }];
-    arrow.x = 40 + i * 240 + 208;
-    arrow.y = 134;
-    arch.appendChild(arrow);
+    archBoxesRow.appendChild(arrow);
   }
 });
 
@@ -781,13 +834,10 @@ archCaption.fontName   = { family: 'Inter', style: 'Regular' };
 archCaption.fontSize   = 13;
 archCaption.characters = 'Primitives hold raw values. All other collections alias into Primitives — change a Primitive, all semantic tokens update automatically.';
 archCaption.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
-archCaption.x = 40;
-archCaption.y = 232;
+archCaption.layoutAlign = 'STRETCH';
 arch.appendChild(archCaption);
 
-addPlaceholder(arch, 'architecture', 40, 272);
-
-sectionY += 340 + SECTION_GAP;
+addPlaceholder(arch, 'architecture');
 
 // ────────────────────────────────────────────────────────────────
 // Section 2: Platform Mapping table
@@ -805,38 +855,36 @@ const platformRows = [
 
 const TABLE_COL_WIDTHS = [320, 320, 320, 320];
 const TABLE_ROW_HEIGHT = 40;
-const tableHeight = 48 + platformRows.length * TABLE_ROW_HEIGHT + 80;
 
-const platform = figma.createFrame();
-platform.name        = 'token-overview/platform-mapping';
-platform.resize(SECTION_WIDTH, tableHeight);
-platform.x           = SECTION_LEFT;
-platform.y           = sectionY;
-platform.fills       = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-platform.cornerRadius = 16;
-platform.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
-platform.strokeWeight = 1;
-overviewPage.appendChild(platform);
+const platform = sectionShell('token-overview/platform-mapping');
 
 const platTitle = figma.createText();
 platTitle.fontName   = { family: 'Inter', style: 'Bold' };
 platTitle.fontSize   = 20;
 platTitle.characters = 'Platform Code Names (codeSyntax)';
 platTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-platTitle.x = 40;
-platTitle.y = 24;
+platTitle.layoutAlign = 'STRETCH';
 platform.appendChild(platTitle);
 
-// Table header row
+const tableStack = figma.createFrame();
+tableStack.name = 'platform-table-stack';
+tableStack.layoutMode = 'VERTICAL';
+tableStack.primaryAxisSizingMode = 'AUTO';
+tableStack.counterAxisSizingMode = 'FIXED';
+tableStack.resize(SECTION_WIDTH - 80, TABLE_ROW_HEIGHT);
+tableStack.itemSpacing = 0;
+tableStack.fills = [];
+tableStack.layoutAlign = 'STRETCH';
+platform.appendChild(tableStack);
+
 const tableHeaders = ['Token', 'WEB', 'ANDROID (M3)', 'iOS (HIG)'];
 const headerRow = figma.createFrame();
-headerRow.name        = 'table-header';
+headerRow.name = 'table-header';
 headerRow.resize(SECTION_WIDTH - 80, TABLE_ROW_HEIGHT);
-headerRow.x           = 40;
-headerRow.y           = 64;
 headerRow.fills       = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
 headerRow.cornerRadius = 8;
-platform.appendChild(headerRow);
+headerRow.layoutAlign = 'STRETCH';
+tableStack.appendChild(headerRow);
 
 let colX = 0;
 tableHeaders.forEach((h, ci) => {
@@ -851,19 +899,17 @@ tableHeaders.forEach((h, ci) => {
   colX += TABLE_COL_WIDTHS[ci];
 });
 
-// Data rows
 platformRows.forEach((row, ri) => {
   const rowFill = ri % 2 === 0
     ? [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }]
     : [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 
   const dataRow = figma.createFrame();
-  dataRow.name        = `table-row/${ri}`;
+  dataRow.name  = `table-row/${ri}`;
   dataRow.resize(SECTION_WIDTH - 80, TABLE_ROW_HEIGHT);
-  dataRow.x           = 40;
-  dataRow.y           = 64 + TABLE_ROW_HEIGHT + ri * TABLE_ROW_HEIGHT;
-  dataRow.fills       = rowFill;
-  platform.appendChild(dataRow);
+  dataRow.fills = rowFill;
+  dataRow.layoutAlign = 'STRETCH';
+  tableStack.appendChild(dataRow);
 
   let cellX = 0;
   row.forEach((cell, ci) => {
@@ -884,31 +930,27 @@ platCaption.fontName   = { family: 'Inter', style: 'Regular' };
 platCaption.fontSize   = 13;
 platCaption.characters = 'Every variable carries codeSyntax for all 3 platforms. In Dev Mode, inspect any token and copy the platform value directly.';
 platCaption.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
-platCaption.x = 40;
-platCaption.y = 64 + TABLE_ROW_HEIGHT + platformRows.length * TABLE_ROW_HEIGHT + 12;
+platCaption.layoutAlign = 'STRETCH';
 platform.appendChild(platCaption);
 
-addPlaceholder(platform, 'platform-mapping', 40, tableHeight - 32);
-
-sectionY += tableHeight + SECTION_GAP;
+addPlaceholder(platform, 'platform-mapping');
 
 // ────────────────────────────────────────────────────────────────
 // Section 3: Dark Mode + Font Scale (2-column row)
 // ────────────────────────────────────────────────────────────────
 const modeRow = figma.createFrame();
-modeRow.name        = 'token-overview/mode-row';
-modeRow.resize(SECTION_WIDTH, 360);
-modeRow.x           = SECTION_LEFT;
-modeRow.y           = sectionY;
-modeRow.fills       = [];
-overviewPage.appendChild(modeRow);
+modeRow.name = 'token-overview/mode-row';
+modeRow.layoutMode = 'HORIZONTAL';
+modeRow.primaryAxisSizingMode = 'AUTO';
+modeRow.counterAxisSizingMode = 'AUTO';
+modeRow.itemSpacing = 40;
+modeRow.fills = [];
+modeRow.layoutAlign = 'STRETCH';
+pageContent.appendChild(modeRow);
 
-// Left: Dark Mode panel
 const darkPanel = figma.createFrame();
-darkPanel.name        = 'dark-mode-panel';
+darkPanel.name = 'dark-mode-panel';
 darkPanel.resize(660, 360);
-darkPanel.x           = 0;
-darkPanel.y           = 0;
 darkPanel.fills       = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 darkPanel.cornerRadius = 16;
 darkPanel.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
@@ -924,7 +966,6 @@ darkTitle.x = 24;
 darkTitle.y = 24;
 darkPanel.appendChild(darkTitle);
 
-// Phone silhouettes: light and dark
 [{ label: 'Light', fill: { r: 0.95, g: 0.95, b: 0.95 }, x: 40  },
  { label: 'Dark',  fill: { r: 0.1,  g: 0.1,  b: 0.1  }, x: 360 }].forEach(phone => {
   const frame = figma.createRectangle();
@@ -947,14 +988,11 @@ darkPanel.appendChild(darkTitle);
   darkPanel.appendChild(lbl);
 });
 
-addPlaceholder(darkPanel, 'dark-mode', 24, 300);
+addPlaceholder(darkPanel, 'dark-mode');
 
-// Right: Font Scale panel
 const scalePanel = figma.createFrame();
-scalePanel.name        = 'font-scale-panel';
+scalePanel.name = 'font-scale-panel';
 scalePanel.resize(660, 360);
-scalePanel.x           = 700;
-scalePanel.y           = 0;
 scalePanel.fills       = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 scalePanel.cornerRadius = 16;
 scalePanel.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
@@ -970,7 +1008,6 @@ scaleTitle.x = 24;
 scaleTitle.y = 24;
 scalePanel.appendChild(scaleTitle);
 
-// Scale ramp specimens
 // Must match Typography collection modes in /create-design-system (85 … 200)
 const scaleSteps = [
   { mode: '85',  size: 10 },
@@ -983,7 +1020,7 @@ const scaleSteps = [
   { mode: '200', size: 26 },
 ];
 
-const modeColW = 74; // 8 modes across 660px-wide panel
+const modeColW = 74;
 scaleSteps.forEach((step, si) => {
   const specimen = figma.createText();
   specimen.fontName   = { family: 'Inter', style: 'Bold' };
@@ -1004,31 +1041,19 @@ scaleSteps.forEach((step, si) => {
   scalePanel.appendChild(modeLabel);
 });
 
-addPlaceholder(scalePanel, 'font-scale', 24, 300);
-
-sectionY += 360 + SECTION_GAP;
+addPlaceholder(scalePanel, 'font-scale');
 
 // ────────────────────────────────────────────────────────────────
 // Section 4: How to Bind — 3 step cards
 // ────────────────────────────────────────────────────────────────
-const bindSection = figma.createFrame();
-bindSection.name        = 'token-overview/how-to-bind';
-bindSection.resize(SECTION_WIDTH, 240);
-bindSection.x           = SECTION_LEFT;
-bindSection.y           = sectionY;
-bindSection.fills       = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-bindSection.cornerRadius = 16;
-bindSection.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
-bindSection.strokeWeight = 1;
-overviewPage.appendChild(bindSection);
+const bindSection = sectionShell('token-overview/how-to-bind');
 
 const bindTitle = figma.createText();
 bindTitle.fontName   = { family: 'Inter', style: 'Bold' };
 bindTitle.fontSize   = 20;
 bindTitle.characters = 'Binding Tokens in Figma';
 bindTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-bindTitle.x = 40;
-bindTitle.y = 24;
+bindTitle.layoutAlign = 'STRETCH';
 bindSection.appendChild(bindTitle);
 
 const bindCards = [
@@ -1051,23 +1076,36 @@ const bindCards = [
 
 const BIND_CARD_W = (SECTION_WIDTH - 80 - 32 * 2) / 3;
 
-bindCards.forEach((card, ci) => {
+const bindRow = figma.createFrame();
+bindRow.name = 'bind-cards-row';
+bindRow.layoutMode = 'HORIZONTAL';
+bindRow.primaryAxisSizingMode = 'AUTO';
+bindRow.counterAxisSizingMode = 'AUTO';
+bindRow.itemSpacing = 32;
+bindRow.fills = [];
+bindRow.layoutAlign = 'STRETCH';
+bindSection.appendChild(bindRow);
+
+bindCards.forEach((card) => {
   const cardFrame = figma.createFrame();
-  cardFrame.name        = `bind-card/${card.title}`;
-  cardFrame.resize(BIND_CARD_W, 140);
-  cardFrame.x           = 40 + ci * (BIND_CARD_W + 32);
-  cardFrame.y           = 72;
+  cardFrame.name = `bind-card/${card.title}`;
+  cardFrame.layoutMode = 'VERTICAL';
+  cardFrame.primaryAxisSizingMode = 'AUTO';
+  cardFrame.counterAxisSizingMode = 'FIXED';
+  cardFrame.resize(BIND_CARD_W, 100);
+  cardFrame.paddingLeft = cardFrame.paddingRight = 16;
+  cardFrame.paddingTop = cardFrame.paddingBottom = 16;
+  cardFrame.itemSpacing = 8;
   cardFrame.fills       = [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }];
   cardFrame.cornerRadius = 12;
-  bindSection.appendChild(cardFrame);
+  bindRow.appendChild(cardFrame);
 
   const iconText = figma.createText();
   iconText.fontName   = { family: 'Inter', style: 'Bold' };
   iconText.fontSize   = 20;
   iconText.characters = card.icon;
   iconText.fills      = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
-  iconText.x = 16;
-  iconText.y = 16;
+  iconText.layoutAlign = 'STRETCH';
   cardFrame.appendChild(iconText);
 
   const cardTitle = figma.createText();
@@ -1075,8 +1113,7 @@ bindCards.forEach((card, ci) => {
   cardTitle.fontSize   = 13;
   cardTitle.characters = card.title;
   cardTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-  cardTitle.x = 16;
-  cardTitle.y = 48;
+  cardTitle.layoutAlign = 'STRETCH';
   cardFrame.appendChild(cardTitle);
 
   const cardBody = figma.createText();
@@ -1084,33 +1121,35 @@ bindCards.forEach((card, ci) => {
   cardBody.fontSize   = 11;
   cardBody.characters = card.body;
   cardBody.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
-  cardBody.x = 16;
-  cardBody.y = 72;
-  cardBody.resize(BIND_CARD_W - 32, 60);
+  cardBody.textAutoResize = 'HEIGHT';
+  cardBody.resize(BIND_CARD_W - 32, 120);
+  cardBody.layoutAlign = 'STRETCH';
   cardFrame.appendChild(cardBody);
 });
-
-sectionY += 240 + SECTION_GAP;
 
 // ────────────────────────────────────────────────────────────────
 // Section 5: Claude command reference — dark 2×3 grid of 6 cards
 // ────────────────────────────────────────────────────────────────
 const claudeSection = figma.createFrame();
-claudeSection.name        = 'token-overview/claude-commands';
-claudeSection.resize(SECTION_WIDTH, 380);
-claudeSection.x           = SECTION_LEFT;
-claudeSection.y           = sectionY;
+claudeSection.name = 'token-overview/claude-commands';
+claudeSection.layoutMode = 'VERTICAL';
+claudeSection.primaryAxisSizingMode = 'AUTO';
+claudeSection.counterAxisSizingMode = 'FIXED';
+claudeSection.resize(SECTION_WIDTH, 100);
+claudeSection.paddingTop = claudeSection.paddingBottom = 32;
+claudeSection.paddingLeft = claudeSection.paddingRight = 40;
+claudeSection.itemSpacing = 24;
 claudeSection.fills       = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
 claudeSection.cornerRadius = 16;
-overviewPage.appendChild(claudeSection);
+claudeSection.layoutAlign = 'STRETCH';
+pageContent.appendChild(claudeSection);
 
 const claudeTitle = figma.createText();
 claudeTitle.fontName   = { family: 'Inter', style: 'Bold' };
 claudeTitle.fontSize   = 20;
 claudeTitle.characters = 'Maintaining Tokens with Claude';
 claudeTitle.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-claudeTitle.x = 40;
-claudeTitle.y = 32;
+claudeTitle.layoutAlign = 'STRETCH';
 claudeSection.appendChild(claudeTitle);
 
 const commands = [
@@ -1125,44 +1164,61 @@ const commands = [
 const CMD_CARD_W = (SECTION_WIDTH - 80 - 32) / 2;
 const CMD_CARD_H = 96;
 
-commands.forEach((item, ci) => {
-  const col = ci % 2;
-  const row = Math.floor(ci / 2);
-  const cmdCard = figma.createFrame();
-  cmdCard.name        = `cmd-card/${item.cmd}`;
-  cmdCard.resize(CMD_CARD_W, CMD_CARD_H);
-  cmdCard.x           = 40 + col * (CMD_CARD_W + 32);
-  cmdCard.y           = 88 + row * (CMD_CARD_H + 16);
-  cmdCard.fills       = [{ type: 'SOLID', color: { r: 0.13, g: 0.13, b: 0.13 } }];
-  cmdCard.cornerRadius = 12;
-  claudeSection.appendChild(cmdCard);
+const cmdGrid = figma.createFrame();
+cmdGrid.name = 'claude-command-grid';
+cmdGrid.layoutMode = 'VERTICAL';
+cmdGrid.primaryAxisSizingMode = 'AUTO';
+cmdGrid.counterAxisSizingMode = 'AUTO';
+cmdGrid.itemSpacing = 16;
+cmdGrid.fills = [];
+cmdGrid.layoutAlign = 'STRETCH';
+claudeSection.appendChild(cmdGrid);
 
-  const cmdText = figma.createText();
-  cmdText.fontName   = { family: 'Inter', style: 'Bold' };
-  cmdText.fontSize   = 14;
-  cmdText.characters = item.cmd;
-  cmdText.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-  cmdText.x = 16;
-  cmdText.y = 16;
-  cmdCard.appendChild(cmdText);
+for (let r = 0; r < 3; r++) {
+  const cmdRow = figma.createFrame();
+  cmdRow.name = `cmd-row/${r}`;
+  cmdRow.layoutMode = 'HORIZONTAL';
+  cmdRow.primaryAxisSizingMode = 'AUTO';
+  cmdRow.counterAxisSizingMode = 'AUTO';
+  cmdRow.itemSpacing = 32;
+  cmdRow.fills = [];
+  cmdRow.layoutAlign = 'STRETCH';
+  cmdGrid.appendChild(cmdRow);
 
-  const descText = figma.createText();
-  descText.fontName   = { family: 'Inter', style: 'Regular' };
-  descText.fontSize   = 12;
-  descText.characters = item.desc;
-  descText.fills      = [{ type: 'SOLID', color: { r: 0.6, g: 0.6, b: 0.6 } }];
-  descText.x = 16;
-  descText.y = 44;
-  cmdCard.appendChild(descText);
-});
+  commands.slice(r * 2, r * 2 + 2).forEach((item) => {
+    const cmdCard = figma.createFrame();
+    cmdCard.name = `cmd-card/${item.cmd}`;
+    cmdCard.resize(CMD_CARD_W, CMD_CARD_H);
+    cmdCard.fills       = [{ type: 'SOLID', color: { r: 0.13, g: 0.13, b: 0.13 } }];
+    cmdCard.cornerRadius = 12;
+    cmdRow.appendChild(cmdCard);
+
+    const cmdText = figma.createText();
+    cmdText.fontName   = { family: 'Inter', style: 'Bold' };
+    cmdText.fontSize   = 14;
+    cmdText.characters = item.cmd;
+    cmdText.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+    cmdText.x = 16;
+    cmdText.y = 16;
+    cmdCard.appendChild(cmdText);
+
+    const descText = figma.createText();
+    descText.fontName   = { family: 'Inter', style: 'Regular' };
+    descText.fontSize   = 12;
+    descText.characters = item.desc;
+    descText.fills      = [{ type: 'SOLID', color: { r: 0.6, g: 0.6, b: 0.6 } }];
+    descText.x = 16;
+    descText.y = 44;
+    cmdCard.appendChild(descText);
+  });
+}
 
 const footerNote = figma.createText();
 footerNote.fontName   = { family: 'Inter', style: 'Regular' };
 footerNote.fontSize   = 12;
 footerNote.characters = 'All commands run from the terminal via Claude Code. The plugin reads SKILL.md files — no install required. See README.md in the plugin repo for setup.';
 footerNote.fills      = [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5 } }];
-footerNote.x = 40;
-footerNote.y = 336;
+footerNote.layoutAlign = 'STRETCH';
 claudeSection.appendChild(footerNote);
 ```
 
@@ -1271,6 +1327,48 @@ await figma.setFileThumbnailNodeAsync(coverFrame);
 
 ---
 
+## Step 5c-links — Wire TOC URL hyperlinks
+
+Call `use_figma` with the `fileKey` from Step 4 **after** Steps 5b and 5e so every destination page has a `_Header` (or the component master on `Documentation components`) and the `Thumbnail` page has a `Cover` frame. This step **only** sets **URL hyperlinks** on the page-name text inside each `toc-link/{pageName}` row — designers use **Cmd+click (Mac)** or **Ctrl+click (Windows)** on the linked text in the canvas to jump to the target frame in this file. **Do not** add prototype `reactions`; presentation mode is not the primary workflow here.
+
+Replace `FILE_KEY` in the snippet below with the same literal `fileKey` string from Step 4 before invoking `use_figma`.
+
+**Caveats:** Hyperlinks are on the **page-name text** only (not the arrow or the whole row). If a page is renamed after scaffolding, links no longer match — re-run `/new-project` to rebuild.
+
+```javascript
+const tocPage = figma.root.children.find(p => p.name === '📝 Table of Contents');
+await figma.setCurrentPageAsync(tocPage);
+
+const linkRows = tocPage.findAll(n => n.name.startsWith('toc-link/'));
+
+for (const linkRow of linkRows) {
+  const pageName = linkRow.name.replace('toc-link/', '');
+  const targetPage = figma.root.children.find(p => p.name === pageName);
+  if (!targetPage) continue;
+
+  const targetNode =
+    pageName === 'Thumbnail'
+      ? targetPage.findOne(n => n.name === 'Cover') || targetPage.children[0]
+      : targetPage.children.find(n => n.name === '_Header') || targetPage.children[0];
+  if (!targetNode) continue;
+
+  const textNode = linkRow.findOne(
+    n => n.type === 'TEXT' && n.characters !== '→'
+  );
+  if (!textNode) continue;
+
+  const nodeId = targetNode.id.replace(':', '-');
+  textNode.hyperlink = {
+    type: 'URL',
+    value: `https://www.figma.com/design/FILE_KEY?node-id=${nodeId}`,
+  };
+}
+```
+
+> **Note:** Replace `FILE_KEY` in the URL with the actual file key from Step 4 before passing the code to `use_figma`.
+
+---
+
 ## Step 6 — Report Result and Move Instruction
 
 Present the result and move instruction:
@@ -1329,6 +1427,7 @@ If the designer responds **no**, conclude the skill run. Remind them they can ru
 | `use_figma` page scaffold fails (Step 5) | File not yet accessible after creation. | "Page scaffolding failed. The file was created — open it in Figma and the pages can be added manually. File URL: https://www.figma.com/design/<fileKey>/" |
 | `use_figma` doc headers fail (Step 5b) | Font loading error or page navigation issue. | "Header drawing failed on one or more pages. The file and pages were created successfully — headers can be added manually or by re-running Step 5b." |
 | `use_figma` TOC fails (Step 5c) | Page not found or text node creation error. | "Table of Contents drawing failed. The page exists — content can be added manually or by re-running Step 5c." |
+| `use_figma` TOC links fail (Step 5c-links) | Missing `FILE_KEY` in the URL, hyperlink rejected on a text node, or no `_Header` / `Cover` target on a page. | "TOC hyperlinks failed — confirm `FILE_KEY` was substituted, then re-run Step 5c-links after Steps 5b and 5e." |
 | `use_figma` token overview fails (Step 5d) | Frame or text creation error. | "Token Overview skeleton drawing failed. The page exists — content can be added manually or by re-running Step 5d." |
 | `use_figma` cover/thumbnail fails (Step 5e) | `setFileThumbnailNodeAsync` not supported in current Figma plan, or font load error. | "Cover drawing failed or thumbnail could not be set. The Thumbnail page was created — draw the cover manually and right-click → Set as Thumbnail." |
 

@@ -1,7 +1,7 @@
 ---
 name: create-design-system
 description: Push brand tokens into five Figma variable collections — Primitives, Theme (Light/Dark modes), Typography (8 Android-curve scale modes), Layout, and Effects. Platform mapping (Web/Android/iOS) is encoded as codeSyntax on every variable instead of separate alias collections.
-argument-hint: ""
+argument-hint: "Optional: --theme brand|baseline (default brand). Baseline uses Material 3 static baseline seed hues for Primitives ramps; Brand uses wizard or pasted hexes."
 agent: general-purpose
 ---
 
@@ -11,9 +11,21 @@ You are the Create Design System agent for the Detroit Labs DesignOps plugin. Yo
 
 ---
 
+## Optional — Parse `$ARGUMENTS` for theme source
+
+Before Step 1, parse `$ARGUMENTS` for `--theme`:
+
+- `--theme baseline` → set `THEME_SOURCE` to **`baseline`** and `THEME_FROM_CLI` to **true** (Material 3 static baseline seed colors for Primitives ramps — see Step 5).
+- `--theme brand` → set `THEME_SOURCE` to **`brand`** and `THEME_FROM_CLI` to **true**.
+- Flag absent or invalid → set `THEME_FROM_CLI` to **false** and leave `THEME_SOURCE` unset until Step 2.5 (wizard path only).
+
+When `THEME_FROM_CLI` is **true** and Step 2 was **no**, skip Step 2.5. When Step 2 is **yes** (pasted tokens), always use **`brand`** for Primitives color ramps (ignore `--theme baseline` for colors).
+
+---
+
 ## Interactive input contract
 
-- For **Steps 1–4**, **Step 10** (plan approval), **Step 11** when the API returns partial write errors, and **Step 19**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
+- For **Steps 1–4**, **Step 2.5** (theme source, when needed), **Step 10** (plan approval), **Step 11** when the API returns partial write errors, and **Step 19**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
 - **Do not** print a block of multiple questions as plain markdown before the first AskUserQuestion.
 - After any AskUserQuestion, you may show a brief acknowledgment in prose; do not bundle the next question in that same message — call AskUserQuestion again.
 
@@ -48,8 +60,9 @@ Call **AskUserQuestion**:
 
 **If yes:**
 
-1. Call **AskUserQuestion** asking them to paste tokens in any readable format (JSON, CSS variables, Figma token JSON, or a plain list).
-2. Parse what you can. For **each** required value still missing after parsing, call **AskUserQuestion** for that single field only (one tool call per missing field):
+1. Set `THEME_SOURCE` to **`brand`** — pasted tokens define Primitives; Baseline seed colors do not apply.
+2. Call **AskUserQuestion** asking them to paste tokens in any readable format (JSON, CSS variables, Figma token JSON, or a plain list).
+3. Parse what you can. For **each** required value still missing after parsing, call **AskUserQuestion** for that single field only (one tool call per missing field):
    - Primary brand color (hex)
    - Secondary/accent color (hex)
    - Neutral/gray base color (hex)
@@ -61,7 +74,20 @@ Call **AskUserQuestion**:
    - Base spacing unit in px
    - Border radius base in px
 
-**If no:** Go to Step 3.
+**If no:** Go to Step 2.5, then Step 3.
+
+---
+
+## Step 2.5 — Theme source: Brand vs Baseline (wizard path only)
+
+Run this step **only** when Step 2 was **no** (no pasted tokens) **and** `THEME_FROM_CLI` is **false** (no explicit `--theme` in `$ARGUMENTS`). If `THEME_FROM_CLI` is **true**, `THEME_SOURCE` is already final — skip this step.
+
+Otherwise call **AskUserQuestion** once:
+
+> "Theme source: **Brand** — generate color ramps from your own primary/secondary/neutral hexes (wizard), or **Baseline** — use Material Design 3 [static baseline](https://m3.material.io/styles/color/static/baseline) seed hues for the five Primitives ramps (same Theme alias structure as Brand; Light/Dark resolves from those ramps). Reply **brand** or **baseline**."
+
+- **`brand`** → set `THEME_SOURCE` to `brand`, then continue to Step 3 (full color wizard).
+- **`baseline`** → set `THEME_SOURCE` to `baseline`, then continue to Step 3 (**skip** color questions 1–5; Primitives anchors are taken from Step 5 “Baseline seed anchors”).
 
 ---
 
@@ -69,11 +95,15 @@ Call **AskUserQuestion**:
 
 Collect each value with **AskUserQuestion**, one call at a time, in this order. Use the stated default only when the designer explicitly asks for the default or leaves the answer empty.
 
-1. **AskUserQuestion**: "What is your primary brand color? (hex, e.g. `#3B82F6`)" — required, no default.
-2. **AskUserQuestion**: "What is your secondary or accent color? (hex)" — required, no default.
-3. **AskUserQuestion**: "What is your neutral or gray base color? (hex, e.g. `#6B7280`)" — required, no default.
-4. **AskUserQuestion**: "What is your tertiary or third accent color? (hex, optional — press enter to use secondary color)"
-5. **AskUserQuestion**: "What is your error or danger color? (hex, optional — default `#EF4444`)"
+**If `THEME_SOURCE` is `baseline`:** Skip questions **1–5** below (color ramps use M3 baseline seeds from Step 5). Start at question **6**.
+
+**If `THEME_SOURCE` is `brand`:** Ask questions **1–10** in order.
+
+1. **AskUserQuestion**: "What is your primary brand color? (hex, e.g. `#3B82F6`)" — required, no default. *(Skip when `THEME_SOURCE` is `baseline`.)*
+2. **AskUserQuestion**: "What is your secondary or accent color? (hex)" — required, no default. *(Skip when `baseline`.)*
+3. **AskUserQuestion**: "What is your neutral or gray base color? (hex, e.g. `#6B7280`)" — required, no default. *(Skip when `baseline`.)*
+4. **AskUserQuestion**: "What is your tertiary or third accent color? (hex, optional — press enter to use secondary color)" *(Skip when `baseline`.)*
+5. **AskUserQuestion**: "What is your error or danger color? (hex, optional — default `#EF4444`)" *(Skip when `baseline`.)*
 6. **AskUserQuestion**: "What font family for body text? (e.g. `Inter`, `Roboto`; default `Inter` if unspecified)"
 7. **AskUserQuestion**: "What font family for display and headings? (default: same as body if unspecified)"
 8. **AskUserQuestion**: "Base font size in px? (default: 16)"
@@ -82,7 +112,11 @@ Collect each value with **AskUserQuestion**, one call at a time, in this order. 
 
 Then call **AskUserQuestion** to confirm:
 
-> "Collected: Primary `{…}` · Secondary `{…}` · Neutral `{…}` · Tertiary `{…}` · Error `{…}` · Body `{…}` · Display `{…}` · Font size `{…}px` · Spacing `{…}px` · Radius `{…}px`. Proceed with **yes**, or reply **edit** and name which fields to change."
+- If **`brand`:**  
+  > "Collected: Primary `{…}` · Secondary `{…}` · Neutral `{…}` · Tertiary `{…}` · Error `{…}` · Body `{…}` · Display `{…}` · Font size `{…}px` · Spacing `{…}px` · Radius `{…}px`. Proceed with **yes**, or reply **edit** and name which fields to change."
+
+- If **`baseline`:**  
+  > "Using **Material 3 Baseline** seed colors for Primitives ramps (see Step 5). Collected: Body `{…}` · Display `{…}` · Font size `{…}px` · Spacing `{…}px` · Radius `{…}px`. Proceed with **yes**, or reply **edit** and name which fields to change."
 
 If the designer replies **edit**, call **AskUserQuestion** once per field they name to change, then AskUserQuestion for confirmation again until they answer **yes**.
 
@@ -118,8 +152,19 @@ Write raw, platform-agnostic values into the `Primitives` collection (create if 
 
 Generate ramps for: **primary**, **secondary**, **tertiary**, **error**, **neutral**.
 
-For tertiary: if the designer skipped the tertiary input, alias each `color/tertiary/{stop}` to the corresponding `color/secondary/{stop}` value.
-For error: use the provided hex or `#EF4444` as the `500` anchor.
+**Brand mode (`THEME_SOURCE` is `brand`):** Use the designer’s hexes from Step 2 (paste) or Step 3 (wizard) as the `500` anchor for each ramp (except neutral uses the neutral hex; error uses provided hex or `#EF4444`). For tertiary: if the designer skipped the tertiary input in the wizard, alias each `color/tertiary/{stop}` to the corresponding `color/secondary/{stop}` value.
+
+**Baseline mode (`THEME_SOURCE` is `baseline`):** Ignore wizard color answers. Use the **fixed `500` anchors** below — these are the standard Material Design 3 tonal seed hues (see [Material Design 3 — Static baseline](https://m3.material.io/styles/color/static/baseline) and Material Theme Builder defaults). Generate every stop with the **same** Tailwind lightness interpolation from the **Color Ramp Generation** section at the bottom of this skill.
+
+| Ramp | `500` anchor (hex) |
+|---|---|
+| `primary` | `#6750A4` |
+| `secondary` | `#625B71` |
+| `tertiary` | `#7D5260` |
+| `error` | `#B3261E` |
+| `neutral` | `#49454F` |
+
+Always emit full `color/tertiary/{stop}` ramps in Baseline mode (do not alias tertiary to secondary).
 
 Use the Tailwind lightness interpolation approach from the "Color Ramp Generation" section at the bottom. Variable name pattern: `color/{name}/{stop}`
 
@@ -276,11 +321,26 @@ Write `color/component/scrim` as a hard-coded COLOR value (not an alias) with `#
 
 ### codeSyntax for Theme
 
-codeSyntax values are **set explicitly per token** — they are NOT derived from the Figma variable path. The group segments (`background/`, `surface/`, `component/`, etc.) and the descriptive leaf names (`default`, `fg`, `tint`) are Figma UI labels only.
+codeSyntax values are **set explicitly per token** — they are NOT derived from the Figma variable path. The group segments (`background/`, `surface/`, `component/`, etc.) and the descriptive leaf names (`default`, `fg`, `tint`) are **Figma-only labels** for designers. They are **not** Android Kotlin types, XML namespaces, or Material “scopes” named `Background`.
 
-**ANDROID** uses exact **Material Design 3** color role names. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists; otherwise a matching camelCase name is used.
+#### Official ANDROID reference (M3 baseline color roles)
 
-| Figma variable | WEB | ANDROID (M3) | iOS (HIG) |
+- Canonical spec for static baseline color roles: [Material Design 3 — Styles / Color / Static baseline](https://m3.material.io/styles/color/static/baseline).
+- **Mental model for the ANDROID column:** each value is a **single `ColorScheme` property name** in [Jetpack Compose Material 3](https://developer.android.com/jetpack/compose/designsystems/material3) — a flat camelCase identifier (`background`, `onBackground`, `surface`, `primaryContainer`, …). It is **not** a nested path such as `Background.background` or a type called `Background` from the M3 docs.
+- **Do not** invent qualifiers like `Background.<role>` or PascalCase `Background` as a scope. Put **exactly** the string from the tables below in `codeSyntax.ANDROID` (e.g. `"background"`, not `"Background.background"`).
+
+**Disambiguation**
+
+- **Figma path** (e.g. `color/background/bg`): folder + name for the variable in Figma. The segment `background/` describes *where the token lives in the file*, not an M3 API scope.
+- **ANDROID codeSyntax** (e.g. `background`): the **M3 color role name** that aligns with `ColorScheme.background` in Compose.
+
+**iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists; otherwise a matching camelCase name is used.
+
+#### Core M3 `ColorScheme` roles (ANDROID column)
+
+These ANDROID strings match **Material Design 3** color scheme role names used with baseline / tonal palettes. See the [static baseline](https://m3.material.io/styles/color/static/baseline) documentation for how roles map to color in light and dark theme.
+
+| Figma variable | WEB | ANDROID | iOS (HIG) |
 |---|---|---|---|
 | `color/background/bg` | `var(--background)` | `background` | `systemBackground` |
 | `color/background/fg` | `var(--on-background)` | `onBackground` | `label` |
@@ -310,6 +370,13 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/status/error-fg` | `var(--on-error)` | `onError` | `onError` |
 | `color/status/error-tint` | `var(--error-container)` | `errorContainer` | `errorContainer` |
 | `color/status/error-fg-on-tint` | `var(--on-error-container)` | `onErrorContainer` | `onErrorContainer` |
+
+#### Extensions (not M3 baseline `ColorScheme` roles)
+
+These Figma variables exist for **shadcn/ui–aligned** layout and components. They are **not** part of the core Material Design 3 baseline role set on [m3.material.io static baseline](https://m3.material.io/styles/color/static/baseline). Keep the same `codeSyntax.ANDROID` strings for Dev Mode copy-out consistency — document them as **extensions** so implementers do not claim they are official M3 baseline tokens.
+
+| Figma variable | WEB | ANDROID (extension) | iOS (HIG) |
+|---|---|---|---|
 | `color/component/input` | `var(--input)` | `input` | `systemFill` |
 | `color/component/ring` | `var(--ring)` | `ring` | `tintColor` |
 | `color/component/sidebar` | `var(--sidebar)` | `sidebar` | `secondarySystemBackground` |
@@ -471,7 +538,7 @@ Before writing anything to Figma or the filesystem, present a full summary of ev
 
 ### 10a — Build and display the plan
 
-Show the plan using this exact structure. Substitute all `{…}` placeholders with the actual computed values from Steps 5–9.
+Show the plan using this exact structure. Substitute all `{…}` placeholders with the actual computed values from Steps 5–9. Include **`Theme source: brand`** or **`Theme source: baseline`** on its own line (from `THEME_SOURCE`). For **baseline**, show the literal M3 seed hexes from Step 5 in the ramp headers instead of designer `{inputHex}` values.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -479,6 +546,7 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Figma file: {TARGET_FILE_KEY}
   CSS output: {TOKEN_CSS_PATH}
+  Theme source: {THEME_SOURCE}
 
   Code syntax pattern: every variable includes WEB / ANDROID / iOS tokens.
   ANDROID and iOS differ for Primitive color ramps (see below); identical elsewhere.
@@ -548,7 +616,7 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
 ──────────────────────────────────────────────────────────────────────────────────────────────
   codeSyntax is set explicitly per token — NOT derived from the variable path.
   Groups in the Figma path (background/, surface/, etc.) are UI labels only.
-  ANDROID = exact M3 color role names. iOS = HIG system color names (custom camelCase for brand tokens).
+  ANDROID = M3 `ColorScheme` role names from Step 6 (see [M3 static baseline](https://m3.material.io/styles/color/static/baseline)); `component/*` rows use extensions, not core baseline roles. iOS = HIG system color names.
 
   Figma variable                  Light   Dark    WEB                              ANDROID (M3)              iOS (HIG)
   — background/ (app canvas) —
@@ -734,6 +802,8 @@ Each entry — showing a real Theme example:
   }
 }
 ```
+
+The `"ANDROID"` value is the **M3 color role token** (same identifier as a `ColorScheme` property in Compose Material 3 — e.g. `MaterialTheme.colorScheme.background`). It is **not** a nested type named `Background` and must not be written as `Background.background` or similar.
 
 Note that WEB, ANDROID, and iOS are all **different values** for Theme variables — iOS uses HIG system color names, not the same camelCase as ANDROID. Never copy ANDROID into iOS; always read the iOS column from the Step 6 table.
 
@@ -1504,7 +1574,7 @@ Apply to every variable in every collection.
 
 **Theme (all platforms — codeSyntax set EXPLICITLY from the Step 6 table, NOT derived from path):**
 
-The Figma token path is a designer-friendly label. The codeSyntax name is different by design. Always read from the Step 6 table — never generate Theme codeSyntax by transforming the path.
+The Figma token path is a designer-friendly label. The codeSyntax name is different by design. Always read from the Step 6 table — never generate Theme codeSyntax by transforming the path. Official M3 role list: [Material Design 3 — Static baseline](https://m3.material.io/styles/color/static/baseline). Do not invent a `Background` scope — ANDROID values are flat role names (e.g. `background`), not `Background.background`.
 
 Selected examples showing intentional name divergence:
 
@@ -1542,7 +1612,7 @@ The full 33-row table is in Step 6 — this is just a reminder that path ≠ cod
 
 ## Color Ramp Generation
 
-When the designer provides a single hex color as the brand anchor, generate the full 11-stop ramp (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950) using the Tailwind lightness interpolation approach:
+When generating a ramp from a **single hex anchor** (designer-provided brand color **or** a Baseline seed from Step 5), generate the full 11-stop ramp (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950) using the Tailwind lightness interpolation approach:
 
 1. Convert the input hex to HSL. The input hex becomes the `500` stop.
 2. Assign target lightness values per stop:

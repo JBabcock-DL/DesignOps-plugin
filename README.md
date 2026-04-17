@@ -414,7 +414,9 @@ Effects  (Light mode / Dark mode)
 
 Every variable carries `codeSyntax` for all three platforms. There are no separate Web, Android/M3, or iOS/HIG alias collections — platform naming lives inline on each token.
 
-**ANDROID** uses exact **Material Design 3** color role names. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+**ANDROID (Theme)** uses [Material Design 3 static baseline](https://m3.material.io/styles/color/static/baseline) **`ColorScheme` role names** (flat camelCase: `background`, `onSurface`, `primaryContainer`, …) — the same identifiers as Jetpack Compose Material 3, not a nested type or scope named `Background`. Figma path segments like `color/background/` are organizational only. **`component/*` tokens** map to shadcn-oriented extension names (`sidebar`, `ring`, …) that are not part of the core M3 baseline role set; see `/create-design-system` Step 6 in-repo for the full split. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+
+`/create-design-system` supports **`--theme baseline`** (M3 baseline seed hues for Primitives ramps) or **`--theme brand`** / wizard defaults; see the skill for Step 2.5.
 
 | Token | WEB | ANDROID (M3) | iOS (HIG) |
 |---|---|---|---|
