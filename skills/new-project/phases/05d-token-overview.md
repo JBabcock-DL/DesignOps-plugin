@@ -164,7 +164,7 @@ addPlaceholder(arch, 'architecture');
 // Section 2: Platform Mapping table
 // ────────────────────────────────────────────────────────────────
 const platformRows = [
-  ['color/background/default',   'var(--color-background)',       'surface',               '.Back.default'],
+  ['color/background/default',   'var(--color-background)',       'surface',               '.Background.default'],
   ['color/primary/default',      'var(--color-primary)',          'primary',               '.Primary.default'],
   ['color/border/default',       'var(--color-border)',           'outline',               '.Border.default'],
   ['color/status/error',         'var(--color-danger)',           'error',                 '.Status.error'],

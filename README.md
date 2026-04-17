@@ -420,17 +420,17 @@ Effects  (Light mode / Dark mode)
 
 Every variable carries `codeSyntax` for all three platforms. There are no separate Web, Android/M3, or iOS alias collections — platform naming lives inline on each token.
 
-**ANDROID** `codeSyntax` strings use **kebab-case** aligned to Material 3 roles (e.g. `surface-container-high`, `on-primary`, `error-fixed`) — the same semantics as [Jetpack Compose `ColorScheme`](https://developer.android.com/jetpack/compose/designsystems/material3), not API camelCase. **iOS** `codeSyntax` strings use **dot-path semantics** (e.g. `.Back.default`, `.Back.high`, `.Primary.on`, `.Border.default`) for design-system / codegen references — not `UIColor` symbol names. See `/create-design-system` Step 6 for the full Theme table.
+**ANDROID** `codeSyntax` strings use **kebab-case** aligned to Material 3 roles (e.g. `surface-container-high`, `on-primary`, `error-fixed`) — the same semantics as [Jetpack Compose `ColorScheme`](https://developer.android.com/jetpack/compose/designsystems/material3), not API camelCase. **iOS** `codeSyntax` strings use **dot-path semantics** (e.g. `.Background.default`, `.Background.high`, `.Primary.on`, `.Border.default`) for design-system / codegen references — not `UIColor` symbol names. See `/create-design-system` Step 6 for the full Theme table.
 
 `/create-design-system` supports **`--theme baseline`** (M3 baseline seed hues for Primitives ramps) or **`--theme brand`** / wizard defaults; see the skill for Step 2.5.
 
 | Token | WEB | ANDROID (M3 kebab) | iOS (semantic) |
 |---|---|---|---|
-| `color/background/default` | `var(--color-background)` | `surface` | `.Back.default` |
-| `color/background/container-high` | `var(--color-background-container-high)` | `surface-container-high` | `.Back.high` |
-| `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Back.variant` |
+| `color/background/default` | `var(--color-background)` | `surface` | `.Background.default` |
+| `color/background/container-high` | `var(--color-background-container-high)` | `surface-container-high` | `.Background.high` |
+| `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Background.variant` |
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
-| `color/primary/tint` | `var(--color-primary-soft)` | `primary-container` | `.Primary.subtle` |
+| `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
@@ -455,9 +455,9 @@ If you opt in after the Figma push, `/create-design-system` writes `tokens.css` 
   --color-border:                var(--color-neutral-200);
   --color-primary:               var(--color-primary-500);
   --color-on-primary:            var(--color-primary-50);
-  --color-primary-soft:          var(--color-primary-100);
+  --color-primary-subtle:          var(--color-primary-100);
   --color-danger:                var(--color-error-600);
-  --color-accent-soft:           var(--color-tertiary-100);
+  --color-accent-subtle:           var(--color-tertiary-100);
   /* …54 M3-aligned theme tokens as --color-* … */
 
   /* shadcn/ui compatibility aliases */
@@ -465,7 +465,7 @@ If you opt in after the Figma push, `/create-design-system` writes `tokens.css` 
   --foreground:      var(--color-content);
   --border:          var(--color-border);
   --destructive:     var(--color-danger);
-  --accent:          var(--color-accent-soft);
+  --accent:          var(--color-accent-subtle);
   /* …aliases… */
 }
 

@@ -101,16 +101,16 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 
 **Platform mapping** is encoded as `codeSyntax` on every variable — there are no separate Web, Android/M3, or iOS alias collections. Each token carries three code names inline.
 
-**ANDROID** `codeSyntax` uses **kebab-case** for the same M3 roles as Compose `ColorScheme` (e.g. `surface-container-high`, `on-primary`). **iOS** `codeSyntax` uses **dot paths** (e.g. `.Back.high`, `.Border.default`). Figma groups canvas tokens under **`color/background/*`**; outline under **`color/border/*`**. See `/create-design-system` Step 6 for the full table.
+**ANDROID** `codeSyntax` uses **kebab-case** for the same M3 roles as Compose `ColorScheme` (e.g. `surface-container-high`, `on-primary`). **iOS** `codeSyntax` uses **dot paths** (e.g. `.Background.high`, `.Foreground.primary`, `.Border.default`). Figma groups canvas tokens under **`color/background/*`**; outline under **`color/border/*`**. See `/create-design-system` Step 6 for the full table.
 
 `/create-design-system` accepts **`--theme baseline`** (M3 baseline seed ramps) or **`--theme brand`** (default); see the skill Step 2.5.
 
 | Token | WEB | ANDROID (M3 kebab) | iOS (semantic) |
 |---|---|---|---|
-| `color/background/default` | `var(--color-background)` | `surface` | `.Back.default` |
-| `color/background/fg` | `var(--color-content)` | `on-surface` | `.Fore.primary` |
+| `color/background/default` | `var(--color-background)` | `surface` | `.Background.default` |
+| `color/background/fg` | `var(--color-content)` | `on-surface` | `.Foreground.primary` |
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
-| `color/primary/tint` | `var(--color-primary-soft)` | `primary-container` | `.Primary.subtle` |
+| `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
@@ -126,7 +126,7 @@ When the designer opts in, `/create-design-system` writes a `tokens.css` file (d
 - **Typography base block** — all 48 properties at 100% scale in `:root`
 - **Typography scale blocks** — 8 `[data-font-scale="N"]` blocks (85, 100, 110, 120, 130, 150, 175, 200) with only font-size and line-height overrides
 
-Canonical theme colors use **`--color-*`** (`--color-background`, `--color-content-muted`, `--color-border`, `--color-primary-soft`, `--color-danger`, …). shadcn/ui names (`--background`, `--foreground`, `--border`, `--primary`, …) are aliases pointing at the same roles, so components resolve with no extra mapping.
+Canonical theme colors use **`--color-*`** (`--color-background`, `--color-content-muted`, `--color-border`, `--color-primary-subtle`, `--color-danger`, …). shadcn/ui names (`--background`, `--foreground`, `--border`, `--primary`, …) are aliases pointing at the same roles, so components resolve with no extra mapping.
 
 Dark mode toggle: `data-theme="dark"` on `<html>`.  
 Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `<html>`.

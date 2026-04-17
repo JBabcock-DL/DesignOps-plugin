@@ -443,14 +443,14 @@ comp.y = 100;
 | `input` | `state` | default, focus, disabled, error | all→`color/component/input`; error adds stroke `color/status/error` |
 | `textarea` | `state` | default, focus, disabled, error | same as input |
 | `select` | `state` | default, open, disabled | `color/background/default`; open adds stroke `color/component/ring` |
-| `alert` | `variant` | default, destructive | default→`color/background/variant`; destructive→`color/status/error-tint` |
+| `alert` | `variant` | default, destructive | default→`color/background/variant`; destructive→`color/status/error-subtle` |
 | `avatar` | `size` | sm, md, lg | `color/background/variant`; vary `padH`: sm→`space/xs`, md→`space/sm`, lg→`space/md` |
 | `progress` | `value` | 0, 25, 50, 75, 100 | track→`color/background/variant`; indicator→`color/primary/default` |
 | `skeleton` | `shape` | line, circle, rect | `color/background/variant` |
 | `tabs` | `state` | active, inactive | active→`color/background/default`+stroke `color/primary/default`; inactive→`color/background/variant` |
 | `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` | open, closed | `color/background/container-highest`; `radius/lg` |
 | `accordion`, `collapsible` | `state` | open, closed | `color/background/default` |
-| `toggle`, `toggle-group` | `pressed` | false, true | false→`color/background/default`; true→`color/tertiary/tint` |
+| `toggle`, `toggle-group` | `pressed` | false, true | false→`color/background/default`; true→`color/tertiary/subtle` |
 
 **Single-state components** (no variants — use pattern 6c):
 `breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast`

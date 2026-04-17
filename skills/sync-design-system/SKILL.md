@@ -437,32 +437,32 @@ When parsing CSS custom properties that match Theme semantic token names, map th
 - `--color-shadow-tint` → `color/background/shadow`
 - `--color-primary` → `color/primary/default`
 - `--color-on-primary` → `color/primary/fg`
-- `--color-primary-soft` → `color/primary/tint`
-- `--color-on-primary-soft` → `color/primary/fg-on-tint`
+- `--color-primary-subtle` → `color/primary/subtle`
+- `--color-on-primary-subtle` → `color/primary/on-subtle`
 - `--color-primary-fixed` → `color/primary/fixed`
 - `--color-primary-fixed-dim` → `color/primary/fixed-dim`
 - `--color-on-primary-fixed` → `color/primary/on-fixed`
 - `--color-on-primary-fixed-muted` → `color/primary/on-fixed-variant`
 - `--color-secondary` → `color/secondary/default`
 - `--color-on-secondary` → `color/secondary/fg`
-- `--color-secondary-soft` → `color/secondary/tint`
-- `--color-on-secondary-soft` → `color/secondary/fg-on-tint`
+- `--color-secondary-subtle` → `color/secondary/subtle`
+- `--color-on-secondary-subtle` → `color/secondary/on-subtle`
 - `--color-secondary-fixed` → `color/secondary/fixed`
 - `--color-secondary-fixed-dim` → `color/secondary/fixed-dim`
 - `--color-on-secondary-fixed` → `color/secondary/on-fixed`
 - `--color-on-secondary-fixed-muted` → `color/secondary/on-fixed-variant`
 - `--color-accent` → `color/tertiary/default`
 - `--color-on-accent` → `color/tertiary/fg`
-- `--color-accent-soft` → `color/tertiary/tint`
-- `--color-on-accent-soft` → `color/tertiary/fg-on-tint`
+- `--color-accent-subtle` → `color/tertiary/subtle`
+- `--color-on-accent-subtle` → `color/tertiary/on-subtle`
 - `--color-accent-fixed` → `color/tertiary/fixed`
 - `--color-accent-fixed-dim` → `color/tertiary/fixed-dim`
 - `--color-on-accent-fixed` → `color/tertiary/on-fixed`
 - `--color-on-accent-fixed-muted` → `color/tertiary/on-fixed-variant`
 - `--color-danger` → `color/status/error`
 - `--color-on-danger` → `color/status/error-fg`
-- `--color-danger-soft` → `color/status/error-tint`
-- `--color-on-danger-soft` → `color/status/error-fg-on-tint`
+- `--color-danger-subtle` → `color/status/error-subtle`
+- `--color-on-danger-subtle` → `color/status/error-on-subtle`
 - `--color-danger-fixed` → `color/status/error-fixed`
 - `--color-danger-fixed-dim` → `color/status/error-fixed-dim`
 - `--color-on-danger-fixed` → `color/status/error-on-fixed`
@@ -473,7 +473,7 @@ When parsing CSS custom properties that match Theme semantic token names, map th
 - `--color-on-sidebar` → `color/component/sidebar-fg`
 
 **Skip during diff** — shadcn/ui and legacy names that duplicate `--color-*`:
-`--background`, `--on-background`, `--foreground`, `--background-inverse`, `--foreground-inverse`, `--surface-raised`, `--surface-overlay`, `--border`, `--border-subtle`, `--primary`, `--on-primary`, `--primary-container`, `--on-primary-container`, `--primary-foreground`, `--primary-tint`, `--on-primary-tint`, `--secondary`, `--on-secondary`, `--secondary-container`, `--on-secondary-container`, `--secondary-foreground`, `--secondary-tint`, `--on-secondary-tint`, `--tertiary`, `--on-tertiary`, `--tertiary-container`, `--on-tertiary-container`, `--accent`, `--accent-foreground`, `--error`, `--on-error`, `--error-container`, `--on-error-container`, `--destructive`, `--destructive-foreground`, `--error-tint`, `--on-error-tint`, `--input`, `--ring`, `--sidebar`, `--sidebar-foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`
+`--background`, `--on-background`, `--foreground`, `--background-inverse`, `--foreground-inverse`, `--surface-raised`, `--surface-overlay`, `--border`, `--border-subtle`, `--primary`, `--on-primary`, `--primary-container`, `--on-primary-container`, `--primary-foreground`, `--primary-subtle`, `--on-primary-subtle`, `--secondary`, `--on-secondary`, `--secondary-container`, `--on-secondary-container`, `--secondary-foreground`, `--secondary-subtle`, `--on-secondary-subtle`, `--tertiary`, `--on-tertiary`, `--tertiary-container`, `--on-tertiary-container`, `--accent`, `--accent-foreground`, `--error`, `--on-error`, `--error-container`, `--on-error-container`, `--destructive`, `--destructive-foreground`, `--error-subtle`, `--on-error-subtle`, `--input`, `--ring`, `--sidebar`, `--sidebar-foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`
 
 Platform-prefixed names (`--md-sys-*`, `--ios-*`) are legacy — skip them with a warning.
 
