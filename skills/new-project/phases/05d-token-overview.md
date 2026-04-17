@@ -136,7 +136,7 @@ collections.forEach((col, i) => {
   colNote.fontName   = { family: 'Inter', style: 'Regular' };
   colNote.fontSize   = 11;
   colNote.characters = col.note;
-  colNote.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, opacity: 0.6 } }];
+  colNote.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.6 }];
   colNote.layoutAlign = 'STRETCH';
   box.appendChild(colNote);
 

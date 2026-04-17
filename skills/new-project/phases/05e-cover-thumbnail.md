@@ -1,10 +1,10 @@
-# Phase 05e — Cover and file thumbnail
+# Phase 05e — Thumbnail page cover
 
 ## Runtime order
 Runs **after** Phase 05d.
 
 ## Goal
-Draw the `Cover` frame on `Thumbnail` and set the file thumbnail.
+Draw the `Cover` frame on the `Thumbnail` page (gradient, title, chips). Do **not** call `figma.setFileThumbnailNodeAsync` (not supported in this MCP flow).
 
 ## Prerequisites
 - Phases through 05d complete.
@@ -16,11 +16,11 @@ Replace every literal `PROJECT_NAME` in the script with the **exact** project na
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
 ## Success criteria
-`Cover` exists; `setFileThumbnailNodeAsync` succeeds or user is told to set thumbnail manually (see main skill error table).
+`Cover` exists on `Thumbnail` with gradient, project title, and chips.
 
-## Step 5e — Draw Cover and Set File Thumbnail
+## Step 5e — Draw Cover on Thumbnail
 
-Call `use_figma` with the `fileKey` from Step 4. Navigate to the `Thumbnail` page, draw a `Cover` frame with a diagonal blue-to-green gradient, and set it as the Figma file thumbnail.
+Call `use_figma` with the `fileKey` from Step 4. Navigate to the `Thumbnail` page and draw a `Cover` frame with a diagonal blue-to-green gradient, project title, and chips.
 
 ```javascript
 // Navigate to the Thumbnail page
@@ -112,9 +112,6 @@ for (const label of chipLabels) {
 
   chipX += chip.width + 16;
 }
-
-// ── Set as file thumbnail ─────────────────────────────────────────
-await figma.setFileThumbnailNodeAsync(coverFrame);
 ```
 
 > **Note:** Replace `PROJECT_NAME` in the code above with the actual project name string collected in Step 1 before passing the code to `use_figma`.

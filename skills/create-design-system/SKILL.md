@@ -1,7 +1,7 @@
 ---
 name: create-design-system
 description: Push brand tokens into five Figma variable collections — Primitives, Theme (Light/Dark modes), Typography (8 Android-curve scale modes), Layout, and Effects. Platform mapping (Web/Android/iOS) is encoded as codeSyntax on every variable instead of separate alias collections.
-argument-hint: "Optional: --theme brand|baseline (default brand). Baseline uses Material 3 static baseline seed hues for Primitives ramps; Brand uses wizard or pasted hexes."
+argument-hint: "Optional: --theme brand|baseline (default brand). Optional: --file-key <key-or-figma-design-url> (e.g. when chaining from /new-project). Baseline uses Material 3 static baseline seed hues for Primitives ramps; Brand uses wizard or pasted hexes."
 agent: general-purpose
 ---
 
@@ -13,13 +13,21 @@ You are the Create Design System agent for the Detroit Labs DesignOps plugin. Yo
 
 ## Optional — Parse `$ARGUMENTS` for theme source
 
-Before Step 1, parse `$ARGUMENTS` for `--theme`:
+Before Step 1, parse `$ARGUMENTS` for `--theme` and `--file-key`:
+
+**`--theme`**
 
 - `--theme baseline` → set `THEME_SOURCE` to **`baseline`** and `THEME_FROM_CLI` to **true** (Material 3 static baseline seed colors for Primitives ramps — see Step 5).
 - `--theme brand` → set `THEME_SOURCE` to **`brand`** and `THEME_FROM_CLI` to **true**.
 - Flag absent or invalid → set `THEME_FROM_CLI` to **false** and leave `THEME_SOURCE` unset until Step 2.5 (wizard path only).
 
 When `THEME_FROM_CLI` is **true** and Step 2 was **no**, skip Step 2.5. When Step 2 is **yes** (pasted tokens), always use **`brand`** for Primitives color ramps (ignore `--theme baseline` for colors).
+
+**`--file-key`** (optional; e.g. read-only plugin install, or when handoff was not written)
+
+- Accept `--file-key <value>` or `--file-key=<value>`. Strip quotes.
+- If `<value>` matches `figma.com/design/<KEY>/` or `figma.com/file/<KEY>/`, set `FILE_KEY_FROM_ARGS` to `<KEY>` (the path segment only: letters, digits, hyphens).
+- Otherwise treat the whole value as a bare file key. If it matches `^[A-Za-z0-9-]+$`, set `FILE_KEY_FROM_ARGS`. If invalid, ignore the flag (Step 1 will prompt).
 
 ---
 
@@ -33,16 +41,23 @@ When `THEME_FROM_CLI` is **true** and Step 2 was **no**, skip Step 2.5. When Ste
 
 ## Step 1 — Resolve the Figma file key
 
-1. Check `plugin/templates/agent-handoff.md` for `active_file_key`.
+Resolve `TARGET_FILE_KEY` in this order. **`--file-key` takes precedence** when present (explicit invocation). Otherwise `/new-project` usually leaves **`active_file_key`** in local `templates/agent-handoff.md` for smoother follow-on skills.
 
-2. **If `active_file_key` is set**, call **AskUserQuestion**:
+1. **If `FILE_KEY_FROM_ARGS` is set** (parsed from `--file-key` before Step 1), call **AskUserQuestion**:
 
-   > "I'll use the Foundations file from the last `/new-project` run: `<active_file_key>`. Use this file? Reply **yes** or paste a different Figma file key."
+   > "I'll use this Foundations file key: `<FILE_KEY_FROM_ARGS>` (passed with `/create-design-system`). Use this file? Reply **yes** or paste a different Figma file key."
+
+   - If **yes**, set `TARGET_FILE_KEY` to `FILE_KEY_FROM_ARGS`.
+   - If the reply is a different key string, validate it (alphanumerics and hyphens only, or extract from a pasted Figma URL). If valid, set `TARGET_FILE_KEY`. If invalid, call **AskUserQuestion** again until valid.
+
+2. **Else**, read `templates/agent-handoff.md` at the repository root (YAML front matter) if the file exists. If `active_file_key` is set, call **AskUserQuestion**:
+
+   > "I'll use the Foundations file from handoff: `<active_file_key>`. Use this file? Reply **yes** or paste a different Figma file key."
 
    - If **yes**, set `TARGET_FILE_KEY` to `active_file_key`.
-   - If the reply is a different key string, validate it (alphanumerics and hyphens only). If valid, set `TARGET_FILE_KEY`. If invalid, call **AskUserQuestion** again until valid.
+   - If the reply is a different key string, validate as above.
 
-3. **If `active_file_key` is missing**, call **AskUserQuestion**:
+3. **If still unset**, call **AskUserQuestion**:
 
    > "What is the Figma file key for your design system file? (The segment after `figma.com/design/` in the file URL, before the next `/`.)"
 
@@ -1506,7 +1521,7 @@ Construct the full CSS file content using this exact structure and write it to `
 **Compute all `{computed}` values before writing the file.** Use the same scaling formula from Step 7. Do not write placeholder `{computed}` text — replace every `{…}` with the actual resolved value.
 
 **File format rules:**
-- The file header must include the project name (from `agent-handoff.md` `active_project_name` or the Figma file name) and a "do not edit" note.
+- The file header must include the project name (from `templates/agent-handoff.md` `active_project_name` if present, or the Figma file name) and a "do not edit" note.
 - Use CSS custom properties only — no Sass, no PostCSS, no JavaScript.
 - Primitives block comes first so that all `var(--color-*)` references in Theme/Layout/Effects resolve within the same file.
 - The `@media (prefers-color-scheme: dark)` block duplicates the dark values so the system preference works without JavaScript. This duplication is intentional.
@@ -1515,7 +1530,7 @@ Construct the full CSS file content using this exact structure and write it to `
 
 After writing `tokens.css`:
 
-1. Write `TOKEN_CSS_PATH` to `plugin/templates/agent-handoff.md` under the `token_css_path` field, and set `last_skill_run` to `create-design-system`. This lets `/create-component` and `/code-connect` find the file automatically in subsequent runs.
+1. If `templates/agent-handoff.md` exists and is writable in the workspace, write `TOKEN_CSS_PATH` there under the `token_css_path` field and set `last_skill_run` to `create-design-system` so `/create-component` and `/code-connect` can pick it up. If the file is missing or not writable (e.g. read-only plugin install), skip the write and state the `TOKEN_CSS_PATH` value explicitly in the Step 14 report so the designer can paste it into the next command.
 
 2. Confirm with the file path and a count of CSS custom properties written. If the write fails (e.g. directory not found), call **AskUserQuestion** with a corrected path prompt and retry once.
 
@@ -1544,7 +1559,7 @@ CSS token file written to: {TOKEN_CSS_PATH}  ({N} custom properties)
 Open in Figma: https://figma.com/design/{TARGET_FILE_KEY}
 ```
 
-Immediately continue to **Steps 15–18** (Figma canvas: style guide pages, MCP manifest, Token Overview updates, Cover gradient) in the same skill run — do not jump to Step 19 until those steps complete or fail with a logged warning.
+Immediately continue to **Steps 15–18** (Figma canvas: style guide pages, MCP manifest, Token Overview updates, Cover gradient on the Thumbnail page) in the same skill run — do not jump to Step 19 until those steps complete or fail with a logged warning.
 
 ---
 
@@ -1686,11 +1701,10 @@ Navigate to the `Thumbnail` page using `figma.setCurrentPageAsync`. Find the fra
 3. Update `gradientStops[1].color` to the resolved RGBA for `color/secondary/500` from the Primitives collection.
 4. Leave `gradientTransform` completely unchanged — do not alter the gradient angle or position.
 5. Write the updated fills back to the frame.
-6. Call `figma.setFileThumbnailNodeAsync(coverFrame)` to re-register the frame as the file thumbnail.
 
 **If `Cover` is not found:**
 
-Log the warning `Cover frame not found — skipping thumbnail update` and continue to Step 19 without error.
+Log the warning `Cover frame not found — skipping Step 18 cover gradient update` and continue to Step 19 without error.
 
 ---
 

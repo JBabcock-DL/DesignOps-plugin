@@ -1,16 +1,17 @@
 # Phase 07 — Offer design system initialization
 
 ## Goal
-Offer `/create-design-system`, optionally write `templates/agent-handoff.md`, and invoke the next skill.
+Offer `/create-design-system` and chain into it with the correct Figma file key. Prefer updating **`templates/agent-handoff.md` in the user’s local workspace** (each teammate’s clone or project checkout — nothing is shared unless they commit it). If that file is missing or not writable, fall back to invoking **`/create-design-system --file-key …`** so the flow still works from a read-only plugin install.
 
 ## Prerequisites
 - Phase 06 presented to the user.
+- **Foundations `fileKey`** from Step 4 and **Project Name** from Step 1.
 
 ## Placeholders
-Use real `<Foundations file key>` and `<Project Name>` in the YAML when writing the handoff.
+Substitute real values for `<Foundations file key>`, `<Project Name>`, and `<key>` in the YAML and commands below.
 
 ## Instructions
-No `use_figma`. Follow the step text exactly (AskUserQuestion, handoff path, chain or decline).
+No `use_figma`. Follow the step text exactly.
 
 ## Step 7 — Offer Design System Initialization
 
@@ -20,7 +21,7 @@ After presenting the result, call AskUserQuestion:
 
 Wait for the reply. If the designer responds **yes**:
 
-1. **Write the handoff file first** — populate `templates/agent-handoff.md` (repository root) with the fields below before invoking the next skill. This ensures `create-design-system` picks up the correct file and does not prompt for a new key.
+1. **Write handoff when possible** — Try to write `templates/agent-handoff.md` at the **repository root** with the YAML below. This is **local to that machine’s checkout**; it helps `/create-design-system` (and later `/create-component` / `/code-connect`) resolve the file and paths with fewer prompts. If the write fails (read-only install, sandbox, or no template file), skip to step 2 only with `--file-key`.
 
    ```yaml
    ---
@@ -35,7 +36,14 @@ Wait for the reply. If the designer responds **yes**:
    ---
    ```
 
-2. **Invoke `/create-design-system`** — no arguments needed. The skill reads `active_file_key` from the handoff and will ask "Use this file?" — the designer should confirm with **yes**.
+2. **Invoke `/create-design-system`**
+   - If the handoff write **succeeded**, invoke `/create-design-system` with **no** file-key argument. Step 1 of that skill will read `active_file_key` from handoff and ask **"Use this file?"** — the designer should reply **yes**.
+   - If the handoff write **failed or was skipped**, invoke:
 
-If the designer responds **no**, conclude the skill run. Remind them they can run `/create-design-system` at any time — it will read the file key from the handoff automatically.
+     ```
+     /create-design-system --file-key <Step 4 fileKey>
+     ```
 
+3. Briefly confirm which path was used (handoff vs `--file-key`).
+
+If the designer responds **no**, conclude the skill run. Remind them they can run `/create-design-system` anytime (with optional `--file-key`, or after filling handoff locally).

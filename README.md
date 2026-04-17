@@ -37,7 +37,7 @@ Each skill is an instruction file (`SKILL.md`) that tells the Claude Code agent 
 - **Filesystem access** — reading and writing local token files (`tokens.css`, `tokens.json`, `tailwind.config.js`) for sync and component wiring
 - **Claude's built-in capabilities** — inline translation for localization, WCAG contrast calculations for accessibility
 
-Skills pass context to each other through `templates/agent-handoff.md`, so you can chain `/new-project` → `/create-design-system` → `/create-component` → `/code-connect` without losing your place.
+`/new-project` → `/create-design-system`: Step 7 **writes `templates/agent-handoff.md` locally** on that machine’s checkout (not shared unless you commit it), then invokes the next skill. If the file is not writable, use **`--file-key`** instead. Other skills still read or update handoff when present (e.g. `token_css_path` after `/create-design-system`) to reduce re-prompting.
 
 ---
 
@@ -72,7 +72,7 @@ Skills pass context to each other through `templates/agent-handoff.md`, so you c
 
 ### /new-project
 
-Create and scaffold a `<Project Name> — Foundations` design system file using the Figma MCP connector. The file is created in Drafts, the full page tree is created, **documentation canvas** is drawn (headers, table of contents, token overview skeleton, cover + file thumbnail), then a single move instruction is provided at the end. Heavy `use_figma` scripts live under `skills/new-project/phases/`; the agent **`Read`s one phase file per step** to keep context small. After page scaffolding completes, Claude **reposts a markdown progress checklist** in chat as each phase finishes so you can follow along.
+Create and scaffold a `<Project Name> — Foundations` design system file using the Figma MCP connector. The file is created in Drafts, the full page tree is created, **documentation canvas** is drawn (headers, table of contents, token overview skeleton, Thumbnail `Cover` frame), then a single move instruction is provided at the end. Heavy `use_figma` scripts live under `skills/new-project/phases/`; the agent **`Read`s one phase file per step** to keep context small. After page scaffolding completes, Claude **reposts a markdown progress checklist** in chat as each phase finishes so you can follow along.
 
 **Syntax**
 ```
@@ -96,9 +96,9 @@ The file lands in Drafts. At the end of the run Claude provides a one-step move 
 | 5c | **Table of Contents** on `📝 Table of Contents` — two-column section cards; link rows named `toc-link/{exact Figma page name}` (no hyperlinks yet) |
 | 5b | Doc header (`_Header`) + dashed `_Content` region on **every page except `Thumbnail`** (cover is the meta surface for that page) |
 | 5d | **Token Overview** skeleton on `↳ Token Overview` — architecture, mapping table, mode panels, binding tips, Claude commands; `placeholder/*` nodes cleared when `/create-design-system` runs |
-| 5e | **Thumbnail** — full-bleed `Cover` (gradient, project title, chips, mark) and `setFileThumbnailNodeAsync` |
+| 5e | **Thumbnail** — full-bleed `Cover` (gradient, project title, chips, DL mark) |
 | 5c-links | URL hyperlinks on TOC page-name text (after `Cover` and `_Header` exist) |
-| 6–7 | Move instructions; optional chain to `/create-design-system` with `templates/agent-handoff.md` |
+| 6–7 | Move instructions; optional chain to `/create-design-system` (local **`templates/agent-handoff.md`**, or **`--file-key`** if not writable) |
 
 **Page hierarchy** — sourced from the Detroit Labs Foundations template and extended with shadcn/ui component pages, organized into atomic design groups:
 
@@ -129,13 +129,15 @@ Initialize a design system in a Figma file by pushing brand tokens into five var
 **Syntax**
 ```
 /create-design-system
+/create-design-system --file-key <FigmaFileKey>
+/create-design-system --theme baseline|brand --file-key <FigmaFileKey>
 ```
 
-No platform argument — platform mapping (Web / Android / iOS) is encoded as `codeSyntax` on every variable rather than as separate alias collections.
+No platform argument — platform mapping (Web / Android / iOS) is encoded as `codeSyntax` on every variable rather than as separate alias collections. Use **`--file-key`** when you did not (or could not) write local handoff after `/new-project`.
 
 **What it does**
 
-1. Checks `templates/agent-handoff.md` for an active file key before prompting
+1. Resolves the Figma file: **`--file-key` from arguments first**, then optional local `templates/agent-handoff.md`, then prompts
 2. Collects brand tokens interactively (primary, secondary, neutral, tertiary, and error colors; body and display font families; base font size, spacing unit, and border radius)
 3. Generates the `Primitives` collection: five full color ramps (primary, secondary, tertiary, error, neutral — 50–950 stops via Tailwind HSL interpolation), `Space/*` spacing scale, `Corner/*` radius scale, elevation floats
 4. Creates the `Theme` collection (Light / Dark modes): **54** semantic color aliases across **7** groups — `background/` (canvas + container ladder + fg + inverse + scrim/shadow; WEB `--color-background*`; ANDROID/iOS codeSyntax still uses M3 **surface** roles), `border/` (`default` / `subtle`; WEB `--color-border*`), `primary/`, `secondary/`, `tertiary/` (each includes standard + **fixed** roles), `status/` (error + fixed), and `component/` (shadcn: input, ring, sidebar) — all aliasing Primitives per mode
@@ -145,11 +147,11 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 8. Writes all five collections to Figma via the Variables REST API with `codeSyntax` (WEB/ANDROID/iOS) on every variable
 9. Verifies the write with a GET call and reports final variable counts
 10. **Writes `tokens.css`** to the local codebase — the CSS source of truth for the project (see [Token Architecture](#token-architecture))
-11. Updates `templates/agent-handoff.md` with `token_css_path` so `/create-component` can locate the file automatically
+11. Updates `templates/agent-handoff.md` with `token_css_path` when that file exists and is writable, so `/create-component` can locate tokens automatically; otherwise the report states the path explicitly
 12. **`use_figma` — Style guide** — redraws token visualization on `↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects` (content below the doc header; see skill for layout spec)
 13. **`use_figma` — MCP Tokens** — builds `[MCP] Token Manifest` with JSON + tables for machine and human audit
 14. **`use_figma` — Token Overview** — replaces skeleton data, updates swatches and tables from live variables, removes `placeholder/*` notes
-15. **`use_figma` — Thumbnail** — updates `Cover` gradient stops from `color/primary/500` and `color/secondary/500`, re-applies file thumbnail
+15. **`use_figma` — Thumbnail** — updates `Cover` gradient stops from `color/primary/500` and `color/secondary/500`
 
 **Requires:** Organization-tier Figma account for the Variables REST API write endpoint.
 
@@ -321,7 +323,7 @@ Run a WCAG 2.1 AA accessibility audit on a selected Figma frame, including contr
 A complete project setup from scratch through production-ready, code-connected components:
 
 ```
-# 1. Scaffold the Foundations file in Figma (pages + doc UI + cover thumbnail)
+# 1. Scaffold the Foundations file in Figma (pages + doc UI + Thumbnail cover)
 /new-project --team "Client Team" --name "Acme App"
 
 # 2. Push variables + tokens.css, then refresh style guide + MCP manifest + Token Overview + cover
@@ -348,7 +350,9 @@ A complete project setup from scratch through production-ready, code-connected c
 
 ## Skill Chaining & Handoff Context
 
-Skills pass context to each other through `templates/agent-handoff.md`. This file stores the active Figma file key, project name, CSS token file path, and last skill run so subsequent skills can pick up without re-prompting.
+**`/new-project` → `/create-design-system`:** Step 7 updates **local** `templates/agent-handoff.md` when possible, then runs the next skill. **`--file-key`** remains the fallback when handoff cannot be written.
+
+**Handoff file:** `templates/agent-handoff.md` stores the active Figma file key, project name, CSS token file path, and last skill run **on that checkout** so later skills can pick up without re-prompting.
 
 **Frontmatter fields:**
 
@@ -368,7 +372,7 @@ Skills pass context to each other through `templates/agent-handoff.md`. This fil
 Context: see templates/agent-handoff.md
 ```
 
-Skills that accept a `file_key` argument always check `active_file_key` in the handoff first before prompting.
+Skills that accept a `file_key` argument typically check `active_file_key` in the handoff when present; `/create-design-system` also honors **`--file-key`** first.
 
 ---
 

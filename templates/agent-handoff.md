@@ -27,7 +27,7 @@ This document is the standardized context transfer template for the DesignOps Pl
 ## How to Use This Handoff
 
 1. **At the end of a skill run**, populate the frontmatter fields with the current state.
-2. **Add any open items** that the next skill needs to know about — be specific (e.g. "Foundations file has not been renamed yet", "Style guide pages need redraw after manual variable edits", "`setFileThumbnailNodeAsync` failed — set thumbnail manually in Figma").
+2. **Add any open items** that the next skill needs to know about — be specific (e.g. "Foundations file has not been renamed yet", "Style guide pages need redraw after manual variable edits", "`Cover` frame on Thumbnail needs manual layout fix").
 3. **Pass this file to the next skill invocation** by including it in your Claude Code prompt:
    ```
    /create-design-system

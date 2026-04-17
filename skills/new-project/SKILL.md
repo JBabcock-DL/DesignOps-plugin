@@ -95,7 +95,7 @@ Current: Step 5c — Table of Contents
 - [ ] Step 5c — Table of Contents layout
 - [ ] Step 5b — Documentation headers
 - [ ] Step 5d — Token Overview skeleton
-- [ ] Step 5e — Cover + thumbnail
+- [ ] Step 5e — Cover on Thumbnail
 - [ ] Step 5c-links — TOC hyperlinks
 - [ ] Step 6 — Report + move instruction
 - [ ] Step 7 — Offer `/create-design-system`
@@ -118,7 +118,7 @@ For each row below, in order:
 | 5c | Table of Contents layout | `skills/new-project/phases/05c-table-of-contents.md` |
 | 5b | Documentation headers | `skills/new-project/phases/05b-documentation-headers.md` |
 | 5d | Token Overview skeleton | `skills/new-project/phases/05d-token-overview.md` |
-| 5e | Cover + file thumbnail | `skills/new-project/phases/05e-cover-thumbnail.md` |
+| 5e | Cover on Thumbnail page | `skills/new-project/phases/05e-cover-thumbnail.md` |
 | 5c-links | TOC URL hyperlinks | `skills/new-project/phases/05f-toc-hyperlinks.md` |
 | 6 | Report + move instruction | `skills/new-project/phases/06-report-and-move.md` |
 | 7 | Offer `/create-design-system` | `skills/new-project/phases/07-offer-design-system.md` |
@@ -135,7 +135,7 @@ For each row below, in order:
 | `use_figma` TOC fails (Step 5c) | Page not found or text node creation error. | "Table of Contents drawing failed. The page exists — content can be added manually or by re-running Step 5c." |
 | `use_figma` TOC links fail (Step 5c-links) | Missing `FILE_KEY` in the URL, hyperlink rejected on a text node, or no `_Header` / `Cover` target on a page. | "TOC hyperlinks failed — confirm `FILE_KEY` was substituted, then re-run Step 5c-links after Steps 5b and 5e." |
 | `use_figma` token overview fails (Step 5d) | Frame or text creation error. | "Token Overview skeleton drawing failed. The page exists — content can be added manually or by re-running Step 5d." |
-| `use_figma` cover/thumbnail fails (Step 5e) | `setFileThumbnailNodeAsync` not supported in current Figma plan, or font load error. | "Cover drawing failed or thumbnail could not be set. The Thumbnail page was created — draw the cover manually and right-click → Set as Thumbnail." |
+| `use_figma` cover fails (Step 5e) | Font load error or frame/text creation error. | "Cover drawing failed. The Thumbnail page exists — add or fix the `Cover` frame manually on that page." |
 
 ---
 
@@ -178,6 +178,6 @@ The separator is an **em dash** (`—`, Unicode U+2014) with a single space on e
 
 ---
 
-## Handoff
+## Chaining to `/create-design-system`
 
-The handoff file is written in Step 7 **before** chaining to `/create-design-system`. See `skills/new-project/phases/07-offer-design-system.md` for the exact YAML block. Writing it there (rather than at the very end) ensures it is present even if the designer declines the chaining offer and runs `/create-design-system` manually later.
+Step 7 **writes `templates/agent-handoff.md` locally** when the workspace allows it (each user’s own clone — not shared across the team unless committed). Then invoke `/create-design-system`. If the file cannot be written, use **`/create-design-system --file-key <Step4FileKey>`** instead. See `skills/new-project/phases/07-offer-design-system.md`.

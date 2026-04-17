@@ -31,8 +31,8 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 
 | Skill | Invocation | Description |
 |---|---|---|
-| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, draws documentation UI on the canvas (headers, TOC, Token Overview skeleton, Thumbnail cover + file thumbnail), and provides a move instruction to the Design-Systems/ folder. Implementation is split: `skills/new-project/SKILL.md` orchestrates; each `use_figma` script lives in `skills/new-project/phases/*.md` and is **`Read` one phase at a time**. After page scaffolding, the agent **reposts a markdown checklist** in chat after each phase so the designer can track progress. |
-| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), writes `tokens.css` to the local codebase, then refreshes Figma canvas docs (style guide pages, MCP token manifest, Token Overview content, brand-colored cover thumbnail) |
+| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, draws documentation UI on the canvas (headers, TOC, Token Overview skeleton, Thumbnail `Cover` frame), and provides a move instruction to the Design-Systems/ folder. Implementation is split: `skills/new-project/SKILL.md` orchestrates; each `use_figma` script lives in `skills/new-project/phases/*.md` and is **`Read` one phase at a time**. After page scaffolding, the agent **reposts a markdown checklist** in chat after each phase so the designer can track progress. |
+| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), writes `tokens.css` to the local codebase, then refreshes Figma canvas docs (style guide pages, MCP token manifest, Token Overview content, brand-colored `Cover` on Thumbnail) |
 | Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction; after pushes to Figma, can redraw affected style guide pages and the MCP Tokens manifest so canvas matches variables |
 | Create Component | `/create-component` | Installs shadcn/ui components, wires `tokens.css` into `globals.css`, draws components to the Figma canvas with token bindings, and optionally chains Code Connect |
 | Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings after designer review |
@@ -138,7 +138,7 @@ Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `
 3. Writes all five collections to the target Figma file via the Variables REST API (`PUT` — not `use_figma`; `codeSyntax` must be set here)
 4. Verifies the registry with a Variables GET, then writes `tokens.css` to the local codebase
 5. Records `token_css_path` in `templates/agent-handoff.md` for downstream skills
-6. Runs **`use_figma`** to draw or refresh **style guide** pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`), the **`[MCP] Token Manifest`** on `↳ MCP Tokens`, **Token Overview** populated from live variables, and the **Thumbnail** `Cover` gradient from brand primaries + `setFileThumbnailNodeAsync`
+6. Runs **`use_figma`** to draw or refresh **style guide** pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`), the **`[MCP] Token Manifest`** on `↳ MCP Tokens`, **Token Overview** populated from live variables, and the **Thumbnail** `Cover` gradient from brand primaries
 
 ### How `/new-project` prepares the Foundations file
 
@@ -147,9 +147,9 @@ Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `
 3. **`use_figma` Step 5c** (`phases/05c-table-of-contents.md`) — Table of Contents grid on `📝 Table of Contents` with `toc-link/{exact page name}` rows (layout only; no URL links yet)
 4. **`use_figma` Step 5b** (`phases/05b-documentation-headers.md`) — `_Header` + `_Content` on every page **except** `Thumbnail` (cover-only meta page)
 5. **`use_figma` Step 5d** (`phases/05d-token-overview.md`) — Token Overview skeleton on `↳ Token Overview` (`placeholder/*` nodes removed when `/create-design-system` runs)
-6. **`use_figma` Step 5e** (`phases/05e-cover-thumbnail.md`) — `Cover` frame on `Thumbnail` and file thumbnail
+6. **`use_figma` Step 5e** (`phases/05e-cover-thumbnail.md`) — `Cover` frame on `Thumbnail`
 7. **`use_figma` Step 5c-links** (`phases/05f-toc-hyperlinks.md`) — URL hyperlinks on TOC text (runs **after** 5e so `Cover` exists)
-8. **Step 6–7** (`phases/06-…`, `phases/07-…`) — move instructions, optional chain to `/create-design-system` with handoff YAML
+8. **Step 6–7** (`phases/06-…`, `phases/07-…`) — move instructions; optional chain to `/create-design-system` (writes **local** `templates/agent-handoff.md` when writable, else **`--file-key`**)
 
 After Step 5, the agent shows a **chat checklist** and marks items complete as each step finishes (see `skills/new-project/SKILL.md`).
 
@@ -205,4 +205,4 @@ Many skills offer to chain into the next skill automatically at completion:
 - `/create-design-system` offers to run `/create-component` after tokens are pushed and `tokens.css` is written
 - `/create-component` offers to run `/code-connect` after drawing components to the canvas
 
-When a skill prompts to chain, you can accept to continue the workflow without re-invoking the next command. All chained skills share session context via `templates/agent-handoff.md` (active file key, project name, token CSS path) — no information needs to be re-entered.
+When a skill prompts to chain, you can accept to continue without re-invoking the next command. **`/new-project` → `/create-design-system`** normally writes **`templates/agent-handoff.md` locally** (per checkout), then invokes the next skill; **`--file-key`** is the fallback when handoff is not writable. Later steps may record `token_css_path` in handoff when the file exists, so downstream skills can skip prompts.

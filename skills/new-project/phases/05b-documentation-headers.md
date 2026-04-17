@@ -26,7 +26,7 @@ Call `use_figma` with the `fileKey` from Step 4. **Phase A (once):** On the `Doc
 ```javascript
 const descriptions = {
   "---":                        "Visual divider between page groups in the left sidebar (no component canvas).",
-  "Thumbnail":                  "File cover and thumbnail.",
+  "Thumbnail":                  "File cover frame (`Cover`) on the Thumbnail page.",
   "📝 Table of Contents":       "Index of all pages in this design system with links to each section.",
   "↳ Token Overview":           "How the token architecture works and how to use it with Claude.",
   "↳ MCP Tokens":               "Machine-readable token manifest for agent and developer tooling.",
@@ -207,7 +207,9 @@ descMaster.name       = '_description';
 descMaster.fontName   = { family: 'Inter', style: 'Regular' };
 descMaster.fontSize   = 16;
 descMaster.characters = 'Page description.';
-descMaster.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.7 }];
+descMaster.fills      = [
+  { type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.7 },
+];
 descMaster.x = 40;
 descMaster.y = 240;
 headerComponent.appendChild(descMaster);
