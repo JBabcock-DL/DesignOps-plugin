@@ -13,7 +13,7 @@
 - [ ] **Step 1 — shadcn audit** — Run web/registry check or read `shadcn` docs (2026) for `icon`, `lucide`, or app-icon blocks; record outcome in Notes.
 - [ ] **Step 2 — SKILL list update** — Edit `skills/create-component/SKILL.md`: new subsection **Icons** — explain Lucide is the default icon system for shadcn v3; installation `npm i lucide-react`; no faux `shadcn add icon` if unsupported.
 - [ ] **Step 3 — Path sourcing** — Choose Lucide icons list (arrows: ChevronLeft/Right/Up/Down, ChevronsUpDown; actions: X, Check, Plus, Minus; …) **~68**; acquire SVG paths → convert to Figma `vectorPaths` or use boolean ops—prefer **precomputed** `vectorNetwork` snippets validated once in Figma.
-- [ ] **Step 4 — `use_figma` drawer** — New `create-design-system` step (~20): place icons in grid `brand/icons/core-{category}`; apply `Layout/space/*` grid; bind stroke to `color/background/fg` or `color/surface/fg` as appropriate on light preview frame.
+- [ ] **Step 4 — `use_figma` drawer** — New `create-design-system` step (~20): place icons in grid `brand/icons/core-{category}`; apply `Layout/space/*` grid; bind stroke to `color/background/fg` as appropriate on light preview frame.
 - [ ] **Step 5 — Sync behavior** — Icon geometry static; **recolor only** when brand neutrals shift post-sync (optional light `use_figma` pass if Theme fg changes—low priority).
 - [ ] **Step 6 — Accessibility** — Text note on page: "Icons are strokes; minimum 16px touch target in product" aligned with DL guidance.
 

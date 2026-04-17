@@ -137,7 +137,7 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 1. Checks `templates/agent-handoff.md` for an active file key before prompting
 2. Collects brand tokens interactively (primary, secondary, neutral, tertiary, and error colors; body and display font families; base font size, spacing unit, and border radius)
 3. Generates the `Primitives` collection: five full color ramps (primary, secondary, tertiary, error, neutral — 50–950 stops via Tailwind HSL interpolation), `Space/*` spacing scale, `Corner/*` radius scale, elevation floats
-4. Creates the `Theme` collection (Light / Dark modes): 33 semantic color aliases across 7 groups — `background/` (app canvas + inverse roles), `surface/` (component surfaces, borders), `primary/`, `secondary/`, `tertiary/`, `status/` (error), and `component/` (input, ring, sidebar, scrim) — all aliasing Primitives per mode
+4. Creates the `Theme` collection (Light / Dark modes): **54** semantic color aliases across **6** groups — `surface/` (M3 surface + surface-container ladder + inverse + scrim/shadow), `primary/`, `secondary/`, `tertiary/` (each includes standard + **fixed** roles), `status/` (error + fixed), and `component/` (shadcn: input, ring, sidebar) — all aliasing Primitives per mode
 5. Creates the `Typography` collection (8 scale modes): 12 type style slots (Display, Headline, Body, Label — each in LG/MD/SM) × 4 properties (font-family, font-size, font-weight, line-height). Font sizes scale across 8 modes modeled on Android's font-scale curve: 85%, 100% (default), 110%, 120%, 130%, 150%, 175%, 200%. Large text uses nonlinear scaling (Android 14 behaviour) at high multipliers.
 6. Creates the `Layout` collection (Default mode): `space/*` and `radius/*` semantic aliases into Primitives
 7. Creates the `Effects` collection (Light / Dark modes): shadow color (opacity changes per mode) and blur aliases into elevation Primitives
@@ -218,7 +218,7 @@ Install one or more shadcn/ui components, wire them to the project's CSS token f
 6. Binds Figma variable tokens from the `Theme`, `Layout`, and `Typography` collections to each canvas component
 7. Offers to chain into `/code-connect`
 
-Because `tokens.css` uses the same CSS custom property names as shadcn (`--background`, `--primary`, `--border`, `--radius`, etc.), no additional mapping is required — the design system tokens and shadcn components are immediately in sync.
+Because `tokens.css` defines **canonical** Tailwind-friendly theme vars (`--color-background`, `--color-content`, `--color-border`, `--color-primary`, …) plus shadcn aliases (`--background` → `var(--color-background)`, `--foreground` → `var(--color-content)`, `--primary` → `var(--color-primary)`, …), Web and shadcn stay aligned without extra mapping.
 
 **Note:** This skill uses the shadcn CLI and Figma MCP to draw components — it does not require manually importing a Figma community kit.
 
@@ -389,13 +389,14 @@ Primitives  (Default mode)
   └── elevation/100–1600      unitless floats
 
 Theme  (Light mode / Dark mode)
-  ├── color/background        → neutral/50     | neutral/950
-  ├── color/primary           → primary/500    | primary/400
-  ├── color/surface           → neutral/50     | neutral/900
-  ├── color/on-surface        → neutral/900    | neutral/50
-  ├── color/error             → error/600      | error/400
-  ├── color/outline           → neutral/300    | neutral/600
-  └── … 33 semantic tokens total (7 groups)
+  ├── color/background/*      → app canvas + tonal layers (WEB `--color-background*`; ANDROID/iOS still M3 **surface** roles)
+  ├── color/border/*          → outline / outlineVariant (`--color-border`, `--color-border-subtle`)
+  ├── color/primary/*         → primary + primary fixed roles
+  ├── color/secondary/*       → secondary + fixed roles
+  ├── color/tertiary/*        → tertiary + fixed roles
+  ├── color/status/*          → error + error fixed roles
+  ├── color/component/*       → shadcn extensions (input, ring, sidebar)
+  └── … 54 semantic tokens total (7 groups)
 
 Typography  (8 scale modes: 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200)
   ├── Display/LG–SM / font-family, font-size, font-weight, line-height
@@ -414,18 +415,18 @@ Effects  (Light mode / Dark mode)
 
 Every variable carries `codeSyntax` for all three platforms. There are no separate Web, Android/M3, or iOS/HIG alias collections — platform naming lives inline on each token.
 
-**ANDROID (Theme)** uses [Material Design 3 static baseline](https://m3.material.io/styles/color/static/baseline) **`ColorScheme` role names** (flat camelCase: `background`, `onSurface`, `primaryContainer`, …) — the same identifiers as Jetpack Compose Material 3, not a nested type or scope named `Background`. Figma path segments like `color/background/` are organizational only. **`component/*` tokens** map to shadcn-oriented extension names (`sidebar`, `ring`, …) that are not part of the core M3 baseline role set; see `/create-design-system` Step 6 in-repo for the full split. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+**ANDROID (Theme)** uses [Material Design 3](https://m3.material.io/styles/color/static/baseline) **`ColorScheme` role names** (flat camelCase: `surface`, `surfaceContainerHigh`, `onSurface`, `outline`, `primaryFixed`, `errorFixed`, …) — the same identifiers as Jetpack Compose Material 3. Figma paths use **`color/background/*`** for the canvas layer group; ANDROID **`codeSyntax`** still says **`surface`** / **`onSurface`** (not `background`). **`component/*` tokens** map to shadcn extension names (`sidebar`, `ring`, …). See `/create-design-system` Step 6 for the full table. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
 
 `/create-design-system` supports **`--theme baseline`** (M3 baseline seed hues for Primitives ramps) or **`--theme brand`** / wizard defaults; see the skill for Step 2.5.
 
 | Token | WEB | ANDROID (M3) | iOS (HIG) |
 |---|---|---|---|
-| `color/background/bg` | `var(--background)` | `background` | `systemBackground` |
-| `color/background/fg` | `var(--on-background)` | `onBackground` | `label` |
-| `color/surface/raised` | `var(--surface-variant)` | `surfaceVariant` | `tertiarySystemBackground` |
-| `color/surface/border` | `var(--outline)` | `outline` | `separator` |
-| `color/primary/tint` | `var(--primary-container)` | `primaryContainer` | `primaryContainer` |
-| `color/status/error` | `var(--error)` | `error` | `systemRed` |
+| `color/background/default` | `var(--color-background)` | `surface` | `systemBackground` |
+| `color/background/container-high` | `var(--color-background-container-high)` | `surfaceContainerHigh` | `tertiarySystemGroupedBackground` |
+| `color/background/variant` | `var(--color-background-variant)` | `surfaceVariant` | `tertiarySystemBackground` |
+| `color/border/default` | `var(--color-border)` | `outline` | `separator` |
+| `color/primary/tint` | `var(--color-primary-soft)` | `primaryContainer` | `primaryContainer` |
+| `color/status/error` | `var(--color-danger)` | `error` | `systemRed` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
 | `space/md` | `var(--space-md)` | `spaceMd` | `spaceMd` |
 
@@ -441,23 +442,25 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
   --corner-medium: 12px;
 }
 
-/* Theme — Light (M3 primary vars, shadcn aliases) */
+/* Theme — Light (M3 surface + roles, shadcn aliases) */
 :root, [data-theme="light"] {
-  /* M3 primary names */
-  --background:      var(--color-neutral-50);
-  --on-background:   var(--color-neutral-900);
-  --primary:         var(--color-primary-500);
-  --on-primary:      var(--color-primary-50);
-  --primary-container: var(--color-primary-100);
-  --error:           var(--color-error-600);
-  --outline:         var(--color-neutral-200);
-  /* …33 M3 tokens… */
+  --color-background:                  var(--color-neutral-50);
+  --color-background-container-highest: var(--color-neutral-50);
+  --color-content:               var(--color-neutral-900);
+  --color-border:                var(--color-neutral-200);
+  --color-primary:               var(--color-primary-500);
+  --color-on-primary:            var(--color-primary-50);
+  --color-primary-soft:          var(--color-primary-100);
+  --color-danger:                var(--color-error-600);
+  --color-accent-soft:           var(--color-tertiary-100);
+  /* …54 M3-aligned theme tokens as --color-* … */
 
-  /* shadcn/ui compatibility aliases pointing to M3 vars above */
-  --foreground:      var(--on-background);
-  --border:          var(--outline);
-  --destructive:     var(--error);
-  --accent:          var(--tertiary-container);
+  /* shadcn/ui compatibility aliases */
+  --background:      var(--color-background);
+  --foreground:      var(--color-content);
+  --border:          var(--color-border);
+  --destructive:     var(--color-danger);
+  --accent:          var(--color-accent-soft);
   /* …aliases… */
 }
 

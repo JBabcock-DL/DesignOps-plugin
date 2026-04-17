@@ -843,10 +843,10 @@ addPlaceholder(arch, 'architecture');
 // Section 2: Platform Mapping table
 // ────────────────────────────────────────────────────────────────
 const platformRows = [
-  ['color/background/bg',        'var(--background)',             'background',        'systemBackground'],
-  ['color/primary/default',      'var(--primary)',                'primary',           'tintColor'],
-  ['color/surface/border',       'var(--outline)',                'outline',           'separator'],
-  ['color/status/error',         'var(--error)',                  'error',             'systemRed'],
+  ['color/background/default',   'var(--color-background)',       'surface',           'systemBackground'],
+  ['color/primary/default',      'var(--color-primary)',          'primary',           'tintColor'],
+  ['color/border/default',       'var(--color-border)',           'outline',           'separator'],
+  ['color/status/error',         'var(--color-danger)',           'error',             'systemRed'],
   ['Headline/LG/font-size',      'var(--headline-lg-font-size)',  'headlineLgFontSize','headlineLgFontSize'],
   ['space/md',                   'var(--space-md)',               'spaceMd',           'spaceMd'],
   ['radius/md',                  'var(--radius-md)',              'radiusMd',          'radiusMd'],

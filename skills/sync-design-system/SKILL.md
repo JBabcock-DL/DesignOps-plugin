@@ -82,7 +82,7 @@ primitive values for diff purposes.
 
 **Mode-aware flattening:** For collections with multiple modes, flatten each
 mode into a separate key using the pattern `collection/mode/token-name`:
-- Theme (2 modes): `theme/light/color/background/bg`, `theme/dark/color/background/bg`, `theme/light/color/surface/raised`, `theme/light/color/status/error`, etc.
+- Theme (2 modes): `theme/light/color/background/default`, `theme/dark/color/background/default`, `theme/light/color/background/variant`, `theme/light/color/status/error`, etc.
 - Typography (8 modes): `typography/100/Headline-LG-font-size`, `typography/200/Headline-LG-font-size`, etc.
 - Effects (2 modes): `effects/light/shadow/color`, `effects/dark/shadow/color`
 - Primitives and Layout (1 mode each): `primitives/color-primary-500`, `layout/space-md`
@@ -189,7 +189,7 @@ Payload structure (Figma Variables bulk write format):
   its value. Infer the collection from the token name prefix using these rules:
   - `color/{ramp}/{stop}` (e.g. `color/primary/500`) → `Primitives`
   - `Space/*`, `Corner/*`, `elevation/*` → `Primitives`
-  - `color/{group}/{token}` (e.g. `color/background/bg`, `color/surface/fg`, `color/primary/default`) → `Theme`
+  - `color/{group}/{token}` (e.g. `color/background/default`, `color/background/fg`, `color/border/default`, `color/primary/default`) → `Theme`
   - `Display/*`, `Headline/*`, `Body/*`, `Label/*` → `Typography`
   - `space/*`, `radius/*` (lowercase) → `Layout`
   - `shadow/*` → `Effects`
@@ -246,7 +246,7 @@ Inspect the push payload — the set of tokens that were actually written to Fig
 |---|---|---|
 | `color/{ramp}/{stop}` (e.g. `color/primary/500`) | Primitives | `↳ Primitives` |
 | `Space/*`, `Corner/*`, `elevation/*` | Primitives | `↳ Primitives` |
-| `color/{group}/{token}` (e.g. `color/background/bg`) | Theme | `↳ Theme` |
+| `color/{group}/{token}` (e.g. `color/background/default`) | Theme | `↳ Theme` |
 | `Display/*`, `Headline/*`, `Body/*`, `Label/*` | Typography | `↳ Text Styles` |
 | `space/*`, `radius/*` (lowercase) | Layout | `↳ Layout` |
 | `shadow/*` | Effects | `↳ Effects` |
@@ -273,7 +273,7 @@ For each affected page, execute the following inside a single `use_figma` call (
 
 **↳ Primitives** — color ramp swatches (5 ramps × 11 stops, 120×160px cards), Space scale bars (width = value px, capped 800px), Corner radius squares (120×120px with radius applied). All values from the live Primitives collection.
 
-**↳ Theme** — one section-header strip per semantic group (7 groups), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
+**↳ Theme** — one section-header strip per semantic group (6 groups: `surface/`, `primary/`, `secondary/`, `tertiary/`, `status/`, `component/`), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
 
 **↳ Text Styles** — vertical list of 12 type slots (Display/LG through Label/SM). Each row: specimen text rendered at the actual font-size and weight for the `100` (default) mode, plus a 320px metadata column showing slot name, size/weight/line-height values, CSS var, and mode scale range. All values from the live Typography collection.
 
@@ -415,42 +415,65 @@ Parse all `--<name>: <value>` declarations inside `:root` blocks.
 Convert kebab-case names to slash-notation:
 `--color-primary` → `color/primary`, `--spacing-4` → `spacing/4`.
 
-When parsing CSS custom properties that match Theme semantic token names, map them to the grouped Figma token paths using this reverse-lookup table. **M3-primary vars** are the canonical keys — shadcn alias vars are skipped during diff:
-- `--background` → `color/background/bg`
-- `--on-background` → `color/background/fg`
-- `--inverse-surface` → `color/background/bg-inverse`
-- `--inverse-on-surface` → `color/background/fg-inverse`
-- `--inverse-primary` → `color/background/inverse-primary`
-- `--surface` → `color/surface/default`
-- `--surface-variant` → `color/surface/raised`
-- `--surface-container-highest` → `color/surface/overlay`
-- `--on-surface` → `color/surface/fg`
-- `--on-surface-variant` → `color/surface/fg-subtle`
-- `--outline` → `color/surface/border`
-- `--outline-variant` → `color/surface/border-subtle`
-- `--primary` → `color/primary/default`
-- `--on-primary` → `color/primary/fg`
-- `--primary-container` → `color/primary/tint`
-- `--on-primary-container` → `color/primary/fg-on-tint`
-- `--secondary` → `color/secondary/default`
-- `--on-secondary` → `color/secondary/fg`
-- `--secondary-container` → `color/secondary/tint`
-- `--on-secondary-container` → `color/secondary/fg-on-tint`
-- `--tertiary` → `color/tertiary/default`
-- `--on-tertiary` → `color/tertiary/fg`
-- `--tertiary-container` → `color/tertiary/tint`
-- `--on-tertiary-container` → `color/tertiary/fg-on-tint`
-- `--error` → `color/status/error`
-- `--on-error` → `color/status/error-fg`
-- `--error-container` → `color/status/error-tint`
-- `--on-error-container` → `color/status/error-fg-on-tint`
-- `--input` → `color/component/input`
-- `--ring` → `color/component/ring`
-- `--sidebar` → `color/component/sidebar`
-- `--sidebar-foreground` → `color/component/sidebar-fg`
+When parsing CSS custom properties that match Theme semantic token names, map them to the grouped Figma token paths using this reverse-lookup table. **Canonical keys** are the Tailwind-friendly **`--color-*`** names from `tokens.css` / Figma `codeSyntax.WEB` — duplicate shadcn / legacy vars are skipped during diff:
 
-**Skip during diff** — these are shadcn/ui compatibility aliases that resolve back to M3 vars above:
-`--foreground`, `--background-inverse`, `--foreground-inverse`, `--surface-raised`, `--surface-overlay`, `--border`, `--border-subtle`, `--primary-foreground`, `--primary-tint`, `--on-primary-tint`, `--secondary-foreground`, `--secondary-tint`, `--on-secondary-tint`, `--accent`, `--accent-foreground`, `--destructive`, `--destructive-foreground`, `--error-tint`, `--on-error-tint`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`
+- `--color-background-dim` → `color/background/dim`
+- `--color-background` → `color/background/default`
+- `--color-background-bright` → `color/background/bright`
+- `--color-background-container-lowest` → `color/background/container-lowest`
+- `--color-background-container-low` → `color/background/container-low`
+- `--color-background-container` → `color/background/container`
+- `--color-background-container-high` → `color/background/container-high`
+- `--color-background-container-highest` → `color/background/container-highest`
+- `--color-background-variant` → `color/background/variant`
+- `--color-content` → `color/background/fg`
+- `--color-content-muted` → `color/background/fg-subtle`
+- `--color-border` → `color/border/default`
+- `--color-border-subtle` → `color/border/subtle`
+- `--color-inverse-surface` → `color/background/inverse`
+- `--color-inverse-content` → `color/background/inverse-fg`
+- `--color-inverse-brand` → `color/background/inverse-primary`
+- `--color-scrim` → `color/background/scrim`
+- `--color-shadow-tint` → `color/background/shadow`
+- `--color-primary` → `color/primary/default`
+- `--color-on-primary` → `color/primary/fg`
+- `--color-primary-soft` → `color/primary/tint`
+- `--color-on-primary-soft` → `color/primary/fg-on-tint`
+- `--color-primary-fixed` → `color/primary/fixed`
+- `--color-primary-fixed-dim` → `color/primary/fixed-dim`
+- `--color-on-primary-fixed` → `color/primary/on-fixed`
+- `--color-on-primary-fixed-muted` → `color/primary/on-fixed-variant`
+- `--color-secondary` → `color/secondary/default`
+- `--color-on-secondary` → `color/secondary/fg`
+- `--color-secondary-soft` → `color/secondary/tint`
+- `--color-on-secondary-soft` → `color/secondary/fg-on-tint`
+- `--color-secondary-fixed` → `color/secondary/fixed`
+- `--color-secondary-fixed-dim` → `color/secondary/fixed-dim`
+- `--color-on-secondary-fixed` → `color/secondary/on-fixed`
+- `--color-on-secondary-fixed-muted` → `color/secondary/on-fixed-variant`
+- `--color-accent` → `color/tertiary/default`
+- `--color-on-accent` → `color/tertiary/fg`
+- `--color-accent-soft` → `color/tertiary/tint`
+- `--color-on-accent-soft` → `color/tertiary/fg-on-tint`
+- `--color-accent-fixed` → `color/tertiary/fixed`
+- `--color-accent-fixed-dim` → `color/tertiary/fixed-dim`
+- `--color-on-accent-fixed` → `color/tertiary/on-fixed`
+- `--color-on-accent-fixed-muted` → `color/tertiary/on-fixed-variant`
+- `--color-danger` → `color/status/error`
+- `--color-on-danger` → `color/status/error-fg`
+- `--color-danger-soft` → `color/status/error-tint`
+- `--color-on-danger-soft` → `color/status/error-fg-on-tint`
+- `--color-danger-fixed` → `color/status/error-fixed`
+- `--color-danger-fixed-dim` → `color/status/error-fixed-dim`
+- `--color-on-danger-fixed` → `color/status/error-on-fixed`
+- `--color-on-danger-fixed-muted` → `color/status/error-on-fixed-variant`
+- `--color-field` → `color/component/input`
+- `--color-focus-ring` → `color/component/ring`
+- `--color-sidebar` → `color/component/sidebar`
+- `--color-on-sidebar` → `color/component/sidebar-fg`
+
+**Skip during diff** — shadcn/ui and legacy names that duplicate `--color-*`:
+`--background`, `--on-background`, `--foreground`, `--background-inverse`, `--foreground-inverse`, `--surface-raised`, `--surface-overlay`, `--border`, `--border-subtle`, `--primary`, `--on-primary`, `--primary-container`, `--on-primary-container`, `--primary-foreground`, `--primary-tint`, `--on-primary-tint`, `--secondary`, `--on-secondary`, `--secondary-container`, `--on-secondary-container`, `--secondary-foreground`, `--secondary-tint`, `--on-secondary-tint`, `--tertiary`, `--on-tertiary`, `--tertiary-container`, `--on-tertiary-container`, `--accent`, `--accent-foreground`, `--error`, `--on-error`, `--error-container`, `--on-error-container`, `--destructive`, `--destructive-foreground`, `--error-tint`, `--on-error-tint`, `--input`, `--ring`, `--sidebar`, `--sidebar-foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`
 
 Platform-prefixed names (`--md-sys-*`, `--ios-*`) are legacy — skip them with a warning.
 
