@@ -1629,7 +1629,7 @@ Immediately continue to **Steps 15a–18** (Figma canvas) in the same skill run 
 
 ## Canvas documentation visual spec
 
-Agents **must read this section** before executing Steps **15a–18** and any `use_figma` script that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure and binding rules (see [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md)).
+Agents **must read this section** before executing Steps **15a–18** and any `use_figma` script that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure, binding, and Dev Mode rules (**§ A–D**; see [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md)).
 
 ### A — Structure (geometry, naming; stable across all files)
 
@@ -1639,13 +1639,28 @@ Agents **must read this section** before executing Steps **15a–18** and any `u
 | Outer padding | 40px horizontal, 40px top / 80px bottom where a `_PageContent` wrapper exists |
 | Vertical rhythm | 8px grid (`itemSpacing` / gaps use multiples of 8) |
 | Section frames | Auto-layout `VERTICAL`, `primaryAxisSizingMode` `AUTO`, `counterAxisSizingMode` `FIXED`, width `1360` inside 1440 padded parent; `layoutAlign` `STRETCH` where stacking |
-| Section shell | `cornerRadius` 16, `strokeWeight` 1, `itemSpacing` 16 inside section |
-| Style guide swatch cards | Primitives: 120×160 cards, 8px gap; Theme cards: ~450px column width, 16px gutter, 3-column grid, 8px card radius, 16px card padding |
-| Layer naming | Token Overview: `token-overview/{section}`, `_PageContent`; MCP: `[MCP] Token Manifest`, `token/{collection}/…`; Style guide: optional `doc/styleguide/…` prefix for redraw targets |
+| Section shell | `cornerRadius` 16, `strokeWeight` 1, `itemSpacing` 20 inside section (slightly roomier than legacy 16) |
+| Section group headers | Full-width strip **1440×56px** (was 48px); title text **20–24px** semibold via **`Doc/Section`** (see **Documentation type ramp** below) |
+| Theme token grid | **2 columns** within the 1360px content width: horizontal auto-layout on the section body with **`itemSpacing` 24**; each **token card** is `layoutAlign: STRETCH`, min height driven by content, **24px** internal padding, **12px** card `cornerRadius`, stroke bound to **`color/border/subtle`** |
+| Theme swatch previews | **80×80px** minimum per swatch frame, **`cornerRadius` 12**; pair laid out **HORIZONTAL** with **24px** gap; each swatch has a visible **“Light”** / **“Dark”** label (pill or caption, **12–13px**, uppercase optional) |
+| Primitives ramp cards | **120×160px** cards, **8px** gap (unchanged); color **fill must bind** to the Primitives variable for that stop (§ **Token demonstration**) |
+| MCP table rows | Row frames **min height 44–48px**; cell `paddingLeft`/`paddingRight` **12px**; vertical **`itemSpacing`** on column stacks where used; **PATH** column **min 320px**; table body text **13px** monospace minimum |
+| Layer naming | Token Overview: `token-overview/{section}`, `_PageContent`; MCP: `[MCP] Token Manifest`, `token/{collection}/…`; Theme preview wrappers: `doc/theme-preview/light` and `doc/theme-preview/dark` (or suffixed per card); style guide: optional `doc/styleguide/…` prefix |
+
+**Documentation type ramp** (create/update local **Text styles** in Step 15c before drawing pages that need them):
+
+| Style name | Role | Typical binding / source |
+|---|---|---|
+| `Doc/Section` | Semantic group strips + page section titles | Prefer **`setBoundVariable`** to **`Headline/LG/font-size`**, **`Headline/LG/font-family`**, **`Headline/LG/font-weight`**, **`Headline/LG/line-height`** (Typography · mode **100**). Strip text fill → **`color/neutral/50`** (Primitives); on light cards use **`color/background/content`**. |
+| `Doc/TokenName` | Token path on cards, MCP PATH column emphasis | Bind to **`Label/LG/font-size`** (and matching family/weight/line) or **`Headline/SM/*`** Typography vars at mode **100**; **16–18px** effective minimum. |
+| `Doc/Code` | WEB / ANDROID / iOS code lines, MCP dense cells | Bind to **`Label/SM/font-size`** (and matching family/weight/line) at mode **100**; **13–14px** mono; **line-height ≥ 1.45**. |
+| `Doc/Caption` | “Light” / “Dark” labels, helper lines, table column hints | Bind to **`Body/SM/*`** or **`Label/MD/*`** Typography vars at mode **100**; **12–14px**. |
+
+If **`Doc/*`** styles cannot bind (API limits), set resolved values from Typography mode **100** once, then still prefer variable-bound **fills** on chrome.
 
 ### B — Doc reading mode (Theme)
 
-- **Light** mode values drive **documentation chrome** fills and strokes on canvas (predictable contrast). Swatches that **demonstrate** Light vs Dark still show **both** modes where the step explicitly calls for paired squares.
+- **Light** mode values drive **documentation chrome** fills and strokes on canvas (predictable contrast). Swatches that **demonstrate** Light vs Dark use **explicit Theme mode** on wrapper frames (see § **Token demonstration**).
 - Resolve hex via **this file’s** variables (REST snapshot from Step 11 or live `variables/local` in plugin) — never use a hard-coded brand hex for surfaces.
 
 ### C — Token binding map (documentation chrome → variable path)
@@ -1670,9 +1685,23 @@ Apply via Figma **variable bindings** on frame `fills` / `strokes` and text `fil
 | MCP manifest root / table chrome background | `color/background/default` | Theme · Light |
 | MCP table header row background | `color/background/variant` | Theme · Light |
 
-**Typography:** prefer **Text styles** from this file (`Headline/LG`, `Label/MD`, `Label/SM`, …) for doc headings and body. Monospace table / code cells: use `Label/SM` (or closest) with `color/background/content-muted` on fills above.
+**Typography:** After **`Doc/*`** and **slot text styles** exist (Step 15c), **all** style guide headings, token names, code, and MCP table body text must use **`textStyleId`** pointing at those styles — not one-off Inter with arbitrary sizes.
 
 **Fallback:** if a path is missing, log a warning and resolve `color/neutral/200` / `color/neutral/800` from **this file’s** Primitives only.
+
+### D — Token demonstration (Dev Mode inspect)
+
+Layers that **represent** a token’s value must expose that token in **Dev Mode → Variables**, not only a matching hex.
+
+| Surface | Binding rule |
+|---|---|
+| **Primitives** color ramp card fill | Bind **`boundVariables.color`** on the solid paint to the **Primitives** variable for `color/{ramp}/{stop}` (same path as the label). |
+| **Theme** color swatch | Bind paint to the **Theme** variable for that semantic path (e.g. `color/background/default`). To show **Light and Dark** side‑by‑side **while both stay bound to the same variable**: wrap each swatch in a frame and call **`wrapper.setExplicitVariableModeForCollection(themeCollection, lightModeId)`** (and parallel for **Dark**) — **Light** wrapper → Theme collection’s **Light** `modeId`, **Dark** wrapper → **Dark** `modeId` (`ExplicitVariableModesMixin` on frames). Inner rectangle fill uses **`boundVariables.color` → `figma.variables.createVariableAlias(themeVariable)`**. If the API is unavailable or throws, **fallback:** bind **one** swatch only + print the other mode’s resolved hex as text + log `Theme dual-preview: explicit mode unsupported — single bound swatch + hex fallback`. |
+| **MCP** SWATCH column (Primitives COLOR + Theme COLOR) | Same as above: **variable-bound** fills, not detached solids. |
+| **Layout** spacing bars | Bind **`width`** / **`minWidth`** to the **`space/*`** Layout variable where `setBoundVariable` accepts it; else resolved px + label. |
+| **Typography** specimen | **`textStyleId`** → published **`Display/LG`** … styles whose fields bind to Typography variables (below). |
+
+**MODE column (MCP):** For Theme, Typography, and Effects tables, **`MODE`** is the **authoritative scope** for multi‑mode collections (`light` / `dark` or `85` … `200`). Headers must spell that out (“Mode = collection mode”).
 
 ---
 
@@ -1682,22 +1711,22 @@ Using values from Steps 5–9, run **one** `use_figma` execution for **`↳ Prim
 
 1. `figma.setCurrentPageAsync` → page named exactly `↳ Primitives`.
 2. Delete every node with **`y > 360`** (keep doc header `y ≤ 360`).
-3. Redraw per **Canvas documentation visual spec § A–C**: section label strips use bound **`color/neutral/950`** fill and **`color/neutral/50`** text (or resolved equivalents). Swatch card fills show ramp hexes from live data.
+3. Redraw per **Canvas documentation visual spec § A–D**: section label strips **1440×56px**, strip BG/text per **binding map**. Typography: if **`Doc/*`** text styles already exist in the file (from a prior run), assign **`textStyleId`**; otherwise use literal sizes matching the § **A** ramp (**strip title ~22px semibold**, token labels **14–16px**, code lines **13px** mono) — Step **15c** will publish **`Doc/*`** for subsequent passes.
 
 **↳ Primitives page content**
 
 For each of the 5 color ramps (primary, secondary, tertiary, error, neutral), in order:
 
-1. Draw a full-width section label strip: 1440×48px frame, **binding map** strip BG/text (not raw `#000000` / white).
+1. Draw a full-width **section label strip** (**1440×56px**), **binding map** strip BG/text.
 2. Draw a row of 11 swatch cards for stops 50 through 950 (in ascending order):
-   - Card size: 120×160px, 8px gap between cards.
-   - Card fill: the resolved hex for that stop (e.g. `color/primary/500` hex).
-   - Below the fill area, stack three text labels: stop number (e.g. `500`), resolved hex value, full token path (e.g. `color/primary/500`).
+   - Card size: **120×160px**, **8px** gap.
+   - **Card color fill:** bind **`boundVariables.color`** on the solid paint to the **Primitives** variable named exactly `color/{ramp}/{stop}` (§ **D**). Do not leave a detached hex fill if the variable exists.
+   - Below the fill area, stack three text nodes (**`Doc/TokenName`** / **`Doc/Code`**): stop label (e.g. `500`), resolved hex (for quick read), full path `color/primary/500`.
 
 After all color ramps, draw two more sections:
 
-3. **Space Scale section** — section label strip `Space Scale`; for each `Space/*` token: horizontal bar (width = value px capped at 800px), right-side label with token name, px, CSS var. Stack bars with 8px gap.
-4. **Corner Radius section** — section label strip `Corner Radius`; for each `Corner/*` token: 120×120px square with `cornerRadius` applied, fill per **binding map** (`color/neutral/100`), label below.
+3. **Space Scale section** — strip **`Doc/Section`** title `Space Scale`; for each `Space/*` token: horizontal bar; **bind `width`** to the **`Space/*`** primitive FLOAT variable when `setBoundVariable('width', …)` succeeds; else width = resolved px (capped **800px**). Metadata column: name, px, WEB from `codeSyntax`, **`Doc/Code`**.
+4. **Corner Radius section** — strip title `Corner Radius`; for each `Corner/*` token: **120×120px** square, **`cornerRadius`** = resolved value, fill per **binding map** (`color/neutral/100`); bind **`cornerRadius`** to **`Corner/*`** variable when supported.
 
 Log the **Canvas checklist** row for Step 15a.
 
@@ -1711,11 +1740,17 @@ Run **one** `use_figma` execution for **`↳ Theme` only** (same delete `y > 360
 
 For each of the 7 semantic groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`):
 
-1. Draw a 1440×48px section label strip with the group name — **binding map** strip BG/text.
-2. Draw token cards in a 3-column grid (column width ~450px, 16px gutter, 8px corner radius, 1px stroke bound to **`color/border/subtle`**, 16px padding):
-   - **Swatch row:** two 40×40 squares — Light / Dark resolved hexes; labels use **`color/background/content-muted`** (resolved).
-   - **Token path:** Label/MD bold (text style if present).
-   - **Code names:** three monospace lines from Step 6 table.
+1. Draw a **1440×56px** section label strip with the human-readable group name (e.g. `Background`) — **binding map** strip BG/text; title uses **`Doc/Section`**.
+2. Under the strip, create a **horizontal** auto-layout row (`layoutAlign: STRETCH`, **`itemSpacing` 24**) holding **two** token cards per row (**2-column** grid). Each **card**:
+   - **Frame:** `VERTICAL` auto-layout, **`padding` 24**, **`itemSpacing` 16**, **`cornerRadius` 12**, stroke **1px** bound to **`color/border/subtle`**, fill bound to **`color/background/variant`** (Theme · Light for chrome).
+   - **Token path** line first: **`Doc/TokenName`**, full Figma path (e.g. `color/background/default`).
+   - **Swatch row:** `HORIZONTAL`, **`itemSpacing` 24**. Two children, each a **`VERTICAL`** stack:
+     - **Wrapper frame** (name e.g. `doc/theme-preview/light` or `…/dark`): **no fill**. Immediately call **`lightWrap.setExplicitVariableModeForCollection(themeCollection, lightModeId)`** and **`darkWrap.setExplicitVariableModeForCollection(themeCollection, darkModeId)`** on the respective wrappers so children resolve the correct mode. Inside: a **80×80** rounded rect (**`cornerRadius` 12**) whose **fill paint** uses **`boundVariables.color` → `figma.variables.createVariableAlias(themeVariable)`** for this token path; below it a **`Doc/Caption`** text node **`LIGHT`** / **`DARK`** (or “Light” / “Dark”).
+     - If explicit mode APIs fail, use one bound swatch + second line showing resolved hex for the other mode per § **D** fallback.
+   - **Caption (optional, at most once per semantic group, not per card):** **`Doc/Caption`** — e.g. `Same token — wrappers set explicit Theme Light / Dark.`
+   - **Code block:** three lines **`Doc/Code`** — WEB / ANDROID / iOS from Step 6 **`codeSyntax`** (Light row uses Light `codeSyntax`; duplicate ANDROID/iOS on both previews is acceptable; WEB often shared).
+
+3. After each row of two cards, wrap the pair in a **`STRETCH`** horizontal frame so the next pair stacks **`VERTICAL`** with **24px** gap.
 
 Log the **Canvas checklist** row for Step 15b.
 
@@ -1723,19 +1758,38 @@ Log the **Canvas checklist** row for Step 15b.
 
 ## Step 15c — Draw Style Guide: ↳ Layout, ↳ Text Styles, ↳ Effects
 
-Run **one** `use_figma` execution that visits **three pages in order** (`↳ Layout` → `↳ Text Styles` → `↳ Effects`). On **each** page: delete `y > 360`, then redraw.
+Run **one** `use_figma` execution that visits **three pages in order** (`↳ Layout` → `↳ Text Styles` → `↳ Effects`). At the **start** of the script (before page navigation), publish **local Text styles** and **Effect styles** so later drawing can assign **`textStyleId`** / **`effectStyleId`**. On **each** page: delete `y > 360`, then redraw.
 
-**↳ Layout page** — two sections (Spacing, Border Radius) with **binding map** section strips; spacing bars use **`color/primary/200`**; radius squares use **`color/neutral/100`**.
+### 0 — Publish `Doc/*`, slot Text styles, and Effect styles (idempotent)
 
-**↳ Text Styles page** — one row per slot (12 rows); specimen text uses Typography `100` mode values; row bottom border bound to **`color/border/subtle`**; metadata text uses **`color/background/content-muted`**.
+Use `figma.getLocalTextStyles()` / `figma.getLocalEffectStyles()`; **`loadFontAsync`** for any `fontName` you set.
 
-**↳ Effects page** — cards per shadow level; card fill/stroke per **binding map**; shadow from live Effects.
+1. **`Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`** — For each name, **`find` or `figma.createTextStyle()`**. Bind typography fields per § **A** Documentation type ramp (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*` or `Label/MD/*` at Typography mode **100**) via **`setBoundVariable('fontSize', variable)`** (and parallel fields) where the API allows; otherwise set resolved literals from mode **100** once.
+2. **Slot text styles (12)** — Names **exactly** `Display/LG`, `Display/MD`, `Display/SM`, `Headline/LG`, `Headline/MD`, `Headline/SM`, `Body/LG`, `Body/MD`, `Body/SM`, `Label/LG`, `Label/MD`, `Label/SM`. Each style aggregates the four variables `{Slot}/font-size`, `{Slot}/font-family`, `{Slot}/font-weight`, `{Slot}/line-height` with **`setBoundVariable`** when supported so **Dev Mode** shows Typography variable links. If a style already exists, **update** bindings/values to match current variables.
+3. **Effect styles** — For each shadow tier **`sm`**, **`md`**, **`lg`**, **`xl`**, **`2xl`**, create or update a local **`Effect/shadow-{tier}`** style: **`effects`** = one **`DROP_SHADOW`** built from resolved **`shadow/color`** (Effects · **Light**) + resolved **`shadow/{tier}/blur`** at **Light** (opacity/spread tuned to match the Foundations recipe used on canvas). **`Effect/shadow-color-only`** optional: single **`DROP_SHADOW`** or color chip note for `shadow/color` education. If duplicate names exist from an old run, **`remove()`** the older duplicate after migrating references, or update in place.
+
+### ↳ Layout page
+
+Two sections (**Spacing**, **Border Radius**); strips **1440×56px** with **`Doc/Section`**. Spacing bars: fill **`color/primary/200`** (bind Primitives variable); **bind `width`** to `space/*` when possible. Radius squares: fill per binding map; **`cornerRadius`** bound to `radius/*` when possible. Labels **`Doc/Code`** / **`Doc/Caption`** for WEB + px + **`ALIAS →`** primitive name.
+
+### ↳ Text Styles page
+
+- **12 vertical rows** (`itemSpacing` **24**). Each row: **`HORIZONTAL`** auto-layout, **`itemSpacing` 32**.
+- **Specimen column:** Text **`Display LG`** (or slot-appropriate sample string) with **`textStyleId`** set to the **slot** style (`Display/LG`, …) — **never** assign raw `fontSize` / `fontName` on the specimen.
+- **Metadata column:** **`Doc/Code`** lines listing the four variable paths (`…/font-size`, …). Optional second line: scale range “Typography modes **85–200**”.
+- **Row divider:** bottom **`stroke`** bound to **`color/border/subtle`**.
+
+### ↳ Effects page
+
+- **Premium cards:** outer preview frame **~240×260px**, **`cornerRadius` 16**, fill/stroke per **binding map**; inner **96×96** circle (or rounded square) carrying the shadow.
+- For each **`shadow/{tier}/blur`**, show **Light** and **Dark** previews using **`setExplicitVariableModeForCollection`** on **Effects** collection wrappers (same pattern as Theme § **D**). Apply matching **`Effect/shadow-{tier}`** to a pinned demo node via **`effectStyleId`** where the tier matches.
+- **`shadow/color`:** dedicated small card explaining RGBA + bound **`shadow/color`** variable fill on a swatch rect if separate from blur tiers.
 
 Log the **Canvas checklist** row for Step 15c.
 
 ---
 
-*Detail for swatch geometry, Theme card layout, Layout/Text/Effects rows is in Steps **15a–15c** above. If any legacy instruction elsewhere in this file conflicts with **Canvas documentation visual spec § A–C**, the spec wins (token-bound chrome, Light doc mode).*
+*Detail for swatch geometry, Theme card layout, Layout/Text/Effects rows is in Steps **15a–15c** above. If any legacy instruction elsewhere in this file conflicts with **Canvas documentation visual spec § A–D**, the spec wins (token-bound chrome, Light doc mode, Dev Mode bindings).*
 
 ---
 
@@ -1743,7 +1797,7 @@ Log the **Canvas checklist** row for Step 15c.
 
 Navigate to the `↳ MCP Tokens` page using `figma.setCurrentPageAsync`. Find and delete any existing frame named `[MCP] Token Manifest`. Then build a new root frame named `[MCP] Token Manifest` positioned at x=0, y=360 (below the doc header), width=1440, **`layoutMode: VERTICAL`**, `primaryAxisSizingMode: AUTO`, `counterAxisSizingMode: FIXED`, padding 24, `itemSpacing` 24 — fill and strokes per **Canvas documentation visual spec § C** (root background → `color/background/default`, not detached `#FFFFFF` unless binding fails).
 
-Inside the root frame, first create the JSON manifest text node, then create the five collection table frames stacked vertically (each sub-frame also **VERTICAL** auto-layout with padding 16, `itemSpacing` 8).
+Inside the root frame, first create the JSON manifest text node, then create the five collection table frames stacked vertically (each sub-frame also **VERTICAL** auto-layout with padding **16**, `itemSpacing` **10**, row frames **minHeight ~44** per § **A**).
 
 **JSON manifest text node**
 
@@ -1753,25 +1807,33 @@ Create a text node named `[MCP] JSON Manifest` at the top of the root frame (y=0
 { "meta": { "generated": "<ISO-8601 timestamp>", "skill": "create-design-system", "file": "<TARGET_FILE_KEY>" }, "collections": { "Primitives": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "<css-var>", "android": "<kebab-case>", "ios": "<dot.path>" }, ... }, "Theme": { "light": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "...", "android": "...", "ios": "..." }, ... }, "dark": { ... } }, "Typography": { "100": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "130": { ... }, ... }, "Layout": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "Effects": { "<path>": { ... }, ... } } }
 ```
 
-Use Label/SM monospace typeface (or the closest available font). Width: 1440px.
+Apply **`Doc/Code`** (`textStyleId`) if that style exists from Step **15c**; otherwise use the closest monospace at **≥13px**. Width: 1440px.
 
 **Collection table frames**
 
-Create five sub-frames stacked vertically below the JSON text node, each named as follows. Each frame has a header row and one data row per token. Every data row is also a named frame following the pattern `token/{collection}/{path}` so agents can look up individual tokens by layer name.
+Create five sub-frames stacked vertically below the JSON text node, each named as follows. Each frame has a header row and one data row per token. Every data row is also a named frame following the pattern `token/{collection}/{path}` (include **`/{mode}/`** where applicable) so agents can look up individual tokens by layer name.
+
+**`ALIAS →` column (human + Dev Mode context):** For each variable, inspect `valuesByMode[modeId]` from the Plugin API (or REST `variables/local`). If the value is **`VARIABLE_ALIAS`**, resolve the **target variable’s `name`** (Figma path, e.g. `color/neutral/50`, `Space/300`, `elevation/400`) and print that string in **`ALIAS →`**. If the value is a **raw COLOR / FLOAT / STRING** (no alias), print **`— (raw)`** or **`— (RGBA)`** for hard-coded Theme tokens (`color/background/scrim`, `shadow/color`, etc.). If Typography aliases another token (unusual), show that path; else **`—`**.
+
+**`MODE` column:** First header row note (small **`Doc/Caption`** above the table or subtitle inside the collection frame): **`MODE` = Figma variable collection mode** (`light` / `dark` for Theme & Effects; `85` … `200` for Typography).
+
+**SWATCH column (Theme + Primitives COLOR only):** **`≥28×28px`** (use **32×32** when space allows). Fill paint must use **`boundVariables.color` → `figma.variables.createVariableAlias(variable)`** for the **same variable** as that row (§ **D**). Do **not** use a detached solid for COLOR swatches.
 
 Column specs and row content per collection:
 
-- **[MCP] Primitives** — columns: `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. One row per Primitives variable. The SWATCH column is a 16×16px colored rectangle filled with the resolved color value (for COLOR type variables; leave blank for FLOAT). All text in Label/SM monospace.
+- **[MCP] Primitives** — `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. One row per Primitives variable. **SWATCH:** variable-bound **Primitives** color for COLOR types; blank for FLOAT. Text: **`Doc/Code`** or **13px** mono.
 
-- **[MCP] Theme** — columns: `PATH | MODE | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. Two rows per Theme variable (one for `light` mode, one for `dark` mode). Row frame names: `token/theme/light/{path}` and `token/theme/dark/{path}`. VALUE is the resolved hex (not the alias variable name). SWATCH is a 16×16px colored rectangle.
+- **[MCP] Theme** — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS`. **Two rows** per Theme variable (`light`, `dark`). Row names `token/theme/light/{path}`, `token/theme/dark/{path}`. **`MODE`** cell literal `light` / `dark`. **`VALUE`** resolved hex still shown for quick reading. **`SWATCH`** uses **explicit `setExplicitVariableModeForCollection` on the row frame** OR the swatch wrapper so the bound Theme color resolves in that mode (same technique as Step **15b**). If that is too heavy, bind swatch without explicit mode and keep **`VALUE`** authoritative — log once per table.
 
-- **[MCP] Typography** — columns: `PATH | PROPERTY | MODE | VALUE | WEB | ANDROID | iOS`. One row per variable per scale mode (48 variables × 8 modes = 384 rows). Row frame name: `token/typography/{mode}/{path}`. VALUE is the resolved number (font-size or line-height in px, font-weight as a number, font-family as a string).
+- **[MCP] Typography** — `PATH | PROPERTY | MODE | ALIAS → | VALUE | WEB | ANDROID | iOS`. One row per variable × mode (**384** rows). **`ALIAS →`** per rule above.
 
-- **[MCP] Layout** — columns: `PATH | TYPE | VALUE | BOUND TO | WEB | ANDROID | iOS`. One row per Layout variable. VALUE is the resolved px number. BOUND TO is the Primitive variable name it aliases (e.g. `Space/300`).
+- **[MCP] Layout** — `PATH | TYPE | VALUE | ALIAS → | WEB | ANDROID | iOS`. **`ALIAS →`** = aliased Primitive (`Space/300`, `Corner/Medium`, …).
 
-- **[MCP] Effects** — columns: `PATH | MODE | TYPE | VALUE | WEB | ANDROID | iOS`. Two rows per Effects variable (light and dark mode). VALUE is the resolved hex (for `shadow/color`) or resolved px number (for blur variables).
+- **[MCP] Effects** — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS`. **`SWATCH`** only for **`shadow/color`** (bound variable). Blur rows leave SWATCH blank or use a neutral **`—`**. **`ALIAS →`**: blur rows → **`elevation/*`** target; `shadow/color` → **`— (RGBA)`**.
 
-All column headers use Label/SM bold. Row text uses Label/SM monospace (or closest). Column widths: PATH column 280px, all other columns 120px, SWATCH column 40px. **Header row backgrounds** on each collection table use **`color/background/variant`** (bind or resolve per **Canvas documentation visual spec § C**).
+**Column widths (guideline, adjust if needed):** PATH **320px**, MODE **64px**, TYPE **56px**, ALIAS → **200px**, VALUE **96px**, SWATCH **40px** (cell fits **32px** rect + padding), WEB **200px**, ANDROID **200px**, iOS **220px**.
+
+All column headers: **`Doc/TokenName`** or bold **`Doc/Code`**; header row backgrounds **`color/background/variant`** (bound per § **C**). Add a **`Doc/Caption`** table subtitle: **“MODE = collection mode name in Figma.”**
 
 Log the **Canvas checklist** row for Step 16.
 
@@ -1779,7 +1841,7 @@ Log the **Canvas checklist** row for Step 16.
 
 ## Step 17 — Populate Token Overview
 
-Follow **Canvas documentation visual spec § A–C** for any new or updated frames/text on this page.
+Follow **Canvas documentation visual spec § A–D** for any new or updated frames/text on this page.
 
 Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page (Figma script: [`skills/new-project/phases/05d-token-overview.md`](skills/new-project/phases/05d-token-overview.md)). **Rebind documentation chrome** on `_PageContent` and each `token-overview/*` section shell: `fills` / `strokes` / text fills per the **Token binding map § C** (Theme Light + Primitives), or resolved equivalents from **this file** — so the overview reflects **this** design system, not generic grays.
 

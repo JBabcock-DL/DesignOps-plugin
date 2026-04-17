@@ -274,7 +274,7 @@ Read only the variables belonging to affected collections. Resolve all alias tok
 
 ### 3. Redraw each affected page
 
-Before any `use_figma` canvas work, **`Read`** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ A–C). Token-bound doc chrome must match that binding map.
+Before any `use_figma` canvas work, **`Read`** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ **A–D**). Token-bound doc chrome (**§ C**) and token-demo bindings (**§ D**) must match that spec.
 
 **Reliability:** run **one `use_figma` call per affected page** (same split as create-design-system **Steps 15a–15c**), not one mega-call across all pages — each call: navigate → delete `y > 360` → redraw that page only.
 
@@ -290,15 +290,15 @@ Per page:
 2. Delete all nodes with **`y > 360`** (keep doc header `y ≤ 360`).
 3. Redraw using the same spec as **create-design-system Steps 15a–15c** for that page. Authoritative detail: [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md).
 
-**↳ Primitives** — color ramp swatches (5 ramps × 11 stops, 120×160px cards), Space scale bars (width = value px, capped 800px), Corner radius squares (120×120px with radius applied). All values from the live Primitives collection.
+**↳ Primitives** — per **create-design-system Step 15a**: **56px** strips; **120×160** ramp cards with **variable-bound** fills to each **`color/{ramp}/{stop}`**; Space bars with **width** bound to **`Space/*`** when supported; Corner squares with **`cornerRadius`** bound to **`Corner/*`** when supported; literals only if **`Doc/*`** styles are absent (first run).
 
-**↳ Theme** — one section-header strip per semantic group (**seven** groups: `background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
+**↳ Theme** — per **Step 15b**: **56px** group strips; **2-column** premium token cards (**24px** padding, **12px** radius); **80×80** Light/Dark swatch pairs with **`setExplicitVariableModeForCollection`** on **`doc/theme-preview/light|dark`** wrappers and **bound** Theme variable fills; visible **LIGHT/DARK** labels; **`Doc/*`** text styles when present; WEB/ANDROID/iOS from live **`codeSyntax`**.
 
-**↳ Text Styles** — vertical list of 12 type slots (Display/LG through Label/SM). Each row: specimen text rendered at the actual font-size and weight for the `100` (default) mode, plus a 320px metadata column showing slot name, size/weight/line-height values, CSS var, and mode scale range. All values from the live Typography collection.
+**↳ Text Styles** — per **Step 15c**: **12** rows; specimen **`textStyleId`** → published slot style (`Display/LG` …); metadata **`Doc/Code`**; dividers bound to **`color/border/subtle`**; republish **`Doc/*`** + slot styles in **§0** when Typography changed.
 
-**↳ Layout** — 4-column grid. Spacing section: horizontal bars scaled 1px = 3px visual (max 240px), token name, WEB/ANDROID/iOS names, px value, bound-to primitive. Radius section: 120×120px squares with radius applied, same metadata columns. All values from the live Layout collection.
+**↳ Layout** — per **Step 15c**: **56px** strips; spacing/radius sections with bound bars / **`cornerRadius`** where supported; **`Doc/*`** labels.
 
-**↳ Effects** — one card per shadow group (shadow/sm through shadow/2xl + shadow/color). Each card: 200×200px frame, 80×80px white circle with shadow applied using Light mode values, token name and blur/opacity labels, Light | Dark cards side by side. All values from the live Effects collection.
+**↳ Effects** — per **Step 15c**: **~240×260** cards, **96×96** specimen, Light/Dark via **Effects** explicit modes; maintain **`Effect/shadow-*`** local effect styles; **`shadow/color`** swatch card as specified in create **Step 15c**.
 
 ### 4. Report
 
@@ -351,15 +351,15 @@ The manifest structure is:
 
 All values are fully resolved (no alias references). Use the same live variable data fetched in Step 9b if available; otherwise call `GET /v1/files/:key/variables/local` once to get current values for all collections.
 
-**Five collection table sub-frames** stacked vertically below the JSON node, each following the table layout from create-design-system Step 16:
+**Five collection table sub-frames** stacked vertically below the JSON node, each following **create-design-system Step 16** (including **`ALIAS →`**, **`MODE`**, **32px** bound **SWATCH** cells for COLOR rows, **`Doc/*`** typography, row **minHeight ~44**, and the **`MODE` = collection mode** caption).
 
-- `[MCP] Primitives` — 7-column table: `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. One row per variable, named `token/primitives/{path}`. Swatch = 16×16px colored rectangle.
-- `[MCP] Theme` — two sub-blocks `[MCP] Theme/Light` and `[MCP] Theme/Dark`. 8-column table: `PATH | MODE | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. Rows named `token/theme/{mode}/{path}`.
-- `[MCP] Typography` — 7-column table: `PATH | PROPERTY | MODE | VALUE | WEB | ANDROID | iOS`. One row per variable per mode, grouped by slot. Rows named `token/typography/{mode}/{path}`.
-- `[MCP] Layout` — 7-column table: `PATH | TYPE | VALUE | BOUND TO | WEB | ANDROID | iOS`. Rows named `token/layout/{path}`.
-- `[MCP] Effects` — 7-column table: `PATH | MODE | TYPE | VALUE | WEB | ANDROID | iOS`. Rows named `token/effects/{mode}/{path}`.
+- `[MCP] Primitives` — `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS` — **SWATCH** variable-bound for COLOR.
+- `[MCP] Theme` — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS` — two rows per token (`light` / `dark`); explicit mode on row or swatch wrapper when used in create.
+- `[MCP] Typography` — `PATH | PROPERTY | MODE | ALIAS → | VALUE | WEB | ANDROID | iOS`.
+- `[MCP] Layout` — `PATH | TYPE | VALUE | ALIAS → | WEB | ANDROID | iOS` (**`ALIAS →`** = Primitive target, replaces legacy **BOUND TO** header).
+- `[MCP] Effects` — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS` (**SWATCH** for `shadow/color` only).
 
-All text uses Label/SM monospace (or closest available). Column headers are bold.
+All table body text **≥13px** mono (**`Doc/Code`** when available). Column headers bold (**`Doc/TokenName`** / **`Doc/Code`**).
 
 ### 4. Report
 
@@ -379,7 +379,7 @@ In `use_figma`, go to the `↳ Token Overview` page (`figma.setCurrentPageAsync`
 
 ### 2. Refresh content
 
-Execute the same population and rebinding logic as **create-design-system Step 17** (architecture diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per **Canvas documentation visual spec** § C). Use live variable data from Step 9b’s fetch when available; otherwise `GET /v1/files/:key/variables/local` once.
+Execute the same population and rebinding logic as **create-design-system Step 17** (architecture diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per **Canvas documentation visual spec § A–D**). Use live variable data from Step 9b’s fetch when available; otherwise `GET /v1/files/:key/variables/local` once.
 
 ### 3. Report
 
