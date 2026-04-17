@@ -230,7 +230,16 @@ Sync complete.
   Tokens skipped:           J
 ```
 
-**Canvas follow-up (same skill run, after the summary above):** when Step **9b**’s trigger applies (Figma received token writes in Step 8), execute **Step 9b** then **Step 9c** before ending the skill. When Step 9b is skipped (direction **2** only, or zero tokens written to Figma), skip **9c** as well.
+**Canvas follow-up (same skill run, after the summary above):** when Step **9b**’s trigger applies (Figma received token writes in Step 8), execute **Step 9b**, then **Step 9c**, then **Step 9d**, then **Step 9e** before ending the skill — in that order. When Step 9b is skipped (direction **2** only, or zero tokens written to Figma), skip **9c**, **9d**, and **9e** as well.
+
+**Canvas checklist (blocking before the skill ends — log one line per step when 9b’s trigger applies):**
+
+| Step | Log line (example) |
+|---|---|
+| 9b | `Canvas: Step 9b style guide — done` or `… skipped (reason)` |
+| 9c | `Canvas: Step 9c ↳ MCP Tokens — done` or `… skipped (reason)` |
+| 9d | `Canvas: Step 9d ↳ Token Overview — done` or `… skipped (reason)` |
+| 9e | `Canvas: Step 9e Thumbnail Cover — done` or `… skipped (reason)` |
 
 ---
 
@@ -265,15 +274,25 @@ Read only the variables belonging to affected collections. Resolve all alias tok
 
 ### 3. Redraw each affected page
 
-For each affected page, execute the following inside a single `use_figma` call (loop through all affected pages in one execution context so page state carries over):
+Before any `use_figma` canvas work, **`Read`** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ A–C). Token-bound doc chrome must match that binding map.
 
-1. Navigate to the page: `figma.setCurrentPageAsync(page)` — locate the page by its exact name (e.g. `↳ Primitives`).
-2. Delete all frames with `y > 360` on that page (preserving the doc header at y ≤ 360).
-3. Redraw the full content area using the same drawing spec as **create-design-system Step 15** for that page. The spec for each page is summarised below; refer to the create-design-system SKILL.md for the authoritative detail.
+**Reliability:** run **one `use_figma` call per affected page** (same split as create-design-system **Steps 15a–15c**), not one mega-call across all pages — each call: navigate → delete `y > 360` → redraw that page only.
+
+| Affected page(s) | `use_figma` batch |
+|---|---|
+| `↳ Primitives` only | One execution: **Primitives** redraw (create-design-system **Step 15a** spec). |
+| `↳ Theme` only | One execution: **Theme** redraw (**Step 15b** spec). |
+| `↳ Layout`, `↳ Text Styles`, and/or `↳ Effects` | One execution can redraw **all three** in sequence if all are in the affected list (**Step 15c** spec). If only one or two of these three are affected, still use one execution but only redraw those pages. |
+
+Per page:
+
+1. Navigate: `figma.setCurrentPageAsync(page)` — exact page name (e.g. `↳ Primitives`).
+2. Delete all nodes with **`y > 360`** (keep doc header `y ≤ 360`).
+3. Redraw using the same spec as **create-design-system Steps 15a–15c** for that page. Authoritative detail: [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md).
 
 **↳ Primitives** — color ramp swatches (5 ramps × 11 stops, 120×160px cards), Space scale bars (width = value px, capped 800px), Corner radius squares (120×120px with radius applied). All values from the live Primitives collection.
 
-**↳ Theme** — one section-header strip per semantic group (6 groups: `background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
+**↳ Theme** — one section-header strip per semantic group (**seven** groups: `background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`), 3-column grid of token cards. Each card: dual 40×40 swatches (Light / Dark), token path, WEB / ANDROID / iOS code syntax labels. All values from the live Theme collection (both Light and Dark modes).
 
 **↳ Text Styles** — vertical list of 12 type slots (Display/LG through Label/SM). Each row: specimen text rendered at the actual font-size and weight for the `100` (default) mode, plus a 320px metadata column showing slot name, size/weight/line-height values, CSS var, and mode scale range. All values from the live Typography collection.
 
@@ -286,6 +305,8 @@ For each affected page, execute the following inside a single `use_figma` call (
 After all redraws complete, output:
 
 > "Style guide updated: {comma-separated list of redrawn page names}"
+
+Log the **Canvas checklist** row for Step 9b.
 
 ---
 
@@ -303,7 +324,7 @@ If a frame named `[MCP] Token Manifest` exists on the page, delete it entirely. 
 
 ### 3. Rebuild the manifest from scratch
 
-Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440, auto-height, white fill. Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
+Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440 — **`layoutMode: VERTICAL`**, padding and `itemSpacing` per **create-design-system Step 16** and **Canvas documentation visual spec** § A–C (root fill → `color/background/default`, not a detached white-only fill). Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
 
 - In the `[MCP] JSON Manifest` text node, set `"skill": "sync-design-system"` (not `"create-design-system"`).
 - Set `"generated"` to the current ISO-8601 datetime at the time this step executes.
@@ -343,6 +364,48 @@ All text uses Label/SM monospace (or closest available). Column headers are bold
 ### 4. Report
 
 > "MCP Tokens page updated."
+
+Log the **Canvas checklist** row for Step 9c.
+
+---
+
+## Step 9d — Refresh Token Overview
+
+**Trigger:** Same as Step 9b — run only when a push to Figma occurred (directions **1**, **3**, or **4** with confirmed push). Skip for direction **2** or when Step 9b was skipped.
+
+### 1. Navigate
+
+In `use_figma`, go to the `↳ Token Overview` page (`figma.setCurrentPageAsync`). If the page does not exist, log `Canvas: Step 9d ↳ Token Overview — skipped (page missing)` and continue to Step 9e.
+
+### 2. Refresh content
+
+Execute the same population and rebinding logic as **create-design-system Step 17** (architecture diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per **Canvas documentation visual spec** § C). Use live variable data from Step 9b’s fetch when available; otherwise `GET /v1/files/:key/variables/local` once.
+
+### 3. Report
+
+> "Token Overview page refreshed."
+
+Log the **Canvas checklist** row for Step 9d.
+
+---
+
+## Step 9e — Refresh Thumbnail Cover
+
+**Trigger:** Same as Step 9b — run only when a push to Figma occurred. Skip for direction **2** or when Step 9b was skipped.
+
+### 1. Navigate
+
+In `use_figma`, go to the `Thumbnail` page. Find the frame named `Cover`.
+
+### 2. Update gradient (or skip)
+
+Apply the same logic as **create-design-system Step 18**: update the linear gradient stop colors to resolved `color/primary/500` and `color/secondary/500` from **Primitives**; do not change `gradientTransform`. If `Cover` is missing, log a warning, skip paint changes, and still log the checklist row as skipped.
+
+### 3. Report
+
+> "Thumbnail Cover updated." (or skipped if no `Cover` frame.)
+
+Log the **Canvas checklist** row for Step 9e.
 
 ---
 

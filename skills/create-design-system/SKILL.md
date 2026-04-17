@@ -66,13 +66,15 @@ Current: Building Primitives…
 - [ ] Verifying variables wrote correctly
 - [ ] Optional: write `tokens.css` (your choice — Step 12.5, then Step 13 if yes)
 - [ ] Summarizing results (counts & file links)
-- [ ] Drawing style guide pages on canvas
-- [ ] Drawing MCP Tokens manifest page
-- [ ] Filling Token Overview from live variables
-- [ ] Updating Thumbnail cover (brand gradient)
+- [ ] Drawing ↳ Primitives style guide (Step 15a)
+- [ ] Drawing ↳ Theme style guide (Step 15b)
+- [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (Step 15c)
+- [ ] Drawing MCP Tokens manifest page (Step 16)
+- [ ] Filling Token Overview from live variables (Step 17)
+- [ ] Updating Thumbnail cover (brand gradient) (Step 18)
 - [ ] Offering next step (`/create-component`)
 
-**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · rows 11–14 → Steps 15–18 · row 15 → Step 19.
+**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · rows 11–13 → Steps 15a–15c + Step 16 · rows 14–15 → Steps 17–18 · row 16 → Step 19.
 
 ---
 
@@ -1610,19 +1612,83 @@ CSS token file written to: {TOKEN_CSS_PATH}  ({N} custom properties)
 Open in Figma: https://figma.com/design/{TARGET_FILE_KEY}
 ```
 
-Immediately continue to **Steps 15–18** (Figma canvas: style guide pages, MCP manifest, Token Overview updates, Cover gradient on the Thumbnail page) in the same skill run — do not jump to Step 19 until those steps complete or fail with a logged warning.
+Immediately continue to **Steps 15a–18** (Figma canvas) in the same skill run — do not jump to Step 19 until those steps complete or fail with a logged warning.
+
+**Canvas follow-up checklist (blocking — log one line per row before Step 19):**
+
+| Step | Log line (example) |
+|---|---|
+| 15a | `Canvas: Step 15a ↳ Primitives — done` or `… skipped (reason)` |
+| 15b | `Canvas: Step 15b ↳ Theme — done` or `… skipped (reason)` |
+| 15c | `Canvas: Step 15c ↳ Layout + ↳ Text Styles + ↳ Effects — done` or `… skipped (reason)` |
+| 16 | `Canvas: Step 16 ↳ MCP Tokens — done` or `… skipped (reason)` |
+| 17 | `Canvas: Step 17 ↳ Token Overview — done` or `… skipped (reason)` |
+| 18 | `Canvas: Step 18 Thumbnail Cover — done` or `… skipped (reason)` |
 
 ---
 
-## Step 15 — Draw Style Guide Pages
+## Canvas documentation visual spec
 
-Using all token values already computed in Steps 5–9 (color ramps, Theme aliases, Typography values, Layout aliases, and Effects values), navigate to each of the five style guide pages and draw token visualizations. Execute the drawing for all five pages inside a **single `use_figma` call** — page state must carry over within one execution context. Before drawing each page, clear the content area (all frames at y > 360) to remove any previously drawn content.
+Agents **must read this section** before executing Steps **15a–18** and any `use_figma` script that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure and binding rules (see [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md)).
 
-**↳ Primitives page**
+### A — Structure (geometry, naming; stable across all files)
+
+| Rule | Value |
+|---|---|
+| Content width | 1440px canvas column under doc header (`y > 360` body) |
+| Outer padding | 40px horizontal, 40px top / 80px bottom where a `_PageContent` wrapper exists |
+| Vertical rhythm | 8px grid (`itemSpacing` / gaps use multiples of 8) |
+| Section frames | Auto-layout `VERTICAL`, `primaryAxisSizingMode` `AUTO`, `counterAxisSizingMode` `FIXED`, width `1360` inside 1440 padded parent; `layoutAlign` `STRETCH` where stacking |
+| Section shell | `cornerRadius` 16, `strokeWeight` 1, `itemSpacing` 16 inside section |
+| Style guide swatch cards | Primitives: 120×160 cards, 8px gap; Theme cards: ~450px column width, 16px gutter, 3-column grid, 8px card radius, 16px card padding |
+| Layer naming | Token Overview: `token-overview/{section}`, `_PageContent`; MCP: `[MCP] Token Manifest`, `token/{collection}/…`; Style guide: optional `doc/styleguide/…` prefix for redraw targets |
+
+### B — Doc reading mode (Theme)
+
+- **Light** mode values drive **documentation chrome** fills and strokes on canvas (predictable contrast). Swatches that **demonstrate** Light vs Dark still show **both** modes where the step explicitly calls for paired squares.
+- Resolve hex via **this file’s** variables (REST snapshot from Step 11 or live `variables/local` in plugin) — never use a hard-coded brand hex for surfaces.
+
+### C — Token binding map (documentation chrome → variable path)
+
+Apply via Figma **variable bindings** on frame `fills` / `strokes` and text `fillStyleId` / bound variables **where the Plugin API supports it** (`setBoundVariable` / variable-bound paints). If binding is not available in the execution environment, apply the **resolved value from this file’s** variable for the same path (still per-system). **Never** use a fixed hex palette copied from another product.
+
+| Doc role | Variable | Collection / mode |
+|---|---|---|
+| Page / outer body background under sections | `color/background/default` | Theme · Light |
+| Section card surface | `color/background/variant` | Theme · Light |
+| Section card stroke | `color/border/subtle` | Theme · Light |
+| Primary heading text on light surfaces | `color/background/content` | Theme · Light |
+| Secondary / metadata text | `color/background/content-muted` | Theme · Light |
+| Style guide section label strip background | `color/neutral/950` | Primitives · Default |
+| Style guide section label strip text | `color/neutral/50` | Primitives · Default |
+| Divider lines (e.g. Text Styles row separator) | `color/border/subtle` | Theme · Light |
+| Accent fills (small diagram boxes, highlights) | `color/primary/subtle` | Theme · Light |
+| Layout bar fill (spacing preview bars) | `color/primary/200` | Primitives · Default |
+| Radius preview square fill | `color/neutral/100` | Primitives · Default |
+| Effects preview card fill | `color/background/default` | Theme · Light |
+| Effects preview card stroke | `color/border/subtle` | Theme · Light |
+| MCP manifest root / table chrome background | `color/background/default` | Theme · Light |
+| MCP table header row background | `color/background/variant` | Theme · Light |
+
+**Typography:** prefer **Text styles** from this file (`Headline/LG`, `Label/MD`, `Label/SM`, …) for doc headings and body. Monospace table / code cells: use `Label/SM` (or closest) with `color/background/content-muted` on fills above.
+
+**Fallback:** if a path is missing, log a warning and resolve `color/neutral/200` / `color/neutral/800` from **this file’s** Primitives only.
+
+---
+
+## Step 15a — Draw Style Guide: ↳ Primitives
+
+Using values from Steps 5–9, run **one** `use_figma` execution for **`↳ Primitives` only**.
+
+1. `figma.setCurrentPageAsync` → page named exactly `↳ Primitives`.
+2. Delete every node with **`y > 360`** (keep doc header `y ≤ 360`).
+3. Redraw per **Canvas documentation visual spec § A–C**: section label strips use bound **`color/neutral/950`** fill and **`color/neutral/50`** text (or resolved equivalents). Swatch card fills show ramp hexes from live data.
+
+**↳ Primitives page content**
 
 For each of the 5 color ramps (primary, secondary, tertiary, error, neutral), in order:
 
-1. Draw a full-width dark section label strip: 1440×48px frame, fill `#000000`, text = ramp name (e.g. `primary`), white, Label/LG, bold.
+1. Draw a full-width section label strip: 1440×48px frame, **binding map** strip BG/text (not raw `#000000` / white).
 2. Draw a row of 11 swatch cards for stops 50 through 950 (in ascending order):
    - Card size: 120×160px, 8px gap between cards.
    - Card fill: the resolved hex for that stop (e.g. `color/primary/500` hex).
@@ -1630,54 +1696,54 @@ For each of the 5 color ramps (primary, secondary, tertiary, error, neutral), in
 
 After all color ramps, draw two more sections:
 
-3. **Space Scale section** — draw a 1440×48px dark section label strip with text `Space Scale`, then for each `Space/*` token (Space/100 through Space/2400, in ascending order): a horizontal bar rectangle whose pixel width equals the space value (capped at 800px), with a right-side label showing the token name, px value, and CSS var name (e.g. `Space/300 · 12px · var(--space-300)`). Stack bars vertically with 8px gap.
-4. **Corner Radius section** — draw a 1440×48px dark section label strip with text `Corner Radius`, then for each `Corner/*` token: a 120×120px square with that `cornerRadius` value applied, filled `color/neutral/100`, with a label below showing the token name and px value. Arrange squares in a horizontal row with 16px gap.
+3. **Space Scale section** — section label strip `Space Scale`; for each `Space/*` token: horizontal bar (width = value px capped at 800px), right-side label with token name, px, CSS var. Stack bars with 8px gap.
+4. **Corner Radius section** — section label strip `Corner Radius`; for each `Corner/*` token: 120×120px square with `cornerRadius` applied, fill per **binding map** (`color/neutral/100`), label below.
+
+Log the **Canvas checklist** row for Step 15a.
+
+---
+
+## Step 15b — Draw Style Guide: ↳ Theme
+
+Run **one** `use_figma` execution for **`↳ Theme` only** (same delete `y > 360` rule, then redraw).
 
 **↳ Theme page**
 
 For each of the 7 semantic groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`):
 
-1. Draw a 1440×48px dark section label strip with the group name as text (e.g. `background/`), white, Label/LG, bold.
-2. Draw token cards in a 3-column grid (column width ~450px, 16px gutter, 8px corner radius, 1px stroke `color/neutral/200`, 16px padding):
-   - **Swatch row:** two 40×40 squares side by side — left square filled with the resolved Light mode hex, right square filled with the resolved Dark mode hex. Label `Light` and `Dark` below each square in Label/SM neutral/600.
-   - **Token path:** the variable name (e.g. `color/background/default`), Label/MD, bold, on the next row.
-   - **Code names:** three monospace lines in Label/SM neutral/600: `WEB: var(--color-background)`, `ANDROID: surface`, `iOS: .Background.default`. Values come from the Step 6 codeSyntax table.
+1. Draw a 1440×48px section label strip with the group name — **binding map** strip BG/text.
+2. Draw token cards in a 3-column grid (column width ~450px, 16px gutter, 8px corner radius, 1px stroke bound to **`color/border/subtle`**, 16px padding):
+   - **Swatch row:** two 40×40 squares — Light / Dark resolved hexes; labels use **`color/background/content-muted`** (resolved).
+   - **Token path:** Label/MD bold (text style if present).
+   - **Code names:** three monospace lines from Step 6 table.
 
-**↳ Layout page**
+Log the **Canvas checklist** row for Step 15b.
 
-Draw two sections:
+---
 
-1. **Spacing section** — draw a 1440×48px dark section label strip with text `Spacing`, then draw token cards in a 4-column grid (320×240px per card):
-   - Visual: a horizontal bar/rectangle whose pixel width equals the space px value scaled at 1px:3px visual width, maximum 240px. Fill the bar with `color/primary/200`.
-   - Below the bar: token name (`space/md`) in Label/MD bold; then `WEB`, `ANDROID`, `iOS` code names in Label/SM monospace; then `Value: {N}px`; then `Bound to: Space/{N}`.
-2. **Border Radius section** — draw a 1440×48px dark section label strip with text `Border Radius`, then draw token cards in a 4-column grid (320×240px per card):
-   - Visual: a 120×120px square with that `cornerRadius` value applied, filled `color/neutral/100`.
-   - Below: token name in Label/MD bold; WEB/ANDROID/iOS code names in Label/SM monospace; value in px; bound-to primitive name.
+## Step 15c — Draw Style Guide: ↳ Layout, ↳ Text Styles, ↳ Effects
 
-**↳ Text Styles page**
+Run **one** `use_figma` execution that visits **three pages in order** (`↳ Layout` → `↳ Text Styles` → `↳ Effects`). On **each** page: delete `y > 360`, then redraw.
 
-Draw one full-width row per type slot (12 total, from Display/LG through Label/SM, top to bottom). Each row is 1440px wide with an 8px bottom border in `color/neutral/100`:
+**↳ Layout page** — two sections (Spacing, Border Radius) with **binding map** section strips; spacing bars use **`color/primary/200`**; radius squares use **`color/neutral/100`**.
 
-1. **Specimen text** (left, main area): render the string `The quick brown fox jumps over the lazy dog` using the actual font-family, font-size, font-weight, and line-height values from the Typography collection `100` (default) mode for that slot.
-2. **Metadata column** (right-aligned, 320px wide): slot name (e.g. `Headline/LG`) in Label/MD bold; font-size, font-weight, line-height values in Label/SM monospace; CSS var (e.g. `var(--headline-lg-font-size)`) in Label/SM neutral/600; scale note in Label/SM neutral/400 (e.g. `Scales from {mode-85-value}px → {mode-200-value}px across 8 modes`).
+**↳ Text Styles page** — one row per slot (12 rows); specimen text uses Typography `100` mode values; row bottom border bound to **`color/border/subtle`**; metadata text uses **`color/background/content-muted`**.
 
-**↳ Effects page**
+**↳ Effects page** — cards per shadow level; card fill/stroke per **binding map**; shadow from live Effects.
 
-For each Effects elevation group (sm, md, lg, xl, 2xl), draw a 1440×48px dark section label strip with text `shadow/{level}`, then draw two cards side by side (Light and Dark):
+Log the **Canvas checklist** row for Step 15c.
 
-- Card: 200×200px, white fill, 8px corner radius, 1px stroke `color/neutral/100`.
-- Inside each card, center an 80×80px white circle. Apply the shadow to the circle: blur value from the corresponding `shadow/{level}/blur` variable; shadow color from `shadow/color` resolved for that mode (Light or Dark). Label the card `Light` or `Dark` in Label/SM at the top.
-- Below each card pair: token name (e.g. `shadow/md/blur`) in Label/MD; blur value; Light opacity; Dark opacity — all in Label/SM monospace.
+---
 
-After drawing all five pages, navigate back to the first page in the file.
+*Detail for swatch geometry, Theme card layout, Layout/Text/Effects rows is in Steps **15a–15c** above. If any legacy instruction elsewhere in this file conflicts with **Canvas documentation visual spec § A–C**, the spec wins (token-bound chrome, Light doc mode).*
 
 ---
 
 ## Step 16 — Draw MCP Tokens Page
 
-Navigate to the `↳ MCP Tokens` page using `figma.setCurrentPageAsync`. Find and delete any existing frame named `[MCP] Token Manifest`. Then build a new root frame named `[MCP] Token Manifest` positioned at x=0, y=360 (below the doc header), width=1440, auto-height, white fill.
+Navigate to the `↳ MCP Tokens` page using `figma.setCurrentPageAsync`. Find and delete any existing frame named `[MCP] Token Manifest`. Then build a new root frame named `[MCP] Token Manifest` positioned at x=0, y=360 (below the doc header), width=1440, **`layoutMode: VERTICAL`**, `primaryAxisSizingMode: AUTO`, `counterAxisSizingMode: FIXED`, padding 24, `itemSpacing` 24 — fill and strokes per **Canvas documentation visual spec § C** (root background → `color/background/default`, not detached `#FFFFFF` unless binding fails).
 
-Inside the root frame, first create the JSON manifest text node, then create the five collection table frames stacked vertically.
+Inside the root frame, first create the JSON manifest text node, then create the five collection table frames stacked vertically (each sub-frame also **VERTICAL** auto-layout with padding 16, `itemSpacing` 8).
 
 **JSON manifest text node**
 
@@ -1705,13 +1771,17 @@ Column specs and row content per collection:
 
 - **[MCP] Effects** — columns: `PATH | MODE | TYPE | VALUE | WEB | ANDROID | iOS`. Two rows per Effects variable (light and dark mode). VALUE is the resolved hex (for `shadow/color`) or resolved px number (for blur variables).
 
-All column headers use Label/SM bold. Row text uses Label/SM monospace (or closest). Column widths: PATH column 280px, all other columns 120px, SWATCH column 40px.
+All column headers use Label/SM bold. Row text uses Label/SM monospace (or closest). Column widths: PATH column 280px, all other columns 120px, SWATCH column 40px. **Header row backgrounds** on each collection table use **`color/background/variant`** (bind or resolve per **Canvas documentation visual spec § C**).
+
+Log the **Canvas checklist** row for Step 16.
 
 ---
 
 ## Step 17 — Populate Token Overview
 
-Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page with placeholder content (Figma script source: `skills/new-project/phases/05d-token-overview.md`). Find placeholders and replace them with actual resolved values from the current token set.
+Follow **Canvas documentation visual spec § A–C** for any new or updated frames/text on this page.
+
+Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page (Figma script: [`skills/new-project/phases/05d-token-overview.md`](skills/new-project/phases/05d-token-overview.md)). **Rebind documentation chrome** on `_PageContent` and each `token-overview/*` section shell: `fills` / `strokes` / text fills per the **Token binding map § C** (Theme Light + Primitives), or resolved equivalents from **this file** — so the overview reflects **this** design system, not generic grays.
 
 **Architecture diagram (Section 1)**
 
@@ -1721,23 +1791,29 @@ Find the five collection box frames in the architecture flow diagram (look for f
 - `Theme` box: fill with the resolved hex for `color/secondary/default` (Light mode).
 - `Typography`, `Layout`, `Effects` boxes: fill with the resolved hex for `color/neutral/800`.
 
-Leave all other frame properties (size, position, text content, arrow connectors) unchanged.
+Prefer **variable bindings** to those Theme/Primitive variables when the Plugin API allows (so the diagram updates on sync). Leave sizes, positions, and arrow connectors unchanged unless rebinding requires no layout change.
 
 **Platform Mapping table (Section 2)**
 
-Find the table frame in Section 2. Verify that the 8 example rows match the actual codeSyntax values written to the Figma file. For each of the following token paths, read the codeSyntax that was written in Step 11 and update the WEB, ANDROID, and iOS cells in the table row if they differ:
+Find the platform-mapping table (Section `token-overview/platform-mapping` or the table stack created in Step 5d). For **every** row that displays a Figma token path, read **live** `codeSyntax` from Step 11 (WEB / ANDROID / iOS) and update the WEB, ANDROID, and iOS cells if they differ.
 
-`color/background/default`, `color/primary/default`, `color/border/default`, `color/error/default`, `Headline/LG/font-size`, `space/md`, `radius/md`, `shadow/color`
+**Minimum row set** (must all be verified — add rows for any additional tokens the table already shows):
+
+`color/background/default`, `color/background/content`, `color/background/content-muted`, `color/background/variant`, `color/border/default`, `color/border/subtle`, `color/primary/default`, `color/primary/content`, `color/primary/subtle`, `color/secondary/default`, `color/tertiary/default`, `color/error/default`, `color/component/ring`, `Headline/LG/font-size`, `Body/MD/font-size`, `space/md`, `space/lg`, `radius/md`, `radius/lg`, `shadow/color`
+
+If the table physically has fewer rows, insert additional auto-layout rows to match the section layout spec (§ A) before filling cells.
 
 **Phone frames (Section 3)**
 
-Find the two phone frame rectangles in the Dark Mode column of Section 3. Set the fill of the frame labeled `Light` to the resolved hex for `color/background/default` (Light mode). Set the fill of the frame labeled `Dark` to the resolved hex for `color/background/default` (Dark mode).
+Find the two phone frame rectangles in the Dark Mode column of Section 3. Set the fill of the frame labeled `Light` to the resolved hex for `color/background/default` (Light mode). Set the fill of the frame labeled `Dark` to the resolved hex for `color/background/default` (Dark mode). Prefer variable binding to `color/background/default` with mode overrides if supported.
 
 **Placeholder strips from `/new-project` Step 5d**
 
 Find every node on `↳ Token Overview` whose **name** starts with `placeholder/` (amber “run /create-design-system” notes). Delete each of these nodes after the sections above are updated — they are scaffolding only, not part of the final spec.
 
 If any legacy text node still contains the substring `TBD`, replace `TBD` with the resolved value implied by the nearest section heading or table row; if ambiguous, use the resolved `color/primary/500` hex.
+
+Log the **Canvas checklist** row for Step 17.
 
 ---
 
@@ -1756,6 +1832,8 @@ Navigate to the `Thumbnail` page using `figma.setCurrentPageAsync`. Find the fra
 **If `Cover` is not found:**
 
 Log the warning `Cover frame not found — skipping Step 18 cover gradient update` and continue to Step 19 without error.
+
+Log the **Canvas checklist** row for Step 18 (done or skipped).
 
 ---
 

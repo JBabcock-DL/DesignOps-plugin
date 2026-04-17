@@ -4,7 +4,7 @@
 Runs **after** Phases 05c and 05b.
 
 ## Goal
-Draw the Token Overview documentation skeleton on `↳ Token Overview` with `placeholder/{section}` nodes for `/create-design-system` Step 18.
+Draw the Token Overview documentation skeleton on `↳ Token Overview` with `placeholder/{section}` nodes for **`/create-design-system` Step 17** (Token Overview population).
 
 ## Prerequisites
 - Phases 05, 05c, and 05b complete per orchestrator order.
@@ -13,6 +13,8 @@ Draw the Token Overview documentation skeleton on `↳ Token Overview` with `pla
 None in the script.
 
 ## Instructions
+Before editing this script or running `use_figma`, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ A–C). Geometry must match § A; section surfaces, strokes, and doc text fills must follow the **token binding map** (§ C): bind Theme **Light** and Primitives variables where those paths exist, with the script’s hex values only as **resolved fallbacks** when a variable is missing.
+
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
 ## Success criteria
@@ -20,7 +22,7 @@ Load **figma-use** before `use_figma` if required. One `use_figma` with the scri
 
 ## Step 5d — Draw Token Overview Skeleton
 
-Call `use_figma` with the `fileKey` from Step 4. Navigate to the `↳ Token Overview` page. Wrap all Token Overview body sections in a `_PageContent` vertical auto-layout frame at `y = 360` (same pattern as Step 5c). Each major section is a vertical auto-layout frame that **hugs** height; stack the platform-mapping **table rows** inside a vertical auto-layout inner container so the section height follows row count — **no** `sectionY` / `tableHeight` accumulators. Mark every placeholder element with an amber annotation text node named `placeholder/{section}` so that Step 18 in `/create-design-system` knows which elements to replace with real token values.
+Call `use_figma` with the `fileKey` from Step 4. Navigate to the `↳ Token Overview` page. Wrap all Token Overview body sections in a `_PageContent` vertical auto-layout frame at `y = 360` (same pattern as Step 5c). Each major section is a vertical auto-layout frame that **hugs** height; stack the platform-mapping **table rows** inside a vertical auto-layout inner container so the section height follows row count — **no** `sectionY` / `tableHeight` accumulators. Mark every placeholder element with an amber annotation text node named `placeholder/{section}` so that **Step 17** in `/create-design-system` knows which elements to replace with real token values.
 
 ```javascript
 // Navigate to the Token Overview page
@@ -30,6 +32,59 @@ await figma.setCurrentPageAsync(overviewPage);
 await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+
+// Token-bound doc chrome (create-design-system — Canvas documentation visual spec § C)
+const collections = figma.variables.getLocalVariableCollections();
+const allColorVars = figma.variables.getLocalVariables('COLOR');
+const themeCol = collections.find(c => c.name === 'Theme');
+const primCol = collections.find(c => c.name === 'Primitives');
+function getThemeColorVar(path) {
+  if (!themeCol) return null;
+  return allColorVars.find(v => v.variableCollectionId === themeCol.id && v.name === path) ?? null;
+}
+function getPrimColorVar(path) {
+  if (!primCol) return null;
+  return allColorVars.find(v => v.variableCollectionId === primCol.id && v.name === path) ?? null;
+}
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.slice(0, 2), 16) / 255,
+    g: parseInt(h.slice(2, 4), 16) / 255,
+    b: parseInt(h.slice(4, 6), 16) / 255,
+  };
+}
+function bindThemeColor(node, path, fallbackHex, target = 'fills') {
+  const variable = getThemeColorVar(path);
+  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
+  if (variable) {
+    try {
+      paint.boundVariables = { color: figma.variables.createVariableAlias(variable) };
+    } catch (_) {}
+  }
+  node[target] = [paint];
+}
+function bindPrimColor(node, path, fallbackHex, target = 'fills') {
+  const variable = getPrimColorVar(path);
+  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
+  if (variable) {
+    try {
+      paint.boundVariables = { color: figma.variables.createVariableAlias(variable) };
+    } catch (_) {}
+  }
+  node[target] = [paint];
+}
+function bindThemeStroke(node, path, fallbackHex, weight = 1) {
+  const variable = getThemeColorVar(path);
+  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
+  if (variable) {
+    try {
+      paint.boundVariables = { color: figma.variables.createVariableAlias(variable) };
+    } catch (_) {}
+  }
+  node.strokes = [paint];
+  node.strokeWeight = weight;
+}
 
 const SECTION_WIDTH = 1360;
 
@@ -44,7 +99,7 @@ pageContent.paddingBottom = 80;
 pageContent.paddingLeft   = 40;
 pageContent.paddingRight  = 40;
 pageContent.itemSpacing   = 40;
-pageContent.fills = [];
+bindThemeColor(pageContent, 'color/background/default', '#ffffff');
 pageContent.x = 0;
 pageContent.y = 360;
 overviewPage.appendChild(pageContent);
@@ -59,10 +114,9 @@ function sectionShell(name) {
   s.paddingTop = s.paddingBottom = 32;
   s.paddingLeft = s.paddingRight = 40;
   s.itemSpacing = 16;
-  s.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+  bindThemeColor(s, 'color/background/variant', '#ffffff');
   s.cornerRadius = 16;
-  s.strokes = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
-  s.strokeWeight = 1;
+  bindThemeStroke(s, 'color/border/subtle', '#ededed', 1);
   s.layoutAlign = 'STRETCH';
   pageContent.appendChild(s);
   return s;
@@ -88,7 +142,7 @@ const archTitle = figma.createText();
 archTitle.fontName   = { family: 'Inter', style: 'Bold' };
 archTitle.fontSize   = 20;
 archTitle.characters = 'How the Token System Works';
-archTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+bindThemeColor(archTitle, 'color/background/content', '#000000');
 archTitle.layoutAlign = 'STRETCH';
 arch.appendChild(archTitle);
 
@@ -120,7 +174,7 @@ collections.forEach((col, i) => {
   box.paddingLeft = box.paddingRight = 16;
   box.paddingTop = 32;
   box.itemSpacing = 8;
-  box.fills       = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
+  bindThemeColor(box, 'color/primary/subtle', '#dbeafe');
   box.cornerRadius = 12;
   archBoxesRow.appendChild(box);
 
@@ -128,7 +182,7 @@ collections.forEach((col, i) => {
   colName.fontName   = { family: 'Inter', style: 'Bold' };
   colName.fontSize   = 14;
   colName.characters = col.name;
-  colName.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+  bindThemeColor(colName, 'color/background/content', '#0a0a0a');
   colName.layoutAlign = 'STRETCH';
   box.appendChild(colName);
 
@@ -136,7 +190,7 @@ collections.forEach((col, i) => {
   colNote.fontName   = { family: 'Inter', style: 'Regular' };
   colNote.fontSize   = 11;
   colNote.characters = col.note;
-  colNote.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.6 }];
+  bindThemeColor(colNote, 'color/background/content-muted', '#525252');
   colNote.layoutAlign = 'STRETCH';
   box.appendChild(colNote);
 
@@ -145,7 +199,7 @@ collections.forEach((col, i) => {
     arrow.fontName   = { family: 'Inter', style: 'Bold' };
     arrow.fontSize   = 20;
     arrow.characters = '→';
-    arrow.fills      = [{ type: 'SOLID', color: { r: 0.6, g: 0.6, b: 0.6 } }];
+    bindThemeColor(arrow, 'color/background/content-muted', '#737373');
     archBoxesRow.appendChild(arrow);
   }
 });
@@ -154,7 +208,7 @@ const archCaption = figma.createText();
 archCaption.fontName   = { family: 'Inter', style: 'Regular' };
 archCaption.fontSize   = 13;
 archCaption.characters = 'Primitives hold raw values. All other collections alias into Primitives — change a Primitive, all semantic tokens update automatically.';
-archCaption.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
+bindThemeColor(archCaption, 'color/background/content-muted', '#525252');
 archCaption.layoutAlign = 'STRETCH';
 arch.appendChild(archCaption);
 
@@ -183,7 +237,7 @@ const platTitle = figma.createText();
 platTitle.fontName   = { family: 'Inter', style: 'Bold' };
 platTitle.fontSize   = 20;
 platTitle.characters = 'Platform Code Names (codeSyntax)';
-platTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+bindThemeColor(platTitle, 'color/background/content', '#000000');
 platTitle.layoutAlign = 'STRETCH';
 platform.appendChild(platTitle);
 
@@ -202,7 +256,7 @@ const tableHeaders = ['Token', 'WEB', 'ANDROID (M3 kebab)', 'iOS (semantic)'];
 const headerRow = figma.createFrame();
 headerRow.name = 'table-header';
 headerRow.resize(SECTION_WIDTH - 80, TABLE_ROW_HEIGHT);
-headerRow.fills       = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
+bindThemeColor(headerRow, 'color/background/variant', '#f4f4f5');
 headerRow.cornerRadius = 8;
 headerRow.layoutAlign = 'STRETCH';
 tableStack.appendChild(headerRow);
@@ -213,7 +267,7 @@ tableHeaders.forEach((h, ci) => {
   hText.fontName   = { family: 'Inter', style: 'Bold' };
   hText.fontSize   = 12;
   hText.characters = h;
-  hText.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+  bindThemeColor(hText, 'color/background/content', '#09090b');
   hText.x = colX + 12;
   hText.y = (TABLE_ROW_HEIGHT - 12) / 2;
   headerRow.appendChild(hText);
@@ -221,14 +275,14 @@ tableHeaders.forEach((h, ci) => {
 });
 
 platformRows.forEach((row, ri) => {
-  const rowFill = ri % 2 === 0
-    ? [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }]
-    : [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-
   const dataRow = figma.createFrame();
   dataRow.name  = `table-row/${ri}`;
   dataRow.resize(SECTION_WIDTH - 80, TABLE_ROW_HEIGHT);
-  dataRow.fills = rowFill;
+  bindThemeColor(
+    dataRow,
+    ri % 2 === 0 ? 'color/background/default' : 'color/background/variant',
+    ri % 2 === 0 ? '#fafafa' : '#ffffff',
+  );
   dataRow.layoutAlign = 'STRETCH';
   tableStack.appendChild(dataRow);
 
@@ -238,7 +292,7 @@ platformRows.forEach((row, ri) => {
     cellText.fontName   = { family: 'Inter', style: ci === 0 ? 'Semi Bold' : 'Regular' };
     cellText.fontSize   = 12;
     cellText.characters = cell;
-    cellText.fills      = [{ type: 'SOLID', color: { r: 0.2, g: 0.2, b: 0.2 } }];
+    bindThemeColor(cellText, 'color/background/content', '#171717');
     cellText.x = cellX + 12;
     cellText.y = (TABLE_ROW_HEIGHT - 12) / 2;
     dataRow.appendChild(cellText);
@@ -250,7 +304,7 @@ const platCaption = figma.createText();
 platCaption.fontName   = { family: 'Inter', style: 'Regular' };
 platCaption.fontSize   = 13;
 platCaption.characters = 'Every variable carries codeSyntax for all 3 platforms. In Dev Mode, inspect any token and copy the platform value directly.';
-platCaption.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
+bindThemeColor(platCaption, 'color/background/content-muted', '#525252');
 platCaption.layoutAlign = 'STRETCH';
 platform.appendChild(platCaption);
 
@@ -272,38 +326,40 @@ pageContent.appendChild(modeRow);
 const darkPanel = figma.createFrame();
 darkPanel.name = 'dark-mode-panel';
 darkPanel.resize(660, 360);
-darkPanel.fills       = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+bindThemeColor(darkPanel, 'color/background/variant', '#ffffff');
 darkPanel.cornerRadius = 16;
-darkPanel.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
-darkPanel.strokeWeight = 1;
+bindThemeStroke(darkPanel, 'color/border/subtle', '#e4e4e7', 1);
 modeRow.appendChild(darkPanel);
 
 const darkTitle = figma.createText();
 darkTitle.fontName   = { family: 'Inter', style: 'Bold' };
 darkTitle.fontSize   = 18;
 darkTitle.characters = 'Dark Mode';
-darkTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+bindThemeColor(darkTitle, 'color/background/content', '#000000');
 darkTitle.x = 24;
 darkTitle.y = 24;
 darkPanel.appendChild(darkTitle);
 
-[{ label: 'Light', fill: { r: 0.95, g: 0.95, b: 0.95 }, x: 40  },
- { label: 'Dark',  fill: { r: 0.1,  g: 0.1,  b: 0.1  }, x: 360 }].forEach(phone => {
+[{ label: 'Light', x: 40 },
+ { label: 'Dark',  x: 360 }].forEach(phone => {
   const frame = figma.createRectangle();
   frame.resize(200, 140);
   frame.x           = phone.x;
   frame.y           = 64;
-  frame.fills       = [{ type: 'SOLID', color: phone.fill }];
+  if (phone.label === 'Light') {
+    bindThemeColor(frame, 'color/background/default', '#f4f4f5');
+  } else {
+    bindPrimColor(frame, 'color/neutral/950', '#0a0a0a');
+  }
   frame.cornerRadius = 8;
-  frame.strokes     = [{ type: 'SOLID', color: { r: 0.8, g: 0.8, b: 0.8 } }];
-  frame.strokeWeight = 1;
+  bindThemeStroke(frame, 'color/border/subtle', '#d4d4d8', 1);
   darkPanel.appendChild(frame);
 
   const lbl = figma.createText();
   lbl.fontName   = { family: 'Inter', style: 'Regular' };
   lbl.fontSize   = 12;
   lbl.characters = phone.label;
-  lbl.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
+  bindThemeColor(lbl, 'color/background/content-muted', '#525252');
   lbl.x = phone.x + 80;
   lbl.y = 212;
   darkPanel.appendChild(lbl);
@@ -314,17 +370,16 @@ addPlaceholder(darkPanel, 'dark-mode');
 const scalePanel = figma.createFrame();
 scalePanel.name = 'font-scale-panel';
 scalePanel.resize(660, 360);
-scalePanel.fills       = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+bindThemeColor(scalePanel, 'color/background/variant', '#ffffff');
 scalePanel.cornerRadius = 16;
-scalePanel.strokes     = [{ type: 'SOLID', color: { r: 0.93, g: 0.93, b: 0.93 } }];
-scalePanel.strokeWeight = 1;
+bindThemeStroke(scalePanel, 'color/border/subtle', '#e4e4e7', 1);
 modeRow.appendChild(scalePanel);
 
 const scaleTitle = figma.createText();
 scaleTitle.fontName   = { family: 'Inter', style: 'Bold' };
 scaleTitle.fontSize   = 18;
 scaleTitle.characters = 'Typography Scale Modes';
-scaleTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+bindThemeColor(scaleTitle, 'color/background/content', '#000000');
 scaleTitle.x = 24;
 scaleTitle.y = 24;
 scalePanel.appendChild(scaleTitle);
@@ -347,7 +402,7 @@ scaleSteps.forEach((step, si) => {
   specimen.fontName   = { family: 'Inter', style: 'Bold' };
   specimen.fontSize   = step.size;
   specimen.characters = 'Aa';
-  specimen.fills      = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
+  bindThemeColor(specimen, 'color/background/content', '#0a0a0a');
   specimen.x = 24 + si * modeColW;
   specimen.y = 72;
   scalePanel.appendChild(specimen);
@@ -356,7 +411,7 @@ scaleSteps.forEach((step, si) => {
   modeLabel.fontName   = { family: 'Inter', style: 'Regular' };
   modeLabel.fontSize   = 10;
   modeLabel.characters = step.mode;
-  modeLabel.fills      = [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5 } }];
+  bindThemeColor(modeLabel, 'color/background/content-muted', '#737373');
   modeLabel.x = 24 + si * modeColW;
   modeLabel.y = 120;
   scalePanel.appendChild(modeLabel);
@@ -373,7 +428,7 @@ const bindTitle = figma.createText();
 bindTitle.fontName   = { family: 'Inter', style: 'Bold' };
 bindTitle.fontSize   = 20;
 bindTitle.characters = 'Binding Tokens in Figma';
-bindTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+bindThemeColor(bindTitle, 'color/background/content', '#000000');
 bindTitle.layoutAlign = 'STRETCH';
 bindSection.appendChild(bindTitle);
 
@@ -417,7 +472,7 @@ bindCards.forEach((card) => {
   cardFrame.paddingLeft = cardFrame.paddingRight = 16;
   cardFrame.paddingTop = cardFrame.paddingBottom = 16;
   cardFrame.itemSpacing = 8;
-  cardFrame.fills       = [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }];
+  bindThemeColor(cardFrame, 'color/background/default', '#fafafa');
   cardFrame.cornerRadius = 12;
   bindRow.appendChild(cardFrame);
 
@@ -425,7 +480,7 @@ bindCards.forEach((card) => {
   iconText.fontName   = { family: 'Inter', style: 'Bold' };
   iconText.fontSize   = 20;
   iconText.characters = card.icon;
-  iconText.fills      = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
+  bindThemeColor(iconText, 'color/background/content', '#0a0a0a');
   iconText.layoutAlign = 'STRETCH';
   cardFrame.appendChild(iconText);
 
@@ -433,7 +488,7 @@ bindCards.forEach((card) => {
   cardTitle.fontName   = { family: 'Inter', style: 'Bold' };
   cardTitle.fontSize   = 13;
   cardTitle.characters = card.title;
-  cardTitle.fills      = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+  bindThemeColor(cardTitle, 'color/background/content', '#000000');
   cardTitle.layoutAlign = 'STRETCH';
   cardFrame.appendChild(cardTitle);
 
@@ -441,7 +496,7 @@ bindCards.forEach((card) => {
   cardBody.fontName   = { family: 'Inter', style: 'Regular' };
   cardBody.fontSize   = 11;
   cardBody.characters = card.body;
-  cardBody.fills      = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4 } }];
+  bindThemeColor(cardBody, 'color/background/content-muted', '#525252');
   cardBody.textAutoResize = 'HEIGHT';
   cardBody.resize(BIND_CARD_W - 32, 120);
   cardBody.layoutAlign = 'STRETCH';
@@ -460,7 +515,7 @@ claudeSection.resize(SECTION_WIDTH, 100);
 claudeSection.paddingTop = claudeSection.paddingBottom = 32;
 claudeSection.paddingLeft = claudeSection.paddingRight = 40;
 claudeSection.itemSpacing = 24;
-claudeSection.fills       = [{ type: 'SOLID', color: { r: 0.07, g: 0.07, b: 0.07 } }];
+bindPrimColor(claudeSection, 'color/neutral/950', '#0a0a0a');
 claudeSection.cornerRadius = 16;
 claudeSection.layoutAlign = 'STRETCH';
 pageContent.appendChild(claudeSection);
@@ -469,7 +524,7 @@ const claudeTitle = figma.createText();
 claudeTitle.fontName   = { family: 'Inter', style: 'Bold' };
 claudeTitle.fontSize   = 20;
 claudeTitle.characters = 'Maintaining Tokens with Claude';
-claudeTitle.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+bindPrimColor(claudeTitle, 'color/neutral/50', '#fafafa');
 claudeTitle.layoutAlign = 'STRETCH';
 claudeSection.appendChild(claudeTitle);
 
@@ -510,7 +565,7 @@ for (let r = 0; r < 3; r++) {
     const cmdCard = figma.createFrame();
     cmdCard.name = `cmd-card/${item.cmd}`;
     cmdCard.resize(CMD_CARD_W, CMD_CARD_H);
-    cmdCard.fills       = [{ type: 'SOLID', color: { r: 0.13, g: 0.13, b: 0.13 } }];
+    bindPrimColor(cmdCard, 'color/neutral/900', '#171717');
     cmdCard.cornerRadius = 12;
     cmdRow.appendChild(cmdCard);
 
@@ -518,7 +573,7 @@ for (let r = 0; r < 3; r++) {
     cmdText.fontName   = { family: 'Inter', style: 'Bold' };
     cmdText.fontSize   = 14;
     cmdText.characters = item.cmd;
-    cmdText.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+    bindPrimColor(cmdText, 'color/neutral/50', '#fafafa');
     cmdText.x = 16;
     cmdText.y = 16;
     cmdCard.appendChild(cmdText);
@@ -527,7 +582,7 @@ for (let r = 0; r < 3; r++) {
     descText.fontName   = { family: 'Inter', style: 'Regular' };
     descText.fontSize   = 12;
     descText.characters = item.desc;
-    descText.fills      = [{ type: 'SOLID', color: { r: 0.6, g: 0.6, b: 0.6 } }];
+    bindPrimColor(descText, 'color/neutral/400', '#a3a3a3');
     descText.x = 16;
     descText.y = 44;
     cmdCard.appendChild(descText);
@@ -538,7 +593,7 @@ const footerNote = figma.createText();
 footerNote.fontName   = { family: 'Inter', style: 'Regular' };
 footerNote.fontSize   = 12;
 footerNote.characters = 'All commands run from the terminal via Claude Code. The plugin reads SKILL.md files — no install required. See README.md in the plugin repo for setup.';
-footerNote.fills      = [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5 } }];
+bindPrimColor(footerNote, 'color/neutral/400', '#a3a3a3');
 footerNote.layoutAlign = 'STRETCH';
 claudeSection.appendChild(footerNote);
 ```
