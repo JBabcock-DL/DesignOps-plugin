@@ -137,7 +137,7 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 1. Checks `templates/agent-handoff.md` for an active file key before prompting
 2. Collects brand tokens interactively (primary, secondary, neutral, tertiary, and error colors; body and display font families; base font size, spacing unit, and border radius)
 3. Generates the `Primitives` collection: five full color ramps (primary, secondary, tertiary, error, neutral — 50–950 stops via Tailwind HSL interpolation), `Space/*` spacing scale, `Corner/*` radius scale, elevation floats
-4. Creates the `Theme` collection (Light / Dark modes): **54** semantic color aliases across **6** groups — `surface/` (M3 surface + surface-container ladder + inverse + scrim/shadow), `primary/`, `secondary/`, `tertiary/` (each includes standard + **fixed** roles), `status/` (error + fixed), and `component/` (shadcn: input, ring, sidebar) — all aliasing Primitives per mode
+4. Creates the `Theme` collection (Light / Dark modes): **54** semantic color aliases across **7** groups — `background/` (canvas + container ladder + fg + inverse + scrim/shadow; WEB `--color-background*`; ANDROID/iOS codeSyntax still uses M3 **surface** roles), `border/` (`default` / `subtle`; WEB `--color-border*`), `primary/`, `secondary/`, `tertiary/` (each includes standard + **fixed** roles), `status/` (error + fixed), and `component/` (shadcn: input, ring, sidebar) — all aliasing Primitives per mode
 5. Creates the `Typography` collection (8 scale modes): 12 type style slots (Display, Headline, Body, Label — each in LG/MD/SM) × 4 properties (font-family, font-size, font-weight, line-height). Font sizes scale across 8 modes modeled on Android's font-scale curve: 85%, 100% (default), 110%, 120%, 130%, 150%, 175%, 200%. Large text uses nonlinear scaling (Android 14 behaviour) at high multipliers.
 6. Creates the `Layout` collection (Default mode): `space/*` and `radius/*` semantic aliases into Primitives
 7. Creates the `Effects` collection (Light / Dark modes): shadow color (opacity changes per mode) and blur aliases into elevation Primitives
@@ -442,7 +442,7 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
   --corner-medium: 12px;
 }
 
-/* Theme — Light (M3 surface + roles, shadcn aliases) */
+/* Theme — Light (`--color-background*`, `--color-border*`, brand/status roles, shadcn aliases) */
 :root, [data-theme="light"] {
   --color-background:                  var(--color-neutral-50);
   --color-background-container-highest: var(--color-neutral-50);

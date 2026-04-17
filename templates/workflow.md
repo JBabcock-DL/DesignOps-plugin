@@ -94,7 +94,7 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 | Collection | Modes | Contents |
 |---|---|---|
 | `Primitives` | Default | Raw color ramps (primary, secondary, tertiary, error, neutral — 50–950), Space scale, Corner scale, elevation floats |
-| `Theme` | Light / Dark | 54 semantic color aliases in 6 groups (`surface/`, `primary/`, `secondary/`, `tertiary/`, `status/`, `component/`) pointing to Primitives per mode |
+| `Theme` | Light / Dark | 54 semantic color aliases in 7 groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `status/`, `component/`) pointing to Primitives per mode |
 | `Typography` | 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200 | 12 type style slots × 4 properties; sizes scale per mode on Android's font-scale curve |
 | `Layout` | Default | `space/*` and `radius/*` semantic aliases into Primitives |
 | `Effects` | Light / Dark | Shadow color (opacity per mode) and blur aliases into elevation Primitives |
