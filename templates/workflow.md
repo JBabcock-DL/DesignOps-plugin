@@ -31,7 +31,7 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 
 | Skill | Invocation | Description |
 |---|---|---|
-| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, draws documentation UI on the canvas (headers, TOC, Token Overview skeleton, Thumbnail cover + file thumbnail), and provides a move instruction to the Design-Systems/ folder |
+| New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, draws documentation UI on the canvas (headers, TOC, Token Overview skeleton, Thumbnail cover + file thumbnail), and provides a move instruction to the Design-Systems/ folder. Implementation is split: `skills/new-project/SKILL.md` orchestrates; each `use_figma` script lives in `skills/new-project/phases/*.md` and is **`Read` one phase at a time**. After page scaffolding, the agent **reposts a markdown checklist** in chat after each phase so the designer can track progress. |
 | Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), writes `tokens.css` to the local codebase, then refreshes Figma canvas docs (style guide pages, MCP token manifest, Token Overview content, brand-colored cover thumbnail) |
 | Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction; after pushes to Figma, can redraw affected style guide pages and the MCP Tokens manifest so canvas matches variables |
 | Create Component | `/create-component` | Installs shadcn/ui components, wires `tokens.css` into `globals.css`, draws components to the Figma canvas with token bindings, and optionally chains Code Connect |
@@ -143,12 +143,15 @@ Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `
 ### How `/new-project` prepares the Foundations file
 
 1. **`create_new_file`** — new design file in Drafts
-2. **`use_figma` Step 5** — full page list (Thumbnail, section dividers, style guide, brand, atoms, components, utilities)
-3. **`use_figma` Step 5b** — `_Header` + `_Content` on every page **except** `Thumbnail` (cover-only meta page)
-4. **`use_figma` Step 5c** — Table of Contents grid on `📝 Table of Contents` with `toc-link/{exact page name}` rows for agents
-5. **`use_figma` Step 5d** — Token Overview skeleton on `↳ Token Overview` (`placeholder/*` nodes removed when `/create-design-system` runs)
-6. **`use_figma` Step 5e** — `Cover` frame on `Thumbnail` and file thumbnail
-7. **Step 6–7** — move instructions, optional chain to `/create-design-system` with handoff YAML
+2. **`use_figma` Step 5** (`phases/05-scaffold-pages.md`) — full page list (Thumbnail, section dividers, style guide, brand, atoms, components, utilities)
+3. **`use_figma` Step 5c** (`phases/05c-table-of-contents.md`) — Table of Contents grid on `📝 Table of Contents` with `toc-link/{exact page name}` rows (layout only; no URL links yet)
+4. **`use_figma` Step 5b** (`phases/05b-documentation-headers.md`) — `_Header` + `_Content` on every page **except** `Thumbnail` (cover-only meta page)
+5. **`use_figma` Step 5d** (`phases/05d-token-overview.md`) — Token Overview skeleton on `↳ Token Overview` (`placeholder/*` nodes removed when `/create-design-system` runs)
+6. **`use_figma` Step 5e** (`phases/05e-cover-thumbnail.md`) — `Cover` frame on `Thumbnail` and file thumbnail
+7. **`use_figma` Step 5c-links** (`phases/05f-toc-hyperlinks.md`) — URL hyperlinks on TOC text (runs **after** 5e so `Cover` exists)
+8. **Step 6–7** (`phases/06-…`, `phases/07-…`) — move instructions, optional chain to `/create-design-system` with handoff YAML
+
+After Step 5, the agent shows a **chat checklist** and marks items complete as each step finishes (see `skills/new-project/SKILL.md`).
 
 ### How `/sync-design-system` updates canvas after a Figma push
 
@@ -186,7 +189,7 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 
 A complete new project setup runs the skills in this sequence:
 
-1. `/new-project` → scaffolds the Foundations file with full page hierarchy, documentation headers, TOC, Token Overview skeleton, and Thumbnail cover in Figma
+1. `/new-project` → scaffolds the Foundations file with full page hierarchy, documentation headers, TOC, Token Overview skeleton, and Thumbnail cover in Figma (phased `use_figma` + in-chat checklist; see `skills/new-project/SKILL.md`)
 2. `/create-design-system` → collects brand tokens, writes five variable collections to Figma, writes `tokens.css` to the local codebase, then draws style guide + MCP manifest + updates Token Overview and cover
 3. `/create-component button input card` → installs shadcn components, wires `tokens.css` into `globals.css`, draws components to canvas with token bindings
 4. `/code-connect` → maps Figma components to code files, confirms with designer, publishes via `send_code_connect_mappings`

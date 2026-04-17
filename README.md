@@ -72,7 +72,7 @@ Skills pass context to each other through `templates/agent-handoff.md`, so you c
 
 ### /new-project
 
-Create and scaffold a `<Project Name> — Foundations` design system file using the Figma MCP connector. The file is created in Drafts, the full page tree is created, **documentation canvas** is drawn (headers, table of contents, token overview skeleton, cover + file thumbnail), then a single move instruction is provided at the end.
+Create and scaffold a `<Project Name> — Foundations` design system file using the Figma MCP connector. The file is created in Drafts, the full page tree is created, **documentation canvas** is drawn (headers, table of contents, token overview skeleton, cover + file thumbnail), then a single move instruction is provided at the end. Heavy `use_figma` scripts live under `skills/new-project/phases/`; the agent **`Read`s one phase file per step** to keep context small. After page scaffolding completes, Claude **reposts a markdown progress checklist** in chat as each phase finishes so you can follow along.
 
 **Syntax**
 ```
@@ -88,15 +88,16 @@ Create and scaffold a `<Project Name> — Foundations` design system file using 
 
 The file lands in Drafts. At the end of the run Claude provides a one-step move instruction: right-click the file in Figma → Move to Project → Design-Systems/.
 
-**Scaffold sequence (see `skills/new-project/SKILL.md`)**
+**Scaffold sequence** — orchestration and checklist rules in [`skills/new-project/SKILL.md`](skills/new-project/SKILL.md); scripts in [`skills/new-project/phases/`](skills/new-project/phases/).
 
 | Step | What happens |
 |---|---|
-| 5 | Rename first page, create all pages from the Detroit Labs hierarchy |
+| 5 | Rename first page, create all pages from the Detroit Labs hierarchy (`phases/05-scaffold-pages.md`) |
+| 5c | **Table of Contents** on `📝 Table of Contents` — two-column section cards; link rows named `toc-link/{exact Figma page name}` (no hyperlinks yet) |
 | 5b | Doc header (`_Header`) + dashed `_Content` region on **every page except `Thumbnail`** (cover is the meta surface for that page) |
-| 5c | **Table of Contents** on `📝 Table of Contents` — two-column section cards; link rows named `toc-link/{exact Figma page name}` for automation |
 | 5d | **Token Overview** skeleton on `↳ Token Overview` — architecture, mapping table, mode panels, binding tips, Claude commands; `placeholder/*` nodes cleared when `/create-design-system` runs |
 | 5e | **Thumbnail** — full-bleed `Cover` (gradient, project title, chips, mark) and `setFileThumbnailNodeAsync` |
+| 5c-links | URL hyperlinks on TOC page-name text (after `Cover` and `_Header` exist) |
 | 6–7 | Move instructions; optional chain to `/create-design-system` with `templates/agent-handoff.md` |
 
 **Page hierarchy** — sourced from the Detroit Labs Foundations template and extended with shadcn/ui component pages, organized into atomic design groups:
@@ -513,7 +514,9 @@ Detroit Labs projects use a standardized three-folder hierarchy within each Figm
 │     ├── plugin.json                # Plugin manifest — skill registry and argument schemas
 │     └── marketplace.json           # Marketplace listing metadata
 ├── skills/
-│     ├── new-project/SKILL.md
+│     ├── new-project/
+│     │     ├── SKILL.md              # Orchestrator + progress checklist rules
+│     │     └── phases/               # One markdown file per `use_figma` / wrap-up phase
 │     ├── create-design-system/SKILL.md
 │     ├── sync-design-system/SKILL.md
 │     ├── create-component/SKILL.md

@@ -1645,7 +1645,7 @@ All column headers use Label/SM bold. Row text uses Label/SM monospace (or close
 
 ## Step 17 — Populate Token Overview
 
-Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page with placeholder content. Find placeholders and replace them with actual resolved values from the current token set.
+Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page with placeholder content (Figma script source: `skills/new-project/phases/05d-token-overview.md`). Find placeholders and replace them with actual resolved values from the current token set.
 
 **Architecture diagram (Section 1)**
 
