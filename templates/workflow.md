@@ -99,21 +99,21 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 | `Layout` | Default | `space/*` and `radius/*` semantic aliases into Primitives |
 | `Effects` | Light / Dark | Shadow color (opacity per mode) and blur aliases into elevation Primitives |
 
-**Platform mapping** is encoded as `codeSyntax` on every variable — there are no separate Web, Android/M3, or iOS/HIG collections. Each token carries three code names inline.
+**Platform mapping** is encoded as `codeSyntax` on every variable — there are no separate Web, Android/M3, or iOS alias collections. Each token carries three code names inline.
 
-**ANDROID (Theme)** uses [Material Design 3](https://m3.material.io/styles/color/static/baseline) **`ColorScheme` role names** (flat camelCase: `surface`, `surfaceContainerHigh`, `outline`, `primaryFixed`, …). Figma groups canvas tokens under **`color/background/*`**; ANDROID **`codeSyntax`** still maps them to **`surface`** / **`onSurface`**. Outline tokens live under **`color/border/*`**. **`component/*`** rows use extension names for shadcn alignment (see `/create-design-system` Step 6). **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+**ANDROID** `codeSyntax` uses **kebab-case** for the same M3 roles as Compose `ColorScheme` (e.g. `surface-container-high`, `on-primary`). **iOS** `codeSyntax` uses **dot paths** (e.g. `.Back.high`, `.Border.default`). Figma groups canvas tokens under **`color/background/*`**; outline under **`color/border/*`**. See `/create-design-system` Step 6 for the full table.
 
 `/create-design-system` accepts **`--theme baseline`** (M3 baseline seed ramps) or **`--theme brand`** (default); see the skill Step 2.5.
 
-| Token | WEB | ANDROID (M3) | iOS (HIG) |
+| Token | WEB | ANDROID (M3 kebab) | iOS (semantic) |
 |---|---|---|---|
-| `color/background/default` | `var(--color-background)` | `surface` | `systemBackground` |
-| `color/background/fg` | `var(--color-content)` | `onSurface` | `label` |
-| `color/border/default` | `var(--color-border)` | `outline` | `separator` |
-| `color/primary/tint` | `var(--color-primary-soft)` | `primaryContainer` | `primaryContainer` |
-| `color/status/error` | `var(--color-danger)` | `error` | `systemRed` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
-| `space/md` | `var(--space-md)` | `spaceMd` | `spaceMd` |
+| `color/background/default` | `var(--color-background)` | `surface` | `.Back.default` |
+| `color/background/fg` | `var(--color-content)` | `on-surface` | `.Fore.primary` |
+| `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
+| `color/primary/tint` | `var(--color-primary-soft)` | `primary-container` | `.Primary.subtle` |
+| `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
+| `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
 ### tokens.css — Local Codebase File
 

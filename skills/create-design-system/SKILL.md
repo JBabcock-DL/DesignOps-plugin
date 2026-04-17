@@ -224,15 +224,15 @@ Apply to every Primitives variable:
 
 | Example variable | WEB | ANDROID | iOS |
 |---|---|---|---|
-| `color/primary/500` | `var(--color-primary-500)` | `colorPrimary500` | `primary500` |
-| `Space/400` | `var(--space-400)` | `space400` | `space400` |
-| `Corner/Medium` | `var(--corner-medium)` | `cornerMedium` | `cornerMedium` |
-| `elevation/400` | `var(--elevation-400)` | `elevation400` | `elevation400` |
+| `color/primary/500` | `var(--color-primary-500)` | `color-primary-500` | `.Palette.primary.500` |
+| `Space/400` | `var(--space-400)` | `space-400` | `.Space.400` |
+| `Corner/Medium` | `var(--corner-medium)` | `corner-medium` | `.Corner.medium` |
+| `elevation/400` | `var(--elevation-400)` | `elevation-400` | `.Elevation.400` |
 
-**Derivation rule:** strip the collection name, join all path segments with `-`, lowercase → WEB `var(--result)`. CamelCase → ANDROID and iOS.
-- **ANDROID color ramps:** retain the `color` word → `colorPrimary500` (matches Android XML resource naming convention)
-- **iOS color ramps:** drop the leading `color` word → `primary500` (Swift API Design Guidelines: don't repeat the type in a property name)
-- **All other Primitives (Space, Corner, elevation):** ANDROID and iOS are identical camelCase
+**Derivation rule:** strip the collection name, join all path segments with `-`, lowercase → WEB `var(--result)`.
+- **ANDROID:** same token shape as WEB custom properties **without** the `var(--` / `)` wrapper — **kebab-case** throughout (e.g. `color-primary-500`, `space-400`).
+- **iOS:** **dot-path semantics** — leading `.`, PascalCase **domain** segment (`Palette`, `Space`, `Corner`, `Elevation`), then **lower** segments matching the path (`primary`, `500`; `medium` for corners; numeric stops as-is).
+- **Corner names with hyphens** in Figma (`Extra-small`) → WEB `corner-extra-small` → ANDROID `corner-extra-small` → iOS `.Corner.extraSmall` (lowerCamel the last segment if needed for readability).
 
 ---
 
@@ -243,7 +243,7 @@ Create (or update) the `Theme` collection with **two modes: `Light` and `Dark`**
 Every Theme variable is a COLOR type that aliases a Primitive variable by ID. Use the tables below — `Light →` and `Dark →` columns name the Primitive path to alias. codeSyntax values are set **explicitly** from the table — they are NOT derived from the variable name path.
 
 ### background/ — M3 layer tokens (16 variables)
-*Figma folder **`background/`** names the app canvas and tonal layers for designers. On **Android / iOS** these still map to M3 **`ColorScheme` surface roles** (`surface`, `surfaceContainerHigh`, `surfaceVariant`, …) — the Figma segment is not an Android API type.*
+*Figma folder **`background/`** names the app canvas and tonal layers for designers. **ANDROID `codeSyntax`** uses the same M3 **`ColorScheme` roles** as Jetpack Compose, formatted in **kebab-case** (e.g. `surface-container-high`), not API camelCase. **iOS `codeSyntax`** uses **dot-path semantics** (e.g. `.Back.high` for the high container tone) — not `UIColor` symbol names. The Figma path segment is a designer label, not a platform type.*
 
 **Main layer** — base canvas and tonal endpoints.
 
@@ -361,91 +361,92 @@ Write `color/background/scrim` and `color/background/shadow` as hard-coded COLOR
 
 codeSyntax values are **set explicitly per token** — they are NOT derived from the Figma variable path. Path segments like `background/` and `primary/` are **Figma-only labels** for designers.
 
-**WEB (Tailwind-friendly)** — use a single **`--color-*`** namespace so tokens drop cleanly into [Tailwind CSS v4 `@theme`](https://tailwindcss.com/docs/theme): each `codeSyntax.WEB` is `var(--color-…)` with **designer-oriented** names (`--color-background`, `--color-background-container-high`, `--color-border`, `--color-content`, …). **WEB names do not mirror Android** — ANDROID stays M3 `ColorScheme` (`surface`, `outline`, …).
+**WEB (Tailwind-friendly)** — use a single **`--color-*`** namespace so tokens drop cleanly into [Tailwind CSS v4 `@theme`](https://tailwindcss.com/docs/theme): each `codeSyntax.WEB` is `var(--color-…)` with **designer-oriented** names (`--color-background`, `--color-background-container-high`, `--color-border`, `--color-content`, …).
 
-**ANDROID** — stays **exactly** the flat [Jetpack Compose `ColorScheme`](https://developer.android.com/jetpack/compose/designsystems/material3) property names (M3). Unchanged by WEB naming.
+**ANDROID** — same semantic roles as [Jetpack Compose `ColorScheme`](https://developer.android.com/jetpack/compose/designsystems/material3), but **`codeSyntax` strings use kebab-case**, not Compose API camelCase (e.g. `surface-container-high`, not `surfaceContainerHigh`). Map each token to the M3 role in the table, then hyphenate.
 
-**iOS** — **Apple HIG** (or closest semantic) per the tables below.
+**iOS** — **`codeSyntax` strings use dot-path semantics** (leading `.`, domain segments such as `.Back.high`, `.Primary.on`, `.Border.default`) — these are **design-system paths for codegen / documentation**, not `UIColor` static member names.
 
 **Disambiguation**
 
 - **Figma path** (e.g. `color/background/container-high`): where the variable lives in the file.
 - **WEB** (e.g. `var(--color-background-container-high)`): CSS custom property for Web / Tailwind theme extension.
-- **ANDROID** (e.g. `surfaceContainerHigh`): `MaterialTheme.colorScheme.surfaceContainerHigh` (M3 **surface** role — unchanged).
+- **ANDROID** (e.g. `surface-container-high`): same M3 role as `MaterialTheme.colorScheme.surfaceContainerHigh`, **kebab-case** in `codeSyntax`.
+- **iOS** (e.g. `.Back.high`): semantic dot path aligned to that role — not UIKit symbol names.
 
 #### `background/` — M3 surface roles on Android / iOS (WEB uses `--color-background*`)
 
-| Figma variable | WEB | ANDROID | iOS (HIG) |
+| Figma variable | WEB | ANDROID | iOS (semantic) |
 |---|---|---|---|
-| `color/background/dim` | `var(--color-background-dim)` | `surfaceDim` | `secondarySystemBackground` |
-| `color/background/default` | `var(--color-background)` | `surface` | `systemBackground` |
-| `color/background/bright` | `var(--color-background-bright)` | `surfaceBright` | `tertiarySystemBackground` |
-| `color/background/container-lowest` | `var(--color-background-container-lowest)` | `surfaceContainerLowest` | `systemGroupedBackground` |
-| `color/background/container-low` | `var(--color-background-container-low)` | `surfaceContainerLow` | `secondarySystemGroupedBackground` |
-| `color/background/container` | `var(--color-background-container)` | `surfaceContainer` | `tertiarySystemGroupedBackground` |
-| `color/background/container-high` | `var(--color-background-container-high)` | `surfaceContainerHigh` | `tertiarySystemGroupedBackground` |
-| `color/background/container-highest` | `var(--color-background-container-highest)` | `surfaceContainerHighest` | `systemGroupedBackground` |
-| `color/background/variant` | `var(--color-background-variant)` | `surfaceVariant` | `tertiarySystemBackground` |
-| `color/background/fg` | `var(--color-content)` | `onSurface` | `label` |
-| `color/background/fg-subtle` | `var(--color-content-muted)` | `onSurfaceVariant` | `secondaryLabel` |
-| `color/background/inverse` | `var(--color-inverse-surface)` | `inverseSurface` | `inverseSurface` |
-| `color/background/inverse-fg` | `var(--color-inverse-content)` | `inverseOnSurface` | `inverseOnSurface` |
-| `color/background/inverse-primary` | `var(--color-inverse-brand)` | `inversePrimary` | `inversePrimary` |
-| `color/background/scrim` | `var(--color-scrim)` | `scrim` | `scrim` |
-| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `shadow` |
+| `color/background/dim` | `var(--color-background-dim)` | `surface-dim` | `.Back.dim` |
+| `color/background/default` | `var(--color-background)` | `surface` | `.Back.default` |
+| `color/background/bright` | `var(--color-background-bright)` | `surface-bright` | `.Back.bright` |
+| `color/background/container-lowest` | `var(--color-background-container-lowest)` | `surface-container-lowest` | `.Back.lowest` |
+| `color/background/container-low` | `var(--color-background-container-low)` | `surface-container-low` | `.Back.low` |
+| `color/background/container` | `var(--color-background-container)` | `surface-container` | `.Back.mid` |
+| `color/background/container-high` | `var(--color-background-container-high)` | `surface-container-high` | `.Back.high` |
+| `color/background/container-highest` | `var(--color-background-container-highest)` | `surface-container-highest` | `.Back.highest` |
+| `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Back.variant` |
+| `color/background/fg` | `var(--color-content)` | `on-surface` | `.Fore.primary` |
+| `color/background/fg-subtle` | `var(--color-content-muted)` | `on-surface-variant` | `.Fore.secondary` |
+| `color/background/inverse` | `var(--color-inverse-surface)` | `inverse-surface` | `.Back.inverse` |
+| `color/background/inverse-fg` | `var(--color-inverse-content)` | `inverse-on-surface` | `.Fore.inverse` |
+| `color/background/inverse-primary` | `var(--color-inverse-brand)` | `inverse-primary` | `.Primary.inverse` |
+| `color/background/scrim` | `var(--color-scrim)` | `scrim` | `.Effect.scrim` |
+| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Back.shadowTint` |
 
 #### `border/` — Outline roles (WEB `--color-border*`)
 
-| Figma variable | WEB | ANDROID | iOS (HIG) |
+| Figma variable | WEB | ANDROID | iOS (semantic) |
 |---|---|---|---|
-| `color/border/default` | `var(--color-border)` | `outline` | `separator` |
-| `color/border/subtle` | `var(--color-border-subtle)` | `outlineVariant` | `opaqueSeparator` |
+| `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
+| `color/border/subtle` | `var(--color-border-subtle)` | `outline-variant` | `.Border.subtle` |
 
 #### Core M3 `ColorScheme` roles — brand + status (ANDROID column)
 
-| Figma variable | WEB | ANDROID | iOS (HIG) |
+| Figma variable | WEB | ANDROID | iOS (semantic) |
 |---|---|---|---|
-| `color/primary/default` | `var(--color-primary)` | `primary` | `tintColor` |
-| `color/primary/fg` | `var(--color-on-primary)` | `onPrimary` | `onPrimary` |
-| `color/primary/tint` | `var(--color-primary-soft)` | `primaryContainer` | `primaryContainer` |
-| `color/primary/fg-on-tint` | `var(--color-on-primary-soft)` | `onPrimaryContainer` | `onPrimaryContainer` |
-| `color/primary/fixed` | `var(--color-primary-fixed)` | `primaryFixed` | `primaryContainer` |
-| `color/primary/fixed-dim` | `var(--color-primary-fixed-dim)` | `primaryFixedDim` | `primaryContainer` |
-| `color/primary/on-fixed` | `var(--color-on-primary-fixed)` | `onPrimaryFixed` | `onPrimaryContainer` |
-| `color/primary/on-fixed-variant` | `var(--color-on-primary-fixed-muted)` | `onPrimaryFixedVariant` | `onPrimaryContainer` |
-| `color/secondary/default` | `var(--color-secondary)` | `secondary` | `secondary` |
-| `color/secondary/fg` | `var(--color-on-secondary)` | `onSecondary` | `onSecondary` |
-| `color/secondary/tint` | `var(--color-secondary-soft)` | `secondaryContainer` | `secondaryContainer` |
-| `color/secondary/fg-on-tint` | `var(--color-on-secondary-soft)` | `onSecondaryContainer` | `onSecondaryContainer` |
-| `color/secondary/fixed` | `var(--color-secondary-fixed)` | `secondaryFixed` | `secondaryContainer` |
-| `color/secondary/fixed-dim` | `var(--color-secondary-fixed-dim)` | `secondaryFixedDim` | `secondaryContainer` |
-| `color/secondary/on-fixed` | `var(--color-on-secondary-fixed)` | `onSecondaryFixed` | `onSecondaryContainer` |
-| `color/secondary/on-fixed-variant` | `var(--color-on-secondary-fixed-muted)` | `onSecondaryFixedVariant` | `onSecondaryContainer` |
-| `color/tertiary/default` | `var(--color-accent)` | `tertiary` | `tertiary` |
-| `color/tertiary/fg` | `var(--color-on-accent)` | `onTertiary` | `onTertiary` |
-| `color/tertiary/tint` | `var(--color-accent-soft)` | `tertiaryContainer` | `tertiaryContainer` |
-| `color/tertiary/fg-on-tint` | `var(--color-on-accent-soft)` | `onTertiaryContainer` | `onTertiaryContainer` |
-| `color/tertiary/fixed` | `var(--color-accent-fixed)` | `tertiaryFixed` | `tertiaryContainer` |
-| `color/tertiary/fixed-dim` | `var(--color-accent-fixed-dim)` | `tertiaryFixedDim` | `tertiaryContainer` |
-| `color/tertiary/on-fixed` | `var(--color-on-accent-fixed)` | `onTertiaryFixed` | `onTertiaryContainer` |
-| `color/tertiary/on-fixed-variant` | `var(--color-on-accent-fixed-muted)` | `onTertiaryFixedVariant` | `onTertiaryContainer` |
-| `color/status/error` | `var(--color-danger)` | `error` | `systemRed` |
-| `color/status/error-fg` | `var(--color-on-danger)` | `onError` | `onError` |
-| `color/status/error-tint` | `var(--color-danger-soft)` | `errorContainer` | `errorContainer` |
-| `color/status/error-fg-on-tint` | `var(--color-on-danger-soft)` | `onErrorContainer` | `onErrorContainer` |
-| `color/status/error-fixed` | `var(--color-danger-fixed)` | `errorFixed` | `errorContainer` |
-| `color/status/error-fixed-dim` | `var(--color-danger-fixed-dim)` | `errorFixedDim` | `errorContainer` |
-| `color/status/error-on-fixed` | `var(--color-on-danger-fixed)` | `onErrorFixed` | `onErrorContainer` |
-| `color/status/error-on-fixed-variant` | `var(--color-on-danger-fixed-muted)` | `onErrorFixedVariant` | `onErrorContainer` |
+| `color/primary/default` | `var(--color-primary)` | `primary` | `.Primary.default` |
+| `color/primary/fg` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
+| `color/primary/tint` | `var(--color-primary-soft)` | `primary-container` | `.Primary.subtle` |
+| `color/primary/fg-on-tint` | `var(--color-on-primary-soft)` | `on-primary-container` | `.Primary.onSubtle` |
+| `color/primary/fixed` | `var(--color-primary-fixed)` | `primary-fixed` | `.Primary.fixed` |
+| `color/primary/fixed-dim` | `var(--color-primary-fixed-dim)` | `primary-fixed-dim` | `.Primary.fixedDim` |
+| `color/primary/on-fixed` | `var(--color-on-primary-fixed)` | `on-primary-fixed` | `.Primary.onFixed` |
+| `color/primary/on-fixed-variant` | `var(--color-on-primary-fixed-muted)` | `on-primary-fixed-variant` | `.Primary.onFixedMuted` |
+| `color/secondary/default` | `var(--color-secondary)` | `secondary` | `.Secondary.default` |
+| `color/secondary/fg` | `var(--color-on-secondary)` | `on-secondary` | `.Secondary.on` |
+| `color/secondary/tint` | `var(--color-secondary-soft)` | `secondary-container` | `.Secondary.subtle` |
+| `color/secondary/fg-on-tint` | `var(--color-on-secondary-soft)` | `on-secondary-container` | `.Secondary.onSubtle` |
+| `color/secondary/fixed` | `var(--color-secondary-fixed)` | `secondary-fixed` | `.Secondary.fixed` |
+| `color/secondary/fixed-dim` | `var(--color-secondary-fixed-dim)` | `secondary-fixed-dim` | `.Secondary.fixedDim` |
+| `color/secondary/on-fixed` | `var(--color-on-secondary-fixed)` | `on-secondary-fixed` | `.Secondary.onFixed` |
+| `color/secondary/on-fixed-variant` | `var(--color-on-secondary-fixed-muted)` | `on-secondary-fixed-variant` | `.Secondary.onFixedMuted` |
+| `color/tertiary/default` | `var(--color-accent)` | `tertiary` | `.Tertiary.default` |
+| `color/tertiary/fg` | `var(--color-on-accent)` | `on-tertiary` | `.Tertiary.on` |
+| `color/tertiary/tint` | `var(--color-accent-soft)` | `tertiary-container` | `.Tertiary.subtle` |
+| `color/tertiary/fg-on-tint` | `var(--color-on-accent-soft)` | `on-tertiary-container` | `.Tertiary.onSubtle` |
+| `color/tertiary/fixed` | `var(--color-accent-fixed)` | `tertiary-fixed` | `.Tertiary.fixed` |
+| `color/tertiary/fixed-dim` | `var(--color-accent-fixed-dim)` | `tertiary-fixed-dim` | `.Tertiary.fixedDim` |
+| `color/tertiary/on-fixed` | `var(--color-on-accent-fixed)` | `on-tertiary-fixed` | `.Tertiary.onFixed` |
+| `color/tertiary/on-fixed-variant` | `var(--color-on-accent-fixed-muted)` | `on-tertiary-fixed-variant` | `.Tertiary.onFixedMuted` |
+| `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
+| `color/status/error-fg` | `var(--color-on-danger)` | `on-error` | `.Status.onError` |
+| `color/status/error-tint` | `var(--color-danger-soft)` | `error-container` | `.Status.errorSubtle` |
+| `color/status/error-fg-on-tint` | `var(--color-on-danger-soft)` | `on-error-container` | `.Status.onErrorSubtle` |
+| `color/status/error-fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
+| `color/status/error-fixed-dim` | `var(--color-danger-fixed-dim)` | `error-fixed-dim` | `.Status.errorFixedDim` |
+| `color/status/error-on-fixed` | `var(--color-on-danger-fixed)` | `on-error-fixed` | `.Status.onErrorFixed` |
+| `color/status/error-on-fixed-variant` | `var(--color-on-danger-fixed-muted)` | `on-error-fixed-variant` | `.Status.onErrorFixedMuted` |
 
 #### Extensions (not in core M3 baseline diagram — shadcn alignment)
 
-| Figma variable | WEB | ANDROID (extension) | iOS (HIG) |
+| Figma variable | WEB | ANDROID (extension) | iOS (semantic) |
 |---|---|---|---|
-| `color/component/input` | `var(--color-field)` | `input` | `systemFill` |
-| `color/component/ring` | `var(--color-focus-ring)` | `ring` | `tintColor` |
-| `color/component/sidebar` | `var(--color-sidebar)` | `sidebar` | `secondarySystemBackground` |
-| `color/component/sidebar-fg` | `var(--color-on-sidebar)` | `sidebarForeground` | `label` |
+| `color/component/input` | `var(--color-field)` | `input` | `.Component.field` |
+| `color/component/ring` | `var(--color-focus-ring)` | `ring` | `.Component.ring` |
+| `color/component/sidebar` | `var(--color-sidebar)` | `sidebar` | `.Component.sidebar` |
+| `color/component/sidebar-fg` | `var(--color-on-sidebar)` | `sidebar-foreground` | `.Component.sidebarOn` |
 
 ---
 
@@ -502,19 +503,21 @@ The nonlinear rule (Android 14 behaviour) prevents very large display text from 
 
 ### codeSyntax for Typography
 
-**ANDROID and iOS are identical for all Typography variables.** Derivation: split name on `/`, `-`, spaces → lowercase each word → join with `-` for WEB `var(--result)` → camelCase for ANDROID and iOS (same value).
+**ANDROID** — same string as the WEB custom property **without** `var(--` / `)`: **kebab-case** (e.g. `display-lg-font-size`).
+
+**iOS** — **dot path** under `.Typography.{slot}.{property}` with **lowerCamel** property tails: `fontSize`, `fontFamily`, `fontWeight`, `lineHeight`. Slot uses lowerCamel from the path (`displayLg`, `headlineMd`, `bodySm`, `labelSm`).
 
 Every variable in all 12 slots follows this pattern — apply to all 48 variables:
 
-| Property | WEB example | ANDROID | iOS |
+| Property | WEB example | ANDROID | iOS (semantic) |
 |---|---|---|---|
-| `Display/LG/font-family` | `var(--display-lg-font-family)` | `displayLgFontFamily` | `displayLgFontFamily` |
-| `Display/LG/font-size` | `var(--display-lg-font-size)` | `displayLgFontSize` | `displayLgFontSize` |
-| `Display/LG/font-weight` | `var(--display-lg-font-weight)` | `displayLgFontWeight` | `displayLgFontWeight` |
-| `Display/LG/line-height` | `var(--display-lg-line-height)` | `displayLgLineHeight` | `displayLgLineHeight` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
-| `Body/MD/font-family` | `var(--body-md-font-family)` | `bodyMdFontFamily` | `bodyMdFontFamily` |
-| `Label/SM/font-weight` | `var(--label-sm-font-weight)` | `labelSmFontWeight` | `labelSmFontWeight` |
+| `Display/LG/font-family` | `var(--display-lg-font-family)` | `display-lg-font-family` | `.Typography.displayLg.fontFamily` |
+| `Display/LG/font-size` | `var(--display-lg-font-size)` | `display-lg-font-size` | `.Typography.displayLg.fontSize` |
+| `Display/LG/font-weight` | `var(--display-lg-font-weight)` | `display-lg-font-weight` | `.Typography.displayLg.fontWeight` |
+| `Display/LG/line-height` | `var(--display-lg-line-height)` | `display-lg-line-height` | `.Typography.displayLg.lineHeight` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
+| `Body/MD/font-family` | `var(--body-md-font-family)` | `body-md-font-family` | `.Typography.bodyMd.fontFamily` |
+| `Label/SM/font-weight` | `var(--label-sm-font-weight)` | `label-sm-font-weight` | `.Typography.labelSm.fontWeight` |
 
 (Pattern repeats for all 12 slots: Display/LG, Display/MD, Display/SM, Headline/LG, Headline/MD, Headline/SM, Body/LG, Body/MD, Body/SM, Label/LG, Label/MD, Label/SM — each with the same 4 properties.)
 
@@ -555,12 +558,12 @@ All Layout variables are FLOAT type aliases that point to Primitives by ID.
 
 Strip the group prefix (`space/`, `radius/`), kebab the remainder:
 
-| Variable | WEB | ANDROID | iOS |
+| Variable | WEB | ANDROID | iOS (semantic) |
 |---|---|---|---|
-| `space/xs` | `var(--space-xs)` | `spaceXs` | `spaceXs` |
-| `space/2xl` | `var(--space-2xl)` | `space2xl` | `space2xl` |
-| `radius/md` | `var(--radius-md)` | `radiusMd` | `radiusMd` |
-| `radius/full` | `var(--radius-full)` | `radiusFull` | `radiusFull` |
+| `space/xs` | `var(--space-xs)` | `space-xs` | `.Layout.space.xs` |
+| `space/2xl` | `var(--space-2xl)` | `space-2xl` | `.Layout.space.2xl` |
+| `radius/md` | `var(--radius-md)` | `radius-md` | `.Layout.radius.md` |
+| `radius/full` | `var(--radius-full)` | `radius-full` | `.Layout.radius.full` |
 
 ---
 
@@ -583,16 +586,16 @@ The blur FLOAT variables alias the corresponding Primitive elevation by ID; thei
 
 ### codeSyntax for Effects
 
-`shadow/color` maps to the M3 `shadow` color role (ANDROID `shadow`). All blur variables: ANDROID and iOS are identical camelCase.
+`shadow/color` maps to the M3 `shadow` color role. **ANDROID** uses kebab-case; **iOS** uses dot paths under `.Effect`.
 
-| Variable | WEB | ANDROID (M3) | iOS |
+| Variable | WEB | ANDROID (M3 kebab) | iOS (semantic) |
 |---|---|---|---|
-| `shadow/color` | `var(--shadow-color)` | `shadow` | `shadowColor` |
-| `shadow/sm/blur` | `var(--shadow-sm-blur)` | `shadowSmBlur` | `shadowSmBlur` |
-| `shadow/md/blur` | `var(--shadow-md-blur)` | `shadowMdBlur` | `shadowMdBlur` |
-| `shadow/lg/blur` | `var(--shadow-lg-blur)` | `shadowLgBlur` | `shadowLgBlur` |
-| `shadow/xl/blur` | `var(--shadow-xl-blur)` | `shadowXlBlur` | `shadowXlBlur` |
-| `shadow/2xl/blur` | `var(--shadow-2xl-blur)` | `shadow2xlBlur` | `shadow2xlBlur` |
+| `shadow/color` | `var(--shadow-color)` | `shadow` | `.Effect.shadow.color` |
+| `shadow/sm/blur` | `var(--shadow-sm-blur)` | `shadow-sm-blur` | `.Effect.shadow.sm.blur` |
+| `shadow/md/blur` | `var(--shadow-md-blur)` | `shadow-md-blur` | `.Effect.shadow.md.blur` |
+| `shadow/lg/blur` | `var(--shadow-lg-blur)` | `shadow-lg-blur` | `.Effect.shadow.lg.blur` |
+| `shadow/xl/blur` | `var(--shadow-xl-blur)` | `shadow-xl-blur` | `.Effect.shadow.xl.blur` |
+| `shadow/2xl/blur` | `var(--shadow-2xl-blur)` | `shadow-2xl-blur` | `.Effect.shadow.2xl.blur` |
 
 ---
 
@@ -613,15 +616,15 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   Theme source: {THEME_SOURCE}
 
   Code syntax pattern: every variable includes WEB / ANDROID / iOS tokens.
-  ANDROID and iOS differ for Primitive color ramps (see below); identical elsewhere.
+  **ANDROID** uses **kebab-case** (matches WEB token names without `var()`). **iOS** uses **dot-path semantics** (e.g. `.Palette.primary.500`, `.Space.400`). Theme rows follow Step 6 exactly.
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   PRIMITIVES
 ──────────────────────────────────────────────────────────────────────────────────────────────
   Syntax pattern:
     WEB:     var(--color-{name}-{stop})  →  e.g. var(--color-primary-500)
-    ANDROID: color{Name}{Stop}           →  e.g. colorPrimary500
-    iOS:     {name}{Stop}                →  e.g. primary500  (Swift: no type prefix)
+    ANDROID: color-{name}-{stop}        →  e.g. color-primary-500  (kebab-case)
+    iOS:     .Palette.{name}.{stop}      →  e.g. .Palette.primary.500  (dot path)
 
   Color ramps — 5 ramps × 11 stops
 
@@ -647,114 +650,114 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
 
   Spacing — base {N}px
     Token          Value    WEB                  ANDROID / iOS
-    Space/100      {N}px    var(--space-100)      space100
-    Space/200      {N}px    var(--space-200)      space200
-    Space/300      {N}px    var(--space-300)      space300
-    Space/400      {N}px    var(--space-400)      space400
-    Space/600      {N}px    var(--space-600)      space600
-    Space/800      {N}px    var(--space-800)      space800
-    Space/1200     {N}px    var(--space-1200)     space1200
-    Space/1600     {N}px    var(--space-1600)     space1600
+    Space/100      {N}px    var(--space-100)      space-100 · .Space.100
+    Space/200      {N}px    var(--space-200)      space-200 · .Space.200
+    Space/300      {N}px    var(--space-300)      space-300 · .Space.300
+    Space/400      {N}px    var(--space-400)      space-400 · .Space.400
+    Space/600      {N}px    var(--space-600)      space-600 · .Space.600
+    Space/800      {N}px    var(--space-800)      space-800 · .Space.800
+    Space/1200     {N}px    var(--space-1200)     space-1200 · .Space.1200
+    Space/1600     {N}px    var(--space-1600)     space-1600 · .Space.1600
     (+ Space/500, 700, 900, 1000, 1100, 2000, 2400)
 
   Radius — base {N}px
     Token                Value    WEB                       ANDROID / iOS
-    Corner/None          0px      var(--corner-none)        cornerNone
-    Corner/Extra-small   {N}px    var(--corner-extra-small) cornerExtraSmall
-    Corner/Small         {N}px    var(--corner-small)       cornerSmall
-    Corner/Medium        {N}px    var(--corner-medium)      cornerMedium
-    Corner/Large         {N}px    var(--corner-large)       cornerLarge
-    Corner/Extra-large   28px     var(--corner-extra-large) cornerExtraLarge
-    Corner/Full          9999px   var(--corner-full)        cornerFull
+    Corner/None          0px      var(--corner-none)        corner-none · .Corner.none
+    Corner/Extra-small   {N}px    var(--corner-extra-small) corner-extra-small · .Corner.extraSmall
+    Corner/Small         {N}px    var(--corner-small)       corner-small · .Corner.small
+    Corner/Medium        {N}px    var(--corner-medium)      corner-medium · .Corner.medium
+    Corner/Large         {N}px    var(--corner-large)       corner-large · .Corner.large
+    Corner/Extra-large   28px     var(--corner-extra-large) corner-extra-large · .Corner.extraLarge
+    Corner/Full          9999px   var(--corner-full)        corner-full · .Corner.full
 
   Elevation
     Token           Value    WEB                    ANDROID / iOS
-    elevation/100   1        var(--elevation-100)   elevation100
-    elevation/200   2        var(--elevation-200)   elevation200
-    elevation/400   4        var(--elevation-400)   elevation400
-    elevation/800   8        var(--elevation-800)   elevation800
-    elevation/1600  16       var(--elevation-1600)  elevation1600
+    elevation/100   1        var(--elevation-100)   elevation-100 · .Elevation.100
+    elevation/200   2        var(--elevation-200)   elevation-200 · .Elevation.200
+    elevation/400   4        var(--elevation-400)   elevation-400 · .Elevation.400
+    elevation/800   8        var(--elevation-800)   elevation-800 · .Elevation.800
+    elevation/1600  16       var(--elevation-1600)  elevation-1600 · .Elevation.1600
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   THEME  (54 tokens · 2 modes: Light / Dark)
 ──────────────────────────────────────────────────────────────────────────────────────────────
   codeSyntax is set explicitly per token — NOT derived from the variable path.
-  **`background/`** names the app canvas and tonal layers in Figma; ANDROID/iOS still use M3 **surface** roles (see Step 6). **`border/`** holds outline tokens. `component/*` = shadcn extensions only.
+  **`background/`** names the app canvas and tonal layers in Figma; ANDROID uses M3 roles in **kebab-case**; iOS uses **dot paths** (see Step 6). **`border/`** holds outline tokens. `component/*` = shadcn extensions only.
 
-  Figma variable                  Light   Dark    WEB (Tailwind @theme–friendly)   ANDROID (M3)              iOS (HIG)
+  Figma variable                  Light   Dark    WEB (Tailwind @theme–friendly)   ANDROID (M3 kebab)        iOS (semantic)
   — background/ (M3 surface roles on mobile) —
-  color/background/dim            {hex}   {hex}   var(--color-background-dim)      surfaceDim                secondarySystemBackground
-  color/background/default        {hex}   {hex}   var(--color-background)          surface                   systemBackground
-  color/background/bright         {hex}   {hex}   var(--color-background-bright)   surfaceBright             tertiarySystemBackground
-  color/background/container-lowest {hex} {hex}   var(--color-background-container-lowest) surfaceContainerLowest systemGroupedBackground
-  color/background/container-low  {hex}   {hex}   var(--color-background-container-low)    surfaceContainerLow      secondarySystemGroupedBackground
-  color/background/container      {hex}   {hex}   var(--color-background-container)        surfaceContainer         tertiarySystemGroupedBackground
-  color/background/container-high {hex}   {hex}   var(--color-background-container-high)   surfaceContainerHigh     tertiarySystemGroupedBackground
-  color/background/container-highest {hex} {hex}   var(--color-background-container-highest) surfaceContainerHighest systemGroupedBackground
-  color/background/variant        {hex}   {hex}   var(--color-background-variant)  surfaceVariant            tertiarySystemBackground
-  color/background/fg             {hex}   {hex}   var(--color-content)             onSurface                 label
-  color/background/fg-subtle      {hex}   {hex}   var(--color-content-muted)       onSurfaceVariant          secondaryLabel
-  color/background/inverse        {hex}   {hex}   var(--color-inverse-surface)     inverseSurface            inverseSurface
-  color/background/inverse-fg     {hex}   {hex}   var(--color-inverse-content)     inverseOnSurface          inverseOnSurface
-  color/background/inverse-primary {hex}  {hex}   var(--color-inverse-brand)       inversePrimary            inversePrimary
-  color/background/scrim          rgba…   rgba…   var(--color-scrim)               scrim                     scrim
-  color/background/shadow         rgba…   rgba…   var(--color-shadow-tint)         shadow                    shadow
+  color/background/dim            {hex}   {hex}   var(--color-background-dim)      surface-dim               .Back.dim
+  color/background/default        {hex}   {hex}   var(--color-background)          surface                   .Back.default
+  color/background/bright         {hex}   {hex}   var(--color-background-bright)   surface-bright            .Back.bright
+  color/background/container-lowest {hex} {hex}   var(--color-background-container-lowest) surface-container-lowest .Back.lowest
+  color/background/container-low  {hex}   {hex}   var(--color-background-container-low)    surface-container-low      .Back.low
+  color/background/container      {hex}   {hex}   var(--color-background-container)        surface-container         .Back.mid
+  color/background/container-high {hex}   {hex}   var(--color-background-container-high)   surface-container-high     .Back.high
+  color/background/container-highest {hex} {hex}   var(--color-background-container-highest) surface-container-highest .Back.highest
+  color/background/variant        {hex}   {hex}   var(--color-background-variant)  surface-variant            .Back.variant
+  color/background/fg             {hex}   {hex}   var(--color-content)             on-surface                 .Fore.primary
+  color/background/fg-subtle      {hex}   {hex}   var(--color-content-muted)       on-surface-variant          .Fore.secondary
+  color/background/inverse        {hex}   {hex}   var(--color-inverse-surface)     inverse-surface            .Back.inverse
+  color/background/inverse-fg     {hex}   {hex}   var(--color-inverse-content)     inverse-on-surface          .Fore.inverse
+  color/background/inverse-primary {hex}  {hex}   var(--color-inverse-brand)       inverse-primary            .Primary.inverse
+  color/background/scrim          rgba…   rgba…   var(--color-scrim)               scrim                     .Effect.scrim
+  color/background/shadow         rgba…   rgba…   var(--color-shadow-tint)         shadow                    .Back.shadowTint
   — border/ (outline) —
-  color/border/default            {hex}   {hex}   var(--color-border)              outline                   separator
-  color/border/subtle             {hex}   {hex}   var(--color-border-subtle)       outlineVariant            opaqueSeparator
+  color/border/default            {hex}   {hex}   var(--color-border)              outline                   .Border.default
+  color/border/subtle             {hex}   {hex}   var(--color-border-subtle)       outline-variant            .Border.subtle
   — primary/ —
-  color/primary/default           {hex}   {hex}   var(--color-primary)             primary                   tintColor
-  color/primary/fg                {hex}   {hex}   var(--color-on-primary)          onPrimary                 onPrimary
-  color/primary/tint              {hex}   {hex}   var(--color-primary-soft)        primaryContainer          primaryContainer
-  color/primary/fg-on-tint        {hex}   {hex}   var(--color-on-primary-soft)     onPrimaryContainer        onPrimaryContainer
-  color/primary/fixed             {hex}   {hex}   var(--color-primary-fixed)       primaryFixed              primaryContainer
-  color/primary/fixed-dim         {hex}   {hex}   var(--color-primary-fixed-dim)   primaryFixedDim           primaryContainer
-  color/primary/on-fixed          {hex}   {hex}   var(--color-on-primary-fixed)    onPrimaryFixed            onPrimaryContainer
-  color/primary/on-fixed-variant  {hex}   {hex}   var(--color-on-primary-fixed-muted) onPrimaryFixedVariant  onPrimaryContainer
+  color/primary/default           {hex}   {hex}   var(--color-primary)             primary                   .Primary.default
+  color/primary/fg                {hex}   {hex}   var(--color-on-primary)          on-primary                 .Primary.on
+  color/primary/tint              {hex}   {hex}   var(--color-primary-soft)        primary-container          .Primary.subtle
+  color/primary/fg-on-tint        {hex}   {hex}   var(--color-on-primary-soft)     on-primary-container        .Primary.onSubtle
+  color/primary/fixed             {hex}   {hex}   var(--color-primary-fixed)       primary-fixed              .Primary.fixed
+  color/primary/fixed-dim         {hex}   {hex}   var(--color-primary-fixed-dim)   primary-fixed-dim           .Primary.fixedDim
+  color/primary/on-fixed          {hex}   {hex}   var(--color-on-primary-fixed)    on-primary-fixed            .Primary.onFixed
+  color/primary/on-fixed-variant  {hex}   {hex}   var(--color-on-primary-fixed-muted) on-primary-fixed-variant  .Primary.onFixedMuted
   — secondary/ —
-  color/secondary/default         {hex}   {hex}   var(--color-secondary)           secondary                 secondary
-  color/secondary/fg              {hex}   {hex}   var(--color-on-secondary)        onSecondary               onSecondary
-  color/secondary/tint            {hex}   {hex}   var(--color-secondary-soft)      secondaryContainer        secondaryContainer
-  color/secondary/fg-on-tint      {hex}   {hex}   var(--color-on-secondary-soft)   onSecondaryContainer      onSecondaryContainer
-  color/secondary/fixed           {hex}   {hex}   var(--color-secondary-fixed)     secondaryFixed            secondaryContainer
-  color/secondary/fixed-dim       {hex}   {hex}   var(--color-secondary-fixed-dim) secondaryFixedDim         secondaryContainer
-  color/secondary/on-fixed        {hex}   {hex}   var(--color-on-secondary-fixed)  onSecondaryFixed          onSecondaryContainer
-  color/secondary/on-fixed-variant {hex}  {hex}   var(--color-on-secondary-fixed-muted) onSecondaryFixedVariant onSecondaryContainer
+  color/secondary/default         {hex}   {hex}   var(--color-secondary)           secondary                 .Secondary.default
+  color/secondary/fg              {hex}   {hex}   var(--color-on-secondary)        on-secondary               .Secondary.on
+  color/secondary/tint            {hex}   {hex}   var(--color-secondary-soft)      secondary-container        .Secondary.subtle
+  color/secondary/fg-on-tint      {hex}   {hex}   var(--color-on-secondary-soft)   on-secondary-container      .Secondary.onSubtle
+  color/secondary/fixed           {hex}   {hex}   var(--color-secondary-fixed)     secondary-fixed            .Secondary.fixed
+  color/secondary/fixed-dim       {hex}   {hex}   var(--color-secondary-fixed-dim) secondary-fixed-dim         .Secondary.fixedDim
+  color/secondary/on-fixed        {hex}   {hex}   var(--color-on-secondary-fixed)  on-secondary-fixed          .Secondary.onFixed
+  color/secondary/on-fixed-variant {hex}  {hex}   var(--color-on-secondary-fixed-muted) on-secondary-fixed-variant .Secondary.onFixedMuted
   — tertiary/ —
-  color/tertiary/default          {hex}   {hex}   var(--color-accent)              tertiary                  tertiary
-  color/tertiary/fg               {hex}   {hex}   var(--color-on-accent)           onTertiary                onTertiary
-  color/tertiary/tint             {hex}   {hex}   var(--color-accent-soft)         tertiaryContainer         tertiaryContainer
-  color/tertiary/fg-on-tint       {hex}   {hex}   var(--color-on-accent-soft)      onTertiaryContainer       onTertiaryContainer
-  color/tertiary/fixed            {hex}   {hex}   var(--color-accent-fixed)        tertiaryFixed             tertiaryContainer
-  color/tertiary/fixed-dim        {hex}   {hex}   var(--color-accent-fixed-dim)    tertiaryFixedDim          tertiaryContainer
-  color/tertiary/on-fixed         {hex}   {hex}   var(--color-on-accent-fixed)     onTertiaryFixed            onTertiaryContainer
-  color/tertiary/on-fixed-variant {hex}   {hex}   var(--color-on-accent-fixed-muted) onTertiaryFixedVariant  onTertiaryContainer
+  color/tertiary/default          {hex}   {hex}   var(--color-accent)              tertiary                  .Tertiary.default
+  color/tertiary/fg               {hex}   {hex}   var(--color-on-accent)           on-tertiary                .Tertiary.on
+  color/tertiary/tint             {hex}   {hex}   var(--color-accent-soft)         tertiary-container         .Tertiary.subtle
+  color/tertiary/fg-on-tint       {hex}   {hex}   var(--color-on-accent-soft)      on-tertiary-container       .Tertiary.onSubtle
+  color/tertiary/fixed            {hex}   {hex}   var(--color-accent-fixed)        tertiary-fixed             .Tertiary.fixed
+  color/tertiary/fixed-dim        {hex}   {hex}   var(--color-accent-fixed-dim)    tertiary-fixed-dim          .Tertiary.fixedDim
+  color/tertiary/on-fixed         {hex}   {hex}   var(--color-on-accent-fixed)     on-tertiary-fixed           .Tertiary.onFixed
+  color/tertiary/on-fixed-variant {hex}   {hex}   var(--color-on-accent-fixed-muted) on-tertiary-fixed-variant  .Tertiary.onFixedMuted
   — status/ —
-  color/status/error              {hex}   {hex}   var(--color-danger)              error                     systemRed
-  color/status/error-fg           {hex}   {hex}   var(--color-on-danger)           onError                   onError
-  color/status/error-tint         {hex}   {hex}   var(--color-danger-soft)         errorContainer            errorContainer
-  color/status/error-fg-on-tint   {hex}   {hex}   var(--color-on-danger-soft)      onErrorContainer          onErrorContainer
-  color/status/error-fixed        {hex}   {hex}   var(--color-danger-fixed)        errorFixed                errorContainer
-  color/status/error-fixed-dim    {hex}   {hex}   var(--color-danger-fixed-dim)    errorFixedDim             errorContainer
-  color/status/error-on-fixed     {hex}   {hex}   var(--color-on-danger-fixed)     onErrorFixed              onErrorContainer
-  color/status/error-on-fixed-variant {hex} {hex} var(--color-on-danger-fixed-muted) onErrorFixedVariant    onErrorContainer
+  color/status/error              {hex}   {hex}   var(--color-danger)              error                     .Status.error
+  color/status/error-fg           {hex}   {hex}   var(--color-on-danger)           on-error                   .Status.onError
+  color/status/error-tint         {hex}   {hex}   var(--color-danger-soft)         error-container            .Status.errorSubtle
+  color/status/error-fg-on-tint   {hex}   {hex}   var(--color-on-danger-soft)      on-error-container          .Status.onErrorSubtle
+  color/status/error-fixed        {hex}   {hex}   var(--color-danger-fixed)        error-fixed                .Status.errorFixed
+  color/status/error-fixed-dim    {hex}   {hex}   var(--color-danger-fixed-dim)    error-fixed-dim             .Status.errorFixedDim
+  color/status/error-on-fixed     {hex}   {hex}   var(--color-on-danger-fixed)     on-error-fixed              .Status.onErrorFixed
+  color/status/error-on-fixed-variant {hex} {hex} var(--color-on-danger-fixed-muted) on-error-fixed-variant    .Status.onErrorFixedMuted
   — component/ (shadcn extensions) —
-  color/component/input           {hex}   {hex}   var(--color-field)               input                     systemFill
-  color/component/ring            {hex}   {hex}   var(--color-focus-ring)          ring                      tintColor
-  color/component/sidebar         {hex}   {hex}   var(--color-sidebar)             sidebar                   secondarySystemBackground
-  color/component/sidebar-fg      {hex}   {hex}   var(--color-on-sidebar)          sidebarForeground         label
+  color/component/input           {hex}   {hex}   var(--color-field)               input                     .Component.field
+  color/component/ring            {hex}   {hex}   var(--color-focus-ring)          ring                      .Component.ring
+  color/component/sidebar         {hex}   {hex}   var(--color-sidebar)             sidebar                   .Component.sidebar
+  color/component/sidebar-fg      {hex}   {hex}   var(--color-on-sidebar)          sidebar-foreground         .Component.sidebarOn
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   TYPOGRAPHY  (48 variables · 8 scale modes)
 ──────────────────────────────────────────────────────────────────────────────────────────────
   Body font: {bodyFont}   Display font: {displayFont}
-  Syntax pattern: {slot}/{property} → kebab → WEB var(--{slot}-{property}) · ANDROID/iOS camelCase
+  Syntax pattern: {slot}/{property} → kebab → WEB var(--{slot}-{property}) · ANDROID kebab · iOS dot path
 
-  Slot          Prop          WEB syntax                      ANDROID / iOS
-  Display/LG    font-size     var(--display-lg-font-size)     displayLgFontSize
-                font-family   var(--display-lg-font-family)   displayLgFontFamily
-                font-weight   var(--display-lg-font-weight)   displayLgFontWeight
-                line-height   var(--display-lg-line-height)   displayLgLineHeight
+  Slot          Prop          WEB syntax                      ANDROID          iOS (semantic)
+  Display/LG    font-size     var(--display-lg-font-size)     display-lg-font-size     .Typography.display.lg.fontSize
+                font-family   var(--display-lg-font-family)   display-lg-font-family   .Typography.display.lg.fontFamily
+                font-weight   var(--display-lg-font-weight)   display-lg-font-weight   .Typography.display.lg.fontWeight
+                line-height   var(--display-lg-line-height)   display-lg-line-height   .Typography.display.lg.lineHeight
   (pattern repeats for all 12 slots)
 
   Sizes — 100 (default) / 130 (large) / 200 (max):
@@ -777,32 +780,32 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   LAYOUT  (15 tokens · Default mode)
 ──────────────────────────────────────────────────────────────────────────────────────────────
   Token        Value    WEB                   ANDROID / iOS
-  space/xs     {N}px    var(--space-xs)        spaceXs
-  space/sm     {N}px    var(--space-sm)        spaceSm
-  space/md     {N}px    var(--space-md)        spaceMd
-  space/lg     {N}px    var(--space-lg)        spaceLg
-  space/xl     {N}px    var(--space-xl)        spaceXl
-  space/2xl    {N}px    var(--space-2xl)       space2xl
-  space/3xl    {N}px    var(--space-3xl)       space3xl
-  space/4xl    {N}px    var(--space-4xl)       space4xl
-  radius/none  0px      var(--radius-none)     radiusNone
-  radius/xs    {N}px    var(--radius-xs)       radiusXs
-  radius/sm    {N}px    var(--radius-sm)       radiusSm
-  radius/md    {N}px    var(--radius-md)       radiusMd
-  radius/lg    {N}px    var(--radius-lg)       radiusLg
-  radius/xl    28px     var(--radius-xl)       radiusXl
-  radius/full  9999px   var(--radius-full)     radiusFull
+  space/xs     {N}px    var(--space-xs)        space-xs · .Layout.space.xs
+  space/sm     {N}px    var(--space-sm)        space-sm · .Layout.space.sm
+  space/md     {N}px    var(--space-md)        space-md · .Layout.space.md
+  space/lg     {N}px    var(--space-lg)        space-lg · .Layout.space.lg
+  space/xl     {N}px    var(--space-xl)        space-xl · .Layout.space.xl
+  space/2xl    {N}px    var(--space-2xl)       space-2xl · .Layout.space.2xl
+  space/3xl    {N}px    var(--space-3xl)       space-3xl · .Layout.space.3xl
+  space/4xl    {N}px    var(--space-4xl)       space-4xl · .Layout.space.4xl
+  radius/none  0px      var(--radius-none)     radius-none · .Layout.radius.none
+  radius/xs    {N}px    var(--radius-xs)       radius-xs · .Layout.radius.xs
+  radius/sm    {N}px    var(--radius-sm)       radius-sm · .Layout.radius.sm
+  radius/md    {N}px    var(--radius-md)       radius-md · .Layout.radius.md
+  radius/lg    {N}px    var(--radius-lg)       radius-lg · .Layout.radius.lg
+  radius/xl    28px     var(--radius-xl)       radius-xl · .Layout.radius.xl
+  radius/full  9999px   var(--radius-full)     radius-full · .Layout.radius.full
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   EFFECTS  (6 tokens · 2 modes: Light / Dark)
 ──────────────────────────────────────────────────────────────────────────────────────────────
   Token            Light              Dark               WEB                     ANDROID / iOS
-  shadow/color     rgba(0,0,0,0.10)   rgba(0,0,0,0.30)   var(--shadow-color)     shadowColor
-  shadow/sm/blur   1px                1px                var(--shadow-sm-blur)   shadowSmBlur
-  shadow/md/blur   2px                2px                var(--shadow-md-blur)   shadowMdBlur
-  shadow/lg/blur   4px                4px                var(--shadow-lg-blur)   shadowLgBlur
-  shadow/xl/blur   8px                8px                var(--shadow-xl-blur)   shadowXlBlur
-  shadow/2xl/blur  16px               16px               var(--shadow-2xl-blur)  shadow2xlBlur
+  shadow/color     rgba(0,0,0,0.10)   rgba(0,0,0,0.30)   var(--shadow-color)     shadow · .Effect.shadow.color
+  shadow/sm/blur   1px                1px                var(--shadow-sm-blur)   shadow-sm-blur · .Effect.shadow.sm.blur
+  shadow/md/blur   2px                2px                var(--shadow-md-blur)   shadow-md-blur · .Effect.shadow.md.blur
+  shadow/lg/blur   4px                4px                var(--shadow-lg-blur)   shadow-lg-blur · .Effect.shadow.lg.blur
+  shadow/xl/blur   8px                8px                var(--shadow-xl-blur)   shadow-xl-blur · .Effect.shadow.xl.blur
+  shadow/2xl/blur  16px               16px               var(--shadow-2xl-blur)  shadow-2xl-blur · .Effect.shadow.2xl.blur
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -882,14 +885,14 @@ Each entry — showing a real Theme example:
   "codeSyntax": {
     "WEB":     "var(--color-background)",
     "ANDROID": "surface",
-    "iOS":     "systemBackground"
+    "iOS":     ".Back.default"
   }
 }
 ```
 
-The `"ANDROID"` value is the **M3 color role token** (same identifier as a `ColorScheme` property in Compose Material 3 — e.g. `MaterialTheme.colorScheme.surface`). It is a **flat** camelCase name, not a nested path.
+The `"ANDROID"` value is the **M3 `ColorScheme` role** in **kebab-case** (same role as `MaterialTheme.colorScheme.surface` in Compose — here `surface` is already a single word). Multi-word Compose properties become hyphenated (e.g. `surface-container-high`).
 
-Note that WEB, ANDROID, and iOS are all **different values** for Theme variables — iOS uses HIG system color names, not the same camelCase as ANDROID. Never copy ANDROID into iOS; always read the iOS column from the Step 6 table.
+The `"iOS"` value is a **semantic dot path** (e.g. `.Back.default`, `.Back.high`) — not a `UIColor` symbol name. Never copy the ANDROID string into iOS; always read both columns from the Step 6 table.
 
 Look up each variable's three codeSyntax values from the appropriate step:
 - Primitives (`color/*`, `Space/*`, `Corner/*`, `elevation/*`) → Step 5 codeSyntax rules
@@ -929,17 +932,17 @@ Confirm:
 - `Theme` has exactly 2 modes: `Light` and `Dark`
 - `Typography` has exactly 8 modes: `85`, `100`, `110`, `120`, `130`, `150`, `175`, `200`
 - `Primitives` contains the expected 5 color ramps (primary, secondary, tertiary, error, neutral)
-- No `Web`, `Android/M3`, or `iOS/HIG` collections were created
+- No `Web`, `Android/M3`, or separate iOS-only collections were created
 
 **codeSyntax spot-check — verify at least these three variables have all three platform values populated with the correct casing (`"iOS"`, not `"ios"`):**
 
 | Variable | Expected WEB | Expected ANDROID | Expected `"iOS"` key |
 |---|---|---|---|
-| `color/background/default` (Theme) | `var(--color-background)` | `surface` | `systemBackground` |
-| `color/status/error` (Theme) | `var(--color-danger)` | `error` | `systemRed` |
-| `color/primary/500` (Primitives) | `var(--color-primary-500)` | `colorPrimary500` | `primary500` |
+| `color/background/default` (Theme) | `var(--color-background)` | `surface` | `.Back.default` |
+| `color/status/error` (Theme) | `var(--color-danger)` | `error` | `.Status.error` |
+| `color/primary/500` (Primitives) | `var(--color-primary-500)` | `color-primary-500` | `.Palette.primary.500` |
 
-If the `iOS` key is absent or its value **equals** the ANDROID value on Theme variables (e.g. both `surface` on `color/background/default` instead of iOS `systemBackground`), the write used wrong key casing or copied ANDROID into iOS. Re-issue a `PUT` with correct `"iOS"` casing on all affected variables before proceeding to Step 13.
+If the `iOS` key is absent or its value **equals** the ANDROID value on Theme variables (e.g. both `surface` on `color/background/default` instead of iOS `.Back.default`), the write used wrong key casing or copied ANDROID into iOS. Re-issue a `PUT` with correct `"iOS"` casing on all affected variables before proceeding to Step 13.
 
 Report any expected variables absent from the verified response.
 
@@ -1572,7 +1575,7 @@ For each of the 7 semantic groups (`background/`, `border/`, `primary/`, `second
 2. Draw token cards in a 3-column grid (column width ~450px, 16px gutter, 8px corner radius, 1px stroke `color/neutral/200`, 16px padding):
    - **Swatch row:** two 40×40 squares side by side — left square filled with the resolved Light mode hex, right square filled with the resolved Dark mode hex. Label `Light` and `Dark` below each square in Label/SM neutral/600.
    - **Token path:** the variable name (e.g. `color/background/default`), Label/MD, bold, on the next row.
-   - **Code names:** three monospace lines in Label/SM neutral/600: `WEB: var(--color-background)`, `ANDROID: surface`, `iOS: systemBackground`. Values come from the Step 6 codeSyntax table.
+   - **Code names:** three monospace lines in Label/SM neutral/600: `WEB: var(--color-background)`, `ANDROID: surface`, `iOS: .Back.default`. Values come from the Step 6 codeSyntax table.
 
 **↳ Layout page**
 
@@ -1615,7 +1618,7 @@ Inside the root frame, first create the JSON manifest text node, then create the
 Create a text node named `[MCP] JSON Manifest` at the top of the root frame (y=0 within the frame). Set its content to the full token manifest as a minified JSON string in this shape — substitute all `{…}` placeholders with actual resolved values, no aliases:
 
 ```
-{ "meta": { "generated": "<ISO-8601 timestamp>", "skill": "create-design-system", "file": "<TARGET_FILE_KEY>" }, "collections": { "Primitives": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "<css-var>", "android": "<camelCase>", "ios": "<camelCase>" }, ... }, "Theme": { "light": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "...", "android": "...", "ios": "..." }, ... }, "dark": { ... } }, "Typography": { "100": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "130": { ... }, ... }, "Layout": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "Effects": { "<path>": { ... }, ... } } }
+{ "meta": { "generated": "<ISO-8601 timestamp>", "skill": "create-design-system", "file": "<TARGET_FILE_KEY>" }, "collections": { "Primitives": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "<css-var>", "android": "<kebab-case>", "ios": "<dot.path>" }, ... }, "Theme": { "light": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "...", "android": "...", "ios": "..." }, ... }, "dark": { ... } }, "Typography": { "100": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "130": { ... }, ... }, "Layout": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "Effects": { "<path>": { ... }, ... } } }
 ```
 
 Use Label/SM monospace typeface (or the closest available font). Width: 1440px.
@@ -1766,43 +1769,41 @@ Apply to every variable in every collection.
 2. Split on `/`, `-`, and spaces into word tokens: `["color","primary","500"]` or `["Display","LG","font","size"]`
 3. **WEB:** lowercase all tokens, join with `-`, wrap: `var(--color-primary-500)` / `var(--display-lg-font-size)`
    - Exception for Primitives: this derivation applies. For Theme: see rule 6 — codeSyntax is set explicitly from the Step 6 table, not derived.
-4. **ANDROID:** lowercase all tokens, capitalize each word after the first, join (camelCase): `colorOnSurfaceVariant` / `displayLgFontSize`
-   - Exception for Primitives color ramps: retain the `color` word → `colorPrimary500`
-5. **iOS:** same camelCase as ANDROID with one exception:
-   - Exception for Primitives color ramps: drop the `color` word → `primary500` (Swift API Design Guidelines)
-6. **Theme (all platforms):** codeSyntax is set EXPLICITLY per token from the table in Step 6. The Figma path is a designer label; do not derive codeSyntax from it. Example: `color/background/fg-subtle` → WEB `var(--color-content-muted)`, ANDROID `onSurfaceVariant` — path, WEB, and ANDROID are intentionally different.
+4. **ANDROID:** for tokens that use derivation (Primitives layout-adjacent, Layout, Effects), use the **WEB token string without** `var(--` / `)` — **kebab-case** (e.g. `space-md`, `shadow-sm-blur`, `color-primary-500`).
+5. **iOS:** for derived tokens, use **dot paths** — see Step 5 (Primitives), Step 7 (Typography), Step 8 (Layout), Step 9 (Effects).
+6. **Theme (all platforms):** codeSyntax is set EXPLICITLY per token from the table in Step 6. The Figma path is a designer label; do not derive codeSyntax from it. Example: `color/background/fg-subtle` → WEB `var(--color-content-muted)`, ANDROID `on-surface-variant`, iOS `.Fore.secondary` — path and all three codeSyntax columns are intentionally different.
 
 ### Platform exception summary
 
 **Theme (all platforms — codeSyntax set EXPLICITLY from the Step 6 table, NOT derived from path):**
 
-The Figma token path is a designer-friendly label. The codeSyntax name is different by design. Always read from the Step 6 table — never generate Theme codeSyntax by transforming the path. Official M3 role list: [Material Design 3 — Static baseline](https://m3.material.io/styles/color/static/baseline). ANDROID values are flat `ColorScheme` names (e.g. `surfaceContainerHigh`), not nested scopes.
+The Figma token path is a designer-friendly label. The codeSyntax name is different by design. Always read from the Step 6 table — never generate Theme codeSyntax by transforming the path. Official M3 role list: [Material Design 3 — Static baseline](https://m3.material.io/styles/color/static/baseline). ANDROID `codeSyntax` uses those roles in **kebab-case** (e.g. `surface-container-high`), not Compose API camelCase.
 
 Selected examples showing intentional name divergence:
 
-| Figma token path | WEB | ANDROID (M3) | iOS (HIG) |
+| Figma token path | WEB | ANDROID (M3 kebab) | iOS (semantic) |
 |---|---|---|---|
-| `color/background/default` | `var(--color-background)` | `surface` | `systemBackground` |
-| `color/background/container-high` | `var(--color-background-container-high)` | `surfaceContainerHigh` | `tertiarySystemGroupedBackground` |
-| `color/background/inverse` | `var(--color-inverse-surface)` | `inverseSurface` | `inverseSurface` |
-| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `shadow` |
-| `color/background/variant` | `var(--color-background-variant)` | `surfaceVariant` | `tertiarySystemBackground` |
-| `color/background/fg-subtle` | `var(--color-content-muted)` | `onSurfaceVariant` | `secondaryLabel` |
-| `color/border/default` | `var(--color-border)` | `outline` | `separator` |
-| `color/primary/fixed` | `var(--color-primary-fixed)` | `primaryFixed` | `primaryContainer` |
-| `color/primary/fg` | `var(--color-on-primary)` | `onPrimary` | `onPrimary` |
-| `color/status/error-fixed` | `var(--color-danger-fixed)` | `errorFixed` | `errorContainer` |
-| `color/status/error` | `var(--color-danger)` | `error` | `systemRed` |
+| `color/background/default` | `var(--color-background)` | `surface` | `.Back.default` |
+| `color/background/container-high` | `var(--color-background-container-high)` | `surface-container-high` | `.Back.high` |
+| `color/background/inverse` | `var(--color-inverse-surface)` | `inverse-surface` | `.Back.inverse` |
+| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Back.shadowTint` |
+| `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Back.variant` |
+| `color/background/fg-subtle` | `var(--color-content-muted)` | `on-surface-variant` | `.Fore.secondary` |
+| `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
+| `color/primary/fixed` | `var(--color-primary-fixed)` | `primary-fixed` | `.Primary.fixed` |
+| `color/primary/fg` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
+| `color/status/error-fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
+| `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
 
 The full Theme codeSyntax table is in Step 6 — this is just a reminder that path ≠ codeSyntax for Theme.
 
-**Primitives color ramps (ANDROID retains `color` prefix; iOS drops it):**
-- `color/primary/500` → WEB `var(--color-primary-500)`, ANDROID `colorPrimary500`, iOS `primary500`
-- `color/neutral/100` → WEB `var(--color-neutral-100)`, ANDROID `colorNeutral100`, iOS `neutral100`
+**Primitives color ramps:**
+- `color/primary/500` → WEB `var(--color-primary-500)`, ANDROID `color-primary-500`, iOS `.Palette.primary.500`
+- `color/neutral/100` → WEB `var(--color-neutral-100)`, ANDROID `color-neutral-100`, iOS `.Palette.neutral.100`
 
-**All other tokens (Space, Corner, elevation, Typography, Layout, Effects — identical):**
-- `space/md` → WEB `var(--space-md)`, ANDROID `spaceMd`, iOS `spaceMd`
-- `Display/LG/font-size` → WEB `var(--display-lg-font-size)`, ANDROID `displayLgFontSize`, iOS `displayLgFontSize`
+**Layout / Effects (pattern):**
+- `space/md` → WEB `var(--space-md)`, ANDROID `space-md`, iOS `.Layout.space.md`
+- `Display/LG/font-size` → WEB `var(--display-lg-font-size)`, ANDROID `display-lg-font-size`, iOS `.Typography.displayLg.fontSize`
 
 ---
 

@@ -843,14 +843,14 @@ addPlaceholder(arch, 'architecture');
 // Section 2: Platform Mapping table
 // ────────────────────────────────────────────────────────────────
 const platformRows = [
-  ['color/background/default',   'var(--color-background)',       'surface',           'systemBackground'],
-  ['color/primary/default',      'var(--color-primary)',          'primary',           'tintColor'],
-  ['color/border/default',       'var(--color-border)',           'outline',           'separator'],
-  ['color/status/error',         'var(--color-danger)',           'error',             'systemRed'],
-  ['Headline/LG/font-size',      'var(--headline-lg-font-size)',  'headlineLgFontSize','headlineLgFontSize'],
-  ['space/md',                   'var(--space-md)',               'spaceMd',           'spaceMd'],
-  ['radius/md',                  'var(--radius-md)',              'radiusMd',          'radiusMd'],
-  ['shadow/color',               'var(--shadow-color)',           'shadowColor',       'shadowColor'],
+  ['color/background/default',   'var(--color-background)',       'surface',               '.Back.default'],
+  ['color/primary/default',      'var(--color-primary)',          'primary',               '.Primary.default'],
+  ['color/border/default',       'var(--color-border)',           'outline',               '.Border.default'],
+  ['color/status/error',         'var(--color-danger)',           'error',                 '.Status.error'],
+  ['Headline/LG/font-size',      'var(--headline-lg-font-size)',  'headline-lg-font-size', '.Typography.headlineLg.fontSize'],
+  ['space/md',                   'var(--space-md)',               'space-md',              '.Layout.space.md'],
+  ['radius/md',                  'var(--radius-md)',              'radius-md',             '.Layout.radius.md'],
+  ['shadow/color',               'var(--shadow-color)',           'shadow',                '.Effect.shadow.color'],
 ];
 
 const TABLE_COL_WIDTHS = [320, 320, 320, 320];
@@ -877,7 +877,7 @@ tableStack.fills = [];
 tableStack.layoutAlign = 'STRETCH';
 platform.appendChild(tableStack);
 
-const tableHeaders = ['Token', 'WEB', 'ANDROID (M3)', 'iOS (HIG)'];
+const tableHeaders = ['Token', 'WEB', 'ANDROID (M3 kebab)', 'iOS (semantic)'];
 const headerRow = figma.createFrame();
 headerRow.name = 'table-header';
 headerRow.resize(SECTION_WIDTH - 80, TABLE_ROW_HEIGHT);

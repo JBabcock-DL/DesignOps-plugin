@@ -413,22 +413,22 @@ Effects  (Light mode / Dark mode)
   └── shadow/sm–2xl/blur → elevation/* aliases
 ```
 
-Every variable carries `codeSyntax` for all three platforms. There are no separate Web, Android/M3, or iOS/HIG alias collections — platform naming lives inline on each token.
+Every variable carries `codeSyntax` for all three platforms. There are no separate Web, Android/M3, or iOS alias collections — platform naming lives inline on each token.
 
-**ANDROID (Theme)** uses [Material Design 3](https://m3.material.io/styles/color/static/baseline) **`ColorScheme` role names** (flat camelCase: `surface`, `surfaceContainerHigh`, `onSurface`, `outline`, `primaryFixed`, `errorFixed`, …) — the same identifiers as Jetpack Compose Material 3. Figma paths use **`color/background/*`** for the canvas layer group; ANDROID **`codeSyntax`** still says **`surface`** / **`onSurface`** (not `background`). **`component/*` tokens** map to shadcn extension names (`sidebar`, `ring`, …). See `/create-design-system` Step 6 for the full table. **iOS** uses **Apple HIG** system color names where a direct semantic equivalent exists.
+**ANDROID** `codeSyntax` strings use **kebab-case** aligned to Material 3 roles (e.g. `surface-container-high`, `on-primary`, `error-fixed`) — the same semantics as [Jetpack Compose `ColorScheme`](https://developer.android.com/jetpack/compose/designsystems/material3), not API camelCase. **iOS** `codeSyntax` strings use **dot-path semantics** (e.g. `.Back.default`, `.Back.high`, `.Primary.on`, `.Border.default`) for design-system / codegen references — not `UIColor` symbol names. See `/create-design-system` Step 6 for the full Theme table.
 
 `/create-design-system` supports **`--theme baseline`** (M3 baseline seed hues for Primitives ramps) or **`--theme brand`** / wizard defaults; see the skill for Step 2.5.
 
-| Token | WEB | ANDROID (M3) | iOS (HIG) |
+| Token | WEB | ANDROID (M3 kebab) | iOS (semantic) |
 |---|---|---|---|
-| `color/background/default` | `var(--color-background)` | `surface` | `systemBackground` |
-| `color/background/container-high` | `var(--color-background-container-high)` | `surfaceContainerHigh` | `tertiarySystemGroupedBackground` |
-| `color/background/variant` | `var(--color-background-variant)` | `surfaceVariant` | `tertiarySystemBackground` |
-| `color/border/default` | `var(--color-border)` | `outline` | `separator` |
-| `color/primary/tint` | `var(--color-primary-soft)` | `primaryContainer` | `primaryContainer` |
-| `color/status/error` | `var(--color-danger)` | `error` | `systemRed` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headlineLgFontSize` | `headlineLgFontSize` |
-| `space/md` | `var(--space-md)` | `spaceMd` | `spaceMd` |
+| `color/background/default` | `var(--color-background)` | `surface` | `.Back.default` |
+| `color/background/container-high` | `var(--color-background-container-high)` | `surface-container-high` | `.Back.high` |
+| `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Back.variant` |
+| `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
+| `color/primary/tint` | `var(--color-primary-soft)` | `primary-container` | `.Primary.subtle` |
+| `color/status/error` | `var(--color-danger)` | `error` | `.Status.error` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
+| `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
 ### tokens.css — local codebase file
 
