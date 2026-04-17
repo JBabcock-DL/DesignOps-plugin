@@ -1,6 +1,6 @@
 ---
 name: create-design-system
-description: Push brand tokens into five Figma variable collections — Primitives, Theme (Light/Dark modes), Typography (8 Android-curve scale modes), Layout, and Effects. Platform mapping (Web/Android/iOS) is encoded as codeSyntax on every variable instead of separate alias collections.
+description: Push brand tokens into five Figma variable collections — Primitives, Theme (Light/Dark modes), Typography (8 Android-curve scale modes), Layout, and Effects. Platform mapping (Web/Android/iOS) is encoded as codeSyntax on every variable instead of separate alias collections. Local tokens.css is optional (explicit opt-in after variables are pushed).
 argument-hint: "Optional: --theme brand|baseline (default brand). Optional: --file-key <key-or-figma-design-url> (e.g. when chaining from /new-project). Baseline uses Material 3 static baseline seed hues for Primitives ramps; Brand uses wizard or pasted hexes."
 agent: general-purpose
 ---
@@ -33,9 +33,46 @@ When `THEME_FROM_CLI` is **true** and Step 2 was **no**, skip Step 2.5. When Ste
 
 ## Interactive input contract
 
-- For **Steps 1–4**, **Step 2.5** (theme source, when needed), **Step 10** (plan approval), **Step 11** when the API returns partial write errors, and **Step 19**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
+- For **Steps 1–4**, **Step 2.5** (theme source, when needed), **Step 10** (plan approval), **Step 11** when the API returns partial write errors, **Step 12.5** (optional `tokens.css`), **Step 13** (path prompt in 13a when CSS is opted in), and **Step 19**, collect designer input **only** using **AskUserQuestion**. Use **one AskUserQuestion call per question** and wait for each answer before the next call.
 - **Do not** print a block of multiple questions as plain markdown before the first AskUserQuestion.
 - After any AskUserQuestion, you may show a brief acknowledgment in prose; do not bundle the next question in that same message — call AskUserQuestion again.
+- Follow **Progress checklist** below so the designer sees liveness during long wizard and API runs.
+
+---
+
+## Progress checklist (required)
+
+**While collecting answers (Steps 1–4):** After **each** Step 3 `AskUserQuestion` answer, send **one** short line before the next question, e.g. `Collected: base border radius (px)` — no big checklist yet.
+
+**After Step 4 finishes** (current Figma variable state is read), the long work begins. Immediately post the **“Building your design system”** checklist below with **every** line `[ ]` and `Current:` on the **first** row. Then **repost the entire checklist** after each listed item completes (Steps 5–19), updating `[x]` and moving `Current:` to the next row. Do **not** paste JSON, CSS blobs, or full API payloads into these messages.
+
+If a row is **skipped** by skill logic (e.g. no canvas step), mark it `[x]` once and note `(skipped)` in `Current:` when you skip forward.
+
+**On failure**, leave that row `[ ]`, add one line of context, retry that unit before checking later rows.
+
+### Template — use after Step 4 (copy and update)
+
+**Building your design system**
+
+Current: Building Primitives…
+
+- [ ] Building Primitives (color ramps, space, radius, elevation)
+- [ ] Building Theme (semantic colors — Light & Dark)
+- [ ] Building Typography (type styles × 8 scale modes)
+- [ ] Building Layout (spacing & radius aliases)
+- [ ] Building Effects (shadows & blur per mode)
+- [ ] Preparing plan — waiting for your approval
+- [ ] Pushing variable collections to Figma (REST API)
+- [ ] Verifying variables wrote correctly
+- [ ] Optional: write `tokens.css` (your choice — Step 12.5, then Step 13 if yes)
+- [ ] Summarizing results (counts & file links)
+- [ ] Drawing style guide pages on canvas
+- [ ] Drawing MCP Tokens manifest page
+- [ ] Filling Token Overview from live variables
+- [ ] Updating Thumbnail cover (brand gradient)
+- [ ] Offering next step (`/create-component`)
+
+**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · rows 11–14 → Steps 15–18 · row 15 → Step 19.
 
 ---
 
@@ -627,7 +664,7 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   DESIGN SYSTEM PLAN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Figma file: {TARGET_FILE_KEY}
-  CSS output: {TOKEN_CSS_PATH}
+  CSS file: optional (offered after variables are pushed — default `src/styles/tokens.css` if you accept)
   Theme source: {THEME_SOURCE}
 
   Code syntax pattern: every variable includes WEB / ANDROID / iOS tokens.
@@ -831,7 +868,7 @@ Show the full hex values for all 11 stops in each color ramp — do not abbrevia
 
 Call **AskUserQuestion**:
 
-> "Does this design system look correct? Reply **yes** to push to Figma and write the CSS file, or describe any changes (e.g. 'change primary to #E63946', 'use Geist for body font', 'base radius 8px')."
+> "Does this design system look correct? Reply **yes** to push all five variable collections to Figma (REST API only — no local files yet), or describe any changes (e.g. 'change primary to #E63946', 'use Geist for body font', 'base radius 8px')."
 
 **If the designer replies yes:** proceed to Step 11.
 
@@ -839,9 +876,8 @@ Call **AskUserQuestion**:
 - Color changes → recompute the affected ramp(s) in Step 5, then re-derive all Theme aliases that reference that ramp in Step 6, then re-display the updated plan section and call **AskUserQuestion** again
 - Font changes → update typography values in Step 7, re-display the typography table, call **AskUserQuestion** again
 - Spacing or radius changes → recompute the affected scale in Step 5 and layout aliases in Step 8, re-display the relevant sections, call **AskUserQuestion** again
-- CSS path change → update `TOKEN_CSS_PATH`, re-display the header line, call **AskUserQuestion** again
 
-Do not proceed to Step 11 until the designer has explicitly replied **yes** (or an equivalent affirmative).
+Do not proceed to Step 11 until the designer has explicitly replied **yes** (or an equivalent affirmative). **Do not** bundle the optional `tokens.css` write into this approval — that is a separate opt-in in Step 12.5 after the Figma push succeeds.
 
 ---
 
@@ -963,9 +999,24 @@ Report any expected variables absent from the verified response.
 
 ---
 
+## Step 12.5 — Optional: write `tokens.css` to the codebase
+
+Figma variables are the source of truth in the file. A local **`tokens.css`** mirrors them as CSS custom properties for **`/create-component`** and **`/code-connect`** — not every designer needs it.
+
+Call **AskUserQuestion**:
+
+> "Write a `tokens.css` file into this codebase (mirrors Figma variables as CSS custom properties)? **yes** — I will ask for the path next (default `src/styles/tokens.css`). **no** — keep Figma-only; you can run `/create-design-system` again later and accept the CSS step when you need it for code."
+
+- **yes** → set `WRITE_TOKENS_CSS` to **true** and continue to **Step 13**.
+- **no** → set `WRITE_TOKENS_CSS` to **false**, state one line that `/create-component` expects `tokens.css` (or a handoff `token_css_path`) when you wire components — then **skip Step 13 entirely** (no 13a / 13b / 13c) and go to **Step 14**.
+
+---
+
 ## Step 13 — Write CSS token file
 
-Using all token values resolved in Steps 5–9, generate a `tokens.css` file and write it to the local codebase. This file is the code-side source of truth that `/create-component` and `/code-connect` depend on.
+**Run this step only when `WRITE_TOKENS_CSS` is true** (Step 12.5). If **false**, you already skipped here — go to Step 14.
+
+Using all token values resolved in Steps 5–9, generate a `tokens.css` file and write it to the local codebase. When written, this file is the code-side source of truth that `/create-component` and `/code-connect` depend on.
 
 ### 13a — Resolve output path
 
@@ -1528,7 +1579,7 @@ Construct the full CSS file content using this exact structure and write it to `
 
 ### 13c — Update agent handoff and report
 
-After writing `tokens.css`:
+After writing `tokens.css` successfully:
 
 1. If `templates/agent-handoff.md` exists and is writable in the workspace, write `TOKEN_CSS_PATH` there under the `token_css_path` field and set `last_skill_run` to `create-design-system` so `/create-component` and `/code-connect` can pick it up. If the file is missing or not writable (e.g. read-only plugin install), skip the write and state the `TOKEN_CSS_PATH` value explicitly in the Step 14 report so the designer can paste it into the next command.
 
@@ -1538,7 +1589,7 @@ After writing `tokens.css`:
 
 ## Step 14 — Confirm success
 
-Report using this shape:
+Report using this shape. **If `WRITE_TOKENS_CSS` is false**, omit the `CSS token file` line and instead include: `CSS token file: not written (Figma-only — opt in next time if you need tokens for /create-component).`
 
 ```
 Design system written to Figma file {TARGET_FILE_KEY}
@@ -1710,11 +1761,17 @@ Log the warning `Cover frame not found — skipping Step 18 cover gradient updat
 
 ## Step 19 — Offer next step
 
-Call **AskUserQuestion**:
+If **`WRITE_TOKENS_CSS` is true** and `TOKEN_CSS_PATH` is set, call **AskUserQuestion**:
 
 > "Run `/create-component` now to build UI components and wire them to `{TOKEN_CSS_PATH}`? (yes / no)"
 
 If **yes**, pass `TOKEN_CSS_PATH` as context when invoking `/create-component`. If **no**, close the skill.
+
+If **`WRITE_TOKENS_CSS` is false**, call **AskUserQuestion**:
+
+> "`tokens.css` was not written this run (Figma variables only). Run `/create-component` anyway? (yes / no) — if **yes**, you will need a token CSS file path (create one later with this skill or point to an existing file)."
+
+If **yes** without `TOKEN_CSS_PATH`, invoke `/create-component` only with clear context that the designer must supply `token_css_path` / import manually. If **no**, close the skill.
 
 ---
 

@@ -124,7 +124,7 @@ After creating and scaffolding the file, Claude offers to chain into `/create-de
 
 ### /create-design-system
 
-Initialize a design system in a Figma file by pushing brand tokens into five variable collections, and write a `tokens.css` file to the local codebase that `/create-component` uses to wire CSS custom properties into the project.
+Initialize a design system in a Figma file by pushing brand tokens into five variable collections. **`tokens.css`** in the codebase is **optional** — after variables are verified in Figma, the skill asks explicitly before writing CSS (designers who only use Figma can decline). After **Step 4**, the skill shows a **“Building your design system”** checklist and **reposts** it as each row completes; during **Step 3** it sends short “Collected: …” lines between questions. See `skills/create-design-system/SKILL.md`.
 
 **Syntax**
 ```
@@ -146,8 +146,8 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 7. Creates the `Effects` collection (Light / Dark modes): shadow color (opacity changes per mode) and blur aliases into elevation Primitives
 8. Writes all five collections to Figma via the Variables REST API with `codeSyntax` (WEB/ANDROID/iOS) on every variable
 9. Verifies the write with a GET call and reports final variable counts
-10. **Writes `tokens.css`** to the local codebase — the CSS source of truth for the project (see [Token Architecture](#token-architecture))
-11. Updates `templates/agent-handoff.md` with `token_css_path` when that file exists and is writable, so `/create-component` can locate tokens automatically; otherwise the report states the path explicitly
+10. **Optionally writes `tokens.css`** — separate opt-in after Figma push (default path `src/styles/tokens.css` when accepted; see [Token Architecture](#token-architecture))
+11. Updates `templates/agent-handoff.md` with `token_css_path` **only if** `tokens.css` was written and handoff exists and is writable; otherwise the Step 14 report states next steps for `/create-component`
 12. **`use_figma` — Style guide** — redraws token visualization on `↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects` (content below the doc header; see skill for layout spec)
 13. **`use_figma` — MCP Tokens** — builds `[MCP] Token Manifest` with JSON + tables for machine and human audit
 14. **`use_figma` — Token Overview** — replaces skeleton data, updates swatches and tables from live variables, removes `placeholder/*` notes
@@ -437,7 +437,7 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
 
 ### tokens.css — local codebase file
 
-`/create-design-system` writes a `tokens.css` file (default path: `src/styles/tokens.css`) that mirrors the Figma variable structure as CSS custom properties:
+If you opt in after the Figma push, `/create-design-system` writes `tokens.css` (default path: `src/styles/tokens.css`) so the codebase mirrors Figma variables as CSS custom properties:
 
 ```css
 /* Primitives — raw values */
