@@ -1021,7 +1021,7 @@ figma.viewport.scrollAndZoomIntoView([pageContent]);
 
 | Change | Edit in `CONFIG` |
 |---|---|
-| Different component | Replace the whole `CONFIG` — `component`, `title`, `pageName`, `summary`, `variants`, `sizes`, `style`, `padH`, `radius`, `label`, `states`, `applyStateOverride`, `properties`, `usageDo`, `usageDont`. |
+| Different component | Replace the whole `CONFIG` — `component`, `title`, `pageName`, `summary`, `variants`, `sizes`, `style`, `padH`, `radius`, `label`, `labelStyle`, `states`, `applyStateOverride`, `properties`, `usageDo`, `usageDont`. |
 | No size axis (badge, alert) | `sizes: []` — matrix drops the 60px size-label column; ComponentSet variant names become `variant=X` only. |
 | Single variant only (card, separator) | `variants: ['default']` — matrix draws one row. |
 | Single state only (overlays, dialogs) | `states: [{ key: 'open', group: 'default' }]` — no DISABLED header group. |
