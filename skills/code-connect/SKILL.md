@@ -9,6 +9,8 @@ agent: general-purpose
 
 Find Figma components that are missing Code Connect mappings and publish them after designer review.
 
+> **Invoked by `/sync-design-system`.** When Axis C decides **code wins** (Step 10.C), `/sync-design-system` delegates here with the scoped drift set derived from `plan.C.items`. This skill still runs its full publish flow (library-publish gate at Step 2, per-mapping review at Step 7, `send_code_connect_mappings` at Step 8). Standalone invocations remain fully supported for initial mapping sweeps on a new project.
+
 ---
 
 ## Interactive input contract

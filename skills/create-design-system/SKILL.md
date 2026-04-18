@@ -2512,37 +2512,68 @@ Log the **Canvas checklist** row for Step 15c.
 
 ## Step 17 — Populate Token Overview
 
-Follow **Canvas documentation visual spec § A–G** for any new or updated frames/text on this page.
+Follow **Canvas documentation visual spec § A–H** for any new or updated frames/text on this page. The `↳ Token Overview` scaffold already uses the § H table hierarchy and per-box variable bindings — this step's job is to (a) upgrade every doc text node to assign `textStyleId` now that Doc/* styles exist, (b) refresh cell text with **live** `codeSyntax` values, and (c) delete scaffold placeholders.
 
-Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page (Figma script: [`skills/new-project/phases/05d-token-overview.md`](skills/new-project/phases/05d-token-overview.md)). **Rebind documentation chrome** on `_PageContent` and each `token-overview/*` section shell: `fills` / `strokes` / text fills per the **Token binding map § C** (Theme Light + Primitives), or resolved equivalents from **this file** — so the overview reflects **this** design system, not generic grays.
+Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page (Figma script: [`skills/new-project/phases/05d-token-overview.md`](skills/new-project/phases/05d-token-overview.md)) with auto-layout section shells, a proper `doc/table/token-overview/platform-mapping` table per § H, and amber `placeholder/*` notes for each section.
+
+**Pre-pass — upgrade text styles + shadows**
+
+Doc/* text styles and `Effect/shadow-sm` are published in Step 15c § 0. The scaffold wrote raw `fontName`/`fontSize` as a fallback on every doc text node. Now that the styles exist:
+
+1. Load `figma.getLocalTextStylesAsync()` once; cache by name.
+2. Traverse the page. For every text node whose parent chain includes `_PageContent`, reassign `textStyleId`:
+   - Section titles (children named or authored as `Doc/Section` equivalents — 20px Bold in scaffold) → assign `Doc/Section`.
+   - Token-path labels on cards, `TOKEN` cells, command-card titles → `Doc/TokenName`.
+   - Header row cells, body cells, tags, small code strings → `Doc/Code`.
+   - Captions, helper lines, mode labels, footer notes → `Doc/Caption`.
+3. Load `figma.getLocalEffectStylesAsync()`. For every frame whose name starts with `token-overview/` (section shells), `doc/table/token-overview/`, `dark-mode-panel`, or `font-scale-panel` and which does **not** already carry an `effectStyleId`, assign `Effect/shadow-sm`.
+
+Skip a node silently if assignment throws (e.g. a style name differs from the scaffold's fallback). Log one summary line: `Doc/* upgraded · N nodes · shadow-sm applied · M frames`.
 
 **Architecture diagram (Section 1)**
 
-Find the five collection box frames in the architecture flow diagram (look for frames containing the collection names: `Primitives`, `Theme`, `Typography`, `Layout`, `Effects`). Update their fills:
+The scaffold created five `arch-box/{name}` frames already bound to the correct variables per collection:
 
-- `Primitives` box: fill with the resolved hex for `color/primary/default` (Light mode).
-- `Theme` box: fill with the resolved hex for `color/secondary/default` (Light mode).
-- `Typography`, `Layout`, `Effects` boxes: fill with the resolved hex for `color/neutral/800`.
+- `arch-box/Primitives` → `color/primary/default` (Theme)
+- `arch-box/Theme` → `color/secondary/default` (Theme)
+- `arch-box/Typography` / `arch-box/Layout` / `arch-box/Effects` → `color/neutral/800` (Primitives)
 
-Prefer **variable bindings** to those Theme/Primitive variables when the Plugin API allows (so the diagram updates on sync). Leave sizes, positions, and arrow connectors unchanged unless rebinding requires no layout change.
+Verify each binding resolves to a variable (not just a fallback hex). If the scaffold wrote only a fallback hex (variable was missing at scaffold time), **rebind now** — use `figma.variables.createVariableAlias(variable)` on the fill paint's `boundVariables.color`. Leave sizes, positions, and the `→` arrows unchanged.
 
 **Platform Mapping table (Section 2)**
 
-Find the platform-mapping table (Section `token-overview/platform-mapping` or the table stack created in Step 5d). For **every** row that displays a Figma token path, read **live** `codeSyntax` from Step 11 (WEB / ANDROID / iOS) and update the WEB, ANDROID, and iOS cells if they differ.
+Locate `doc/table/token-overview/platform-mapping` via `page.findOne(n => n.name === 'doc/table/token-overview/platform-mapping')`. For every row frame named `doc/table/token-overview/platform-mapping/row/{tokenPath}`:
 
-**Minimum row set** (must all be verified — add rows for any additional tokens the table already shows):
+1. Read the row's `{tokenPath}` from the layer name.
+2. Look up the variable by that path from the correct collection (Theme for `color/*`, Primitives for raw ramps, Typography for `{Slot}/*/font-size` and similar, Layout for `space/*`/`radius/*`, Effects for `shadow/color`).
+3. Read the variable's live `codeSyntax` (set in Step 11). For each of WEB / ANDROID / iOS:
+   - Find the cell named `.../row/{tokenPath}/cell/{web|android|ios}`.
+   - The cell contains a single text node. If the text content differs from the live `codeSyntax` string, set `text.characters` to the new value.
+   - Leave the `token` cell text alone (it already matches the path).
+4. If a row's `{tokenPath}` no longer exists as a variable, leave it visible but append ` · stale` to the `token` cell caption so `/sync-design-system` can flag it.
 
-`color/background/default`, `color/background/content`, `color/background/content-muted`, `color/background/variant`, `color/border/default`, `color/border/subtle`, `color/primary/default`, `color/primary/content`, `color/primary/subtle`, `color/secondary/default`, `color/tertiary/default`, `color/error/default`, `color/component/ring`, `Headline/LG/font-size`, `Title/LG/font-size`, `Body/MD/font-size`, `typeface/display`, `space/md`, `space/lg`, `radius/md`, `radius/lg`, `shadow/color`
+**Minimum row set** — if any of these are absent from the scaffolded table, insert them as new rows using the same § H row pattern before the pre-pass deletes placeholders:
 
-If the table physically has fewer rows, insert additional auto-layout rows to match the section layout spec (§ A) before filling cells.
+`color/background/default`, `color/background/content`, `color/background/content-muted`, `color/background/variant`, `color/border/default`, `color/border/subtle`, `color/primary/default`, `color/primary/content`, `color/primary/subtle`, `color/secondary/default`, `color/tertiary/default`, `color/error/default`, `color/component/ring`, `Headline/LG/font-size`, `Title/LG/font-size`, `Body/MD/font-size`, `typeface/display`, `space/md`, `space/lg`, `radius/md`, `radius/lg`, `shadow/color`.
+
+Re-apply the "last row has no bottom stroke" rule after any insertion.
 
 **Phone frames (Section 3)**
 
-Find the two phone frame rectangles in the Dark Mode column of Section 3. Set the fill of the frame labeled `Light` to the resolved hex for `color/background/default` (Light mode). Set the fill of the frame labeled `Dark` to the resolved hex for `color/background/default` (Dark mode). Prefer variable binding to `color/background/default` with mode overrides if supported.
+Find `dark-mode-phone/light` and `dark-mode-phone/dark` (wrappers containing a 220×150 preview rectangle). Verify the phone frame inside each:
+
+- `phone-frame/light` → fill bound to `color/background/default` (resolves Light).
+- `phone-frame/dark` → fill bound to `color/neutral/950` (Primitives) so it reads as dark without depending on Theme Dark mode at render time.
+
+If the Plugin API supports per-layer explicit mode (`setExplicitVariableModeForCollection`), you may instead wrap `phone-frame/dark` in a `doc/theme-preview/dark` wrapper and bind its fill to `color/background/default` — matching the § H.4 Theme pattern.
+
+**Typography scale (Section 3, right panel)**
+
+Find each `scale-cell/{mode}` cell. The scaffold set an approximate `fontSize` per mode. If Typography collection modes expose a `Body/LG/font-size` variable at each mode, you may bind the specimen text's `fontSize` via `setBoundVariable('fontSize', ...)` with explicit mode per cell so the row visually tracks live sizes. Otherwise leave the scaffold sizes — they're close enough and Step 17 isn't required to regenerate them.
 
 **Placeholder strips from `/new-project` Step 5d**
 
-Find every node on `↳ Token Overview` whose **name** starts with `placeholder/` (amber “run /create-design-system” notes). Delete each of these nodes after the sections above are updated — they are scaffolding only, not part of the final spec.
+Find every node on `↳ Token Overview` whose **name** starts with `placeholder/` (amber "run /create-design-system" notes). Delete each of these nodes after the sections above are updated — they are scaffolding only, not part of the final spec.
 
 If any legacy text node still contains the substring `TBD`, replace `TBD` with the resolved value implied by the nearest section heading or table row; if ambiguous, use the resolved `color/primary/500` hex.
 

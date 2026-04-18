@@ -1,0 +1,614 @@
+{
+  "$schema": "./shadcn-props.schema.json",
+  "$comment": "Curated per-component prop map consumed by /create-component Mode A. One entry per shadcn/ui component in the routing table. Each entry supplies: `properties` (Properties+Types table rows [name, type, default, required, description]), `componentProps` flags (which element component properties to create), `iconSlots` config (24x24 placeholder frames), `pageName` (target Figma page from routing table), `labelKey` (which cva variant axis drives the Figma `variant` property; the other axis becomes `size`), and `summary` (one sentence for the doc header). For components where Mode A cva extraction succeeds, these entries are merged with the extracted variants/sizes/defaults and the resolved classname token bindings. When Mode A is unavailable (shadcn not installed, source import fails), the entry alone drives Mode B synthetic rendering.",
+
+  "button": {
+    "pageName": "\u21b3 Buttons",
+    "labelKey": "variant",
+    "summary": "Trigger an action or navigate. Follows shadcn/ui defaults \u2014 visual variants and size presets.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Visual style."],
+      ["size", "enum", "\"default\"", "no", "Overall height + padding preset."],
+      ["disabled", "boolean", "false", "no", "Disables pointer + keyboard interaction; adds visual dim."],
+      ["asChild", "boolean", "false", "no", "Renders styled classes onto the immediate child via Radix Slot."],
+      ["type", "\"button\" | \"submit\" | \"reset\"", "\"button\"", "no", "Native HTML button type."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "toggle": {
+    "pageName": "\u21b3 Toggle",
+    "labelKey": "variant",
+    "summary": "Two-state button. Pressed state persists until clicked again.",
+    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Visual style (default outline fill)."],
+      ["size", "enum", "\"default\"", "no", "Height + padding preset."],
+      ["pressed", "boolean", "false", "no", "Controlled pressed state."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "toggle-group": {
+    "pageName": "\u21b3 Toggle Group",
+    "labelKey": "variant",
+    "summary": "Set of Toggle buttons wired as a single selection control (single or multiple).",
+    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "properties": [
+      ["type", "\"single\" | \"multiple\"", "\u2014", "yes", "Selection mode."],
+      ["variant", "enum", "\"default\"", "no", "Visual style inherited by member Toggles."],
+      ["size", "enum", "\"default\"", "no", "Size inherited by member Toggles."],
+      ["value", "string | string[]", "\u2014", "no", "Controlled selection."],
+      ["disabled", "boolean", "false", "no", "Disables every member."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "input": {
+    "pageName": "\u21b3 Text Field",
+    "labelKey": "variant",
+    "summary": "Single-line text field. Supports native HTML input types.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["type", "string", "\"text\"", "no", "Native HTML input type (text, email, password, number, \u2026)."],
+      ["placeholder", "string", "\u2014", "no", "Placeholder text."],
+      ["value", "string", "\u2014", "no", "Controlled value."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["readOnly", "boolean", "false", "no", "Non-editable but focusable."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "textarea": {
+    "pageName": "\u21b3 Textarea",
+    "labelKey": "variant",
+    "summary": "Multi-line text input. Auto-grow handled by consumer.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["placeholder", "string", "\u2014", "no", "Placeholder text."],
+      ["value", "string", "\u2014", "no", "Controlled value."],
+      ["rows", "number", "\u2014", "no", "Initial visible rows."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["readOnly", "boolean", "false", "no", "Non-editable but focusable."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "checkbox": {
+    "pageName": "\u21b3 Checkbox",
+    "labelKey": "variant",
+    "summary": "Two-state or tri-state checkbox (checked / unchecked / indeterminate).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["checked", "boolean | \"indeterminate\"", "false", "no", "Controlled checked state."],
+      ["defaultChecked", "boolean", "false", "no", "Uncontrolled initial state."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["required", "boolean", "false", "no", "Required in form submission."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "radio-group": {
+    "pageName": "\u21b3 Radio",
+    "labelKey": "variant",
+    "summary": "Single-selection group of radio buttons.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["value", "string", "\u2014", "no", "Controlled selected value."],
+      ["defaultValue", "string", "\u2014", "no", "Uncontrolled initial value."],
+      ["disabled", "boolean", "false", "no", "Disables every item."],
+      ["required", "boolean", "false", "no", "Required in form submission."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "select": {
+    "pageName": "\u21b3 Select",
+    "labelKey": "variant",
+    "summary": "Dropdown selection backed by Radix Select. Trigger + content + items.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["value", "string", "\u2014", "no", "Controlled selected value."],
+      ["defaultValue", "string", "\u2014", "no", "Uncontrolled initial value."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["required", "boolean", "false", "no", "Required in form submission."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "switch": {
+    "pageName": "\u21b3 Switch",
+    "labelKey": "variant",
+    "summary": "On/off toggle with thumb slide animation.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["checked", "boolean", "false", "no", "Controlled checked state."],
+      ["defaultChecked", "boolean", "false", "no", "Uncontrolled initial state."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "slider": {
+    "pageName": "\u21b3 Slider",
+    "labelKey": "variant",
+    "summary": "Horizontal or vertical range selector.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["value", "number[]", "\u2014", "no", "Controlled value array (supports multi-thumb)."],
+      ["defaultValue", "number[]", "[0]", "no", "Uncontrolled initial value."],
+      ["min", "number", "0", "no", "Minimum."],
+      ["max", "number", "100", "no", "Maximum."],
+      ["step", "number", "1", "no", "Step increment."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "form": {
+    "pageName": "\u21b3 Form Composite Groups",
+    "labelKey": "variant",
+    "summary": "react-hook-form + zod wrapper pattern \u2014 composite of Label + Input + Description + Error slots.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["name", "string", "\u2014", "yes", "Field name registered with react-hook-form."],
+      ["label", "string", "\u2014", "no", "Label text."],
+      ["description", "string", "\u2014", "no", "Helper text below the input."],
+      ["required", "boolean", "false", "no", "Required in form submission."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "label": {
+    "pageName": "\u21b3 Label",
+    "labelKey": "variant",
+    "summary": "Native <label> associated with a form control via htmlFor.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["htmlFor", "string", "\u2014", "no", "ID of the associated form control."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "input-otp": {
+    "pageName": "\u21b3 Input OTP",
+    "labelKey": "variant",
+    "summary": "Segmented one-time-password / verification-code input.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["maxLength", "number", "\u2014", "yes", "Total digit count."],
+      ["value", "string", "\u2014", "no", "Controlled value."],
+      ["onChange", "(value: string) => void", "\u2014", "no", "Change handler."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "calendar": {
+    "pageName": "\u21b3 Calendar",
+    "labelKey": "variant",
+    "summary": "Date-picker calendar grid backed by react-day-picker.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["mode", "\"single\" | \"multiple\" | \"range\"", "\"single\"", "no", "Selection mode."],
+      ["selected", "Date | Date[]", "\u2014", "no", "Controlled selection."],
+      ["onSelect", "(date) => void", "\u2014", "no", "Selection handler."],
+      ["disabled", "Date[] | matcher", "\u2014", "no", "Disabled dates."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "date-picker": {
+    "pageName": "\u21b3 Date Picker",
+    "labelKey": "variant",
+    "summary": "Calendar + Popover + Button composite for date entry.",
+    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "properties": [
+      ["value", "Date | Date[]", "\u2014", "no", "Controlled value."],
+      ["onChange", "(date) => void", "\u2014", "no", "Change handler."],
+      ["placeholder", "string", "\"Pick a date\"", "no", "Trigger placeholder."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "card": {
+    "pageName": "\u21b3 Cards",
+    "labelKey": "variant",
+    "summary": "Container with header / content / footer slots.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "separator": {
+    "pageName": "\u21b3 Dividers",
+    "labelKey": "orientation",
+    "summary": "Horizontal or vertical rule (Radix Separator).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Axis."],
+      ["decorative", "boolean", "true", "no", "Presentation-only (no aria separator)."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "aspect-ratio": {
+    "pageName": "\u21b3 Aspect Ratio",
+    "labelKey": "variant",
+    "summary": "Content frame that preserves a fixed width:height ratio.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["ratio", "number", "1", "no", "Width / height ratio (e.g. 16/9)."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "scroll-area": {
+    "pageName": "\u21b3 Scroll Area",
+    "labelKey": "variant",
+    "summary": "Styled scroll container with custom scrollbars (Radix ScrollArea).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "resizable": {
+    "pageName": "\u21b3 Resizable",
+    "labelKey": "direction",
+    "summary": "Resizable panel group with drag handles (react-resizable-panels).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["direction", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "yes", "Panel axis."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "dialog": {
+    "pageName": "\u21b3 Dialogue",
+    "labelKey": "variant",
+    "summary": "Modal dialog with overlay, header, footer.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["defaultOpen", "boolean", "false", "no", "Uncontrolled initial open."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["modal", "boolean", "true", "no", "Blocks interaction with surrounding content."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "alert-dialog": {
+    "pageName": "\u21b3 Dialogue",
+    "labelKey": "variant",
+    "summary": "Confirmation / destructive-action dialog with explicit cancel + confirm.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "drawer": {
+    "pageName": "\u21b3 Drawer",
+    "labelKey": "direction",
+    "summary": "Edge-anchored sliding panel (vaul).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["direction", "\"top\" | \"right\" | \"bottom\" | \"left\"", "\"bottom\"", "no", "Anchor edge."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "sheet": {
+    "pageName": "\u21b3 Sheets",
+    "labelKey": "side",
+    "summary": "Side-anchored sliding panel (Radix Dialog under the hood).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["side", "\"top\" | \"right\" | \"bottom\" | \"left\"", "\"right\"", "no", "Anchor edge."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "popover": {
+    "pageName": "\u21b3 Popover",
+    "labelKey": "variant",
+    "summary": "Anchored floating panel (Radix Popover).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "tooltip": {
+    "pageName": "\u21b3 Tooltips",
+    "labelKey": "variant",
+    "summary": "On-hover / focus info popover (Radix Tooltip).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["delayDuration", "number", "700", "no", "Open delay in ms."],
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "hover-card": {
+    "pageName": "\u21b3 Hover Card",
+    "labelKey": "variant",
+    "summary": "Rich content popover on hover (Radix HoverCard).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["openDelay", "number", "700", "no", "Open delay in ms."],
+      ["closeDelay", "number", "300", "no", "Close delay in ms."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "context-menu": {
+    "pageName": "\u21b3 Context Menu",
+    "labelKey": "variant",
+    "summary": "Right-click menu (Radix ContextMenu).",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "dropdown-menu": {
+    "pageName": "\u21b3 Dropdown Menu",
+    "labelKey": "variant",
+    "summary": "Button-triggered menu (Radix DropdownMenu).",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "command": {
+    "pageName": "\u21b3 Command",
+    "labelKey": "variant",
+    "summary": "cmdk-powered command palette \u2014 fuzzy-search launcher.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["value", "string", "\u2014", "no", "Controlled selected item value."],
+      ["onValueChange", "(value: string) => void", "\u2014", "no", "Value-change handler."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "navigation-menu": {
+    "pageName": "\u21b3 Navigation Menu",
+    "labelKey": "variant",
+    "summary": "Horizontal navigation bar with flyout menus (Radix NavigationMenu).",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["value", "string", "\u2014", "no", "Controlled active item."],
+      ["onValueChange", "(value: string) => void", "\u2014", "no", "Active-change handler."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "menubar": {
+    "pageName": "\u21b3 Menubar",
+    "labelKey": "variant",
+    "summary": "App-style horizontal menu with File/Edit/View-like menus (Radix Menubar).",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["value", "string", "\u2014", "no", "Controlled active menu."],
+      ["onValueChange", "(value: string) => void", "\u2014", "no", "Active-change handler."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "tabs": {
+    "pageName": "\u21b3 Tabs bar",
+    "labelKey": "variant",
+    "summary": "Tab list + panels (Radix Tabs).",
+    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "properties": [
+      ["value", "string", "\u2014", "no", "Controlled active tab."],
+      ["defaultValue", "string", "\u2014", "no", "Uncontrolled initial tab."],
+      ["onValueChange", "(value: string) => void", "\u2014", "no", "Change handler."],
+      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Tab list axis."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "breadcrumb": {
+    "pageName": "\u21b3 Breadcrumb",
+    "labelKey": "variant",
+    "summary": "Path-style nav with separators and current-page indicator.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "pagination": {
+    "pageName": "\u21b3 Pagination",
+    "labelKey": "variant",
+    "summary": "Page-number navigation with prev/next controls.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "alert": {
+    "pageName": "\u21b3 Alerts",
+    "labelKey": "variant",
+    "summary": "Inline status message with optional icon + description.",
+    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Visual style."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "badge": {
+    "pageName": "\u21b3 Badge",
+    "labelKey": "variant",
+    "summary": "Compact status / count label.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Visual style."],
+      ["asChild", "boolean", "false", "no", "Renders styled classes onto the child via Radix Slot."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "progress": {
+    "pageName": "\u21b3 Progress Bar",
+    "labelKey": "variant",
+    "summary": "Determinate horizontal progress indicator.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["value", "number", "\u2014", "no", "Current value 0\u2013100."],
+      ["max", "number", "100", "no", "Maximum."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "skeleton": {
+    "pageName": "\u21b3 Skeleton",
+    "labelKey": "variant",
+    "summary": "Pulsing placeholder block used while content loads.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch (sizing + shape lives here)."]
+    ]
+  },
+
+  "sonner": {
+    "pageName": "\u21b3 Sonner",
+    "labelKey": "variant",
+    "summary": "Toast notifications via the sonner library.",
+    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "properties": [
+      ["position", "\"top-left\" | \"top-right\" | \"bottom-left\" | \"bottom-right\" | \"top-center\" | \"bottom-center\"", "\"bottom-right\"", "no", "Anchor corner."],
+      ["richColors", "boolean", "false", "no", "Use tinted backgrounds per intent."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "toast": {
+    "pageName": "\u21b3 Toast",
+    "labelKey": "variant",
+    "summary": "Radix Toast primitive \u2014 in-app notification with action slot.",
+    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Visual style."],
+      ["duration", "number", "5000", "no", "Auto-dismiss after N ms."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "table": {
+    "pageName": "\u21b3 Data Table",
+    "labelKey": "variant",
+    "summary": "Semantic <table> wrapper with header / body / footer / caption sub-components.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "accordion": {
+    "pageName": "\u21b3 Accordion",
+    "labelKey": "type",
+    "summary": "Vertical expand/collapse group (Radix Accordion).",
+    "iconSlots": { "leading": false, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": true },
+    "properties": [
+      ["type", "\"single\" | \"multiple\"", "\u2014", "yes", "Expansion mode."],
+      ["value", "string | string[]", "\u2014", "no", "Controlled expanded items."],
+      ["collapsible", "boolean", "false", "no", "Allow closing the last open item (type=single only)."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "collapsible": {
+    "pageName": "\u21b3 Collapsible",
+    "labelKey": "variant",
+    "summary": "Single-item expand/collapse primitive (Radix Collapsible).",
+    "iconSlots": { "leading": false, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": true },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["defaultOpen", "boolean", "false", "no", "Uncontrolled initial state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
+      ["disabled", "boolean", "false", "no", "Disables interaction."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "avatar": {
+    "pageName": "\u21b3 Avatar",
+    "labelKey": "variant",
+    "summary": "Circular user image with fallback initials (Radix Avatar).",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["src", "string", "\u2014", "no", "Image source URL."],
+      ["alt", "string", "\u2014", "no", "Alt text."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  }
+}

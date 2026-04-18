@@ -99,6 +99,8 @@ Accept a list of shadcn/ui component names as the skill argument (e.g. `/create-
 
 - If one or more component names are provided, proceed to Step 2 with that list.
 - If no components are provided, show the supported component list (see below), then call **AskUserQuestion**: "Which shadcn/ui components should I install? Enter one or more names separated by spaces."
+
+> **Scoped sync entry point.** When invoked as `/create-component --components=<comma-separated-list>` (e.g. `/create-component --components=button,badge`), treat `--components` as the authoritative component list and skip the prompt above. This is the entry point used by `/sync-design-system` Axis B C-wins (Step 8.C) to redraw only the ComponentSets that have drifted without touching the rest of the canvas. In this mode, still run Steps 2–6 for the named subset only (same Mode A / Mode B decision tree); the rest of the installed library is untouched.
 - Validate each provided name against the supported component list. For any unrecognized name, call **AskUserQuestion**: "'{name}' is not a recognized shadcn/ui component. Skip it, or reply **try anyway** to attempt installation?"
 
 ### Step 2 — Locate the CSS token file
@@ -188,6 +190,90 @@ For each component in the list:
 
 If a component install fails, log the error, mark it `failed`, and continue to the next component — do not abort the entire run.
 
+### Step 4.5 — Extract source-of-truth CONFIG (Mode A)
+
+> **Goal:** Make the **installed shadcn source file** authoritative for every component, so Figma cannot drift when the designer/developer customizes `components/ui/*.tsx`. See [CONVENTIONS.md §0](./CONVENTIONS.md) for the Mode A vs Mode B contract.
+
+This step runs **per installed component** immediately after Step 4 and before Step 6's draw loop. Each component gets a `CONFIG` assembled from three inputs:
+
+1. **cva variants** — extracted at runtime from the installed source file.
+2. **Tailwind class tokens** — resolved against `tokens.css` to Figma variable paths.
+3. **Prop surface / icon slots / page routing** — read from the curated map in [`shadcn-props.json`](./shadcn-props.json).
+
+If any input is missing, Mode A is aborted for that component and the agent falls back to the synthetic CONFIG (Mode B) at Step 6 with `source: 'synthetic-fallback'` in the run report.
+
+#### 4.5.a — Preconditions (probe, do not prompt)
+
+| Check | Pass signal | Fail → behavior |
+|---|---|---|
+| `components.json` exists at project root | file present | Mode A unavailable for this run → Mode B for every component (`source: 'synthetic-no-shadcn'`) |
+| Component source file exists (typically `components/ui/{component}.tsx`) | file present after Step 4 install | Mark component `source: 'synthetic-fallback'`, continue to Step 6 in Mode B |
+| `tokens.css` exists at the path resolved in Step 2 | file present | Same as above |
+| `shadcn-props.json` has an entry for `{component}` | key present | Same as above |
+
+Do not ask the user any questions here — all four checks are deterministic file-system probes.
+
+#### 4.5.b — Extract cva config
+
+Run the extractor subprocess from the **user's project cwd** so TS paths and aliases resolve:
+
+```bash
+npx tsx <abs-path-to-this-skill>/resolver/extract-cva.mjs <abs-path-to>/components/ui/<component>.tsx
+```
+
+- **Success (exit 0):** stdout is JSON `{ source: "runtime" | "parsed", exportName, base, variants, defaultVariants, compoundVariants, displayName }`. Capture the object.
+- **Failure (exit 1):** stdout is JSON `{ error, ... }`. Log the error into the run report, mark the component `source: 'synthetic-fallback'`, continue with Mode B.
+
+The extractor runs a two-tier strategy automatically — runtime `await import()` first, then a source-text fallback that evaluates the cva() argument expressions in a `node:vm` sandbox. Agents never need to orchestrate the fallback themselves.
+
+#### 4.5.c — Resolve classes per variant × size
+
+For every `(variantKey, sizeKey)` in `variants.variant × variants.size`, concatenate the applicable class strings in shadcn's standard order and feed them to the resolver:
+
+```
+classString = [ base, variants.variant[variantKey], variants.size[sizeKey], ...compoundVariantClassesForPair ].join(' ')
+```
+
+Run the resolver subprocess **once per joined class string**. Pass the class string via stdin (`-` arg) to avoid shell-quoting issues with slashes:
+
+```bash
+echo "<classString>" | node <abs-path-to-this-skill>/resolver/resolve-classes.mjs <abs-path-to>/tokens.css -
+```
+
+The resolver returns a bucketed JSON payload (`fills`, `strokes`, `radii`, `spacing`, `typography`, `effects`, `layout`, `unresolved`) with a `state` field (`base`, `hover`, `focus-visible`, `disabled`, …) on every entry. See [CONVENTIONS.md §3.4](./CONVENTIONS.md) for the full resolution map.
+
+#### 4.5.d — Assemble CONFIG
+
+Merge the extractor output, the resolver output, and the `shadcn-props.json` entry into a CONFIG object that matches the schema the existing `use_figma` draw engine already consumes. The mapping is:
+
+| CONFIG field | Source |
+|---|---|
+| `component`, `title`, `pageName`, `summary` | `shadcn-props.json[component]` + extractor `exportName` |
+| `variants` | `Object.keys(cvaOutput.variants.variant)` |
+| `sizes` | `Object.keys(cvaOutput.variants.size)` (or `[]` if no size axis) |
+| `style[variant].fill` | first `base`-state `fills[]` entry for that `(variant, defaultSize)` → `.token` |
+| `style[variant].labelVar` | first `base`-state `text-*` color binding → `.token` |
+| `style[variant].strokeVar` | first `base`-state `strokes[]` entry → `.token` |
+| `padH[size]` | `spacing[].tokenHint` where `property='px'` → else raw `px` |
+| `radius` | first `radii[].token` (prefer `base` state) |
+| `labelStyle[size]` | `typography[].token` where `state='base'` |
+| `label`, `iconSlots`, `componentProps`, `properties`, `usageDo`, `usageDont` | `shadcn-props.json[component]` |
+| `states`, `applyStateOverride` | `shadcn-props.json[component]` defaults (see §4.5.e) |
+| `defaultVariant` | `cvaOutput.defaultVariants.variant` → feed to §6.6D as the ComponentSet default |
+| `defaultSize` | `cvaOutput.defaultVariants.size` → feed to §6.6D |
+
+Record every resolver `unresolved[]` entry in the run report under `unresolvedClasses` for the component. Do not abort on unresolved classes — the draw engine falls back to fallback hex and raw px where the token is null.
+
+#### 4.5.e — State override policy in Mode A
+
+The cva variant axes shadcn ships almost never include a `state` axis (pressed / hover are Tailwind pseudo-classes, not cva variants). Keep `CONFIG.states` from `shadcn-props.json` and the `applyStateOverride` default from [CONVENTIONS.md §13.1](./CONVENTIONS.md) — opacity is the authoritative mechanism, and the resolver's `hover:*` / `disabled:*` bindings are surfaced in the run report only for audit purposes (e.g. so you can confirm `hover` really is an opacity change on the default variant).
+
+Exception: for components where `state` **is** a cva variant (checkbox `checked`, switch `checked`), promote it to a Figma variant property and drop it from `CONFIG.states`.
+
+#### 4.5.f — Tag the CONFIG
+
+Attach `CONFIG._source = 'shadcn-1:1'` so Step 8 can show it in the reporting table. If Mode A was skipped for this component, Step 6 falls back to the synthetic template and tags `CONFIG._source = 'synthetic-fallback'` (or `'synthetic-no-shadcn'` if `components.json` was absent at 4.5.a).
+
 ### Step 5 — Resolve the target Figma file key
 
 1. Check `plugin/templates/agent-handoff.md` for the `active_file_key` field.
@@ -196,6 +282,15 @@ If a component install fails, log the error, mark it `failed`, and continue to t
 
 ### Step 6 — Draw components to Figma canvas
 
+> **Invoked by `/sync-design-system`.** When Axis B decides **code wins**, `/sync-design-system` calls this skill with `--components=<list>` to scope Step 4.5 extraction + Step 6 drawing to the named subset. The Mode branch below is unchanged in that invocation; only the component set is narrowed.
+
+> **Mode branch (set per component at the start of this step):**
+>
+> 1. If Step 4.5 produced a Mode A CONFIG for `{component}` (attached as `CONFIG._source = 'shadcn-1:1'`), **use it verbatim** — do not edit the CONFIG object in the template below. Skip straight to the draw engine (§1 onward of the template).
+> 2. Otherwise — shadcn not installed, source import failed, `tokens.css` missing, or no `shadcn-props.json` entry — **edit the Mode B synthetic CONFIG** in the template below, set `CONFIG._source = 'synthetic-no-shadcn'` if `components.json` was absent at Step 4.5.a or `CONFIG._source = 'synthetic-fallback'` otherwise, and carry on.
+>
+> Mode A and Mode B share the exact same draw engine below the CONFIG block — the only variable is who wrote CONFIG (the extractor vs the agent). Never hand-author a CONFIG in Mode A; if you feel the urge to, the extractor or the class resolver has a bug and the fix is to report the `unresolvedClasses` entries in Step 8, not to patch CONFIG by hand.
+>
 > **Critical rule:** Every component's page navigation, creation, and all variable bindings must happen inside a **single `use_figma` call**. Each call runs in an isolated plugin context — page state set in one call does NOT carry over to the next call.
 >
 > **Default layout = matrix.** Every component — single-state, single-variant, or full cross-product — renders into a **Variant × State specimen matrix** inside a documentation frame that also carries a properties/types table and Do/Don't usage notes. The flat wrapping "grid of variants" output from earlier revisions of this skill is **deprecated**. See [`CONVENTIONS.md`](./CONVENTIONS.md) §§ 1–14 for the full spec.
@@ -259,10 +354,18 @@ For each successfully installed component, make **one `use_figma` call** using t
 // ═══════════════════════════════════════════════════════════════════════════
 // STEP 0. COMPONENT CONFIG — the ONLY block you edit per component
 // ═══════════════════════════════════════════════════════════════════════════
-// Replace this entire object per component. Schema: CONVENTIONS.md §3.
-// Every subsequent section (§1 through §6) reads from CONFIG and never
-// from Button-specific constants. If a new component needs behavior this
-// schema doesn't model, extend the schema rather than hardcoding inline.
+// This is the **Mode B synthetic template**. When Mode A extraction (Step 4.5)
+// succeeds for a component, Step 6 **overwrites this entire CONFIG object at
+// runtime** with the one assembled from the installed shadcn source file +
+// tokens.css + shadcn-props.json. Edit this block only when Mode A is
+// unavailable (shadcn declined, source import failed, tokens.css missing)
+// or when customizing the synthetic placeholder for a component that has no
+// shadcn counterpart.
+//
+// Schema: CONVENTIONS.md §3. Every subsequent section (§1 through §6) reads
+// from CONFIG and never from Button-specific constants. If a new component
+// needs behavior this schema doesn't model, extend the schema rather than
+// hardcoding inline.
 
 const CONFIG = {
   component: 'button',                // kebab-case, matches shadcn filename
@@ -1379,17 +1482,24 @@ After all components have been processed, call **AskUserQuestion**: "Run `/code-
 
 Output a summary table:
 
-| Component | Installed | Drawn to Canvas | Matrix (variants × states × sizes) | Icon slots | Element props | Notes |
-|---|---|---|---|---|---|---|
-| `button` | Yes | Yes | 6 × 4 × 4 = 96 cells | leading + trailing | Label, Leading icon, Trailing icon | ComponentSet (24 nodes) inline in doc frame |
-| `input` | Already existed | Yes | 1 × 4 × 1 = 4 cells | leading + trailing | Label, Leading icon, Trailing icon | State via instance overrides |
-| `card` | Yes | Yes | 1 × 1 × 1 = 1 cell | — | — | Single-state structure |
-| `dialog` | Yes | Failed | — | — | — | Figma write error: ... |
+| Component | Installed | Source | Drawn to Canvas | Matrix (variants × states × sizes) | Icon slots | Element props | Notes |
+|---|---|---|---|---|---|---|---|
+| `button` | Yes | `shadcn-1:1` | Yes | 6 × 4 × 4 = 96 cells | leading + trailing | Label, Leading icon, Trailing icon | ComponentSet (24 nodes) inline in doc frame; 0 unresolved classes |
+| `input` | Already existed | `shadcn-1:1` | Yes | 1 × 4 × 1 = 4 cells | leading + trailing | Label, Leading icon, Trailing icon | State via instance overrides |
+| `card` | Yes | `synthetic-fallback` | Yes | 1 × 1 × 1 = 1 cell | — | — | Mode A cva extract failed: `buttonVariants.base undefined`; used synthetic template |
+| `dialog` | Yes | `synthetic-no-shadcn` | Failed | — | — | — | components.json absent; Figma write error: … |
+
+`source` column values:
+- **`shadcn-1:1`** — CONFIG was built in Step 4.5 from the installed shadcn source file + tokens.css + `shadcn-props.json`. Figma is a live mirror of the code.
+- **`synthetic-fallback`** — shadcn is installed but Step 4.5 could not extract a usable CONFIG (missing source file, cva import failure, tokens.css missing, no `shadcn-props.json` entry). The synthetic Mode B template was used; list the specific cause in Notes.
+- **`synthetic-no-shadcn`** — `components.json` was absent at Step 4.5.a, so Mode A was never attempted. Mode B synthetic template used.
 
 Follow with:
 - Total installed: N
 - Total drawn to canvas: N
 - Skipped / failed: N (list names and reasons)
+- Mode A coverage: N of M components drawn as `shadcn-1:1`
+- Unresolved classes (Mode A only): flat list of `{ component, tailwindClass, reason }` from the resolver output for every component — zero is the target
 - Token binding status: "Theme/Layout/Typography collections found — bindings applied" or list which collections were absent and that raw fallback values were used
 - CSS token wiring: "Imported `{TOKEN_CSS_PATH}` into `{globals_css_path}`" or "tokens.css not found — shadcn default variables retained" if skipped
 

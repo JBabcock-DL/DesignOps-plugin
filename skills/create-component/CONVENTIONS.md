@@ -8,7 +8,20 @@
 
 ---
 
-## 0. Glossary (canonical vocabulary)
+## 0. Two sources of truth (Mode A vs Mode B)
+
+> **Contract.** `/create-component` accepts **two** inputs as authoritative for a component's structure, and never more than one at a time:
+>
+> - **Mode A — `shadcn-1:1`**: the installed `components/ui/{component}.tsx` source file is canonical. The skill extracts the cva variants, resolves every Tailwind class against `tokens.css`, and merges the result with the curated entry in [`shadcn-props.json`](./shadcn-props.json) to assemble CONFIG automatically. Figma is a **derived mirror** — no hand-authored CONFIG fields, no independent decisions about colors or sizing.
+> - **Mode B — `synthetic-fallback` / `synthetic-no-shadcn`**: no installed source is available (shadcn declined, source file missing, cva import failure, `tokens.css` missing, or no `shadcn-props.json` entry). The agent fills in the Mode B synthetic CONFIG template in SKILL.md §6 using sensible shadcn-aligned defaults so the designer still gets a professional, designer-ready placeholder they can evolve.
+>
+> Mode A and Mode B share **exactly the same draw engine** below the CONFIG block — the icon slots, element component properties, matrix, properties table, and usage notes are byte-identical. The only variable is who writes CONFIG. SKILL.md §4.5 defines the Mode A extraction pipeline and the precondition probe that decides the mode per component; SKILL.md §6's mode branch routes into the correct CONFIG producer. §14.0 below adds Mode A-specific audit assertions.
+
+Every component drawn in a run carries a `CONFIG._source` tag (`shadcn-1:1`, `synthetic-fallback`, or `synthetic-no-shadcn`) that surfaces in the SKILL.md §8 reporting table. Designers should treat `synthetic-*` rows as placeholders until the corresponding source file lands; Mode A rows track the code automatically on every subsequent `/create-component` run.
+
+---
+
+## 0.1 — Glossary (canonical vocabulary)
 
 > Any agent reading this file should use **exactly these terms** — no synonyms, no rephrasings. When SKILL.md §0 and CONVENTIONS.md disagree, the skill wins, but terminology must be identical across both.
 
@@ -26,6 +39,11 @@
 | **state override** | A mutation applied to a matrix cell's instance at draw time to simulate `:hover` / `:active` / `:disabled`. The authoritative mechanism is **opacity** for button-like components; `setProperties({...})` is the exception for components where state IS a Figma variant (checkbox, switch). See §13.1. |
 | **primary variant** | The variant listed first in `CONFIG.variants`. It becomes the ComponentSet's default variant and is surfaced as the `defaultValue` of the `variant` property. |
 | **doc/* node path** | The Figma layer-name convention: every node the skill creates inside a component page lives under `doc/component/{component}/...`. Used by the Step 9 self-check assertions to locate nodes mechanically. |
+| **cva config** | The second argument to `cva(base, { variants, defaultVariants, compoundVariants })` inside a shadcn source file. The extractor (`resolver/extract-cva.mjs`) pulls this object out and hands it to the class resolver. |
+| **leaf (CSS var)** | The last hop of a `var()` chain in `tokens.css` — a primitive-style name like `color-primary`, `color-background`, `corner-medium`, `space-md`. The resolver's `LEAF_TO_FIGMA` table reverse-maps leaves to Figma variable paths (e.g. `color-primary → color/primary/default`). |
+| **shadcn alias** | A shadcn-style CSS var like `--primary`, `--border`, `--destructive-foreground`, defined in `tokens.css` as `var(--color-primary)` etc. Aliases chain to leaves; resolve by calling the resolver's `aliasToLeaf[name]` map. |
+| **resolver bucket** | The output keys of `resolve-classes.mjs`: `fills`, `strokes`, `radii`, `spacing`, `typography`, `effects`, `layout`, `unresolved`. Each entry carries a `tailwindClass` and a `state` (`base`, `hover`, `disabled`, …). |
+| **unresolved class** | A Tailwind utility the resolver could not map to a Figma token. Surfaced in SKILL.md §8 reporting; drives the Mode A audit checklist in §14.0 below. |
 
 ---
 
@@ -64,6 +82,56 @@ Component pages live inside the same 1800px canvas as the style-guide pages (`�
 **One component per page.** Do **not** stack two components in one `_PageContent`. `↳ Buttons` holds one Button doc frame; `↳ Cards` holds one Card doc frame; overlay pages (`↳ Dialogue`, `↳ Drawer`, `↳ Popover`, `↳ Tooltips`) hold one frame for that specific overlay.
 
 **Delete before drawing.** When redrawing, delete every node on the page **other than `_Header`** (same rule as Step 15a in `/create-design-system`). Do not leave stale specimens under the new matrix.
+
+---
+
+## 2.5 — Source extraction (Mode A)
+
+> Scope: applies only when Step 4.5 preconditions pass (shadcn installed, source file present, `tokens.css` resolvable, `shadcn-props.json` has the component). In Mode B, skip this section entirely — CONFIG is hand-written from the synthetic template.
+
+### 2.5.1 — The two scripts
+
+Both scripts live under [`skills/create-component/resolver/`](./resolver/) and are invoked as subprocesses from SKILL.md §4.5. Agents **never edit them inline in a `use_figma` call** — they are standalone Node ESM modules and must be spawned.
+
+| Script | Input | Output (stdout JSON) | Exit behavior |
+|---|---|---|---|
+| `extract-cva.mjs` | absolute path to `components/ui/{component}.tsx` | `{ source: "runtime" \| "parsed", exportName, base, variants, defaultVariants, compoundVariants, displayName }` | `0` on success · `1` on import + parse failure (object includes `error`, `runtimeTier1`) |
+| `resolve-classes.mjs` | absolute path to `tokens.css` + a whitespace-separated class string (or `-` for stdin) | `{ fills, strokes, radii, spacing, typography, effects, layout, unresolved }` | `0` always (unresolved classes are data, not errors) |
+
+### 2.5.2 — Extractor strategy (tiered)
+
+`extract-cva.mjs` runs a two-tier strategy automatically:
+
+1. **Tier 1 — runtime import.** `await import(pathToFileURL(absPath))`, then scan every function-valued export for a `.variants` own property. cva@0.7+ exposes it this way. This is the preferred path because it handles TS paths, re-exports, and conditional assignments transparently.
+2. **Tier 2 — source parse.** If the runtime import fails or no `.variants` property is found, the script reads the source text, locates `const X = cva(...)`, scans the two argument expressions with a balanced-bracket parser that respects strings + nested brackets, and evaluates them inside `node:vm.createContext()` with no globals. The sandbox has a 250 ms CPU timeout; it throws on any unresolved identifier reference (e.g. a helper function imported at the top of the file).
+
+Agents should not try to force one tier over the other — the script picks automatically and emits `source: "runtime"` or `source: "parsed"` so the run report can note which tier won.
+
+### 2.5.3 — Resolver strategy (deterministic)
+
+`resolve-classes.mjs` is a pure function — same inputs produce the same outputs. It parses `tokens.css` once per invocation (cheap, and the skill runs it many times in a loop), builds `aliasToLeaf` by following every `var()` chain to its leaf, then dispatches each class token through a utility classifier. See §3.4 for the full Tailwind-to-Figma mapping.
+
+The resolver **never throws** on unknown classes. Anything it cannot map lands in `unresolved[]` with a reason string, and the skill surfaces the list in the Step 8 run report. Mode A tolerates unresolved classes (they just miss a token binding and fall back to hex/px); §14.0 treats `unresolved.length === 0` as the audit goal but not a hard failure.
+
+### 2.5.4 — CONFIG assembly order
+
+For each component, Mode A builds CONFIG by merging three inputs in this exact order so fields resolve deterministically even when the extractor and `shadcn-props.json` disagree:
+
+1. Start from the `shadcn-props.json[component]` entry (this seeds `pageName`, `componentProps`, `iconSlots`, `properties`, `usageDo`, `usageDont`, `labelKey`, `summary`).
+2. Overwrite `variants` with `Object.keys(cvaOutput.variants[labelKey])` and `sizes` with `Object.keys(cvaOutput.variants.size ?? {})`.
+3. For each `(variantKey, sizeKey = defaultSize)` tuple, concatenate `base + variants.variant[variantKey] + variants.size[sizeKey]` (+ any compound-variant classes whose predicate matches), run the resolver, and project the resulting buckets onto `style[variantKey]`, `padH[sizeKey]`, `radius`, and `labelStyle[sizeKey]` per SKILL.md §4.5.d.
+4. Set `defaultVariant = cvaOutput.defaultVariants[labelKey]` and `defaultSize = cvaOutput.defaultVariants.size`, and wire them into the ComponentSet default-instance step in §6.6D.
+5. Stamp `CONFIG._source = 'shadcn-1:1'` and `CONFIG._extractSource = cvaOutput.source` (`"runtime"` or `"parsed"`) for the run report.
+
+### 2.5.5 — Error recovery
+
+| Extractor outcome | Action |
+|---|---|
+| exit 0, `source: "runtime"` | Proceed with `CONFIG._extractSource = "runtime"`. |
+| exit 0, `source: "parsed"` | Proceed with `CONFIG._extractSource = "parsed"`. Log a note: "cva .variants not exposed; used source-text fallback" in the run report. |
+| exit 1, any error | Abort Mode A **for this component only**. Log `error` verbatim in the run report. Fall back to Mode B synthetic CONFIG with `_source = 'synthetic-fallback'`. Never crash the overall run. |
+
+For the resolver, any `unresolved[]` entries ship in the run report; the agent never re-runs the resolver with different inputs hoping to "fix" them — the fix is either (a) a missing alias in `tokens.css` (which the design-system owner addresses) or (b) a missing entry in the resolver's `LEAF_TO_FIGMA` table (which is a skill update).
 
 ---
 
@@ -238,6 +306,129 @@ Follow the shadcn docs. Default assumption for every component CONFIG going forw
 | Overlays | `dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `alert-dialog` | **omit** — overlays wrap arbitrary content | **omit** |
 
 When unsure, visit the [shadcn docs](https://ui.shadcn.com/docs/components) for that component and look at the example source: if `children` is text + an inline `<svg>`, the Figma counterpart gets slots + props.
+
+---
+
+## 3.4 — Class-to-token resolution map (Mode A)
+
+> Authoritative: [`resolver/resolve-classes.mjs`](./resolver/resolve-classes.mjs). This section documents the resolution tables so an agent can predict a binding outcome without reading the script and reviewers can spot missing entries quickly.
+
+### 3.4.1 — Alias chain (`tokens.css` → leaf → Figma path)
+
+The resolver parses every `--name: value;` declaration in `tokens.css` (regardless of `:root` / `.dark` / other wrapping selectors) and builds two maps:
+
+- `declarations[name] = rawValue` — raw right-hand-side strings.
+- `aliasToLeaf[name] = leafName` — follow `var(--xxx)` chains until the right-hand side is no longer a single `var()` call (a literal color, a `calc()`, or an unknown name). Cycles are broken by a `seen` set.
+
+The **leaf names** are the shadcn-naming-convention bottom layer (e.g. `color-primary`, `color-on-primary`, `color-background-variant`, `corner-medium`). The resolver's static `LEAF_TO_FIGMA` table reverse-maps leaves to Figma variable paths, mirroring the create-design-system semantic tables.
+
+Examples:
+
+| `tokens.css` alias | Leaf (from chain) | Figma path (from `LEAF_TO_FIGMA`) |
+|---|---|---|
+| `--primary: var(--color-primary)` | `color-primary` | `color/primary/default` |
+| `--primary-foreground: var(--color-on-primary)` | `color-on-primary` | `color/primary/content` |
+| `--destructive: var(--color-danger)` | `color-danger` | `color/error/default` |
+| `--accent: var(--color-accent-subtle)` | `color-accent-subtle` | `color/tertiary/subtle` |
+| `--muted: var(--color-background-variant)` | `color-background-variant` | `color/background/variant` |
+| `--border: var(--color-border)` | `color-border` | `color/border/default` |
+| `--ring: var(--color-focus-ring)` | `color-focus-ring` | `color/component/ring` |
+| `--radius: var(--radius-md) → var(--corner-medium)` | `corner-medium` | `radius/md` |
+
+If the user renames an alias or stops re-exporting `--color-*` leaves in their `tokens.css`, those rows fall through to `unresolved[]` — the resolver never guesses.
+
+### 3.4.2 — Tailwind utility patterns (what the classifier matches)
+
+| Pattern | Dispatch bucket | Notes |
+|---|---|---|
+| `bg-{alias}[/n]` | `fills[]` | `n/100` is passed as `opacity` alongside the bound variable. |
+| `text-{size}` (`xs` … `9xl`) | `typography[]` with `token` | Mapped to `Label/*` / `Body/*` / `Title/*` / `Headline/*` / `Display/*` per Step 3.4.3. |
+| `text-{alias}` | `fills[]` with `role: 'text'` | Falls back to an unresolved row if alias chain dies. |
+| `border` (bare) | `strokes[]` | Resolves `--border` alias to `color/border/default`. |
+| `border-{alias}` | `strokes[]` | Alias form. |
+| `border-{n}` | `strokes[]` with `weight: n` | Numeric weight; no color binding. |
+| `ring-{n}` | `effects[] { kind: focus-ring, weight }` | |
+| `ring-offset-{n}` | `effects[] { kind: focus-ring-offset, offset }` | |
+| `ring` / `ring-{alias}` | `effects[] { kind: focus-ring, token }` | |
+| `rounded[-{side}][-{size}]` | `radii[]` | `size ∈ { '', none, sm, md, lg, xl, 2xl, 3xl, full }`; per-side optional. |
+| `h-{n} / w-{n} / size-{n} / min-\|max-*-{n}` | `layout[]` | `n × 4 px`; the skill matches against Layout space tokens at CONFIG-assembly time. |
+| `p/m/gap[-axis]-{n}` | `spacing[]` with `tokenHint` | Hint uses the foundations defaults (4→xs, 8→sm, 12→md, 16→lg, 24→xl, 32→2xl, 48→3xl, 64→4xl). |
+| `font-{weight}` | `typography[]` with `fontWeight` | `thin`…`black`. |
+| `opacity-{n}` | `effects[] { kind: opacity, value }` | `value = n/100`. |
+| `shadow[-{size}]` | `effects[] { kind: drop-shadow }` | Drop-shadow preset bucketed by size. |
+| `inline-flex / items-* / overflow-* / …` | `layout[] { prop: passthrough }` | Recorded for audit; applied at node-creation time by the draw engine. |
+
+### 3.4.3 — Typography scale mapping
+
+The resolver maps Tailwind `text-*` size tokens directly onto Typography slots published by `/create-design-system`:
+
+| Tailwind | Typography slot |
+|---|---|
+| `text-xs` | `Label/SM/default` |
+| `text-sm` | `Label/MD/default` |
+| `text-base` | `Body/MD/default` |
+| `text-lg` | `Body/LG/default` |
+| `text-xl` | `Title/SM/default` |
+| `text-2xl` | `Title/MD/default` |
+| `text-3xl` | `Title/LG/default` |
+| `text-4xl` | `Headline/SM/default` |
+| `text-5xl` | `Headline/MD/default` |
+| `text-6xl` | `Headline/LG/default` |
+| `text-7xl` | `Display/SM/default` |
+| `text-8xl` | `Display/MD/default` |
+| `text-9xl` | `Display/LG/default` |
+
+If a published text style with that exact name is not present in the file, the draw engine falls back to raw `fontSize` inferred from the Tailwind step (`xs: 12`, `sm: 14`, `base: 16`, `lg: 18`, …) so the matrix still renders.
+
+### 3.4.4 — State prefixes
+
+The classifier strips Tailwind state prefixes before matching the utility head. The first non-responsive, non-`dark` prefix becomes the `state` field on every emitted bucket entry:
+
+- `hover`, `focus`, `focus-visible`, `focus-within`, `active`, `disabled`, `aria-disabled`, `aria-selected`, `aria-expanded`
+- `data-[state=open|closed|checked|unchecked|active|on|off]`, `data-[disabled]`
+- `group-hover`, `peer-disabled`, `peer-focus`, `peer-checked`, `placeholder`, `first`, `last`
+
+Responsive prefixes (`sm`, `md`, `lg`, `xl`, `2xl`) are captured separately under `responsive` and dropped when projecting onto CONFIG (Figma components don't model viewport axes). `dark:` is recorded as a flag; the Theme collection already inherits light/dark via Figma variable modes, so `dark:` variants project onto the same token as their base-state pair.
+
+---
+
+## 3.5 — Curated prop map (`shadcn-props.json`)
+
+> Authoritative: [`skills/create-component/shadcn-props.json`](./shadcn-props.json). One entry per component in the SKILL.md §6 routing table.
+
+### 3.5.1 — Why this file exists
+
+shadcn's TypeScript prop surface is stable and small (most components are Radix primitives passed through `<Comp className={cn(variants(props), className)} {...rest}/>`), but running a TS AST parser at session time is expensive and fragile. Hand-maintaining one curated JSON entry per component is cheaper and more honest — a skill update is the right ceremony for a new shadcn release. The JSON feeds **both** Mode A (as the `pageName` / `componentProps` / `iconSlots` / `properties` seed) **and** Mode B (as the synthetic-template body when shadcn isn't installed).
+
+### 3.5.2 — Entry schema
+
+Each key `{componentName}` maps to an object with these fields:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `pageName` | string | Target Figma page (must match the SKILL.md §6 routing table entry exactly, including the `↳` prefix). |
+| `labelKey` | string | Which cva axis becomes the Figma `variant` property (e.g. `'variant'`, `'size'`, `'orientation'`). The other axis — if present — becomes `size`. |
+| `summary` | string | One-sentence doc-header line for §3.2 of the component page. |
+| `iconSlots` | `{ leading: boolean, trailing: boolean, size: number }` | Drives §3.3.1 icon slot generation. `size` is fixed at 24 across the system — do not vary per-component. |
+| `componentProps` | `{ label: boolean, leadingIcon: boolean, trailingIcon: boolean }` | Drives §3.3.2 element component property creation. Booleans require the matching `iconSlots.*` flag above. |
+| `properties` | `[name, type, default, required, description][]` | Rows for the Properties + Types table (§4). Columns are positional: 5 strings per row. |
+
+### 3.5.3 — What this file does NOT contain
+
+- **Variants / sizes / classnames.** Those come from the cva config in Mode A, or from the synthetic template in Mode B.
+- **Per-variant colors.** Those are resolved from classnames against `tokens.css` in Mode A, or set in the synthetic template for Mode B.
+- **States / state overrides.** Those come from the SKILL.md §6 Mode B template default and [§13.1](#131--why-state-is-not-a-figma-variant-property); Mode A inherits the same defaults unchanged.
+- **Usage notes.** Mode B ships canonical Do/Don't bullets for a small set of reference components; Mode A should reuse them verbatim. If a component lacks curated usage notes, emit a single Do bullet that cites the shadcn docs URL and leave the Don't list empty.
+
+### 3.5.4 — Extending the map
+
+When a new shadcn component ships (or the routing table grows):
+
+1. Add one entry keyed by the shadcn CLI name (`npx shadcn add <name>`).
+2. Pick `labelKey` from the cva axes — default to `'variant'` if unsure. Shadcn components that keep all their variance in `size` (e.g. `separator` uses `orientation`) should set `labelKey` to that axis name.
+3. Copy the `properties[]` rows from the shadcn docs prop table; keep wording concise. 5 columns, positional.
+4. Decide `iconSlots` + `componentProps` from the §3.3.4 category table.
+5. Update the SKILL.md §6 routing table to match `pageName`.
 
 ---
 
@@ -466,6 +657,7 @@ All matrix chrome must use variable-bound paints (same rule as the style-guide t
 
 ## 12. Build order (every component, every run)
 
+0. **(Mode A only)** Run Step 4.5's extraction pipeline for the component: probe preconditions (§0), spawn `resolver/extract-cva.mjs` to get the cva config, spawn `resolver/resolve-classes.mjs` once per `(variant, size)` class string, and assemble CONFIG per §2.5.4. If any step fails, downgrade to Mode B synthetic CONFIG (`_source = 'synthetic-fallback'`) and carry on. In Mode B, step 0 is skipped entirely and the agent hand-fills the synthetic template from SKILL.md §6.
 1. Navigate to the component's target page (`figma.setCurrentPageAsync`). Delete every node on the page **other than `_Header`**.
 2. Verify / create `_PageContent` at `x: 0, y: 320`, 1800 × AUTO, padding 80, fill `#FFFFFF`.
 3. Resolve the Theme / Layout / Typography collections, font-family values, and published text styles (Doc/* and Label/*).
@@ -548,6 +740,18 @@ If a design system author has already published `color/primary/hover`, `color/pr
 ## 14. Audit checklist before reporting a component "drawn"
 
 > **Mechanical pass/fail gate.** Every item below is tagged either with an `S9.*` ID that maps 1:1 to a [SKILL.md §9 Self-check](./SKILL.md) assertion (verified against the `use_figma` return payload, no manual inspection needed), or with `V` for visual-only items that require a screenshot review. A component is not drawn until every `S9.*` row passes; `V` rows are strongly recommended but not blocking.
+>
+> **§14.0 (Mode A only)** assertions evaluate the extraction / resolution phase (SKILL.md §4.5 + CONVENTIONS.md §§2.5 / 3.4 / 3.5) before a draw even runs. In Mode B every row below §14.0 is N/A — the synthetic CONFIG has no extractor output to audit.
+
+### 14.0 — Mode A extraction (skip in Mode B)
+- [ ] **MA.1** `CONFIG._source === 'shadcn-1:1'`. If any other value, the component ran in Mode B — skip the remaining §14.0 rows and continue to Page scaffold.
+- [ ] **MA.2** `extract-cva.mjs` exited 0 and returned a non-empty `variants` object. Its `exportName` appears in the SKILL.md §8 run report.
+- [ ] **MA.3** Every cva variant key in `Object.keys(extractOutput.variants[labelKey])` appears in `CONFIG.variants`. No synthetic variant names were injected.
+- [ ] **MA.4** `CONFIG.defaultVariant === extractOutput.defaultVariants[labelKey]` and (if a size axis exists) `CONFIG.defaultSize === extractOutput.defaultVariants.size`. The ComponentSet's default instance (§6.6D in SKILL.md) matches.
+- [ ] **MA.5** For every `(variant, defaultSize)` class string fed to `resolve-classes.mjs`, the resulting `unresolved[]` entries are logged in Step 8 under `unresolvedClasses[{component}]`. Count is reported even when zero.
+- [ ] **MA.6** Every `CONFIG.style[variant].fill` / `.labelVar` / `.strokeVar` matches a Figma variable path (prefix `color/`), unless the resolver returned no binding — in which case the synthetic fallback hex is used AND the class is listed in `unresolvedClasses`.
+- [ ] **MA.7** `CONFIG.radius` resolves to a `radius/*` path (or the synthetic fallback when `rounded-*` is absent from the base class string).
+- [ ] **MA.8** The component has an entry in [`shadcn-props.json`](./shadcn-props.json) and its `pageName`, `componentProps`, `iconSlots`, and `properties` values survived merge into CONFIG unchanged.
 
 ### Page scaffold
 - [ ] **S9.1** Navigated to the correct `↳ {Page}` per the routing table in SKILL.md — `pageName === CONFIG.pageName` in the return payload

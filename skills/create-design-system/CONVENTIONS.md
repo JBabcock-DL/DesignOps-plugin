@@ -101,6 +101,19 @@ Column widths per table are defined in §11 below. **Every table column set sums
 
 (Padding is 40 on these index pages, not 80. Only the **style guide** pages use 80.)
 
+### TOC + Token Overview render with the same chrome as style-guide pages
+
+Both pages now follow the full style-guide visual language — there is **no** "simpler" markup path for index pages:
+
+| Element                               | Treatment                                                                                                                                                 |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every text node                       | Assigns `textStyleId` to `Doc/Section`, `Doc/TokenName`, `Doc/Code`, or `Doc/Caption` (§ 7); raw `fontName`/`fontSize` only as a **scaffold-time fallback** that `/create-design-system` Step 17 upgrades. |
+| Every fill and stroke                 | `setBoundVariable` against Theme · Light or Primitives (§ 12); hex literals are fallbacks.                                                                |
+| Section shells / cards / panels / tables | `cornerRadius 16` outer, bound `color/background/default` fill + `color/border/subtle` stroke + `effectStyleId: Effect/shadow-sm` once § G Depth is published. |
+| Token Overview platform-mapping table | Uses the full § H hierarchy — `doc/table/token-overview/platform-mapping` → `header` → `body` → `row/{tokenPath}` → `cell/{key}` — no absolute `x`/`y` positioning, row `minHeight 64`, cell `paddingH 20`, last row has no bottom stroke. Columns sum to **1640** (TOKEN 400 · WEB 420 · ANDROID 340 · iOS 480). |
+| TOC band strips                       | **64px full-width strips** named `band-strip/{foundations|atoms|components|platform}` with fill `color/background/variant` and `cornerRadius 12`, containing a `Doc/Caption` uppercase title (letter-spacing +0.08em) over a `Doc/Caption` subtitle + right-aligned `Doc/Code` count. Each strip is followed by a `band-grid/{slug}` 2-column card grid (`CARD_WIDTH` = `(1720 − 24) / 2 = 848`). |
+| TOC summary bar                       | Dark `color/neutral/950` (Primitives) bar at 72px, `Doc/Caption` centered `color/neutral/50` text, `cornerRadius 12`, shadow-sm.                            |
+
 ---
 
 ## 4. Pages that exist (and pages that don't)
@@ -436,6 +449,15 @@ Step 15a draws **9 tables** on ↳ Primitives (5 color ramps + Space + Radius + 
 
 ### Pages
 - [ ] Did I avoid creating `↳ MCP Tokens` or `[MCP] Token Manifest`?
+
+### TOC + Token Overview
+- [ ] Do both pages render at `1800` wide with `40` padding (not `80`)?
+- [ ] Does every text node on both pages carry `textStyleId` (`Doc/Section` / `Doc/TokenName` / `Doc/Code` / `Doc/Caption`) — not raw `fontName`/`fontSize`?
+- [ ] Does every fill/stroke bind to a Theme or Primitives variable (hex literals only as scaffold-time fallbacks)?
+- [ ] Is the Token Overview platform-mapping table built with § H hierarchy (`doc/table/token-overview/platform-mapping/{header|body|row/*|cell/*}`) — no absolute `x`/`y` positioning?
+- [ ] Do platform-mapping columns sum to exactly **1640** (TOKEN 400 · WEB 420 · ANDROID 340 · iOS 480)?
+- [ ] Does the TOC have **4 band strips** (`band-strip/foundations`, `…/atoms`, `…/components`, `…/platform`) above 2-column card grids?
+- [ ] Do all section cards / panels / platform-mapping table / summary bar carry `effectStyleId: Effect/shadow-sm` once § G Depth is published?
 
 If any box is unchecked, fix before reporting "done."
 
