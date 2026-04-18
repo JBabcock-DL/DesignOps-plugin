@@ -1955,7 +1955,9 @@ Run **one** `use_figma` execution that visits **three pages in order** (`↳ Lay
 Use `figma.getLocalTextStyles()` / `figma.getLocalEffectStyles()`; **`loadFontAsync`** for any `fontName` you set.
 
 1. **`Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`** — For each name, **`find` or `figma.createTextStyle()`**. Bind typography fields per § **A** Documentation type ramp (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*` or `Label/MD/*` at Typography mode **100**) via **`setBoundVariable('fontSize', variable)`** (and parallel fields) where the API allows; otherwise set resolved literals from mode **100** once.
-2. **Slot text styles (15)** — Names **exactly** `Display/LG`, `Display/MD`, `Display/SM`, `Headline/LG`, `Headline/MD`, `Headline/SM`, `Title/LG`, `Title/MD`, `Title/SM`, `Body/LG`, `Body/MD`, `Body/SM`, `Label/LG`, `Label/MD`, `Label/SM`. Each style aggregates the four variables `{Slot}/font-size`, `{Slot}/font-family`, `{Slot}/font-weight`, `{Slot}/line-height` with **`setBoundVariable`** when supported so **Dev Mode** shows Typography variable links. If a style already exists, **update** bindings/values to match current variables.
+2. **Slot text styles (15)** — For **each** name in **slot order** below, **`find` or `figma.createTextStyle()`**, then bind **`{Slot}/font-size`**, **`{Slot}/font-family`**, **`{Slot}/font-weight`**, **`{Slot}/line-height`** (Typography · mode **100**) with **`setBoundVariable`** when supported so **Dev Mode** shows variable links. *(Collection variables and local Text styles are different objects — every name below needs its own Text style for specimens.)* If a style already exists, **update** bindings/values to match current variables.
+
+   **Slot order** (publish styles, then **`doc/typography/row/{slot}`** on **`↳ Text Styles`**): `Display/LG`, `Display/MD`, `Display/SM`, `Headline/LG`, `Headline/MD`, `Headline/SM`, `Title/LG`, `Title/MD`, `Title/SM`, `Body/LG`, `Body/MD`, `Body/SM`, `Label/LG`, `Label/MD`, `Label/SM`.
 3. **Effect styles** — For each shadow tier **`sm`**, **`md`**, **`lg`**, **`xl`**, **`2xl`**, create or update a local **`Effect/shadow-{tier}`** style: **`effects`** = one **`DROP_SHADOW`** built from resolved **`shadow/color`** (Effects · **Light**) + resolved **`shadow/{tier}/blur`** at **Light** (opacity/spread tuned to match the Foundations recipe used on canvas). **`Effect/shadow-color-only`** optional: single **`DROP_SHADOW`** or color chip note for `shadow/color` education. If duplicate names exist from an old run, **`remove()`** the older duplicate after migrating references, or update in place.
 
 ### ↳ Layout page
@@ -1964,7 +1966,7 @@ Use `figma.getLocalTextStyles()` / `figma.getLocalEffectStyles()`; **`loadFontAs
 
 ### ↳ Text Styles page
 
-`_PageContent` → **`doc/typography/rows`** (**`VERTICAL`**, **`AUTO`**, **`itemSpacing` 24**). For each of **15** slots:
+`_PageContent` → **`doc/typography/rows`** (**`VERTICAL`**, **`AUTO`**, **`itemSpacing` 24**). For each of the **15** slots in **§0 slot order**:
 
 - **`doc/typography/row/{slot}`** — **`HORIZONTAL`**, **`primaryAxisSizingMode: AUTO`**, **`paddingTop`/`paddingBottom` 20**, **`itemSpacing` 32**, optional bottom stroke on the row frame bound to **`color/border/subtle`** (divider).
 - **Specimen column:** fixed-width frame (**~420px**) so wrapped metadata does not squash the specimen; text uses **`textStyleId`** → slot style — **never** raw `fontName`/`fontSize` on the specimen. **`textAutoResize = 'HEIGHT'`** with explicit width on the specimen text.

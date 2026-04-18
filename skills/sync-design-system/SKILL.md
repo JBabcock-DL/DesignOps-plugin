@@ -294,7 +294,7 @@ Per page:
 
 **↳ Theme** — per **Step 15b** + **§ F**: **`doc/theme/card-row-*`** holds **two** cards per row; **64px** strips; cards **`minHeight` 200**, **padding 28**, **radius 16**; **88×88** swatches + **`setExplicitVariableModeForCollection`** on **`doc/theme-preview/light|dark`**; **`Doc/*`** + live **`codeSyntax`**.
 
-**↳ Text Styles** — per **Step 15c**: **`doc/typography/row/{slot}`** per line; **15** slots; specimen **`textStyleId`**; metadata **`Doc/Code`**; **`textAutoResize`**; republish **`Doc/*`** + slot styles in **§0** when Typography changed.
+**↳ Text Styles** — per **Step 15c**: **`doc/typography/row/{slot}`** in **§0 slot order**; specimen **`textStyleId`**; metadata **`Doc/Code`**; **`textAutoResize`**; republish **`Doc/*`** + slot styles in **§0** when Typography changed.
 
 **↳ Layout** — per **Step 15c**: **`doc/layout/row/{token}`** per token; **64px** strips; bound bars / **`cornerRadius`**; **`Doc/*`**.
 
