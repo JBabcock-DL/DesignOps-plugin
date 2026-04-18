@@ -160,7 +160,7 @@ The following pages are sourced directly from the Detroit Labs Foundations templ
 - Style Guide (Primitives, Theme, Layout, Text Styles, Effects)
 - Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
 - Atoms (Typography, Text blocks, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)
-- Buttons & Controls (Buttons, Button Group, Toggle, Toggle Group, Segmented Controller)
+- Buttons & Controls (Buttons, Button Group, Toggle, Toggle Group, Segmented Controller) — component pages populated later by `/create-component`; see [`skills/create-component/CONVENTIONS.md` §3.3](../create-component/CONVENTIONS.md) for the drawing spec
 - Inputs & Forms (Text Field, Textarea, Number Input, Input Group, Input OTP, Checkbox, Radio, Switch, Select, Native Select, Combobox, Slider, Keypad, Image Select, Calendar, Date Picker, Field, Form Composite Groups)
 - Feedback & Status (Alerts, Toast, Sonner, Notifications, Progress Bar, Progress Dial, Loaders, Skeleton, Spinner, Blank states, Error States)
 - Overlays (Dialogue, Drawer, Sheets, Sheet Sockets, Popover, Hover Card, Tooltips, Context Menu, Dropdown Menu, Command)

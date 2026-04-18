@@ -154,6 +154,7 @@ Rules for prop mapping:
 - Match Figma variant property names to component prop names where they align (case-insensitive).
 - Use `figma.enum()` for string union props; `figma.boolean()` for boolean props; `figma.string()` for text content.
 - If a Figma property has no matching code prop, omit it rather than guessing.
+- **Element component properties from `/create-component`:** ComponentSets drawn by `/create-component` may expose three unified element properties in addition to `variant` / `size` — `Label` (TEXT), `Leading icon` (BOOLEAN), `Trailing icon` (BOOLEAN). These live at the ComponentSet level in `componentPropertyDefinitions` (unified across all variants) — reference them by their unified name (e.g. `figma.string('Label')`, `figma.boolean('Leading icon')`), **not** by a per-variant node name. See [`skills/create-component/CONVENTIONS.md` §3.3](../create-component/CONVENTIONS.md) for the full element-property contract.
 
 Present all generated `.figma.tsx` file contents to the designer before writing. Call **AskUserQuestion**: "Here are the proposed Code Connect files. Reply **yes** to write them, or paste corrections."
 

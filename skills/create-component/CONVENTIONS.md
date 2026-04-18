@@ -2,9 +2,30 @@
 
 > **Audience:** AI agents (Claude, Sonnet, etc.) running `/create-component`. Read this **before** you draw any component so every page in the file looks like one system instead of a pile of loose instances on an empty frame.
 >
-> **Authoritative source:** [`skills/create-component/SKILL.md`](./SKILL.md). When this summary disagrees with the skill, the skill wins.
+> **Authoritative source:** [`skills/create-component/SKILL.md`](./SKILL.md). When this summary disagrees with the skill, the skill wins. The skill's §0 Quickstart is the single canonical recipe; §9 Self-check is the pass/fail gate for reporting a component "drawn".
 >
 > **Related:** [`skills/create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md) — the style-guide canvas geometry this file reuses.
+
+---
+
+## 0. Glossary (canonical vocabulary)
+
+> Any agent reading this file should use **exactly these terms** — no synonyms, no rephrasings. When SKILL.md §0 and CONVENTIONS.md disagree, the skill wins, but terminology must be identical across both.
+
+| Term | Definition |
+|------|------------|
+| **ComponentSet** | The single `ComponentSetNode` produced by `combineAsVariants`. It owns the `variant` / `size` properties and every element component property (`Label`, `Leading icon`, `Trailing icon`). One per component. Reparented **into** the doc frame at `doc/component/{name}/component-set-group`. |
+| **variant (ComponentNode)** | A single `ComponentNode` inside the ComponentSet, one per `(variant × size)` tuple. Never "a Figma variant" as in vocabulary — that ambiguity is the problem this glossary prevents. |
+| **variant axis** | The `variant` Figma property (e.g. `default`, `destructive`, `outline`). Populated from `CONFIG.variants[]`. |
+| **size axis** | The `size` Figma property (e.g. `sm`, `default`, `lg`, `icon`). Populated from `CONFIG.sizes[]`. If `CONFIG.sizes === []`, no size axis is created. |
+| **element component property** | A `TEXT` / `BOOLEAN` / `INSTANCE_SWAP` property added via `addComponentProperty` **on each ComponentNode before `combineAsVariants`**. After combining, identically-named properties unify at the ComponentSet level. The three canonical ones are `Label` (TEXT), `Leading icon` (BOOLEAN), `Trailing icon` (BOOLEAN). |
+| **icon slot** | A 24×24 `FrameNode` named `icon-slot/leading`, `icon-slot/trailing`, or `icon-slot/center`. Fills `[]`, 1 px dashed stroke bound to `color/border/default`, cornerRadius 4, layoutMode `NONE`. Reserves space even when empty; the BOOLEAN element property toggles its `visible` field. Authoritative spec: §3.3.1. |
+| **icon-only mode** | The state triggered when `CONFIG.label(size, variant)` returns `null` and at least one `iconSlots.*` flag is true. The directional slots collapse to a single `icon-slot/center`, and `padVEff = padH` makes the component square. This mirrors shadcn's `size=icon`. |
+| **doc frame** | The top-level wrapper `doc/component/{name}` auto-layout frame holding the five sections: header, properties table, component-set-group, matrix, usage. One per component page. |
+| **matrix cell** | A single `InstanceNode` in the Variant × State specimen grid. Each cell points back to the ComponentSet. Cells receive state overrides via `CONFIG.applyStateOverride`. |
+| **state override** | A mutation applied to a matrix cell's instance at draw time to simulate `:hover` / `:active` / `:disabled`. The authoritative mechanism is **opacity** for button-like components; `setProperties({...})` is the exception for components where state IS a Figma variant (checkbox, switch). See §13.1. |
+| **primary variant** | The variant listed first in `CONFIG.variants`. It becomes the ComponentSet's default variant and is surfaced as the `defaultValue` of the `variant` property. |
+| **doc/* node path** | The Figma layer-name convention: every node the skill creates inside a component page lives under `doc/component/{component}/...`. Used by the Step 9 self-check assertions to locate nodes mechanically. |
 
 ---
 
@@ -107,9 +128,9 @@ The `/create-component` script in `SKILL.md` is split into two halves: a per-com
 | `style` | `Record<variant, { fill, fallback, labelVar, strokeVar }>` | see below | Per-variant paint bindings — every entry in `variants` must have a matching `style` entry. |
 | `padH` | `{ default: token, [size]: token }` | `{ default: 'space/md', sm: 'space/xs' }` | Horizontal padding per size. `default` key is the fallback. |
 | `radius` | `string` (Layout token) | `'radius/md'` | Corner radius applied to all variants. |
-| `label` | `string \| ((size, variant) => string)` | `(s) => s === 'icon' ? '⬡' : 'Button'` | Inner text per cell. Return `''` or `null` to skip the text node. |
+| `label` | `string \| ((size, variant) => string \| null)` | `(s) => s === 'icon' ? null : 'Button'` | Inner text per cell. Return `null` (or `''`) to skip the text node — when `iconSlots` is also enabled, this triggers **icon-only mode**: the directional slots are replaced by a single `icon-slot/center` and padding is squared off (shadcn `size=icon` pattern). See §3.3.1. |
 | `labelStyle` | `{ default: styleName, [size]: styleName }` _optional_ | `{ default: 'Label/MD', sm: 'Label/SM', lg: 'Label/LG', icon: 'Label/MD' }` | Published text style applied to the inner label per size (keys must match entries in `sizes`; `default` is the fallback). Names must resolve via `figma.getLocalTextStylesAsync()` — typically `Label/XS · Label/SM · Label/MD · Label/LG` from the `/create-design-system` Typography collection. If the style doesn't exist, `buildVariant` falls back to raw `fontSize: 14` + bound font-family variable. Omit the field entirely to always use the raw fallback (discouraged for production components). |
-| `iconSlots` | `{ leading: boolean, trailing: boolean, size?: number }` _optional_ | `{ leading: true, trailing: true, size: 24 }` | Render empty **24×24 placeholder frames** around the label so designers can drop SVG content without detaching. Slots are named `icon-slot/leading` and `icon-slot/trailing` and have no fill / no stroke (space-preserving). When `label()` returns `null` for a given size, both flags are ignored and a single `icon-slot/center` is drawn instead — this is the shadcn `size=icon` pattern. `size` defaults to **24** (the system token); do not deviate without a matching token update. Omit the whole field to skip icon slots entirely. See § 3.3. |
+| `iconSlots` | `{ leading: boolean, trailing: boolean, size?: number }` _optional_ | `{ leading: true, trailing: true, size: 24 }` | Render **24×24 placeholder frames** around the label so designers can drop SVG content without detaching. Slots are named `icon-slot/leading` and `icon-slot/trailing`; when `label()` returns `null` for a given size, both flags are ignored and a single `icon-slot/center` is drawn instead (shadcn `size=icon` pattern). `size` defaults to **24**; do not deviate without a matching token update. Omit the field to skip icon slots entirely. **See §3.3.1 for the authoritative paint / stroke / cornerRadius / layoutMode spec — do not duplicate those values here.** |
 | `componentProps` | `{ label: boolean, leadingIcon: boolean, trailingIcon: boolean }` _optional_ | `{ label: true, leadingIcon: true, trailingIcon: true }` | Figma element component properties added to the `ComponentSet` so designers edit instances **without detaching**. `label` → **TEXT** property `"Label"` bound to every variant's inner text characters; `leadingIcon` / `trailingIcon` → **BOOLEAN** properties `"Leading icon"` / `"Trailing icon"` bound to the matching `icon-slot/*` frame's `visible` field. BOOLEAN flags are ignored if the matching `iconSlots.<side>` is false. If `addComponentProperty` throws (older plugin contexts), the draw continues and designers fall back to detaching — see § 3.3. |
 | `states` | `{ key, group }[]` | `[{key:'default',group:'default'},…]` | Matrix columns. `group: 'default'` = interactive cluster (left); `group: 'disabled'` = disabled cluster (right). If **no** state has group `'disabled'`, the two-tier header collapses to a single row. |
 | `applyStateOverride` | `(instance, stateKey, ctx) => void` | opacity overlay / `setProperties` call | Applied to each matrix cell's instance. For opacity-based states (button-like), mutate `instance.opacity`. For components where state IS a Figma variant prop (checkbox, switch), call `instance.setProperties({...})` here instead. `ctx = { variant, size, componentNode }`. |
@@ -482,86 +503,115 @@ Use this as the golden test case when validating `/create-component`. The output
 
 ### 13.1 — Why state is NOT a Figma variant property
 
-shadcn renders state via `:hover` / `:active` / `:disabled` pseudo-classes on the same DOM node — there is no `state` prop. In Figma, we mirror that: the `ComponentSet` has `variant` and `size` props only. The matrix simulates state visually by **changing the cell's instance fill/stroke bindings at render time**:
+shadcn renders state via `:hover` / `:active` / `:disabled` pseudo-classes on the same DOM node — there is no `state` prop. In Figma, we mirror that: the `ComponentSet` has `variant` and `size` props only. The matrix simulates state visually by applying **per-cell instance overrides** at render time — the underlying component never changes.
 
-| State column | Per-cell instance override |
-|--------------|-----------------------------|
-| `default`   | no overrides (instance renders as component defaults) |
-| `hover`     | override fill with `color/{variant-semantic}/hover` if the token exists, otherwise lighten primary fill by ~8% |
-| `pressed`   | override fill with `color/{variant-semantic}/pressed` or darken by ~8% |
-| `disabled`  | set instance `opacity: 0.5` and override fill to `color/background/variant` |
+#### 13.1.a — Opacity is authoritative for button-like components
 
-If a hover/pressed/disabled token exists in the Theme collection, **always** prefer the bound token over a math-generated shade. These are instance-level paint overrides — they do not modify the underlying component.
+`CONFIG.applyStateOverride` **must** use `instance.opacity` as the primary mechanism for every component whose shadcn source implements states via `:hover` / `:active` / `:disabled` alone (button, toggle, badge, link, most interactive atoms). This is what the SKILL template's Button CONFIG ships with and what the matrix assumes:
 
-For components where `disabled` **IS** a Figma variant prop (`checkbox`, `switch`, `input`), map the matrix's disabled column to `setProperties({ disabled: true })` on the instance and skip the overlay treatment.
+```js
+applyStateOverride: (instance, stateKey) => {
+  if (stateKey === 'hover')    instance.opacity = 0.92;
+  if (stateKey === 'pressed')  instance.opacity = 0.85;
+  if (stateKey === 'disabled') instance.opacity = 0.5;
+},
+```
+
+Why opacity and not fill overrides:
+
+- **Deterministic** across every variant. Does not require a matching `color/{variant}/hover` token to exist; works the same for `default`, `destructive`, `outline`, `secondary`, `ghost`, `link` without per-variant branching.
+- **One number per state**, not a paint resolution per `(variant × state)` pair. A smaller model (Sonnet, Haiku) can replicate the rule with zero lookups.
+- **Survives theme swaps.** Bound fill tokens change when light/dark mode flips; opacity stays visually correct.
+- **Matches the audit checklist** in §14 which asserts states are opacity-based unless `CONFIG.states` says otherwise.
+
+Do **not** override fills to math-generated shades (`lighten by 8%`, `darken by 8%`), and do **not** swap bound tokens at render time. Either approach forks the golden path.
+
+#### 13.1.b — Exception: state IS a Figma variant property
+
+For components whose shadcn source exposes state through a React prop that Figma models as a variant property — `checkbox` (`checked`), `switch` (`checked`), `input` (`disabled`), `radio` (`checked`) — map the matrix's state column to `instance.setProperties({ ... })` and skip the opacity overlay:
+
+```js
+applyStateOverride: (instance, stateKey, ctx) => {
+  if (stateKey === 'checked')  instance.setProperties({ State: 'Checked' });
+  if (stateKey === 'disabled') instance.setProperties({ State: 'Disabled' });
+},
+```
+
+`ctx = { variant, size, componentNode }` if you need the originating component to re-bind anything. Use this branch only when the shadcn prop is already surfaced as a Figma variant — otherwise stay on the opacity path.
+
+#### 13.1.c — What about per-state bound tokens?
+
+If a design system author has already published `color/primary/hover`, `color/primary/pressed`, etc. as Theme variables, they are still exposed for manual use (custom illustrations, bespoke states) — but they are **not** consumed by `applyStateOverride` in the default pipeline. Introducing a token-swap path would make the matrix's behavior dependent on token presence, which violates the determinism goal above. If a future component genuinely needs token-swapped states, add a new `CONFIG` knob (e.g. `stateTokens: { hover: 'color/primary/hover', ... }`) rather than mutating `applyStateOverride`.
 
 ---
 
 ## 14. Audit checklist before reporting a component "drawn"
 
+> **Mechanical pass/fail gate.** Every item below is tagged either with an `S9.*` ID that maps 1:1 to a [SKILL.md §9 Self-check](./SKILL.md) assertion (verified against the `use_figma` return payload, no manual inspection needed), or with `V` for visual-only items that require a screenshot review. A component is not drawn until every `S9.*` row passes; `V` rows are strongly recommended but not blocking.
+
 ### Page scaffold
-- [ ] Navigated to the correct `↳ {Page}` per the routing table in SKILL.md
-- [ ] Deleted every node other than `_Header`
-- [ ] `_PageContent` exists at (0, 320), 1800 wide, padding 80, fill `#FFFFFF`
+- [ ] **S9.1** Navigated to the correct `↳ {Page}` per the routing table in SKILL.md — `pageName === CONFIG.pageName` in the return payload
+- [ ] **S9.1** Deleted every node other than `_Header` — `docRootChildren >= 2`
+- [ ] **V** `_PageContent` exists at (0, 320), 1800 wide, padding 80, fill `#FFFFFF`
 
 ### Component set
-- [ ] Every variant × size combination has a `ComponentNode`
-- [ ] Each variant's inner label text uses a published `Label/*` text style (Label/XS / Label/SM / Label/MD / Label/LG) driven by `CONFIG.labelStyle` — not raw `fontSize`
-- [ ] All variant nodes combined into one `ComponentSet` named `{Title} — ComponentSet`
-- [ ] ComponentSet **reparented into the doc frame** as §3 (Component Set section) — NOT parked at `y: -2000` and NOT left on the page root
-- [ ] ComponentSet configured as `HORIZONTAL` + `WRAP` auto-layout, 1640 wide, 32 padding, 24 itemSpacing, 24 counterAxisSpacing, dashed stroke bound to `color/border/subtle`, fill bound to `color/background/variant`, `cornerRadius: 16`
-- [ ] State columns mapped correctly: if shadcn has no state prop, the matrix uses instance overrides (§13.1); if shadcn has a `disabled`/`checked`/etc. prop, the matrix uses `setProperties(...)`
+- [ ] **S9.3** Every variant × size combination has a `ComponentNode` — `compSetVariants.length === CONFIG.variants.length × max(CONFIG.sizes.length, 1)`
+- [ ] **V** Each variant's inner label text uses a published `Label/*` text style (Label/XS / Label/SM / Label/MD / Label/LG) driven by `CONFIG.labelStyle` — not raw `fontSize`
+- [ ] **S9.2** All variant nodes combined into one `ComponentSet` named `{Title} — ComponentSet`
+- [ ] **S9.4** ComponentSet **reparented into the doc frame** as §3 (Component Set section) — NOT parked at `y: -2000` and NOT left on the page root
+- [ ] **V** ComponentSet configured as `HORIZONTAL` + `WRAP` auto-layout, 1640 wide, 32 padding, 24 itemSpacing, 24 counterAxisSpacing, dashed stroke bound to `color/border/subtle`, fill bound to `color/background/variant`, `cornerRadius: 16`
+- [ ] **V** State columns mapped correctly: if shadcn has no state prop, the matrix uses instance overrides (§13.1); if shadcn has a `disabled`/`checked`/etc. prop, the matrix uses `setProperties(...)`
 
 ### Icon slots (§ 3.3)
-- [ ] If `CONFIG.iconSlots.leading` is true: every variant with a label contains a child named `icon-slot/leading` at **24 × 24** with no fill and a 1 px dashed stroke bound to `color/border/default`, `cornerRadius: 4`
-- [ ] If `CONFIG.iconSlots.trailing` is true: same, named `icon-slot/trailing`
-- [ ] Every variant whose `CONFIG.label(size, variant)` returns `null` contains exactly **one** child named `icon-slot/center` at 24 × 24 — and no text node
-- [ ] Icon-only variants have **square** padding (`paddingTop == paddingLeft`) so they render as squares — matches shadcn `h-10 w-10`
-- [ ] Slot layer order is `icon-slot/leading → text → icon-slot/trailing` (reading order)
+- [ ] **S9.7** If `CONFIG.iconSlots.leading` is true: every variant with a label contains a child named `icon-slot/leading` at **24 × 24** with no fill and a 1 px dashed stroke bound to `color/border/default`, `cornerRadius: 4`
+- [ ] **S9.7** If `CONFIG.iconSlots.trailing` is true: same, named `icon-slot/trailing`
+- [ ] **S9.8** Every variant whose `CONFIG.label(size, variant)` returns `null` contains exactly **one** child named `icon-slot/center` at 24 × 24 — and no text node
+- [ ] **V** Icon-only variants have **square** padding (`paddingTop == paddingLeft`) so they render as squares — matches shadcn `h-10 w-10`
+- [ ] **S9.7** Slot layer order is `icon-slot/leading → text → icon-slot/trailing` (reading order)
 
 ### Element component properties (§ 3.3)
-- [ ] If `CONFIG.componentProps.label` is true: the `ComponentSet` has a `TEXT` property named exactly `"Label"` with default = first non-null `CONFIG.label(...)` value
-- [ ] Every variant's text node has `componentPropertyReferences.characters` pointing to that property ID
-- [ ] If `CONFIG.componentProps.leadingIcon` is true: `ComponentSet` has a `BOOLEAN` property `"Leading icon"` (default `true`) referenced by every `icon-slot/leading`'s `visible` field
-- [ ] If `CONFIG.componentProps.trailingIcon` is true: same for `"Trailing icon"` (default `false`) and `icon-slot/trailing`
-- [ ] If `addComponentProperty` threw (soft failure): warning logged, no error thrown, matrix still rendered — this is an acceptable downgrade, not a bug
+- [ ] **S9.5** If `CONFIG.componentProps.label` is true: the `ComponentSet` has a `TEXT` property named exactly `"Label"` with default = first non-null `CONFIG.label(...)` value
+- [ ] **S9.5** Every variant's text node has `componentPropertyReferences.characters` pointing to that property ID
+- [ ] **S9.6** If `CONFIG.componentProps.leadingIcon` is true: `ComponentSet` has a `BOOLEAN` property `"Leading icon"` (default `true`) referenced by every `icon-slot/leading`'s `visible` field
+- [ ] **S9.6** If `CONFIG.componentProps.trailingIcon` is true: same for `"Trailing icon"` (default `false`) and `icon-slot/trailing`
+- [ ] **S9.9** `propErrorsCount === 0`. If `addComponentProperty` threw (soft failure) and `propErrorsCount > 0`, the run surfaces `propErrorsSample` and stops — do not report the component "drawn"
 
 ### Doc frame — header
-- [ ] `doc/component/{name}` root frame exists inside `_PageContent` with 5 children (header, properties, component-set-group, matrix, usage)
-- [ ] Title (`Doc/Section`), summary (`Doc/Caption`), source link rendered
+- [ ] **V** `doc/component/{name}` root frame exists inside `_PageContent` with 5 children (header, properties, component-set-group, matrix, usage)
+- [ ] **V** Title (`Doc/Section`), summary (`Doc/Caption`), source link rendered
 
 ### Doc frame — properties table
-- [ ] 5 columns (PROPERTY · TYPE · DEFAULT · REQUIRED · DESCRIPTION) summing to 1640
-- [ ] Property row order: variant props → state props → content props → a11y props → escape hatches
-- [ ] Every cell's text uses `Doc/Code` or `Doc/Caption`; `textAutoResize = 'HEIGHT'`
+- [ ] **V** 5 columns (PROPERTY · TYPE · DEFAULT · REQUIRED · DESCRIPTION) summing to 1640
+- [ ] **V** Property row order: variant props → state props → content props → a11y props → escape hatches
+- [ ] **V** Every cell's text uses `Doc/Code` or `Doc/Caption`; `textAutoResize = 'HEIGHT'`
 
 ### Doc frame — component set section (§3.2)
-- [ ] Section frame named `doc/component/{name}/component-set-group`, VERTICAL auto-layout, 1640 wide
-- [ ] Section title "Component" (`Doc/Section`) + caption explaining "Live ComponentSet — edit here, matrix updates"
-- [ ] The `ComponentSetNode` itself is a direct child of this section (third child of `docRoot`)
+- [ ] **S9.4** Section frame named `doc/component/{name}/component-set-group`, VERTICAL auto-layout, 1640 wide
+- [ ] **V** Section title "Component" (`Doc/Section`) + caption explaining "Live ComponentSet — edit here, matrix updates"
+- [ ] **S9.4** The `ComponentSetNode` itself is a direct child of this section (third child of `docRoot`)
 
 ### Doc frame — matrix
-- [ ] Matrix is 1640 wide, dashed outline `color/border/subtle`, `cornerRadius: 16`
-- [ ] Two-tier header: group row (DEFAULT | DISABLED) + state-label row
-- [ ] Gutter width = 220 (size 60 + variant 160) when size axis present; 160 when absent
-- [ ] State cells equal-width and sum to 1420 (or 1480 when no size axis)
-- [ ] Size groups stacked vertically in shadcn declaration order
-- [ ] Row labels are **outside** cells, fixed 160 wide, `Doc/Caption`
-- [ ] Every cell contains exactly **one** instance, created via `figma.createInstance(componentNode)`
-- [ ] Instance properties set to match the cell coordinates
-- [ ] Bottom stroke removed from the last row of the last size group
+- [ ] **V** Matrix is 1640 wide, dashed outline `color/border/subtle`, `cornerRadius: 16`
+- [ ] **V** Two-tier header: group row (DEFAULT | DISABLED) + state-label row
+- [ ] **V** Gutter width = 220 (size 60 + variant 160) when size axis present; 160 when absent
+- [ ] **V** State cells equal-width and sum to 1420 (or 1480 when no size axis)
+- [ ] **V** Size groups stacked vertically in shadcn declaration order
+- [ ] **V** Row labels are **outside** cells, fixed 160 wide, `Doc/Caption`
+- [ ] **V** Every cell contains exactly **one** instance, created via `figma.createInstance(componentNode)`
+- [ ] **V** Instance properties set to match the cell coordinates
+- [ ] **V** Bottom stroke removed from the last row of the last size group
 
 ### Doc frame — usage notes
-- [ ] 2-column Do / Don't grid, each 805 wide, padding 28, fill `color/background/variant`
-- [ ] Minimum 3 bullets per column
+- [ ] **V** 2-column Do / Don't grid, each 805 wide, padding 28, fill `color/background/variant`
+- [ ] **V** Minimum 3 bullets per column
 
 ### Text & bindings
-- [ ] Every text node uses a `Doc/*` style (never raw `fontName`/`fontSize`)
-- [ ] Every chrome fill/stroke bound to a Theme/Primitives variable
-- [ ] No hard-coded hex on chrome
-- [ ] Instance overrides (hover/pressed/disabled) prefer bound Theme tokens over math-generated shades
+- [ ] **V** Every text node uses a `Doc/*` style (never raw `fontName`/`fontSize`)
+- [ ] **V** Every chrome fill/stroke bound to a Theme/Primitives variable
+- [ ] **V** No hard-coded hex on chrome
+- [ ] **V** Instance overrides (hover/pressed/disabled) use opacity for button-like components (§13.1.a) or `setProperties(...)` for components where state IS a Figma variant (§13.1.b) — never math-generated fill shades
 
-If any box is unchecked, fix before reporting the component as `drawn`.
+If any `S9.*` row fails, fix before reporting the component `drawn`. `V` rows require a `get_screenshot` review and should be corrected where possible; do not block the run on them unless the designer reports a regression.
 
 ---
 

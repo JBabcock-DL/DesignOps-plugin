@@ -1947,6 +1947,8 @@ After writing `tokens.css` successfully:
 
 2. Confirm with the file path and a count of CSS custom properties written. If the write fails (e.g. directory not found), call **AskUserQuestion** with a corrected path prompt and retry once.
 
+> **Component consumption.** Components drawn by `/create-component` bind their chrome, padding, radius, and text color to the Theme / Layout / Typography variables emitted here. See [`skills/create-component/CONVENTIONS.md` §3.3](../create-component/CONVENTIONS.md) for how components consume these tokens — 24×24 icon slots bind to `color/border/default`, button fills bind to `color/primary/default`, etc.
+
 ---
 
 ## Step 14 — Confirm success

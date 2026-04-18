@@ -13,6 +13,69 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 ---
 
+## §0 — Quickstart recipe for any agent
+
+> **This section is the single canonical recipe.** Any agent (Opus, Sonnet, Haiku, future Claude) opening this skill cold can follow §0 end-to-end without reading the rest of the document first. Deeper context lives in the numbered sections linked below. If §0 and a deeper section ever disagree, §0 is authoritative.
+
+**Outcome:** for each requested component, one ComponentSet drawn into its target `↳ {Page}`, wrapped in a documentation frame (header → properties table → inline ComponentSet → Variant × State matrix → Usage Do/Don't), with element component properties unified at the ComponentSet level (`Label`, `Leading icon`, `Trailing icon`), bound to the user's Theme/Layout/Typography variables.
+
+**Tools you will use:** `AskUserQuestion`, `Shell` (for `npx shadcn@latest` + file reads), `Read` / `Glob` / `Grep`, `use_figma` (one call per component), `get_screenshot` (final visual check).
+
+**Seven steps. Do not skip any.**
+
+| # | Step | Tool | Required inputs | Expected outcome |
+|---|------|------|-----------------|------------------|
+| 1 | Resolve component list | `AskUserQuestion` (if missing) | argument-hint list or designer reply | `components: string[]` of kebab-case shadcn names (`button`, `input`, …) |
+| 2 | Locate `tokens.css` | `Read` / `Glob` | repo path | `TOKEN_CSS_PATH: string \| null` — absolute path or `null` if designer skipped |
+| 3 | Initialize shadcn + wire tokens | `Shell` + `AskUserQuestion` | `components.json` presence check | `components.json` exists, `tokens.css` imported at top of `globals.css`, variable-declaration blocks removed |
+| 4 | Install each component | `Shell` | `npx shadcn@latest add {component}` | Files written under `components/ui/`, per-component status `installed \| already_exists \| failed` |
+| 5 | Resolve Figma file key | handoff lookup → `AskUserQuestion` fallback | `templates/agent-handoff.md` frontmatter | `fileKey: string` |
+| 6 | Draw component → Figma | `use_figma` (one call per component) | `fileKey`, `CONFIG` block per §6 | Return payload with `{ compSetId, compSetVariants, compSetPropertyDefinitions, firstVariantChildren, iconVariantChildren, propErrorsCount, … }` |
+| 7 | Self-check the return payload | agent-side assertions per §9 | step 6's return JSON | Zero drift; if any assertion fails, stop and report — do not mark the component done |
+
+### §0.1 — Decision tree for edge cases
+
+- **No components provided** → step 1 prompts with the full supported list (see the routing table in §6).
+- **`tokens.css` not found** → step 2 prompts; reply `skip` sets `TOKEN_CSS_PATH = null` and canvas uses hex fallbacks.
+- **shadcn not initialized** → step 3 prompts to run `npx shadcn@latest init`; if declined, stop the skill.
+- **Component install fails** → log, mark `failed`, **continue** to the next component.
+- **`use_figma` throws** → **stop**, do not retry. Read the error, fix the CONFIG or the template, then resubmit one component at a time.
+
+### §0.2 — Return payload assertions (abbreviated §9)
+
+After step 6, the agent must verify the return JSON contains (values are required, not suggested):
+
+```text
+compSetName             === `${CONFIG.title} — ComponentSet`
+compSetVariants.length  === CONFIG.variants.length × max(CONFIG.sizes.length, 1)
+compSetPropertyDefinitions includes
+  - "Label"         of type "TEXT"    (when CONFIG.componentProps.label)
+  - "Leading icon"  of type "BOOLEAN" (when CONFIG.componentProps.leadingIcon)
+  - "Trailing icon" of type "BOOLEAN" (when CONFIG.componentProps.trailingIcon)
+firstVariantChildren    contains "icon-slot/leading", text, "icon-slot/trailing" in order
+iconVariantChildren     contains exactly one "icon-slot/center"  (when icon-only size is declared)
+propErrorsCount         === 0
+```
+
+If any row fails → surface the failure verbatim in the run report and do NOT claim the component "drawn". See §9 for the full self-check.
+
+### §0.3 — Deep-section map
+
+| Topic | Section |
+|-------|---------|
+| Interactive prompts | §1 Interactive input contract |
+| Shadcn init + token wiring | §3 / §3a |
+| Install per component | §4 |
+| File-key resolution | §5 |
+| The `use_figma` template (CONFIG + draw engine) | §6 |
+| Reporting table | §8 |
+| Self-check before reporting "drawn" | §9 |
+| Icon slots + element properties spec | [CONVENTIONS.md §3.3](./CONVENTIONS.md) |
+| State override policy | [CONVENTIONS.md §13.1](./CONVENTIONS.md) |
+| Audit checklist | [CONVENTIONS.md §14](./CONVENTIONS.md) |
+
+---
+
 ## Interactive input contract
 
 When this skill needs designer input (component list, Figma file key, shadcn init choices, optional `/code-connect` chaining), use **AskUserQuestion** — **one question per tool call**, wait for each reply before the next. Do not dump multiple questions as plain markdown before the first AskUserQuestion.
@@ -402,9 +465,13 @@ function bindNum(node, field, varName, fallback) {
 // OR (when `label` is null AND at least one slot is enabled):
 //   [icon-slot/center]
 //
-// Icon slots are empty 24×24 frames (no fill, no stroke) that preserve
-// space in the auto-layout even when no icon content is dropped in.
-// Designers find them by name in the layers panel.
+// Icon slots are 24×24 placeholder frames with no fill and a 1px dashed
+// stroke bound to `color/border/default` (hex fallback #d4d4d8),
+// cornerRadius 4, layoutMode NONE. The dashed outline is visible in the
+// Figma editor so designers can locate drop targets on canvas, and sits
+// behind any child the designer adds — final renders show the child, not
+// the placeholder. Slots preserve their 24×24 footprint in auto-layout
+// even while empty. See CONVENTIONS.md §3.3.1 for the authoritative spec.
 //
 // Per the Plugin API docs, element component properties (TEXT / BOOLEAN /
 // INSTANCE_SWAP) MUST be added to each variant component BEFORE combining.
@@ -605,10 +672,15 @@ function buildVariant(name, fillVar, fallbackFill, {
 // (OR a single `icon-slot/center 24×24` when `label()` returns null — the
 //  icon-only mode used by shadcn's `size=icon`).
 //
-// Icon slots are empty frames with no fill and no stroke — they reserve
-// space in auto-layout but render invisibly until a designer drops a
-// 24×24 vector inside. The ComponentSet exposes three element component
-// properties so designers edit instances WITHOUT DETACHING:
+// Icon slots are 24×24 placeholder frames with no fill and a 1px dashed
+// stroke bound to `color/border/default` (fallback #d4d4d8), cornerRadius
+// 4, layoutMode NONE. The dashed outline is discoverable on canvas and in
+// the layers panel; it sits behind any child the designer drops in, so
+// final renders show the icon and not the placeholder. See CONVENTIONS.md
+// §3.3.1 for the authoritative slot spec.
+//
+// The ComponentSet exposes three element component properties so
+// designers edit instances WITHOUT DETACHING:
 //   • TEXT     "Label"         → bound to every variant's text characters
 //   • BOOLEAN  "Leading icon"  → bound to icon-slot/leading visibility
 //   • BOOLEAN  "Trailing icon" → bound to icon-slot/trailing visibility
@@ -1320,6 +1392,30 @@ Follow with:
 - Skipped / failed: N (list names and reasons)
 - Token binding status: "Theme/Layout/Typography collections found — bindings applied" or list which collections were absent and that raw fallback values were used
 - CSS token wiring: "Imported `{TOKEN_CSS_PATH}` into `{globals_css_path}`" or "tokens.css not found — shadcn default variables retained" if skipped
+
+---
+
+### Step 9 — Self-check before reporting a component "drawn"
+
+> **Run these assertions against the JSON return payload from each §6 `use_figma` call.** If any assertion fails, the component is NOT drawn — mark it `failed` in Step 8, surface the failing assertion ID verbatim, and do not offer Code Connect chaining for that component. A smaller model (Sonnet, Haiku) must be able to evaluate every assertion mechanically without extra inference.
+
+Every assertion ID below (`S9.1` … `S9.9`) maps 1:1 to an audit-checklist item in [CONVENTIONS.md §14](./CONVENTIONS.md).
+
+| ID | Assertion (evaluate against §6 return payload) | Failure action |
+|----|-----------------------------------------------|----------------|
+| **S9.1** | `pageName === CONFIG.pageName` and `docRootChildren >= 2` (at minimum `_Header` + `_PageContent`) | Re-run §6.0 page clear + §6.3 doc frame build |
+| **S9.2** | `compSetName === \`${CONFIG.title} — ComponentSet\`` | The naming convention was bypassed — fix CONFIG.title and re-run |
+| **S9.3** | `compSetVariants.length === CONFIG.variants.length × max(CONFIG.sizes.length, 1)` | Missing variants — inspect buildVariant call-site and `combineAsVariants` input |
+| **S9.4** | `compSetParent` ends with `doc/component/{component}/component-set-group` (ComponentSet reparented into the doc frame, not parked off-canvas) | §6.4 reparent step did not run |
+| **S9.5** | When `CONFIG.componentProps.label` is true: `compSetPropertyDefinitions.Label.type === 'TEXT'` and its `defaultValue` is a non-empty string | `addComponentProperty` threw or was skipped — inspect `propErrorsSample` |
+| **S9.6** | When `CONFIG.componentProps.leadingIcon` is true: `compSetPropertyDefinitions['Leading icon'].type === 'BOOLEAN'`. Same for `trailingIcon` → `'Trailing icon'` | As above |
+| **S9.7** | For every variant with a non-null label: `firstVariantChildren` contains `icon-slot/leading`, a text node, `icon-slot/trailing` **in that reading order** (when both `iconSlots.leading` and `iconSlots.trailing` are true) | Variant assembly is broken — inspect `buildVariant` children order |
+| **S9.8** | For every variant where `CONFIG.label(size, variant) === null`: `iconVariantChildren` contains exactly one child named `icon-slot/center` and **no text node** | Icon-only mode collapsed incorrectly |
+| **S9.9** | `propErrorsCount === 0` | Surface `propErrorsSample` to the designer and STOP — do not report the component drawn |
+
+If all nine assertions pass, the component is safe to mark **Drawn to Canvas = Yes** in the Step 8 table.
+
+> **Optional visual check (recommended, not gating):** after S9.1–S9.9 pass, call `get_screenshot` on the `_PageContent` frame's node ID. Inspect the dashed icon-slot placeholders in the matrix rows, confirm opacity ramps across `default → hover → pressed → disabled`, and verify the inline ComponentSet at the top of the doc frame. This is a human-review safety net, not a mechanical assertion.
 
 ---
 
