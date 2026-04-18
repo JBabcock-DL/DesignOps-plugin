@@ -324,7 +324,7 @@ If a frame named `[MCP] Token Manifest` exists on the page, delete it entirely. 
 
 ### 3. Rebuild the manifest from scratch
 
-Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440 — **`layoutMode: VERTICAL`**, padding and `itemSpacing` per **create-design-system Step 16** and **Canvas documentation visual spec** § A–C (root fill → `color/background/default`, not a detached white-only fill). Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
+Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440 — **`layoutMode: VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, padding and `itemSpacing` per **create-design-system Step 16** and **Canvas documentation visual spec** § **A–F** (root fill → `color/background/default`, not a detached white-only fill). Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
 
 - In the `[MCP] JSON Manifest` text node, set `"skill": "sync-design-system"` (not `"create-design-system"`).
 - Set `"generated"` to the current ISO-8601 datetime at the time this step executes.
@@ -351,7 +351,7 @@ The manifest structure is:
 
 All values are fully resolved (no alias references). Use the same live variable data fetched in Step 9b if available; otherwise call `GET /v1/files/:key/variables/local` once to get current values for all collections.
 
-**Five collection table sub-frames** stacked vertically below the JSON node, each following **create-design-system Step 16** (including **`ALIAS →`**, **`MODE`**, **32px** bound **SWATCH** cells for COLOR rows, **`Doc/*`** typography, row **minHeight ~44**, and the **`MODE` = collection mode** caption).
+**Five collection table sub-frames** stacked vertically below the JSON node, each following **create-design-system Step 16** (including **`ALIAS →`**, **`MODE`**, **32px** bound **SWATCH** cells for COLOR rows, **`Doc/*`** typography, **`doc/mcp-table/{collection}/rows`** + per-line **`…/row/…`** **HORIZONTAL** frames (**§ F**), row **`minHeight` 48**, **`textAutoResize`** on all text (**§ E**), and the **`MODE` = collection mode** caption).
 
 - `[MCP] Primitives` — `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS` — **SWATCH** variable-bound for COLOR.
 - `[MCP] Theme` — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS` — two rows per token (`light` / `dark`); explicit mode on row or swatch wrapper when used in create.
