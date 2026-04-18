@@ -141,7 +141,7 @@ If a component install fails, log the error, mark it `failed`, and continue to t
 
 For each successfully installed component, make **one `use_figma` call** using the complete template below.
 
-**Component → Page routing** (resolve `TARGET_PAGE_NAME` before writing the code):
+**Component → Page routing** (pick the row for your component and use it as `CONFIG.pageName`):
 
 | Component(s) | Target Page |
 |---|---|
@@ -193,8 +193,98 @@ For each successfully installed component, make **one `use_figma` call** using t
 **Complete `use_figma` code template** (substitute component-specific values where indicated):
 
 ```js
+// ═══════════════════════════════════════════════════════════════════════════
+// STEP 0. COMPONENT CONFIG — the ONLY block you edit per component
+// ═══════════════════════════════════════════════════════════════════════════
+// Replace this entire object per component. Schema: CONVENTIONS.md §3.
+// Every subsequent section (§1 through §6) reads from CONFIG and never
+// from Button-specific constants. If a new component needs behavior this
+// schema doesn't model, extend the schema rather than hardcoding inline.
+
+const CONFIG = {
+  component: 'button',                // kebab-case, matches shadcn filename
+  title:     'Button',                // display title (header, page references)
+  pageName:  '↳ Buttons',             // target page; see routing table above
+  summary:   'Trigger an action or navigate. Follows shadcn/ui defaults — six variants, four sizes.',
+
+  // Variant × Size cross-product becomes the ComponentSet.
+  //   variants[]  → matrix rows (within each size group)
+  //   sizes[]     → vertically-stacked size groups ([] = no size axis)
+  variants: ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'],
+  sizes:    ['sm', 'default', 'lg', 'icon'],
+
+  // Per-variant paint tokens — bound to Theme collection.
+  style: {
+    default:     { fill: 'color/primary/default',    fallback: '#1a1a1a', labelVar: 'color/primary/content',    strokeVar: null },
+    destructive: { fill: 'color/error/default',      fallback: '#ef4444', labelVar: 'color/error/content',      strokeVar: null },
+    outline:     { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content', strokeVar: 'color/border/default' },
+    secondary:   { fill: 'color/secondary/default',  fallback: '#6b7280', labelVar: 'color/secondary/content',  strokeVar: null },
+    ghost:       { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content', strokeVar: null },
+    link:        { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/primary/default',    strokeVar: null },
+  },
+
+  // Per-size horizontal padding token. `default` is the fallback.
+  padH:   { default: 'space/md', sm: 'space/xs', lg: 'space/lg', icon: 'space/xs' },
+  radius: 'radius/md',                // radius token used on every variant
+
+  // Per-size text style for the inner label. Keys map to PUBLISHED text
+  // styles in the file (Label/XS, Label/SM, Label/MD, Label/LG). `default`
+  // is the fallback. If the style doesn't exist, buildVariant falls back
+  // to raw fontSize 14. Omit entirely to skip published styles for labels.
+  labelStyle: { default: 'Label/MD', sm: 'Label/SM', lg: 'Label/LG', icon: 'Label/MD' },
+
+  // (size, variant) → inner label. Return '' for icon-only slots.
+  label: (size, _variant) => size === 'icon' ? '⬡' : 'Button',
+
+  // Matrix state columns — group them as "default" (interactive cluster) or
+  // "disabled" (right cluster). If every state has group 'default', the
+  // two-tier header collapses to a single states row.
+  states: [
+    { key: 'default',  group: 'default'  },
+    { key: 'hover',    group: 'default'  },
+    { key: 'pressed',  group: 'default'  },
+    { key: 'disabled', group: 'disabled' },
+  ],
+
+  // Applied to every matrix cell instance. If state IS a Figma variant prop
+  // (e.g. checkbox, switch), call `instance.setProperties({...})` here
+  // instead of mutating fills/opacity.
+  applyStateOverride: (instance, stateKey) => {
+    if (stateKey === 'hover')    instance.opacity = 0.92;
+    if (stateKey === 'pressed')  instance.opacity = 0.85;
+    if (stateKey === 'disabled') instance.opacity = 0.5;
+  },
+
+  // Properties + Types table rows. Columns: NAME | TYPE | DEFAULT | REQUIRED | DESCRIPTION.
+  properties: [
+    ['variant',   '"default" | "destructive" | "outline" | "secondary" | "ghost" | "link"', '"default"', 'no', 'Visual style.'],
+    ['size',      '"default" | "sm" | "lg" | "icon"',                                       '"default"', 'no', 'Overall height + padding preset.'],
+    ['disabled',  'boolean',                                                                 'false',    'no', 'Disables pointer + keyboard interaction; adds visual dim.'],
+    ['asChild',   'boolean',                                                                 'false',    'no', 'Renders styled classes onto the immediate child via Radix Slot.'],
+    ['type',      '"button" | "submit" | "reset"',                                           '"button"', 'no', 'Native HTML button type.'],
+    ['className', 'string',                                                                  '—',        'no', 'Tailwind class escape hatch.'],
+  ],
+
+  // Usage notes — left "Do" card, right "Don't" card. ≥3 bullets each.
+  usageDo: [
+    'Use `default` for the single primary action in a flow.',
+    'Use `outline` or `ghost` for secondary actions that shouldn\'t pull focus.',
+    'Pair `icon` size with an aria-label on the underlying button element.',
+  ],
+  usageDont: [
+    'Don\'t stack two `default` buttons side-by-side — pick one primary.',
+    'Don\'t use `destructive` for routine actions — reserve for irreversible ones.',
+    'Don\'t override the size via className when a `size` variant exists.',
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Everything below this line is IDENTICAL for every component.
+// Do not edit per component.
+// ═══════════════════════════════════════════════════════════════════════════
+
 // ── 1. Navigate to target page (must be in same call as creation) ──────
-const targetPage = figma.root.children.find(p => p.name === "TARGET_PAGE_NAME")
+const targetPage = figma.root.children.find(p => p.name === CONFIG.pageName)
   ?? figma.currentPage;
 await figma.setCurrentPageAsync(targetPage);
 
@@ -290,12 +380,13 @@ function bindNum(node, field, varName, fallback) {
 //   padH      — Layout path for horizontal padding
 //   padV      — Layout path for vertical padding
 function buildVariant(name, fillVar, fallbackFill, {
-  label     = null,
-  labelVar  = 'color/background/content',
-  strokeVar = null,
-  radiusVar = 'radius/md',
-  padH      = 'space/md',
-  padV      = 'space/xs',
+  label          = null,
+  labelVar       = 'color/background/content',
+  strokeVar      = null,
+  radiusVar      = 'radius/md',
+  padH           = 'space/md',
+  padV           = 'space/xs',
+  labelStyleName = null,   // published text style name e.g. 'Label/MD'
 } = {}) {
   const c = figma.createComponent();
   c.name = name;
@@ -332,10 +423,21 @@ function buildVariant(name, fillVar, fallbackFill, {
     const txt = figma.createText();
     txt.fontName   = { family: labelFont, style: 'Medium' };
     txt.characters = label;
-    txt.fontSize   = 14;
-    // Bind font-family to Typography collection variable
-    if (labelFontVar) {
-      try { txt.setBoundVariable('fontFamily', labelFontVar); } catch (_) {}
+    // Prefer a published text style (Label/XS · Label/SM · Label/MD · Label/LG)
+    // so every component label stays in sync with the Typography system.
+    // Falls back to raw fontSize + bound font-family variable if the style
+    // doesn't exist in the file yet. (allTextStyles is resolved in §6.1
+    // before this function is ever called — safe to reference here.)
+    const ts = labelStyleName
+      ? allTextStyles.find(s => s.name === labelStyleName)
+      : null;
+    if (ts) {
+      txt.textStyleId = ts.id;
+    } else {
+      txt.fontSize = 14;
+      if (labelFontVar) {
+        try { txt.setBoundVariable('fontFamily', labelFontVar); } catch (_) {}
+      }
     }
     bindColor(txt, labelVar, '#000000', 'fills');
     c.appendChild(txt);
@@ -346,46 +448,37 @@ function buildVariant(name, fillVar, fallbackFill, {
   return c;
 }
 
-// ── 6. DEFAULT DRAW FLOW — matrix documentation frame (every component) ─
-// Every component renders the same 3-section doc frame per CONVENTIONS.md §1:
-//   1. Header   (title + summary + source link)
-//   2. Properties + Types table
-//   3. Variant × State specimen matrix
-//   4. Do / Don't usage notes
-// The ComponentSet lives at y: -2000 (above the visible page) so Figma's
-// Assets panel + Code Connect can resolve it; the matrix displays instances.
+// ═══════════════════════════════════════════════════════════════════════════
+// STEP 6. DEFAULT DRAW FLOW — matrix documentation frame (every component)
+// ═══════════════════════════════════════════════════════════════════════════
+// Every component renders the same 5-section doc frame per CONVENTIONS.md §1:
+//   1. Header         — title + summary + source link
+//   2. Properties     — Properties + Types table
+//   3. Component Set  — live, editable ComponentSet (horizontal-wrap grid)
+//   4. Matrix         — Variant × State specimen matrix (grouped by size)
+//   5. Usage          — Do / Don't cards
+//
+// The ComponentSet is reparented INTO the doc frame as §3 (Component Set)
+// so designers can see and edit the live variants in place — not parked
+// off-canvas. The matrix below contains instances of it that update
+// automatically when the designer edits the source ComponentSet.
+//
+// Everything below reads from the CONFIG object defined at §0. No
+// hardcoded component-specific constants are permitted past this point.
 
-const COMPONENT = 'button';                // ← substitute per component
-const PAGE_NAME = '↳ Buttons';             // ← from routing table
-const DOC_FRAME_WIDTH  = 1640;             // inner content width
-const GUTTER_W_SIZE    = 60;               // size-label column
-const GUTTER_W_VARIANT = 160;              // variant-label column
+const DOC_FRAME_WIDTH  = 1640;
+const GUTTER_W_SIZE    = 60;
+const GUTTER_W_VARIANT = 160;
 
-// --- 6.0  _PageContent scaffold -----------------------------------------
-// Delete everything other than _Header, then build _PageContent.
+// --- 6.0  Clear page (except _Header) -----------------------------------
+// Wipe EVERYTHING except _Header — orphan ComponentSets, half-drawn doc
+// frames, abandoned variant components from a prior failed run.
 
 for (const node of [...figma.currentPage.children]) {
-  if (node.name !== '_Header' && node.type !== 'COMPONENT_SET') node.remove();
+  if (node.name !== '_Header') node.remove();
 }
 
-const pageContent = figma.createFrame();
-pageContent.name = '_PageContent';
-pageContent.layoutMode            = 'VERTICAL';
-pageContent.primaryAxisSizingMode = 'AUTO';
-pageContent.counterAxisSizingMode = 'FIXED';
-pageContent.layoutAlign           = 'STRETCH';
-pageContent.resize(1800, 1);
-pageContent.paddingTop    = 80;
-pageContent.paddingBottom = 80;
-pageContent.paddingLeft   = 80;
-pageContent.paddingRight  = 80;
-pageContent.itemSpacing   = 48;
-pageContent.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-pageContent.x = 0;
-pageContent.y = 320;
-figma.currentPage.appendChild(pageContent);
-
-// --- 6.1  Resolve published Doc/* text styles ---------------------------
+// --- 6.1  Resolve published Doc/* text styles + makeText ----------------
 // CONVENTIONS.md §7 — every doc text node must assign textStyleId.
 
 const allTextStyles = await figma.getLocalTextStylesAsync();
@@ -397,13 +490,16 @@ const DOC = {
   caption:   getDocStyle('Doc/Caption'),
 };
 
-function makeText(chars, styleKey, fallbackSize = 13) {
+// 4-arg makeText — the 4th arg is a Theme var path bound to the text fill.
+// bindColor is defined at §5 above.
+function makeText(chars, styleKey, fallbackSize = 13, fillVar = 'color/background/content') {
   const t = figma.createText();
   t.fontName = { family: labelFont, style: 'Regular' };
-  t.characters = chars;
+  t.characters = String(chars);
   if (DOC[styleKey]) t.textStyleId = DOC[styleKey].id;
   else t.fontSize = fallbackSize;
   t.textAutoResize = 'HEIGHT';   // CRITICAL — prevents 10px row collapse
+  bindColor(t, fillVar, '#0a0a0a', 'fills');
   return t;
 }
 
@@ -411,29 +507,27 @@ function makeText(chars, styleKey, fallbackSize = 13) {
 // State (hover/pressed/disabled) is an instance override in the matrix,
 // not a Figma variant property. CONVENTIONS.md §13.1 explains why.
 
-const BUTTON_VARIANTS = ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'];
-const BUTTON_SIZES    = ['sm', 'default', 'lg', 'icon'];
+const hasSizeAxis = CONFIG.sizes && CONFIG.sizes.length > 0;
+const sizeList    = hasSizeAxis ? CONFIG.sizes : [null];
+const padFallback = CONFIG.padH?.default ?? 'space/md';
+const radiusVar   = CONFIG.radius ?? 'radius/md';
 
-const BUTTON_STYLE = {
-  default:     { fill: 'color/primary/default',    fallback: '#1a1a1a', lv: 'color/primary/content',    stroke: null },
-  destructive: { fill: 'color/error/default',      fallback: '#ef4444', lv: 'color/error/content',      stroke: null },
-  outline:     { fill: 'color/background/default', fallback: '#ffffff', lv: 'color/background/content', stroke: 'color/border/default' },
-  secondary:   { fill: 'color/secondary/default',  fallback: '#6b7280', lv: 'color/secondary/content',  stroke: null },
-  ghost:       { fill: 'color/background/default', fallback: '#ffffff', lv: 'color/background/content', stroke: null },
-  link:        { fill: 'color/background/default', fallback: '#ffffff', lv: 'color/primary/default',    stroke: null },
-};
-const BUTTON_PAD_H = { default: 'space/md', sm: 'space/xs', lg: 'space/lg', icon: 'space/xs' };
+const labelStyleFallback = CONFIG.labelStyle?.default ?? null;
 
 const variantNodes = [];
-for (const v of BUTTON_VARIANTS) {
-  for (const s of BUTTON_SIZES) {
-    const st = BUTTON_STYLE[v];
+for (const v of CONFIG.variants) {
+  for (const s of sizeList) {
+    const st = CONFIG.style[v];
+    if (!st) throw new Error(`CONFIG.style missing entry for variant '${v}'`);
+    const name = s === null ? `variant=${v}` : `variant=${v}, size=${s}`;
+    const label = typeof CONFIG.label === 'function'
+      ? CONFIG.label(s, v)
+      : (CONFIG.label ?? CONFIG.title);
+    const padH  = (s !== null && CONFIG.padH?.[s]) || padFallback;
+    const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
     variantNodes.push(buildVariant(
-      `variant=${v}, size=${s}`,
-      st.fill, st.fallback,
-      { label: s === 'icon' ? '⬡' : 'Button',
-        labelVar: st.lv, strokeVar: st.stroke,
-        radiusVar: 'radius/md', padH: BUTTON_PAD_H[s] }
+      name, st.fill, st.fallback,
+      { label, labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, labelStyleName }
     ));
   }
 }
@@ -442,148 +536,498 @@ let cx = 0;
 for (const n of variantNodes) { n.x = cx; n.y = 0; cx += (n.width || 120) + 16; }
 
 const compSet = figma.combineAsVariants(variantNodes, figma.currentPage);
-compSet.name = 'Button — ComponentSet';
-// Park above the visible page — resolvable for Code Connect, out of the doc flow
-compSet.x = 0;
-compSet.y = -2000;
+compSet.name = `${CONFIG.title} — ComponentSet`;
+// The ComponentSet is NOT parked off-canvas. It's reparented into the doc
+// frame as its own section later (§6.5.5) so designers can see and edit
+// the live variants in place, with all matrix instances updating from it.
 
-// Index the variant components so the matrix can createInstance() per cell
+// Index the variant components so the matrix can createInstance() per cell.
+// Key shape: "variant|size" (or just "variant" when no size axis).
 const variantByKey = {};
 for (const node of compSet.children) {
-  // node.name = "variant=default, size=sm"
   const parts = node.name.split(', ').reduce((acc, kv) => {
     const [k, val] = kv.split('=');
     acc[k] = val;
     return acc;
   }, {});
-  variantByKey[`${parts.variant}|${parts.size}`] = node;
+  const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+  variantByKey[key] = node;
 }
 
-// --- 6.3  Doc frame root inside _PageContent ----------------------------
+// --- 6.3  _PageContent scaffold + doc frame root ------------------------
+// _PageContent is the shared outer container used by EVERY style-guide and
+// component page. Geometry matches /create-design-system CONVENTIONS §2:
+// 1800 wide, 80 padding on all sides, 1640 inner, y=320 below _Header.
+
+const pageContent = figma.createFrame();
+pageContent.name = '_PageContent';
+pageContent.layoutMode = 'VERTICAL';
+// resize FIRST so it doesn't reset the sizing modes we're about to set
+pageContent.resize(1800, 1);
+pageContent.primaryAxisSizingMode = 'AUTO';
+pageContent.counterAxisSizingMode = 'FIXED';
+pageContent.paddingTop    = 80;
+pageContent.paddingBottom = 80;
+pageContent.paddingLeft   = 80;
+pageContent.paddingRight  = 80;
+pageContent.itemSpacing   = 48;
+pageContent.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+pageContent.x = 0;
+pageContent.y = 320;
+figma.currentPage.appendChild(pageContent);
 
 const docRoot = figma.createFrame();
-docRoot.name = `doc/component/${COMPONENT}`;
-docRoot.layoutMode            = 'VERTICAL';
+docRoot.name = `doc/component/${CONFIG.component}`;
+docRoot.layoutMode = 'VERTICAL';
+docRoot.resize(DOC_FRAME_WIDTH, 1);
 docRoot.primaryAxisSizingMode = 'AUTO';
 docRoot.counterAxisSizingMode = 'FIXED';
-docRoot.layoutAlign           = 'STRETCH';
-docRoot.itemSpacing           = 48;
+docRoot.layoutAlign = 'STRETCH';
+docRoot.itemSpacing = 48;
 docRoot.fills = [];
 pageContent.appendChild(docRoot);
-docRoot.resize(DOC_FRAME_WIDTH, 1);
 
 // --- 6.4  Header (title + summary) -------------------------------------
 
 const header = figma.createFrame();
-header.name = `doc/component/${COMPONENT}/header`;
+header.name = `doc/component/${CONFIG.component}/header`;
 header.layoutMode = 'VERTICAL';
+header.resize(DOC_FRAME_WIDTH, 1);
 header.primaryAxisSizingMode = 'AUTO';
 header.counterAxisSizingMode = 'FIXED';
 header.layoutAlign = 'STRETCH';
 header.itemSpacing = 12;
 header.fills = [];
 docRoot.appendChild(header);
-header.resize(DOC_FRAME_WIDTH, 1);
 
-const title = makeText('Button', 'section', 32);
+const title = makeText(CONFIG.title, 'section', 32);
 bindColor(title, 'color/background/content', '#0a0a0a', 'fills');
 header.appendChild(title);
 
-const summary = makeText(
-  'Trigger an action or navigate. Follows shadcn/ui defaults — six visual variants, four sizes.',
-  'caption', 14,
-);
+const summary = makeText(CONFIG.summary, 'caption', 14);
 bindColor(summary, 'color/background/content-muted', '#6b7280', 'fills');
 header.appendChild(summary);
 
-// --- 6.5  Properties table (CONVENTIONS.md §4) --------------------------
-// Columns sum to 1640: PROPERTY 240 · TYPE 380 · DEFAULT 160 · REQUIRED 120 · DESCRIPTION 740
-// Build via buildTable(...) — the same helper used in /create-design-system
-// Step 15a–15c. Copy its implementation into this script if not already
-// available. Rows for button:
-//   variant · "default" | "destructive" | ...  · "default" · no · Visual style.
-//   size    · "default" | "sm" | "lg" | "icon" · "default" · no · Height + padding preset.
-//   disabled · boolean · false · no · Disables pointer + keyboard interaction.
-//   asChild · boolean · false · no · Renders styled classes onto child via Radix Slot.
-//   type    · "button" | "submit" | "reset"    · "button"  · no · Native HTML type.
-//   className · string · — · no · Tailwind escape hatch.
+// --- 6.5  makeFrame helper + hexToRgb -----------------------------------
+// Centralized frame factory — every doc frame uses this. Prevents the
+// common 10px-collapse bug by forcing AUTO height on VERTICAL AUTO frames.
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.slice(0, 2), 16) / 255,
+    g: parseInt(h.slice(2, 4), 16) / 255,
+    b: parseInt(h.slice(4, 6), 16) / 255,
+  };
+}
+
+function makeFrame(name, o = {}) {
+  const f = figma.createFrame();
+  f.name = name;
+  f.layoutMode = o.layoutMode ?? 'VERTICAL';
+  // CRITICAL: resize() resets sizing modes to FIXED — call it BEFORE
+  // setting primary/counter sizing modes, or AUTO will silently reset.
+  if (o.width != null) f.resize(o.width, o.height ?? 1);
+  f.primaryAxisSizingMode = o.primary ?? 'AUTO';
+  f.counterAxisSizingMode = o.counter ?? 'FIXED';
+  f.paddingTop    = o.padT ?? 0;
+  f.paddingRight  = o.padR ?? 0;
+  f.paddingBottom = o.padB ?? 0;
+  f.paddingLeft   = o.padL ?? 0;
+  f.itemSpacing   = o.itemSpacing ?? 0;
+  if (o.align)        f.layoutAlign           = o.align;
+  if (o.primaryAlign) f.primaryAxisAlignItems = o.primaryAlign;
+  if (o.counterAlign) f.counterAxisAlignItems = o.counterAlign;
+  if (o.fillVar)      bindColor(f, o.fillVar, o.fillHex ?? '#ffffff', 'fills');
+  else if (o.fillHex) f.fills = [{ type: 'SOLID', color: hexToRgb(o.fillHex) }];
+  else                f.fills = [];
+  if (o.strokeVar) {
+    bindColor(f, o.strokeVar, '#e5e7eb', 'strokes');
+    f.strokeWeight = o.strokeWeight ?? 1;
+    if (o.dashed)      f.dashPattern = [6, 4];
+    if (o.strokeSides) {
+      f.strokeTopWeight    = o.strokeSides.top    ?? 0;
+      f.strokeRightWeight  = o.strokeSides.right  ?? 0;
+      f.strokeBottomWeight = o.strokeSides.bottom ?? 0;
+      f.strokeLeftWeight   = o.strokeSides.left   ?? 0;
+    }
+  } else {
+    f.strokes = [];
+  }
+  if (o.radius != null) f.cornerRadius = o.radius;
+  return f;
+}
+
+// --- 6.6  Properties + Types table (CONVENTIONS.md §4) ------------------
+// Cols sum to 1640: PROPERTY 240 · TYPE 380 · DEFAULT 160 · REQUIRED 120 · DESCRIPTION 740
+
+function buildPropertiesTable(rows) {
+  const COLS = [
+    { header: 'PROPERTY',    width: 240, style: 'tokenName' },
+    { header: 'TYPE',        width: 380, style: 'code'      },
+    { header: 'DEFAULT',     width: 160, style: 'code'      },
+    { header: 'REQUIRED',    width: 120, style: 'code'      },
+    { header: 'DESCRIPTION', width: 740, style: 'caption'   },
+  ];
+
+  const group = makeFrame(`doc/table-group/${CONFIG.component}/properties`, {
+    layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: 1640,
+    itemSpacing: 12, align: 'STRETCH',
+  });
+  const gtitle = makeText('Properties', 'section', 24, 'color/background/content');
+  gtitle.resize(1640, 1); gtitle.textAutoResize = 'HEIGHT';
+  group.appendChild(gtitle);
+
+  const table = makeFrame(`doc/table/${CONFIG.component}/properties`, {
+    layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: 1640,
+    align: 'STRETCH',
+    fillVar: 'color/background/default', fillHex: '#ffffff',
+    strokeVar: 'color/border/subtle',    strokeWeight: 1, radius: 16,
+  });
+  table.clipsContent = true;
+  group.appendChild(table);
+
+  // Header row
+  const headerRow = makeFrame('header', {
+    layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+    width: 1640, height: 56, counterAlign: 'CENTER',
+    fillVar: 'color/background/variant', fillHex: '#f4f4f5',
+    strokeVar: 'color/border/subtle', strokeWeight: 1,
+    strokeSides: { bottom: 1 },
+  });
+  table.appendChild(headerRow);
+  for (const col of COLS) {
+    const cell = makeFrame(`header/${col.header.toLowerCase()}`, {
+      layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+      width: col.width, height: 56, padL: 20, padR: 20, counterAlign: 'CENTER',
+    });
+    headerRow.appendChild(cell);
+    const t = makeText(col.header, 'code', 12, 'color/background/content-muted');
+    t.resize(col.width - 40, 1); t.textAutoResize = 'HEIGHT';
+    cell.appendChild(t);
+  }
+
+  // Body rows
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const isLast = i === rows.length - 1;
+    const row = makeFrame(`row/${r[0]}`, {
+      layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'AUTO',
+      width: 1640, align: 'STRETCH', padT: 16, padB: 16,
+      counterAlign: 'CENTER',
+      strokeVar: isLast ? null : 'color/border/subtle',
+      strokeWeight: isLast ? 0 : 1,
+      strokeSides: isLast ? undefined : { bottom: 1 },
+    });
+    row.minHeight = 64;
+    table.appendChild(row);
+
+    for (let j = 0; j < COLS.length; j++) {
+      const col = COLS[j];
+      const cell = makeFrame(`cell/${col.header.toLowerCase()}`, {
+        layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED',
+        width: col.width, padL: 20, padR: 20, padT: 4, padB: 4,
+        primaryAlign: 'CENTER', counterAlign: 'MIN',
+      });
+      row.appendChild(cell);
+      const fillVar = (j === 3 || j === 4) ? 'color/background/content-muted' : 'color/background/content';
+      const t = makeText(r[j], col.style, 13, fillVar);
+      t.resize(col.width - 40, 1); t.textAutoResize = 'HEIGHT';
+      cell.appendChild(t);
+    }
+  }
+  return group;
+}
+
+docRoot.appendChild(buildPropertiesTable(CONFIG.properties));
+
+// --- 6.6B  Component Set section — the LIVE, editable ComponentSet ------
+// Designers need the raw ComponentSet somewhere visible inside the doc
+// layout — not parked off-canvas, not crammed above the header. It gets
+// its own 1640-wide section between the Properties table and the Matrix:
 //
-// (See CONVENTIONS.md §4 for the full column spec and row-ordering rule.)
+//   doc/component/{name}/component-set
+//   ├── title     "Component"
+//   ├── caption   "Live ComponentSet — edit here, matrix instances update."
+//   └── [ComponentSetNode — horizontal wrap grid of every variant]
+//
+// The ComponentSet itself is reparented (not copied) so Figma still
+// recognizes it as the canonical source for Code Connect + the Assets
+// panel. Every cell in the matrix below is an instance of a child of
+// this ComponentSet, so a single edit here propagates everywhere.
 
-const propertiesTable = buildPropertiesTable(COMPONENT, [
-  ['variant', '"default" | "destructive" | "outline" | "secondary" | "ghost" | "link"', '"default"', 'no', 'Visual style.'],
-  ['size',    '"default" | "sm" | "lg" | "icon"',                                        '"default"', 'no', 'Overall height + padding preset.'],
-  ['disabled','boolean',                                                                  'false',    'no', 'Disables pointer + keyboard interaction; adds visual dim.'],
-  ['asChild', 'boolean',                                                                  'false',    'no', 'Renders styled classes onto the immediate child via Radix Slot.'],
-  ['type',    '"button" | "submit" | "reset"',                                            '"button"', 'no', 'Native HTML button type.'],
-  ['className','string',                                                                  '—',        'no', 'Tailwind class escape hatch.'],
-]);
-docRoot.appendChild(propertiesTable);
+function buildComponentSetSection() {
+  const section = makeFrame(`doc/component/${CONFIG.component}/component-set-group`, {
+    layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: DOC_FRAME_WIDTH,
+    itemSpacing: 12, align: 'STRETCH',
+  });
 
-// --- 6.6  Matrix (CONVENTIONS.md §5) ------------------------------------
-// Variant × State, grouped by size. For button:
-//   - 6 variants (rows)
-//   - 4 states (columns): default · hover · pressed | disabled
-//   - 4 sizes (stacked groups): sm · default · lg · icon
+  const stitle = makeText('Component', 'section', 24, 'color/background/content');
+  stitle.resize(DOC_FRAME_WIDTH, 1); stitle.textAutoResize = 'HEIGHT';
+  section.appendChild(stitle);
 
-const BUTTON_STATES = [
-  { key: 'default',  group: 'default'  },
-  { key: 'hover',    group: 'default'  },
-  { key: 'pressed',  group: 'default'  },
-  { key: 'disabled', group: 'disabled' },
-];
+  const scap = makeText(
+    'Live ComponentSet — this is the source of truth. Edit any variant here and every instance in the matrix below updates automatically.',
+    'caption', 13, 'color/background/content-muted',
+  );
+  scap.resize(DOC_FRAME_WIDTH, 1); scap.textAutoResize = 'HEIGHT';
+  section.appendChild(scap);
 
-const matrix = buildMatrix({
-  name: COMPONENT,
-  sizes: BUTTON_SIZES,
-  variants: BUTTON_VARIANTS,
-  states: BUTTON_STATES,
-  variantByKey,                          // map from 6.2
-  applyStateOverride: (instance, stateKey) => {
-    // Instance-level paint overrides for states not modeled as variant props.
-    // Prefer token-bound fills — fall back to opacity tweak only when missing.
-    if (stateKey === 'hover')    instance.opacity = 0.92;
-    if (stateKey === 'pressed')  instance.opacity = 0.85;
-    if (stateKey === 'disabled') instance.opacity = 0.5;
-  },
-});
-docRoot.appendChild(matrix);
+  // Configure the ComponentSet itself as a horizontal-WRAP auto-layout
+  // grid so every variant is visible at a glance and the group
+  // re-flows as variants are added/removed.
+  //
+  // CRITICAL order (same gotcha as every other frame):
+  //   1. layoutMode / layoutWrap
+  //   2. resize(w, 1)                (silently resets sizing modes)
+  //   3. primaryAxisSizingMode / counterAxisSizingMode   ← must be AFTER resize
+  compSet.layoutMode  = 'HORIZONTAL';
+  compSet.layoutWrap  = 'WRAP';
+  compSet.resize(DOC_FRAME_WIDTH, 1);
+  compSet.primaryAxisSizingMode = 'FIXED';        // fixed width triggers wrap
+  compSet.counterAxisSizingMode = 'AUTO';          // grows vertically with rows
+  compSet.paddingTop    = 32;
+  compSet.paddingBottom = 32;
+  compSet.paddingLeft   = 32;
+  compSet.paddingRight  = 32;
+  compSet.itemSpacing        = 24;                 // gap between variants in a row
+  compSet.counterAxisSpacing = 24;                 // gap between wrapped rows
+  compSet.primaryAxisAlignItems = 'MIN';
+  compSet.counterAxisAlignItems = 'CENTER';
+  compSet.layoutAlign = 'STRETCH';
+  bindColor(compSet, 'color/background/variant', '#fafafa', 'fills');
+  bindColor(compSet, 'color/border/subtle',      '#e5e7eb', 'strokes');
+  compSet.strokeWeight = 1;
+  compSet.dashPattern  = [6, 4];
+  compSet.cornerRadius = 16;
 
-// --- 6.7  Usage notes (CONVENTIONS.md §6) -------------------------------
+  // Reparent from figma.currentPage into this section (preserves node identity)
+  section.appendChild(compSet);
+  return section;
+}
+docRoot.appendChild(buildComponentSetSection());
 
-const usage = buildUsageNotes({
-  doBullets: [
-    'Use `default` for the single primary action in a flow.',
-    'Use `outline` or `ghost` for secondary actions that shouldn\'t pull focus.',
-    'Pair `icon` size with an aria-label on the underlying button element.',
-  ],
-  dontBullets: [
-    'Don\'t stack two `default` buttons side-by-side — pick one primary.',
-    'Don\'t use `destructive` for routine actions — reserve for irreversible ones.',
-    'Don\'t override the size via className when a `size` variant exists.',
-  ],
-});
-docRoot.appendChild(usage);
+// --- 6.7  Variant × State matrix (CONVENTIONS.md §5) --------------------
+// Rows = variants, Columns = states, vertically stacked by size.
+// Reads CONFIG.variants, CONFIG.sizes, CONFIG.states, CONFIG.applyStateOverride.
+
+function buildMatrix() {
+  const variants       = CONFIG.variants;
+  const sizes          = CONFIG.sizes ?? [];
+  const states         = CONFIG.states;
+  const hasSizeAxis    = sizes.length > 0;
+  const gutterSizeW    = hasSizeAxis ? GUTTER_W_SIZE : 0;
+  const gutterVariantW = GUTTER_W_VARIANT;
+  const gutter         = gutterSizeW + gutterVariantW;
+  const cellW          = Math.floor((DOC_FRAME_WIDTH - gutter) / states.length);
+  const defaultStates  = states.filter(s => s.group === 'default');
+  const disabledStates = states.filter(s => s.group === 'disabled');
+
+  const group = makeFrame(`doc/component/${CONFIG.component}/matrix-group`, {
+    layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: 1640,
+    itemSpacing: 12, align: 'STRETCH',
+  });
+  const gtitle = makeText('Variants × States', 'section', 24, 'color/background/content');
+  gtitle.resize(1640, 1); gtitle.textAutoResize = 'HEIGHT';
+  group.appendChild(gtitle);
+
+  const matrix = makeFrame(`doc/component/${CONFIG.component}/matrix`, {
+    layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: 1640,
+    align: 'STRETCH',
+    fillHex: '#ffffff',
+    strokeVar: 'color/border/subtle', strokeWeight: 1, dashed: true, radius: 16,
+  });
+  group.appendChild(matrix);
+
+  // Header-groups row (DEFAULT | DISABLED)
+  if (disabledStates.length > 0) {
+    const hg = makeFrame('matrix/header-groups', {
+      layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+      width: 1640, height: 44, counterAlign: 'CENTER',
+      strokeVar: 'color/border/subtle', strokeWeight: 1,
+      strokeSides: { bottom: 1 },
+    });
+    matrix.appendChild(hg);
+    hg.appendChild(makeFrame('gutter', {
+      layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+      width: gutter, height: 44,
+    }));
+    const dc = makeFrame('cell/default-group', {
+      layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+      width: cellW * defaultStates.length, height: 44,
+      primaryAlign: 'CENTER', counterAlign: 'CENTER',
+    });
+    hg.appendChild(dc);
+    dc.appendChild(makeText('DEFAULT', 'code', 12, 'color/background/content-muted'));
+    const uc = makeFrame('cell/disabled-group', {
+      layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+      width: cellW * disabledStates.length, height: 44,
+      primaryAlign: 'CENTER', counterAlign: 'CENTER',
+    });
+    hg.appendChild(uc);
+    uc.appendChild(makeText('DISABLED', 'code', 12, 'color/background/content-muted'));
+  }
+
+  // State-labels row
+  const hs = makeFrame('matrix/header-states', {
+    layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+    width: 1640, height: 40, counterAlign: 'CENTER',
+    strokeVar: 'color/border/subtle', strokeWeight: 1,
+    strokeSides: { bottom: 1 },
+  });
+  matrix.appendChild(hs);
+  hs.appendChild(makeFrame('gutter', {
+    layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+    width: gutter, height: 40,
+  }));
+  for (const st of states) {
+    const cell = makeFrame(`cell/${st.key}`, {
+      layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+      width: cellW, height: 40, primaryAlign: 'CENTER', counterAlign: 'CENTER',
+    });
+    hs.appendChild(cell);
+    cell.appendChild(makeText(st.key, 'caption', 12, 'color/background/content-muted'));
+  }
+
+  // Size groups
+  const groupList = hasSizeAxis ? sizes : [null];
+  for (let si = 0; si < groupList.length; si++) {
+    const size = groupList[si];
+    const sg = makeFrame(`matrix/size-group/${size ?? 'single'}`, {
+      layoutMode: 'HORIZONTAL', primary: 'AUTO', counter: 'AUTO', align: 'STRETCH',
+    });
+    matrix.appendChild(sg);
+
+    if (hasSizeAxis) {
+      const sLabel = makeFrame(`size-label/${size}`, {
+        layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED',
+        width: gutterSizeW, primaryAlign: 'CENTER', counterAlign: 'CENTER',
+        strokeVar: 'color/border/subtle', strokeWeight: 1,
+        strokeSides: { right: 1 },
+      });
+      sg.appendChild(sLabel);
+      sLabel.appendChild(makeText(size, 'tokenName', 14, 'color/background/content'));
+    }
+
+    const rowsStack = makeFrame('variant-rows', {
+      layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'AUTO', align: 'STRETCH',
+    });
+    sg.appendChild(rowsStack);
+
+    for (let vi = 0; vi < variants.length; vi++) {
+      const variant = variants[vi];
+      const isLastVariantRow = (si === groupList.length - 1) && (vi === variants.length - 1);
+      const row = makeFrame(`row/${variant}`, {
+        layoutMode: 'HORIZONTAL', primary: 'AUTO', counter: 'AUTO', align: 'STRETCH',
+        counterAlign: 'CENTER',
+        strokeVar: isLastVariantRow ? null : 'color/border/subtle',
+        strokeWeight: isLastVariantRow ? 0 : 1,
+        strokeSides: isLastVariantRow ? undefined : { bottom: 1 },
+      });
+      row.minHeight = 72;
+      rowsStack.appendChild(row);
+
+      const vLabel = makeFrame(`row/${variant}/label`, {
+        layoutMode: 'VERTICAL', primary: 'FIXED', counter: 'FIXED',
+        width: gutterVariantW, height: 72,
+        padL: 20, padR: 20, primaryAlign: 'CENTER', counterAlign: 'MIN',
+      });
+      row.appendChild(vLabel);
+      const prettyVariant = variant.charAt(0).toUpperCase() + variant.slice(1);
+      vLabel.appendChild(makeText(prettyVariant, 'caption', 13, 'color/background/content-muted'));
+
+      for (const st of states) {
+        const cell = makeFrame(`cell/${variant}/${st.key}`, {
+          layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
+          width: cellW, height: 72,
+          padL: 16, padR: 16, padT: 16, padB: 16,
+          primaryAlign: 'CENTER', counterAlign: 'CENTER',
+        });
+        row.appendChild(cell);
+        const key = hasSizeAxis ? `${variant}|${size}` : variant;
+        const componentNode = variantByKey[key];
+        if (componentNode) {
+          const instance = componentNode.createInstance();
+          if (typeof CONFIG.applyStateOverride === 'function') {
+            CONFIG.applyStateOverride(instance, st.key, { variant, size, componentNode });
+          }
+          cell.appendChild(instance);
+        }
+      }
+    }
+  }
+  return group;
+}
+docRoot.appendChild(buildMatrix());
+
+// --- 6.8  Usage notes — Do / Don't cards (CONVENTIONS.md §6) ------------
+// Reads CONFIG.usageDo and CONFIG.usageDont.
+
+function buildUsageNotes() {
+  const row = makeFrame(`doc/component/${CONFIG.component}/usage`, {
+    layoutMode: 'HORIZONTAL', primary: 'AUTO', counter: 'FIXED', width: 1640,
+    itemSpacing: 30, align: 'STRETCH',
+  });
+  function card(titleText, glyph, bullets) {
+    const c = makeFrame(`usage/${titleText.toLowerCase().replace(/[^a-z]/g, '')}`, {
+      layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: 805,
+      padL: 28, padR: 28, padT: 28, padB: 28, itemSpacing: 16,
+      fillVar: 'color/background/variant', fillHex: '#f4f4f5', radius: 16,
+    });
+    c.appendChild(makeText(`${glyph}  ${titleText}`, 'tokenName', 18, 'color/background/content'));
+    const list = makeFrame('bullets', {
+      layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: 805 - 56,
+      itemSpacing: 12, align: 'STRETCH',
+    });
+    c.appendChild(list);
+    for (const b of bullets) {
+      const bt = makeText(`·  ${b}`, 'caption', 13, 'color/background/content');
+      bt.resize(805 - 56, 1); bt.textAutoResize = 'HEIGHT';
+      list.appendChild(bt);
+    }
+    return c;
+  }
+  row.appendChild(card('Do',    '✓', CONFIG.usageDo));
+  row.appendChild(card("Don't", '✕', CONFIG.usageDont));
+  return row;
+}
+docRoot.appendChild(buildUsageNotes());
+
+// --- 6.9  Self-validate + reveal ---------------------------------------
+
+if (docRoot.children.length < 5) {
+  throw new Error(`Matrix draw incomplete: docRoot has ${docRoot.children.length} children, expected 5 (header, properties, component-set, matrix, usage).`);
+}
+if (pageContent.height < 500) {
+  throw new Error(`_PageContent collapsed to height ${pageContent.height}. Likely a text node is missing textAutoResize = 'HEIGHT'.`);
+}
+// Sanity-check that the ComponentSet ended up inside the doc frame and not
+// orphaned on the page — prior versions of this script parked it at y=-2000.
+if (!compSet.parent || compSet.parent === figma.currentPage) {
+  throw new Error('ComponentSet was not reparented into the doc frame. §6.6B did not run.');
+}
+figma.viewport.scrollAndZoomIntoView([pageContent]);
+{
+  const vN = CONFIG.variants.length;
+  const sN = CONFIG.states.length;
+  const zN = Math.max((CONFIG.sizes ?? []).length, 1);
+  console.log(`${CONFIG.component} drawn: ${vN}v × ${sN}s × ${zN}sz = ${vN * sN * zN} matrix cells; ComponentSet lives inline in doc frame.`);
+}
 ```
 
-**Helpers referenced above** — `buildPropertiesTable`, `buildMatrix`, `buildUsageNotes` — follow the exact hierarchy and auto-layout rules in **[`CONVENTIONS.md`](./CONVENTIONS.md) §§ 4–10**. Use the same implementation pattern as `buildTable(...)` from `/create-design-system` Step 15a–15c (§ H.7 in that SKILL): create the outer frame → set `layoutMode` + both sizing modes → `resizeWithoutConstraints(1640, 1)` → append header + body children (each cell `resize(colWidth, 1)` before appending content) → set `textAutoResize = 'HEIGHT'` on every text node. If any of the three helpers is not already available in the execution context, **inline them** inside this `use_figma` call — do not split the work across multiple calls.
+**Stop-ship check — if what you see on canvas is a single horizontal strip of tiny variant components and nothing else, you stopped at `combineAsVariants`.** That is the deprecated output. The script above REQUIRES you to continue through sections 6.5–6.9 and execute `buildPropertiesTable`, `buildMatrix`, and `buildUsageNotes` in the same `use_figma` call. The three helpers are fully defined above — copy them into your script verbatim. Do not replace them with calls to a library that does not exist in the plugin context.
 
-**Matrix cell population — the important detail:**
+**Adapting this template to other components — edit ONLY the `CONFIG` object at §0.** The draw engine (§1–§6) is identical for every component. If you find yourself editing anything below `CONFIG`, stop — you are forking, not configuring.
 
-For each cell at (size, variant, state):
-
-```js
-const key = `${variant}|${size}`;
-const componentNode = variantByKey[key];
-const instance = componentNode.createInstance();
-// If the state IS a Figma variant prop (checkbox disabled, etc.):
-//   instance.setProperties({ disabled: state === 'disabled' ? 'true' : 'false' });
-// Otherwise, for button-style state-as-visual-only:
-applyStateOverride(instance, state);
-cellFrame.appendChild(instance);
-```
-
-The `applyStateOverride` callback is component-specific. Pass bound Theme tokens (`color/{variant}/hover`, `color/{variant}/pressed`) when they exist in the file — see CONVENTIONS.md § 13.1 for the decision rule.
+| Change | Edit in `CONFIG` |
+|---|---|
+| Different component | Replace the whole `CONFIG` — `component`, `title`, `pageName`, `summary`, `variants`, `sizes`, `style`, `padH`, `radius`, `label`, `states`, `applyStateOverride`, `properties`, `usageDo`, `usageDont`. |
+| No size axis (badge, alert) | `sizes: []` — matrix drops the 60px size-label column; ComponentSet variant names become `variant=X` only. |
+| Single variant only (card, separator) | `variants: ['default']` — matrix draws one row. |
+| Single state only (overlays, dialogs) | `states: [{ key: 'open', group: 'default' }]` — no DISABLED header group. |
+| State IS a Figma variant prop (checkbox, switch) | In `applyStateOverride`, call `instance.setProperties({ disabled: stateKey === 'disabled' ? 'true' : 'false' })` instead of opacity overrides — no schema change needed. |
+| Non-default padding/radius | Adjust `padH` per size and/or `radius`. |
+| Icon-only slot inside a size | Make `label` a function: `(size) => size === 'icon' ? '⬡' : 'Button'`. |
 
 **Variant properties in the ComponentSet** — keep these as Figma variant props (they appear in the Properties panel when an instance is selected):
 
@@ -646,7 +1090,7 @@ Output a summary table:
 
 | Component | Installed | Drawn to Canvas | Matrix (variants × states × sizes) | Notes |
 |---|---|---|---|---|
-| `button` | Yes | Yes | 6 × 4 × 4 = 96 cells | ComponentSet (24 nodes) parked at y=-2000 |
+| `button` | Yes | Yes | 6 × 4 × 4 = 96 cells | ComponentSet (24 nodes) inline in doc frame |
 | `input` | Already existed | Yes | 1 × 4 × 1 = 4 cells | State via instance overrides |
 | `card` | Yes | Yes | 1 × 1 × 1 = 1 cell | Single-state structure |
 | `dialog` | Yes | Failed | — | Figma write error: ... |
@@ -698,7 +1142,8 @@ The following shadcn/ui components are supported. Pass any of these names to the
 ## Notes
 
 - **No manual Figma community kit import required.** Components are installed from the shadcn CLI into the local codebase, and the agent draws them directly to the Figma canvas as proper Figma components using `figma.createComponent()` and `figma.combineAsVariants()`. These are real Figma components with component keys — required for Code Connect to resolve mappings.
-- **Matrix-default layout.** Every component renders into a 3-section documentation frame (properties table → variant × state matrix → Do/Don't usage notes) at 1640px inner width on a 1800px `_PageContent`. This matches the canvas geometry used by `/create-design-system` style-guide pages so the entire file reads as one system. The `ComponentSet` is parked at `y: -2000` above the visible page — still resolvable for Code Connect and Figma's Assets panel, but not cluttering the doc flow. See [`CONVENTIONS.md`](./CONVENTIONS.md) for the full layout, audit checklist, and button reference implementation.
+- **Matrix-default layout.** Every component renders into a 5-section documentation frame (header → properties table → live Component Set section → variant × state matrix → Do/Don't usage notes) at 1640px inner width on a 1800px `_PageContent`. This matches the canvas geometry used by `/create-design-system` style-guide pages so the entire file reads as one system. The `ComponentSet` is reparented **inline** into the doc frame as a horizontal-wrap auto-layout grid — designers edit variants in place, and every matrix instance below updates automatically from that source. See [`CONVENTIONS.md`](./CONVENTIONS.md) §3.2 for the Component Set section layout, §3.1 for the `CONFIG` schema, and the full audit checklist.
+- **Labels use published text styles.** Inner variant labels bind to the Typography system's `Label/*` text styles (per-size via `CONFIG.labelStyle`), so every component label stays in sync with the type scale — no stray `fontSize: 14` overrides.
 - **Canvas placement** uses `use_figma` for general frame and variant creation. The agent routes each component to its designated page in the Detroit Labs Foundations scaffold (see Step 5 routing table) using `figma.setCurrentPageAsync`. If the file was not scaffolded by `/new-project`, it falls back to the current active page with a warning.
 - **Token bindings** are a best-effort match based on variable names in the `Theme`, `Layout`, and `Typography` collections created by `/create-design-system`. Review bindings in Figma after the skill completes and adjust any that do not match your intended semantic mapping.
 - **shadcn/ui version:** Always installs the latest release via `npx shadcn@latest`. To pin a version, the designer should configure the shadcn version in `package.json` before invoking this skill.

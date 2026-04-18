@@ -7,7 +7,7 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
 > **Ramping up a new agent (Claude Sonnet, Opus, future models)?** Read these two quick-reference guides before running any skill:
 >
 > - [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) — canvas geometry (**1800**/**1640** widths, 80px padding on style-guide pages), iOS `codeSyntax` dot-path rules (**never** camelCase), body text variants, the removed `↳ MCP Tokens` page, full table format spec (hierarchy, column widths, cell patterns, chrome bindings, build order), and a pre-commit audit checklist.
-> - [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) — the **matrix-default** layout every component uses: header + properties table + variant × state specimen matrix + Do/Don't usage notes. Covers per-category state axes, per-component variant rows, instance-vs-component handling, the `ComponentSet` parked at `y: -2000` pattern, and a button reference implementation.
+> - [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) — the **matrix-default** 5-section layout every component uses: header + properties table + **live Component Set section (inline, editable)** + variant × state specimen matrix + Do/Don't usage notes. Covers per-category state axes, per-component variant rows, instance-vs-component handling, the `CONFIG` schema (including `labelStyle` bindings to published `Label/*` text styles), and a Button reference `CONFIG`.
 
 ---
 
@@ -226,14 +226,17 @@ Install one or more shadcn/ui components, wire them to the project's CSS token f
 6. Binds Figma variable tokens from the `Theme`, `Layout`, and `Typography` collections to each canvas component
 7. Offers to chain into `/code-connect`
 
-**Matrix-default canvas layout** — every component, even single-state ones, renders into a 3-section documentation frame at 1640 inner width:
+**Matrix-default canvas layout** — every component, regardless of shape (button-like, input-like, checkable, overlay, layout), renders into the same 5-section documentation frame at 1640 inner width:
 
 1. **Header** — title + 1-line summary + shadcn source link.
 2. **Properties table** — 5 columns (PROPERTY · TYPE · DEFAULT · REQUIRED · DESCRIPTION) summing to 1640, rows pulled from the `VariantProps<…>` union in the installed shadcn source.
-3. **Variant × State matrix** — rows = variant (Primary / Destructive / Outline / …), columns = state (default · hover · pressed | disabled), size groups stacked vertically (`sm` / `default` / `lg` / `icon`). Two-tier header groups interactive states under **DEFAULT** and inactive states under **DISABLED**. Cells contain one **instance** of the appropriate component variant; states that aren't Figma variant props are applied as instance overrides. The `ComponentSet` itself is parked at `x: 0, y: -2000` above the visible page — resolvable for Code Connect and the Assets panel, but not cluttering the doc.
-4. **Usage notes** — 2-column Do / Don't grid with 3+ bullets each.
+3. **Component Set section** — the **live, editable `ComponentSet`** rendered inline as a horizontal-wrap auto-layout grid (every variant visible at a glance, dashed frame to signal "source of truth"). Designers edit variants here and every matrix instance below updates automatically — no more hunting for a ComponentSet parked off-canvas.
+4. **Variant × State matrix** — rows = each variant for the component, columns = each state for the component's category (button-like uses `default · hover · pressed | disabled`; input-like uses `default · focus · error | disabled`; checkable uses `unchecked · checked · indeterminate | disabled`; overlays use a single `open` state; etc.), with size groups stacked vertically when the component has a size axis. Two-tier header groups interactive states under **DEFAULT** and inactive states under **DISABLED**. Cells contain **instances** of the ComponentSet above; states that aren't Figma variant props are applied as instance overrides.
+5. **Usage notes** — 2-column Do / Don't grid with 3+ bullets each.
 
-Full spec, per-category state axes, audit checklist, and a button reference implementation live in [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md).
+**Inner labels use published text styles.** The text inside each component variant is bound to the `Label/XS · Label/SM · Label/MD · Label/LG` text styles (driven per size via `CONFIG.labelStyle`) so labels stay in sync with the Typography system — no stray `fontSize: 14` overrides.
+
+The `/create-component` script is structured as a single **`CONFIG`** object (the only part you edit per component — variants, sizes, style, states, labels, label text styles, properties, usage, state-override callback) + a generic draw engine (identical for every component). Full `CONFIG` schema, per-category state axes (button-like / input-like / checkable / overlay / layout), audit checklist, and a Button reference `CONFIG` live in [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md).
 
 Because `tokens.css` defines **canonical** Tailwind-friendly theme vars (`--color-background`, `--color-content`, `--color-border`, `--color-primary`, …) plus shadcn aliases (`--background` → `var(--color-background)`, `--foreground` → `var(--color-content)`, `--primary` → `var(--color-primary)`, …), Web and shadcn stay aligned without extra mapping.
 
