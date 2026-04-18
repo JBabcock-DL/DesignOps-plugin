@@ -117,7 +117,7 @@ The resolver **never throws** on unknown classes. Anything it cannot map lands i
 
 For each component, Mode A builds CONFIG by merging three inputs in this exact order so fields resolve deterministically even when the extractor and `shadcn-props.json` disagree:
 
-1. Start from the `shadcn-props.json[component]` entry (this seeds `pageName`, `componentProps`, `iconSlots`, `properties`, `usageDo`, `usageDont`, `labelKey`, `summary`).
+1. Start from the `shadcn-props.json[component]` entry (this seeds `pageName`, `componentProps`, `iconSlots`, `properties`, `usageDo`, `usageDont`, `labelKey`, `summary`, optional `composes`).
 2. Overwrite `variants` with `Object.keys(cvaOutput.variants[labelKey])` and `sizes` with `Object.keys(cvaOutput.variants.size ?? {})`.
 3. For each `(variantKey, sizeKey = defaultSize)` tuple, concatenate `base + variants.variant[variantKey] + variants.size[sizeKey]` (+ any compound-variant classes whose predicate matches), run the resolver, and project the resulting buckets onto `style[variantKey]`, `padH[sizeKey]`, `radius`, and `labelStyle[sizeKey]` per SKILL.md §4.5.d.
 4. Set `defaultVariant = cvaOutput.defaultVariants[labelKey]` and `defaultSize = cvaOutput.defaultVariants.size`, and wire them into the ComponentSet default-instance step in §6.6D.
@@ -179,6 +179,16 @@ The `ComponentSetNode` itself is auto-layout-configured as a **horizontal WRAP g
 
 ---
 
+## 3.05 — Composition via `composes` (atomic composites)
+
+When a component declares `composes[]` in [`shadcn-props.json`](./shadcn-props.json) (validated in SKILL.md §4.5.g), its **variant chrome** still comes from this component's own extracted cva (fill, stroke, padding, radius, layout gaps). **Inner matrix content** is not invented from flat shapes: each variant cell is built as a horizontal stack of **`slot/{slotName}`** auto-layout frames containing real **`InstanceNode`s** of the published child `ComponentSet` (resolved at draw time via `.designops-registry.json` — see SKILL.md Step 5).
+
+- **Slot names** match Code Connect `figma.children('<slot>')` lookups in composite `.figma.tsx` templates.
+- **Detaching** a nested instance inside a composite is a **composition drift** signal for `/sync-design-system` Axis B (`COMPOSITION_DRIFT` bucket — see that skill's Step 3B).
+- **Non-goals** (per atomic-composition plan): no JSX parsing; no automatic prop propagation from composite → child in v1 (`defaultProps` on each compose row only).
+
+---
+
 ## 3.1 — Component `CONFIG` schema (the ONLY thing you edit per component)
 
 The `/create-component` script in `SKILL.md` is split into two halves: a per-component **`CONFIG`** object at the very top of the `use_figma` code block (§0), and a **generic draw engine** (§1–§6) that reads every field from `CONFIG`. The engine is identical for every component. If you find yourself editing anything below `CONFIG`, you are forking the standard — stop and add the missing knob to this schema instead.
@@ -205,6 +215,7 @@ The `/create-component` script in `SKILL.md` is split into two halves: a per-com
 | `properties` | `[name, type, default, required, description][]` | 5-tuple rows | Properties+Types table body. Columns are fixed at `PROPERTY / TYPE / DEFAULT / REQUIRED / DESCRIPTION`. |
 | `usageDo` | `string[]` | ≥3 bullets | Left "Do" card. |
 | `usageDont` | `string[]` | ≥3 bullets | Right "Don't" card. |
+| `composes` | `{ component, slot, cardinality, count?, defaultProps? }[]` _optional_ | see plan + `shadcn-props.schema.json` | When non-empty, the draw engine uses **instance stacks** per §3.05 instead of icon-slot + label children. |
 
 ### `style` entry shape
 
@@ -751,7 +762,7 @@ If a design system author has already published `color/primary/hover`, `color/pr
 - [ ] **MA.5** For every `(variant, defaultSize)` class string fed to `resolve-classes.mjs`, the resulting `unresolved[]` entries are logged in Step 8 under `unresolvedClasses[{component}]`. Count is reported even when zero.
 - [ ] **MA.6** Every `CONFIG.style[variant].fill` / `.labelVar` / `.strokeVar` matches a Figma variable path (prefix `color/`), unless the resolver returned no binding — in which case the synthetic fallback hex is used AND the class is listed in `unresolvedClasses`.
 - [ ] **MA.7** `CONFIG.radius` resolves to a `radius/*` path (or the synthetic fallback when `rounded-*` is absent from the base class string).
-- [ ] **MA.8** The component has an entry in [`shadcn-props.json`](./shadcn-props.json) and its `pageName`, `componentProps`, `iconSlots`, and `properties` values survived merge into CONFIG unchanged.
+- [ ] **MA.8** The component has an entry in [`shadcn-props.json`](./shadcn-props.json) and its `pageName`, `componentProps`, `iconSlots`, `properties`, and optional `composes` values survived merge into CONFIG unchanged; when `composes` is present, `resolver/validate-composes.mjs` was run in Step 4.5.g.
 
 ### Page scaffold
 - [ ] **S9.1** Navigated to the correct `↳ {Page}` per the routing table in SKILL.md — `pageName === CONFIG.pageName` in the return payload

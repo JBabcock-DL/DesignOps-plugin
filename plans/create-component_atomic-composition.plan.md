@@ -1,6 +1,6 @@
 # Plan — Atomic composition for `/create-component`
 
-**Status:** Draft · needs decision on phasing
+**Status:** Implemented in repo skills (Phases 1–6 contract + procedures); runtime remains agent-executed `use_figma` / MCP per SKILLs.
 **Owner:** (unassigned)
 **Skills touched:** `/create-component`, `/code-connect`, `/sync-design-system`, `/create-design-system` (CONVENTIONS only)
 **Related summary:** replaces today's "flat-draw" behaviour where every component — atom or composite — is emitted as an independent collection of raw shapes + text.

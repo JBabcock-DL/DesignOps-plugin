@@ -101,6 +101,13 @@ Accept a list of shadcn/ui component names as the skill argument (e.g. `/create-
 - If no components are provided, show the supported component list (see below), then call **AskUserQuestion**: "Which shadcn/ui components should I install? Enter one or more names separated by spaces."
 
 > **Scoped sync entry point.** When invoked as `/create-component --components=<comma-separated-list>` (e.g. `/create-component --components=button,badge`), treat `--components` as the authoritative component list and skip the prompt above. This is the entry point used by `/sync-design-system` Axis B C-wins (Step 8.C) to redraw only the ComponentSets that have drifted without touching the rest of the canvas. In this mode, still run Steps 2–6 for the named subset only (same Mode A / Mode B decision tree); the rest of the installed library is untouched.
+
+> **Migration entry point (Phase 6).** When invoked as `/create-component --migrate-to-instances [component ...] [--migrate-strategy=in-place|dual-page]`:
+>
+> - **Requires** an explicit component list (one or more composites that already declare `composes[]` in `shadcn-props.json`).
+> - **Strategy `in-place` (default):** run Steps 2–5 and Step 4.5 (Mode A CONFIG required). **Skip** the default full-page §6 draw. Instead run the **§6.M** pre-migration audit, designer confirmation, then **one `use_figma`** using [`templates/migrate-composed-variants.figma.js`](./templates/migrate-composed-variants.figma.js) with `CONFIG`, `REGISTRY_COMPONENTS`, and `MIGRATE_COMP_SET_ID` injected. Rewrites **variant master `COMPONENT` nodes** inside the existing `COMPONENT_SET` so matrix instances update in place; `nodeId` stays stable.
+> - **Strategy `dual-page`:** if audit detects the ComponentSet is on the wrong page or rename would collide, create `↳ {PageName} (v2)` per plan §7.2, add a deprecation note on the old page, and run the **full** §6 template on the v2 page (fresh draw) instead of §6.M.
+> - After success: merge registry via Step 5.2 / [`resolver/merge-registry.mjs`](./resolver/merge-registry.mjs) (include updated `composedChildVersions` from the draw payload pattern in §6 return).
 - Validate each provided name against the supported component list. For any unrecognized name, call **AskUserQuestion**: "'{name}' is not a recognized shadcn/ui component. Skip it, or reply **try anyway** to attempt installation?"
 
 ### Step 2 — Locate the CSS token file
@@ -257,7 +264,7 @@ Merge the extractor output, the resolver output, and the `shadcn-props.json` ent
 | `padH[size]` | `spacing[].tokenHint` where `property='px'` → else raw `px` |
 | `radius` | first `radii[].token` (prefer `base` state) |
 | `labelStyle[size]` | `typography[].token` where `state='base'` |
-| `label`, `iconSlots`, `componentProps`, `properties`, `usageDo`, `usageDont` | `shadcn-props.json[component]` |
+| `label`, `iconSlots`, `componentProps`, `properties`, `usageDo`, `usageDont`, `composes` | `shadcn-props.json[component]` (`composes` optional; see §4.5.g and [`CONVENTIONS.md`](./CONVENTIONS.md) §3.05) |
 | `states`, `applyStateOverride` | `shadcn-props.json[component]` defaults (see §4.5.e) |
 | `defaultVariant` | `cvaOutput.defaultVariants.variant` → feed to §6.6D as the ComponentSet default |
 | `defaultSize` | `cvaOutput.defaultVariants.size` → feed to §6.6D |
@@ -274,11 +281,44 @@ Exception: for components where `state` **is** a cva variant (checkbox `checked`
 
 Attach `CONFIG._source = 'shadcn-1:1'` so Step 8 can show it in the reporting table. If Mode A was skipped for this component, Step 6 falls back to the synthetic template and tags `CONFIG._source = 'synthetic-fallback'` (or `'synthetic-no-shadcn'` if `components.json` was absent at 4.5.a).
 
-### Step 5 — Resolve the target Figma file key
+#### 4.5.g — Validate `composes[]` (atomic composition)
+
+When `shadcn-props.json[component].composes` is present (non-empty array), run the shipped validator **before** Step 6 for that component:
+
+```bash
+node <abs-path-to-this-skill>/resolver/validate-composes.mjs \
+  <abs-path-to-this-skill>/shadcn-props.json <component> \
+  [--project <repo-root>]
+```
+
+- Pass `--project` pointing at the consuming repo root whenever `components/ui/*.tsx` exists so `defaultProps` keys are checked against each child's extracted cva axes (via `extract-cva.mjs`). If the child file is absent, the validator skips `defaultProps` checks with a warning — still exit 0 when graph rules pass.
+- **Exit code ≠ 0** — abort Step 6 for this component; copy the validator stderr into the run report (missing compose target, cycle, duplicate `slot`, illegal `count`, bad `defaultProps` type, etc.).
+- **Exit 0 with warnings** — continue; list warnings in Step 8 Notes.
+
+**Dependency expansion (resolver preview).** If `composes[]` references a child that is not in the current run list **and** has no registry entry yet (`.designops-registry.json` — see Step 5.1), call **AskUserQuestion** once per composite explaining the child must be drawn first (offer to prepend that child to this run or cancel). This mirrors the plan's Phase 3 resolver UX; until the registry exists, prefer expanding the install+draw list over failing silently.
+
+### Step 5 — Resolve the target Figma file key + registry gate
 
 1. Check `plugin/templates/agent-handoff.md` for the `active_file_key` field.
 2. If set and valid, use it without prompting.
 3. If not present, call **AskUserQuestion**: "What is the Figma file key for this project? (Segment after `figma.com/design/` in the URL.)"
+
+#### 5.1 — `.designops-registry.json` gate (Phase 2–3)
+
+At repo root (same directory as `package.json` / `components.json`):
+
+- **Read** `.designops-registry.json` if it exists. Schema: [`registry.schema.json`](./registry.schema.json).
+- If the file's top-level `fileKey` is set and **does not equal** the active Figma file key from step 1–3 above, **stop** before any `use_figma` call and print: registry is bound to another file; delete or hand-edit `.designops-registry.json` to reset (prevents cross-file component-key pollution).
+- **Prepare injection object** `REGISTRY_COMPONENTS` = parsed `components` map (may be empty on first run). You will paste these literals into the §6 template (`ACTIVE_FILE_KEY` + `REGISTRY_COMPONENTS`) immediately before each `use_figma` invocation.
+
+#### 5.2 — Registry write-back (after Step 6 succeeds)
+
+After each component's `use_figma` returns **and** §9 self-check passes, merge `returnPayload.registryEntry` into `.designops-registry.json`:
+
+- Set top-level `fileKey` to the active file key.
+- Upsert `components[CONFIG.component]` with `{ nodeId, key, pageName, publishedAt, version, cvaHash?, composedChildVersions? }` from the payload. Increment `version` on every redraw; use ISO-8601 UTC for `publishedAt`. When `composedWith` is non-empty, persist `composedChildVersions` (map of child kebab-name → that child's registry `version` at draw time) for `/sync-design-system` §3B.1 stale detection.
+- Prefer the idempotent helper: `node skills/create-component/resolver/merge-registry.mjs <repo>/.designops-registry.json <tmp-entry.json>` where `tmp-entry.json` is one merged object `{ fileKey, component, ...fields }` exported from `returnPayload`.
+- Commit this file with design-system PRs — it is the bridge between Figma component keys and the repo (Code Connect + composition use the same handles).
 
 ### Step 6 — Draw components to Figma canvas
 
@@ -296,6 +336,8 @@ Attach `CONFIG._source = 'shadcn-1:1'` so Step 8 can show it in the reporting ta
 > **Default layout = matrix.** Every component — single-state, single-variant, or full cross-product — renders into a **Variant × State specimen matrix** inside a documentation frame that also carries a properties/types table and Do/Don't usage notes. The flat wrapping "grid of variants" output from earlier revisions of this skill is **deprecated**. See [`CONVENTIONS.md`](./CONVENTIONS.md) §§ 1–14 for the full spec.
 >
 > **One component per page.** The page is already scaffolded by `/new-project` step 5b — do not create pages here. Delete every node other than `_Header`, then build `_PageContent` + the doc frame.
+
+> **Migration (Phase 6 — opt-in):** rewriting legacy flat-shape composites to instance stacks in place (`--migrate-to-instances`) is specified in [`plans/create-component_atomic-composition.plan.md`](../../plans/create-component_atomic-composition.plan.md) §7. The §6 template below covers **new draws and full redraws**; run the migration flow only after that plan's pre-migration audit when a file already has inbound references.
 
 For each successfully installed component, make **one `use_figma` call** using the complete template below.
 
@@ -471,6 +513,21 @@ const CONFIG = {
     'Don\'t resize the 24×24 icon slots — the token is fixed so every button aligns across the system.',
   ],
 };
+
+// REGISTRY PREFILL (atomic composition — Step 5.1) — agent replaces literals
+// after reading `.designops-registry.json` at repo root before each use_figma:
+//   ACTIVE_FILE_KEY     string | null   — null skips the fileKey gate
+//   REGISTRY_COMPONENTS Record<kebab, { nodeId, key, pageName, publishedAt?, version?, cvaHash? }>
+const ACTIVE_FILE_KEY = null;
+const REGISTRY_COMPONENTS = {};
+const usesComposes = Array.isArray(CONFIG.composes) && CONFIG.composes.length > 0;
+
+if (ACTIVE_FILE_KEY && typeof figma.fileKey === 'string' && figma.fileKey !== ACTIVE_FILE_KEY) {
+  throw new Error(
+    `designops-registry fileKey mismatch: registry is for "${ACTIVE_FILE_KEY}" but this file is "${figma.fileKey}". ` +
+      'Delete or reset `.designops-registry.json`, or open the correct Figma file.',
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Everything below this line is IDENTICAL for every component.
@@ -755,6 +812,84 @@ function buildVariant(name, fillVar, fallbackFill, {
   return { component: c, slots, propKeys };
 }
 
+// When CONFIG.composes is non-empty, each variant is an instance stack: outer
+// chrome still comes from this composite's cva (same bindColor/bindNum as
+// buildVariant); inner children are real InstanceNodes of published atoms
+// resolved via REGISTRY_COMPONENTS (CONVENTIONS.md §3.05).
+function buildComposedVariant(name, fillVar, fallbackFill, {
+  labelVar         = 'color/background/content',
+  strokeVar        = null,
+  radiusVar        = 'radius/md',
+  padH             = 'space/md',
+  padV             = 'space/xs',
+} = {}) {
+  const c = figma.createComponent();
+  c.name = name;
+  c.layoutMode            = 'HORIZONTAL';
+  c.primaryAxisSizingMode = 'AUTO';
+  c.counterAxisSizingMode = 'AUTO';
+  c.primaryAxisAlignItems = 'CENTER';
+  c.counterAxisAlignItems = 'CENTER';
+
+  bindNum(c, 'paddingLeft',   padH,     16);
+  bindNum(c, 'paddingRight',  padH,     16);
+  bindNum(c, 'paddingTop',    padV,      8);
+  bindNum(c, 'paddingBottom', padV,      8);
+  bindNum(c, 'itemSpacing',  'space/sm', 8);
+  ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+    .forEach(f => bindNum(c, f, radiusVar, 6));
+  bindColor(c, fillVar, fallbackFill, 'fills');
+  if (strokeVar) {
+    bindColor(c, strokeVar, '#e5e7eb', 'strokes');
+    c.strokeWeight = 1;
+  }
+
+  for (const spec of CONFIG.composes) {
+    const slotFrame = figma.createFrame();
+    slotFrame.name = `slot/${spec.slot}`;
+    slotFrame.layoutMode = 'HORIZONTAL';
+    slotFrame.primaryAxisSizingMode = 'AUTO';
+    slotFrame.counterAxisSizingMode = 'AUTO';
+    slotFrame.primaryAxisAlignItems = 'CENTER';
+    slotFrame.counterAxisAlignItems = 'CENTER';
+    bindNum(slotFrame, 'paddingLeft',   'space/none', 0);
+    bindNum(slotFrame, 'paddingRight',  'space/none', 0);
+    bindNum(slotFrame, 'paddingTop',    'space/none', 0);
+    bindNum(slotFrame, 'paddingBottom', 'space/none', 0);
+    bindNum(slotFrame, 'itemSpacing',  'space/sm', 8);
+
+    const reg = REGISTRY_COMPONENTS[spec.component];
+    if (!reg || !reg.nodeId) {
+      throw new Error(
+        `Composite '${CONFIG.component}' composes '${spec.component}' but registry is missing nodeId. ` +
+          `Draw ${spec.component} first (updates .designops-registry.json), then re-run this composite.`,
+      );
+    }
+    const main = figma.getNodeById(reg.nodeId);
+    if (!main || main.type !== 'COMPONENT_SET') {
+      throw new Error(
+        `Registry node for '${spec.component}' must be a COMPONENT_SET (got ${main ? main.type : 'null'}).`,
+      );
+    }
+    const n = spec.cardinality === 'many' ? (spec.count != null ? spec.count : 3) : 1;
+    for (let i = 0; i < n; i++) {
+      const inst = main.createInstance();
+      if (spec.defaultProps && typeof spec.defaultProps === 'object') {
+        try {
+          inst.setProperties(spec.defaultProps);
+        } catch (err) {
+          console.warn(`setProperties on ${spec.component} instance:`, err && err.message ? err.message : err);
+        }
+      }
+      slotFrame.appendChild(inst);
+    }
+    c.appendChild(slotFrame);
+  }
+
+  figma.currentPage.appendChild(c);
+  return { component: c, slots: { leading: null, trailing: null, center: null, label: null }, propKeys: {} };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // STEP 6. DEFAULT DRAW FLOW — matrix documentation frame (every component)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -866,24 +1001,37 @@ for (const v of CONFIG.variants) {
       : (CONFIG.label ?? CONFIG.title);
     const padH  = (s !== null && CONFIG.padH?.[s]) || padFallback;
     const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
-    variantData.push(buildVariant(
-      name, st.fill, st.fallback,
-      {
-        label,
-        labelVar:        st.labelVar,
-        strokeVar:       st.strokeVar,
-        radiusVar,
-        padH,
-        labelStyleName,
-        leadingSlot:     leadingGlobal,
-        trailingSlot:    trailingGlobal,
-        iconSlotSize,
-        addLabelProp:    !!cp.label,
-        addLeadingProp:  !!cp.leadingIcon  && leadingGlobal,
-        addTrailingProp: !!cp.trailingIcon && trailingGlobal,
-        propLabelText:   defaultLabelText,
-      }
-    ));
+    if (usesComposes) {
+      variantData.push(buildComposedVariant(
+        name, st.fill, st.fallback,
+        {
+          labelVar:  st.labelVar,
+          strokeVar: st.strokeVar,
+          radiusVar,
+          padH,
+          padV: 'space/xs',
+        },
+      ));
+    } else {
+      variantData.push(buildVariant(
+        name, st.fill, st.fallback,
+        {
+          label,
+          labelVar:        st.labelVar,
+          strokeVar:       st.strokeVar,
+          radiusVar,
+          padH,
+          labelStyleName,
+          leadingSlot:     leadingGlobal,
+          trailingSlot:    trailingGlobal,
+          iconSlotSize,
+          addLabelProp:    !!cp.label,
+          addLeadingProp:  !!cp.leadingIcon  && leadingGlobal,
+          addTrailingProp: !!cp.trailingIcon && trailingGlobal,
+          propLabelText:   defaultLabelText,
+        }
+      ));
+    }
   }
 }
 // Pre-position so combineAsVariants doesn't stack at (0,0)
@@ -1370,9 +1518,10 @@ if (!compSet.parent || compSet.parent === figma.currentPage) {
 }
 // If iconSlots were requested, every variant must contain the named slot
 // frames — otherwise designers won't have the drop targets they expect.
+// Composed variants use `slot/*` instance stacks instead — skip this check.
 {
-  const needLeading  = !!CONFIG.iconSlots?.leading;
-  const needTrailing = !!CONFIG.iconSlots?.trailing;
+  const needLeading  = !usesComposes && !!CONFIG.iconSlots?.leading;
+  const needTrailing = !usesComposes && !!CONFIG.iconSlots?.trailing;
   if (needLeading || needTrailing) {
     for (const variant of compSet.children) {
       const hasLabelChild   = variant.children.some(n => n.type === 'TEXT');
@@ -1392,7 +1541,83 @@ if (!compSet.parent || compSet.parent === figma.currentPage) {
     }
   }
 }
+
+if (usesComposes) {
+  const v0 = compSet.children[0];
+  if (!v0) throw new Error('ComponentSet has no variants after compose draw.');
+  const slotFrame = v0.children.find(n => n.type === 'FRAME' && String(n.name).startsWith('slot/'));
+  if (!slotFrame) {
+    throw new Error(`Composed variant '${v0.name}' is missing a slot/* frame.`);
+  }
+  const instCount = slotFrame.findAll(n => n.type === 'INSTANCE').length;
+  if (instCount < 1) {
+    throw new Error(`Composed variant '${v0.name}' has no INSTANCE children under ${slotFrame.name}.`);
+  }
+}
+
 figma.viewport.scrollAndZoomIntoView([pageContent]);
+
+const firstVariant = compSet.children[0];
+const firstVariantChildren = firstVariant ? firstVariant.children.map(n => n.name) : [];
+const iconOnlySize = (CONFIG.sizes || []).find(sz => {
+  const lab = typeof CONFIG.label === 'function' ? CONFIG.label(sz, CONFIG.variants[0]) : CONFIG.label;
+  return !lab;
+});
+let iconVariantChildren = [];
+if (iconOnlySize != null) {
+  const key = hasSizeAxis ? `${CONFIG.variants[0]}|${iconOnlySize}` : CONFIG.variants[0];
+  const vn = variantByKey[key];
+  if (vn) iconVariantChildren = vn.children.map(n => n.name);
+}
+
+function simpleCvaHash() {
+  try {
+    return JSON.stringify({ v: CONFIG.variants, s: CONFIG.sizes, st: CONFIG.style });
+  } catch (_) {
+    return null;
+  }
+}
+
+const nowIso = new Date().toISOString();
+const prevReg = REGISTRY_COMPONENTS[CONFIG.component];
+const nextVersion = prevReg && typeof prevReg.version === 'number' ? prevReg.version + 1 : 1;
+
+const returnPayload = {
+  pageName: CONFIG.pageName,
+  docRootChildren: docRoot.children.length,
+  compSetName: compSet.name,
+  compSetId: compSet.id,
+  compSetKey: compSet.key,
+  compSetVariants: compSet.children.map(c => c.name),
+  compSetParent: compSet.parent ? compSet.parent.name : '',
+  compSetPropertyDefinitions: compSet.componentPropertyDefinitions,
+  firstVariantChildren,
+  iconVariantChildren,
+  propErrorsCount: 0,
+  propErrorsSample: [],
+  composedWith: usesComposes ? CONFIG.composes.map(r => r.component) : [],
+  registryEntry: (() => {
+    const base = {
+      component: CONFIG.component,
+      nodeId: compSet.id,
+      key: compSet.key,
+      pageName: CONFIG.pageName,
+      publishedAt: nowIso,
+      version: nextVersion,
+      cvaHash: CONFIG._source === 'shadcn-1:1' ? simpleCvaHash() : null,
+    };
+    if (usesComposes) {
+      const composedChildVersions = {};
+      for (const spec of CONFIG.composes) {
+        const cr = REGISTRY_COMPONENTS[spec.component];
+        composedChildVersions[spec.component] = cr && typeof cr.version === 'number' ? cr.version : null;
+      }
+      base.composedChildVersions = composedChildVersions;
+    }
+    return base;
+  })(),
+};
+
 {
   const vN = CONFIG.variants.length;
   const sN = CONFIG.states.length;
@@ -1401,10 +1626,34 @@ figma.viewport.scrollAndZoomIntoView([pageContent]);
   console.log(
     `${CONFIG.component} drawn: ${vN}v × ${sN}s × ${zN}sz = ${vN * sN * zN} matrix cells; ` +
     `ComponentSet lives inline in doc frame; ` +
-    `element props: ${props.length ? props.join(', ') : '(none)'}.`
+    `element props: ${props.length ? props.join(', ') : '(none)'}; ` +
+    `composed: ${usesComposes ? returnPayload.composedWith.join('+') : '—'}.`,
   );
 }
+
+return returnPayload;
 ```
+
+### §6.M — `use_figma` migration (`--migrate-to-instances`, Phase 6)
+
+Use this **instead of** the default §6 draw block when Step 1 selected `--migrate-to-instances` with strategy **`in-place`**.
+
+**Preflight audit (read-only, before any Figma write):**
+
+1. Confirm `.designops-registry.json` has `components[{name}]` for the composite and every `composes[].component`.
+2. Grep repo `**/*.figma.tsx` for `node-id=` / `nodeId=` matching the composite `nodeId` (URL-encoded). List hits — designer should know mappings may need URL refresh after migration.
+3. If `get_metadata` (or equivalent) can count prototype reactions targeting the composite or its matrix, report the count; otherwise print `prototype impact: unknown — proceed with caution`.
+4. **AskUserQuestion** once: summarize audit + strategy; require explicit **yes** before `use_figma`.
+
+**Plugin run:** Copy [`templates/migrate-composed-variants.figma.js`](./templates/migrate-composed-variants.figma.js). Before execution, the agent must inject:
+
+- Full **`CONFIG`** (Mode A merge — must include `composes[]`, `variants`, `sizes`, `style`, `padH`, `radius`, `pageName`).
+- **`REGISTRY_COMPONENTS`** map (Step 5.1).
+- **`MIGRATE_COMP_SET_ID`** string literal = `registry.components[CONFIG.component].nodeId`.
+
+**Post-run:** Build `tmp-entry.json` = `{ fileKey, ...returnPayload.registryEntry }` (include `fileKey` from the active file) and run `node skills/create-component/resolver/merge-registry.mjs .designops-registry.json tmp-entry.json`. Re-run §9-style checks on returned `variantMastersUpdated`.
+
+**`dual-page` strategy:** Do not use §6.M. Scaffold `↳ {CONFIG.pageName} (v2)` per plan §7.2, then run the **full** §6 template on that page as a normal draw (creates a new ComponentSet — designer accepts new `nodeId` / Code Connect URL churn).
 
 **Stop-ship check — if what you see on canvas is a single horizontal strip of tiny variant components and nothing else, you stopped at `combineAsVariants`.** That is the deprecated output. The script above REQUIRES you to continue through sections 6.5–6.9 and execute `buildPropertiesTable`, `buildMatrix`, and `buildUsageNotes` in the same `use_figma` call. The three helpers are fully defined above — copy them into your script verbatim. Do not replace them with calls to a library that does not exist in the plugin context.
 
@@ -1412,7 +1661,8 @@ figma.viewport.scrollAndZoomIntoView([pageContent]);
 
 | Change | Edit in `CONFIG` |
 |---|---|
-| Different component | Replace the whole `CONFIG` — `component`, `title`, `pageName`, `summary`, `variants`, `sizes`, `style`, `padH`, `radius`, `label`, `labelStyle`, `iconSlots`, `componentProps`, `states`, `applyStateOverride`, `properties`, `usageDo`, `usageDont`. |
+| Different component | Replace the whole `CONFIG` — `component`, `title`, `pageName`, `summary`, `variants`, `sizes`, `style`, `padH`, `radius`, `label`, `labelStyle`, `iconSlots`, `componentProps`, `states`, `applyStateOverride`, `properties`, `usageDo`, `usageDont`, optional `composes` (see [`CONVENTIONS.md`](./CONVENTIONS.md) §3.05). |
+| Composite with `composes[]` | Declare `composes` in `shadcn-props.json`; run §4.5.g; ensure each child exists in `.designops-registry.json` before draw (Step 5.1 injection). Matrix cells contain real child instances under `slot/{slot}`. |
 | No size axis (badge, alert) | `sizes: []` — matrix drops the 60px size-label column; ComponentSet variant names become `variant=X` only. |
 | Single variant only (card, separator) | `variants: ['default']` — matrix draws one row. |
 | Single state only (overlays, dialogs) | `states: [{ key: 'open', group: 'default' }]` — no DISABLED header group. |
@@ -1502,6 +1752,7 @@ Follow with:
 - Unresolved classes (Mode A only): flat list of `{ component, tailwindClass, reason }` from the resolver output for every component — zero is the target
 - Token binding status: "Theme/Layout/Typography collections found — bindings applied" or list which collections were absent and that raw fallback values were used
 - CSS token wiring: "Imported `{TOKEN_CSS_PATH}` into `{globals_css_path}`" or "tokens.css not found — shadcn default variables retained" if skipped
+- **Registry (atomic composition):** for each component that passed §9, merge `returnPayload.registryEntry` into repo-root `.designops-registry.json` per Step 5.2 (fileKey + `components[kebab-name]`). List any merge errors.
 
 ---
 
@@ -1519,8 +1770,8 @@ Every assertion ID below (`S9.1` … `S9.9`) maps 1:1 to an audit-checklist item
 | **S9.4** | `compSetParent` ends with `doc/component/{component}/component-set-group` (ComponentSet reparented into the doc frame, not parked off-canvas) | §6.4 reparent step did not run |
 | **S9.5** | When `CONFIG.componentProps.label` is true: `compSetPropertyDefinitions.Label.type === 'TEXT'` and its `defaultValue` is a non-empty string | `addComponentProperty` threw or was skipped — inspect `propErrorsSample` |
 | **S9.6** | When `CONFIG.componentProps.leadingIcon` is true: `compSetPropertyDefinitions['Leading icon'].type === 'BOOLEAN'`. Same for `trailingIcon` → `'Trailing icon'` | As above |
-| **S9.7** | For every variant with a non-null label: `firstVariantChildren` contains `icon-slot/leading`, a text node, `icon-slot/trailing` **in that reading order** (when both `iconSlots.leading` and `iconSlots.trailing` are true) | Variant assembly is broken — inspect `buildVariant` children order |
-| **S9.8** | For every variant where `CONFIG.label(size, variant) === null`: `iconVariantChildren` contains exactly one child named `icon-slot/center` and **no text node** | Icon-only mode collapsed incorrectly |
+| **S9.7** | **Atoms (no `composes`):** for every variant with a non-null label, `firstVariantChildren` contains `icon-slot/leading`, a text node, `icon-slot/trailing` **in that reading order** (when both `iconSlots.leading` and `iconSlots.trailing` are true). **Composites (`composedWith.length > 0`):** `firstVariantChildren` includes at least one `slot/{name}` frame whose subtree contains an `INSTANCE` node | Variant / composition assembly is broken — inspect `buildVariant` vs `buildComposedVariant` |
+| **S9.8** | **Atoms:** for every variant where `CONFIG.label(size, variant) === null`, `iconVariantChildren` contains exactly one child named `icon-slot/center` and **no text node**. **Composites:** skip when `composedWith.length > 0` | Icon-only mode collapsed incorrectly |
 | **S9.9** | `propErrorsCount === 0` | Surface `propErrorsSample` to the designer and STOP — do not report the component drawn |
 
 If all nine assertions pass, the component is safe to mark **Drawn to Canvas = Yes** in the Step 8 table.
@@ -1561,6 +1812,8 @@ The following shadcn/ui components are supported. Pass any of these names to the
 | `npx shadcn@latest add [component]` | Install a single component into the project |
 | `npx shadcn@latest add [c1] [c2] ...` | Install multiple components in one invocation |
 | `npx shadcn@latest diff` | Show which installed components are out of date |
+| `node …/resolver/validate-composes.mjs <shadcn-props.json> <component\|--all> [--project <root>]` | Validate `composes[]` (Step 4.5.g) |
+| `node …/resolver/merge-registry.mjs <.designops-registry.json> <entry.json>` | Upsert one registry record after a successful draw (Step 5.2) |
 
 ---
 

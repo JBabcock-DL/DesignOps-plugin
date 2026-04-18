@@ -21,6 +21,7 @@
 | default mismatch | {{N_DEFAULT}} |
 | prop mismatch | {{N_PROP}} |
 | token-binding drift | {{N_BINDING}} |
+| composition drift (detached / stale child instances vs registry) | {{N_COMPOSITION}} |
 | code-only (no Figma component) | {{N_CODE_ONLY}} |
 | figma-only (no source file) | {{N_FIGMA_ONLY}} |
 | Unresolvable (skipped in diff) | {{N_UNRESOLVABLE}} |
@@ -33,6 +34,7 @@ Stable-key scheme: `B.{component}.{bucket}.{id}`.
 - **`figma-only` components** — source file is missing. Scaffold `components/ui/<name>.tsx` using shadcn conventions, then run `/code-connect` to wire the mapping.
 - **`variant-axis` / `default` / `prop` drift** — edit the cva config and element props in the component source to match the Figma side.
 - **`token-binding` drift** — update the Tailwind classes in cva's `base` / `variants` so `resolve-classes.mjs` resolves to the Figma-side variable paths listed below.
+- **`composition` drift** — composite declares `composes[]` but matrix cells are detached, point at the wrong child ComponentSet vs `.designops-registry.json`, or the child was redrawn after the composite. Re-run `/create-component` for the child and/or composite (C-wins), or restore instances in Figma (F-wins).
 - **`unresolvable` components** — these are not cva-based (custom composition, Radix-only, etc.). No action required from this report; they are flagged so you know they were skipped.
 
 ---

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://designops.local/schemas/designops-registry.schema.json",
+  "title": ".designops-registry",
+  "type": "object",
+  "required": ["fileKey", "components"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "fileKey": { "type": "string", "minLength": 1 },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["nodeId", "key", "pageName", "publishedAt", "version"],
+        "properties": {
+          "nodeId": { "type": "string" },
+          "key": { "type": "string" },
+          "pageName": { "type": "string" },
+          "publishedAt": { "type": "string" },
+          "version": { "type": "integer", "minimum": 1 },
+          "cvaHash": { "type": ["string", "null"] },
+          "composedChildVersions": {
+            "type": "object",
+            "description": "Present on composites: maps composed child kebab-name → registry version captured at last composite draw (Axis B stale detection).",
+            "additionalProperties": { "type": ["integer", "null"] }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

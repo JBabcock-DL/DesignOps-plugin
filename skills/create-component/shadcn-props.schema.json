@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://designops.local/schemas/shadcn-props.schema.json",
+  "title": "shadcn-props",
+  "type": "object",
+  "additionalProperties": {
+    "oneOf": [
+      { "type": "object", "minProperties": 1 },
+      { "not": {} }
+    ]
+  },
+  "patternProperties": {
+    "^\\$": { "type": ["string", "object", "array", "boolean", "number", "null"] }
+  },
+  "$defs": {
+    "composeEntry": {
+      "type": "object",
+      "required": ["component", "slot", "cardinality"],
+      "properties": {
+        "component": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "slot": { "type": "string", "minLength": 1 },
+        "cardinality": { "enum": ["one", "many"] },
+        "count": { "type": "integer", "minimum": 1 },
+        "defaultProps": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean", "integer"]
+          }
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": { "properties": { "cardinality": { "const": "one" } }, "required": ["cardinality"] },
+          "then": { "not": { "required": ["count"] } }
+        },
+        {
+          "if": { "properties": { "cardinality": { "const": "many" } }, "required": ["cardinality"] },
+          "then": { "properties": { "count": { "type": "integer", "minimum": 1, "default": 3 } } }
+        }
+      ]
+    },
+    "componentEntry": {
+      "type": "object",
+      "required": ["pageName", "labelKey", "summary", "properties"],
+      "properties": {
+        "pageName": { "type": "string" },
+        "labelKey": { "type": "string" },
+        "summary": { "type": "string" },
+        "iconSlots": {
+          "type": "object",
+          "properties": {
+            "leading": { "type": "boolean" },
+            "trailing": { "type": "boolean" },
+            "size": { "type": "number" }
+          },
+          "additionalProperties": true
+        },
+        "componentProps": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "boolean" },
+            "leadingIcon": { "type": "boolean" },
+            "trailingIcon": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        },
+        "properties": { "type": "array" },
+        "usageDo": { "type": "array", "items": { "type": "string" } },
+        "usageDont": { "type": "array", "items": { "type": "string" } },
+        "composes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/composeEntry" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -68,7 +68,7 @@ plan = {
 }
 ```
 
-Every item across every axis carries a **stable key**: `{axis}.{subject}.{bucket}.{id}` (e.g. `A.tokens.color/primary.conflict`, `B.button.variant-axis.mismatch`, `C.badge.mapping.stale`). The validation passes in Steps 7 / 9 use these keys to classify post-write diff items as UNCHANGED / RESOLVED / ALTERED / NEW without false positives.
+Every item across every axis carries a **stable key**: `{axis}.{subject}.{bucket}.{id}` (e.g. `A.tokens.color/primary.conflict`, `B.button.variant-axis.mismatch`, `B.pagination.composition.button.detached-instance`, `C.badge.mapping.stale`). The validation passes in Steps 7 / 9 use these keys to classify post-write diff items as UNCHANGED / RESOLVED / ALTERED / NEW without false positives.
 
 ---
 
@@ -153,6 +153,8 @@ Runs only when Axis B is enabled.
 
    > `Axis B: pairing by name matching (no .figma.tsx files found). Prop-level drift may under-report when Figma property names don't match code prop names.`
 
+4. **Composition registry read (for §3B.1).** If repo-root `.designops-registry.json` exists, parse it. Read [`skills/create-component/shadcn-props.json`](../create-component/shadcn-props.json) and cache every top-level key whose `composes` array is non-empty. For those composites, keep both the composite registry row and each referenced child's row (`version`, `key`, `nodeId`, optional `composedChildVersions` on the composite).
+
 ### 2C — Axis C read
 
 Runs only when Axis C is enabled.
@@ -210,6 +212,7 @@ For each paired `(ComponentSet, source file)` compute:
 | **default mismatch** | cva `defaultVariants` differ from ComponentSet `defaultVariant` | `B.<component>.default.<axisName>` |
 | **prop mismatch** | element component props (`Label`, `Leading icon`, `Trailing icon`, plus any Axis-C-documented code props) disagree | `B.<component>.prop.<propName>` |
 | **token-binding drift** | cva class tokens resolve (via `resolve-classes.mjs`) to different Figma variable paths than the ComponentSet's actual paint/spacing/text-style bindings | `B.<component>.binding.<elementPath>.<bucket>` |
+| **composition drift** | `shadcn-props.json` declares `composes[]` for `<component>` **and** repo `.designops-registry.json` exists: (a) a specimen `INSTANCE` under `slot/*` is detached or missing, (b) `mainComponent.key` on a nested instance disagrees with the registry entry for that child atom, (c) a composed child is absent from the registry, or (d) the child's registry `version` / `publishedAt` is newer than the last recorded composite redraw hint | `B.<component>.composition.<child>.<reason>` |
 | **code-only** | source file present, no matching ComponentSet in Figma | `B.<component>.code-only` |
 | **figma-only** | ComponentSet present, no matching source file | `B.<component>.figma-only` |
 
@@ -224,6 +227,27 @@ npx tsx <abs-path>/skills/create-component/resolver/resolve-classes.mjs \
 The resolver returns `{ fills, strokes, radii, spacing, typography, unresolved }` keyed by Tailwind state (`base`, `hover`, `focus-visible`, `disabled`, `dark`). Compare each resolved path to the Figma-side binding on the corresponding element. Unresolvable classes are recorded in the Axis B diff as informational (not a bucketed drift item).
 
 Components marked `unresolvable` in Step 2B surface as a separate informational row, not a drift bucket.
+
+### 3B.1 — Composition drift (`COMPOSITION_DRIFT` / `composition` bucket)
+
+Run this sub-pass **only** for components that have a non-empty `composes[]` in `shadcn-props.json` **and** for which Step 2B.4 loaded a registry file. Emit drift rows using stable keys `B.<composite>.composition.<child>.<reason>` (reason examples: `detached`, `wrong-main`, `missing-registry-child`, `stale-vs-child`).
+
+**A — Registry-only checks (no Figma tree walk):**
+
+1. For each composite `C` with `composes[]`, require registry entries for `C` and every child `K` in `composes[].component`. If any `K` is missing → emit **missing-registry-child**.
+2. **Stale vs child:** Let `vK` = `registry.components[K].version`. If `registry.components[C].composedChildVersions[K]` exists and `vK > registry.components[C].composedChildVersions[K]` → emit **stale-vs-child** (child redrawn after composite last captured child versions; remediation: redraw composite via `/create-component --components=C` or C-wins).
+
+**B — Figma structure checks (requires metadata / design context on composite `COMPONENT_SET`):**
+
+Using the composite's `registry.components[C].nodeId`, fetch children (`COMPONENT` variant masters). For **each** variant master node:
+
+3. For each `composes[]` row with `slot: S`, require a direct child frame named **`slot/S`**. If missing or not `FRAME` → emit **missing-slot** (treat as composition drift; legacy flat layout).
+4. Depth-first under `slot/S`: collect nodes of type `INSTANCE`.
+   - If there are **zero** instances → emit **no-instances** under child key `K`.
+   - For each `INSTANCE`, if `mainComponent` is **null** or the node is a non-instance frame where an instance was expected → **detached**.
+   - If `mainComponent` exists: let `kid = mainComponent.parent` (must be `COMPONENT_SET`). Compare `kid.id` to `registry.components[K].nodeId` **or** compare published `mainComponent.key` to `registry.components[K].key`. Mismatch → **wrong-main**.
+
+**C — Reporting:** Map every emitted row into the Axis B summary table under **COMPOSITION DRIFT** (see Step 4 example line). Actions in Steps 7–8 match other Axis B buckets (`F` / `C` / `R` / `S`); **C-wins** on composition drift is usually `/create-component --components=<composite>` after children are healthy.
 
 ### 3C — Axis C diff
 
@@ -276,6 +300,8 @@ Axis B — Components
   CODE-ONLY: 0
   FIGMA-ONLY: 1
     switch — no source file
+  COMPOSITION DRIFT: 1
+    pagination.composition.button.detached-instance — matrix cell uses detached shapes instead of Button instances
   Unresolvable (skipped): 0
 
   In sync: 12 components.
@@ -529,7 +555,7 @@ If RESOLVED items were dropped but nothing was ALTERED or NEW, log (not prompt):
    - Default variant diff
    - Prop diff (element component properties, code-only props, figma-only props)
    - Token-binding drift (code resolver output vs. Figma binding paths)
-   - Bucket: `code-only` / `figma-only` / `variant-axis` / `default` / `prop` / `binding`
+   - Bucket: `code-only` / `figma-only` / `variant-axis` / `default` / `prop` / `binding` / `composition`
 
 2. **Write the file.**
    - Preferred path: `.changeset/design-drift-{YYYYMMDD-HHmm}.md` if a `.changeset/` directory exists at the repo root.
@@ -574,6 +600,8 @@ Scope:
 - Other Figma pages are untouched.
 
 Log redrawn components + variant counts.
+
+For **composition drift** items (`B.*.composition.*`), prefer scoping `/create-component --components=<composite>` after every referenced child atom is healthy in the registry; use `--migrate-to-instances` only when the composite page is still on the **flat** specimen layout and the designer explicitly chose migration over a full redraw.
 
 ### 8.R — Axis B, direction R
 

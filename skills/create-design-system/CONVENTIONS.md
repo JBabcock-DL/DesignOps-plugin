@@ -468,6 +468,7 @@ If any box is unchecked, fix before reporting "done."
 
 | Topic                              | File                                                                       |
 | ---------------------------------- | -------------------------------------------------------------------------- |
+| `.designops-registry.json` (Figma component keys + `nodeId` map for `/create-component`, `/code-connect`, `/sync-design-system`) | [`skills/create-component/registry.schema.json`](../create-component/registry.schema.json) + [`skills/create-component/SKILL.md`](../create-component/SKILL.md) Step 5 + [`skills/create-component/resolver/merge-registry.mjs`](../create-component/resolver/merge-registry.mjs) |
 | Full skill orchestration           | [`skills/create-design-system/SKILL.md`](./SKILL.md)                       |
 | Canvas geometry + auto-layout rules | [`skills/create-design-system/SKILL.md`](./SKILL.md) § **A–G**             |
 | Table format spec (hierarchy, columns, cells, bindings) | [`skills/create-design-system/SKILL.md`](./SKILL.md) § **H** |

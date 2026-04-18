@@ -158,6 +158,47 @@ Rules for prop mapping:
 - If a Figma property has no matching code prop, omit it rather than guessing.
 - **Element component properties from `/create-component`:** ComponentSets drawn by `/create-component` may expose three unified element properties in addition to `variant` / `size` — `Label` (TEXT), `Leading icon` (BOOLEAN), `Trailing icon` (BOOLEAN). These live at the ComponentSet level in `componentPropertyDefinitions` (unified across all variants) — reference them by their unified name (e.g. `figma.string('Label')`, `figma.boolean('Leading icon')`), **not** by a per-variant node name. See [`skills/create-component/CONVENTIONS.md` §3.3](../create-component/CONVENTIONS.md) for the full element-property contract.
 
+**Composites with `composes[]` (nested Code Connect).** When [`skills/create-component/shadcn-props.json`](../create-component/shadcn-props.json) lists `composes` for a component, the Figma matrix contains `slot/{slot}` frames whose **direct children are `INSTANCE` nodes** of the child ComponentSet. Prefer:
+
+- Resolve the parent ComponentSet URL using repo-root `.designops-registry.json` (`components[kebab-name].nodeId`) when available — avoids slow tree walks in large files.
+- Emit `props` with `figma.children('<slot>')` for each declared `slot` (must match `composes[].slot` exactly). Example: `children: figma.children('items')` for `slot/items`.
+- **Block** emission if any composed child lacks a published `.figma.tsx` mapping — error text should name the missing child (e.g. `pagination references button, but components/ui/button.figma.tsx is missing — run /code-connect button first`).
+
+#### 3b-5.1 — Composite `.figma.tsx` shape (Phase 4)
+
+1. **Discover `composes[]`.** Before generating a composite file, read [`skills/create-component/shadcn-props.json`](../create-component/shadcn-props.json) for that kebab name. If `composes` is absent, use the flat template in §3b-5 only.
+2. **Resolve URL.** Prefer `.designops-registry.json` → `components[kebab].nodeId` for the **composite** `figma.connect` URL. Fall back to `get_design_context` tree search only if the registry row is missing.
+3. **Map each compose row → Code Connect.** The string passed to `figma.children(...)` **must equal** `composes[].slot` (Figma layer is `slot/{slot}`). Map to the React prop that actually receives those instances (read the component's props — often `children`, sometimes a named render prop).
+4. **Multi-slot example** (two entries in `composes` with `slot: "trigger"` and `slot: "content"`):
+
+```tsx
+figma.connect(Dialog, figmaUrl, {
+  props: {
+    trigger: figma.children('trigger'),
+    children: figma.children('content'),
+  },
+  example: ({ trigger, children }) => (
+    <Dialog>
+      {trigger}
+      {children}
+    </Dialog>
+  ),
+})
+```
+
+5. **Single-slot pagination / toggle-group pattern:**
+
+```tsx
+figma.connect(Pagination, figmaUrl, {
+  props: {
+    children: figma.children('items'),
+  },
+  example: ({ children }) => <Pagination>{children}</Pagination>,
+})
+```
+
+(`items` matches `shadcn-props.json` → `pagination.composes[0].slot`.)
+
 Present all generated `.figma.tsx` file contents to the designer before writing. Call **AskUserQuestion**: "Here are the proposed Code Connect files. Reply **yes** to write them, or paste corrections."
 
 On confirmation, write each file to disk.
@@ -197,7 +238,7 @@ For each Figma component:
 
 For each matched component pair (Figma component + local file):
 
-1. Using the component context from Step 4 and the matched file path from Step 5, generate a Code Connect mapping entry in the format expected by `mcp__claude_ai_Figma__send_code_connect_mappings`.
+1. Using the component context from Step 4 and the matched file path from Step 5, generate a Code Connect mapping entry in the format expected by `mcp__claude_ai_Figma__send_code_connect_mappings`. When `shadcn-props.json` lists `composes[]` for this component, follow **§3b-5.1** (nested `figma.children`) and validate every composed child has an existing `.figma.tsx` before proposing the composite file.
 2. Each mapping entry must include:
    - Figma component node ID
    - Local component file path (relative to project root)

@@ -37,8 +37,17 @@
     "pageName": "\u21b3 Toggle Group",
     "labelKey": "variant",
     "summary": "Set of Toggle buttons wired as a single selection control (single or multiple).",
-    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
+    "composes": [
+      {
+        "component": "toggle",
+        "slot": "items",
+        "cardinality": "many",
+        "count": 3,
+        "defaultProps": { "variant": "default", "size": "default" }
+      }
+    ],
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
     "properties": [
       ["type", "\"single\" | \"multiple\"", "\u2014", "yes", "Selection mode."],
       ["variant", "enum", "\"default\"", "no", "Visual style inherited by member Toggles."],
@@ -477,8 +486,17 @@
     "pageName": "\u21b3 Pagination",
     "labelKey": "variant",
     "summary": "Page-number navigation with prev/next controls.",
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "composes": [
+      {
+        "component": "button",
+        "slot": "items",
+        "cardinality": "many",
+        "count": 3,
+        "defaultProps": { "variant": "outline", "size": "default" }
+      }
+    ],
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
     "properties": [
       ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
     ]
