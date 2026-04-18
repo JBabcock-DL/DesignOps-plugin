@@ -86,14 +86,14 @@ function bindThemeStroke(node, path, fallbackHex, weight = 1) {
   node.strokeWeight = weight;
 }
 
-const SECTION_WIDTH = 1360;
+const SECTION_WIDTH = 1720;
 
 const pageContent = figma.createFrame();
 pageContent.name = '_PageContent';
 pageContent.layoutMode = 'VERTICAL';
 pageContent.primaryAxisSizingMode = 'AUTO';
 pageContent.counterAxisSizingMode = 'FIXED';
-pageContent.resize(1440, 100);
+pageContent.resize(1800, 100);
 pageContent.paddingTop    = 40;
 pageContent.paddingBottom = 80;
 pageContent.paddingLeft   = 40;
@@ -222,8 +222,8 @@ const platformRows = [
   ['color/primary/default',      'var(--color-primary)',          'primary',               '.Primary.default'],
   ['color/border/default',       'var(--color-border)',           'outline',               '.Border.default'],
   ['color/error/default',         'var(--color-danger)',           'error',                 '.Status.error'],
-  ['Headline/LG/font-size',      'var(--headline-lg-font-size)',  'headline-lg-font-size', '.Typography.headline.lg.fontSize'],
-  ['Title/LG/font-size',         'var(--title-lg-font-size)',     'title-lg-font-size',    '.Typography.title.lg.fontSize'],
+  ['Headline/LG/font-size',      'var(--headline-lg-font-size)',  'headline-lg-font-size', '.Typography.headline.lg.font.size'],
+  ['Title/LG/font-size',         'var(--title-lg-font-size)',     'title-lg-font-size',    '.Typography.title.lg.font.size'],
   ['typeface/display',           'var(--typeface-display)',       'typeface-display',      '.Typeface.display'],
   ['space/md',                   'var(--space-md)',               'space-md',              '.Layout.space.md'],
   ['radius/md',                  'var(--radius-md)',              'radius-md',             '.Layout.radius.md'],
@@ -327,7 +327,7 @@ pageContent.appendChild(modeRow);
 
 const darkPanel = figma.createFrame();
 darkPanel.name = 'dark-mode-panel';
-darkPanel.resize(660, 360);
+darkPanel.resize(840, 360);
 bindThemeColor(darkPanel, 'color/background/variant', '#ffffff');
 darkPanel.cornerRadius = 16;
 bindThemeStroke(darkPanel, 'color/border/subtle', '#e4e4e7', 1);
@@ -371,7 +371,7 @@ addPlaceholder(darkPanel, 'dark-mode');
 
 const scalePanel = figma.createFrame();
 scalePanel.name = 'font-scale-panel';
-scalePanel.resize(660, 360);
+scalePanel.resize(840, 360);
 bindThemeColor(scalePanel, 'color/background/variant', '#ffffff');
 scalePanel.cornerRadius = 16;
 bindThemeStroke(scalePanel, 'color/border/subtle', '#e4e4e7', 1);

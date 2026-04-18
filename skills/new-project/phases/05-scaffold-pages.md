@@ -28,7 +28,6 @@ const pages = [
   "---",
   "📝 Table of Contents",
   "↳ Token Overview",
-  "↳ MCP Tokens",
 
   // ── Style Guide ───────────────────────────────────
   "---",

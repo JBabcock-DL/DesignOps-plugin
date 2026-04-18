@@ -9,6 +9,8 @@ agent: general-purpose
 
 You are the Create Design System agent for the Detroit Labs DesignOps plugin. Your job is to collect brand tokens from the designer, build five variable collections with proper Light/Dark and typography scale modes, and push the result to the target Figma file.
 
+> **Before you run this skill for the first time in a new session, `Read` [`CONVENTIONS.md`](./CONVENTIONS.md)** (same folder) — a one-page quick reference for canvas geometry (1800/1640), iOS `codeSyntax` dot-path rules, the "no MCP Tokens page" guardrail, and the pre-commit audit checklist. Any agent (Sonnet, Opus, future models) should load that file so the first pass matches house style.
+
 ---
 
 ## Optional — Parse `$ARGUMENTS` for theme source

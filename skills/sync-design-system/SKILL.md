@@ -17,6 +17,8 @@ variable state via the Figma Variables REST API, computes a three-way diff
 (new / missing / conflicting), presents the diff to the designer, and executes
 the chosen sync direction.
 
+> **First time in a session?** `Read` [`../create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md) — canvas geometry (1800/1640 widths), iOS `codeSyntax` dot-path rules, body text variants (regular/emphasis/italic/link/strikethrough), and the no-`↳ MCP Tokens`-page guardrail. Step 9b / 9d / 9e redraws **must** match those conventions.
+
 ---
 
 ## Interactive input contract
@@ -230,14 +232,13 @@ Sync complete.
   Tokens skipped:           J
 ```
 
-**Canvas follow-up (same skill run, after the summary above):** when Step **9b**’s trigger applies (Figma received token writes in Step 8), execute **Step 9b**, then **Step 9c**, then **Step 9d**, then **Step 9e** before ending the skill — in that order. When Step 9b is skipped (direction **2** only, or zero tokens written to Figma), skip **9c**, **9d**, and **9e** as well.
+**Canvas follow-up (same skill run, after the summary above):** when Step **9b**’s trigger applies (Figma received token writes in Step 8), execute **Step 9b**, then **Step 9d**, then **Step 9e** before ending the skill — in that order. When Step 9b is skipped (direction **2** only, or zero tokens written to Figma), skip **9d** and **9e** as well.
 
 **Canvas checklist (blocking before the skill ends — log one line per step when 9b’s trigger applies):**
 
 | Step | Log line (example) |
 |---|---|
 | 9b | `Canvas: Step 9b style guide — done` or `… skipped (reason)` |
-| 9c | `Canvas: Step 9c ↳ MCP Tokens — done` or `… skipped (reason)` |
 | 9d | `Canvas: Step 9d ↳ Token Overview — done` or `… skipped (reason)` |
 | 9e | `Canvas: Step 9e Thumbnail Cover — done` or `… skipped (reason)` |
 
@@ -307,65 +308,6 @@ After all redraws complete, output:
 > "Style guide updated: {comma-separated list of redrawn page names}"
 
 Log the **Canvas checklist** row for Step 9b.
-
----
-
-## Step 9c — Redraw MCP Tokens Page
-
-**Trigger:** Same condition as Step 9b — run only when direction was **1**, **3**, or **4** (push to Figma occurred). Skip for direction **2**.
-
-### 1. Navigate to the MCP Tokens page
-
-In a `use_figma` call, navigate to the `↳ MCP Tokens` page: `figma.setCurrentPageAsync(page)` — locate by exact name `↳ MCP Tokens`.
-
-### 2. Delete the existing manifest frame
-
-If a frame named `[MCP] Token Manifest` exists on the page, delete it entirely. Do not delete the doc header (y ≤ 360).
-
-### 3. Rebuild the manifest from scratch
-
-Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440 — **`layoutMode: VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, padding and `itemSpacing` per **create-design-system Step 16** and **Canvas documentation visual spec** § **A–G** (root fill → `color/background/default`, not a detached white-only fill). Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
-
-- In the `[MCP] JSON Manifest` text node, set `"skill": "sync-design-system"` (not `"create-design-system"`).
-- Set `"generated"` to the current ISO-8601 datetime at the time this step executes.
-
-The manifest structure is:
-
-**[MCP] JSON Manifest text node** (at y=0 within the root frame) — a single monospaced Label/SM text block named `[MCP] JSON Manifest` containing the full token manifest as a minified JSON string in this shape:
-
-```json
-{
-  "meta": { "generated": "<ISO-8601 now>", "skill": "sync-design-system", "file": "<TARGET_FILE_KEY>" },
-  "collections": {
-    "Primitives": { "<path>": { "type": "COLOR|FLOAT", "value": "<resolved>", "web": "...", "android": "...", "ios": "..." }, ... },
-    "Theme": {
-      "light": { "<path>": { "type": "COLOR", "value": "<resolved>", "web": "...", "android": "...", "ios": "..." }, ... },
-      "dark": { ... }
-    },
-    "Typography": { "<mode>": { "<path>": { "type": "FLOAT", "value": "<resolved>", ... } }, ... },
-    "Layout": { "<path>": { "type": "FLOAT", "value": "<resolved>", ... }, ... },
-    "Effects": { "<mode>": { "<path>": { "type": "COLOR|FLOAT", "value": "<resolved>", ... } }, ... }
-  }
-}
-```
-
-All values are fully resolved (no alias references). Use the same live variable data fetched in Step 9b if available; otherwise call `GET /v1/files/:key/variables/local` once to get current values for all collections.
-
-**Five collection table sub-frames** stacked vertically below the JSON node, each following **create-design-system Step 16** (including **`ALIAS →`**, **`MODE`**, **32px** bound **SWATCH** cells for COLOR rows, **`Doc/*`** typography, **`doc/mcp-table/{collection}/rows`** + per-line **`…/row/…`** **HORIZONTAL** frames (**§ F**), row **`minHeight` 48**, **`textAutoResize`** on all text (**§ E**), and the **`MODE` = collection mode** caption).
-
-- `[MCP] Primitives` — `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS` — **SWATCH** variable-bound for COLOR.
-- `[MCP] Theme` — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS` — two rows per token (`light` / `dark`); explicit mode on row or swatch wrapper when used in create.
-- `[MCP] Typography` — `PATH | PROPERTY | MODE | ALIAS → | VALUE | WEB | ANDROID | iOS`.
-- `[MCP] Layout` — `PATH | TYPE | VALUE | ALIAS → | WEB | ANDROID | iOS` (**`ALIAS →`** = Primitive target, replaces legacy **BOUND TO** header).
-- `[MCP] Effects` — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS` (**SWATCH** for `shadow/color` only).
-
-All table body text **≥13px** mono (**`Doc/Code`** when available). Column headers bold (**`Doc/TokenName`** / **`Doc/Code`**).
-
-### 4. Report
-
-> "MCP Tokens page updated."
-
-Log the **Canvas checklist** row for Step 9c.
 
 ---
 
@@ -459,7 +401,7 @@ module.exports = {
 
 Read the file as text and evaluate the `theme.extend` (or `theme`) object.
 Map `colors.*` → `color/*`, `spacing.*` → `spacing/*`,
-`fontSize.*` → `typography/font-size/*`, etc.
+`fontSize.*` → `typography/font-size/*`, etc. When values are written back to Figma `codeSyntax` (iOS), flatten to dot-separated lowercase — e.g. `Headline/LG/font-size` → `.Typography.headline.lg.font.size`. Never emit camelCase.
 
 > Note: If the config uses `require()` or references external modules, parse
 > only the literal values and skip dynamic expressions. Warn the designer

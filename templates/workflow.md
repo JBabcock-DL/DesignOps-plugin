@@ -32,8 +32,8 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 | Skill | Invocation | Description |
 |---|---|---|
 | New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, draws documentation UI on the canvas (headers, TOC, Token Overview skeleton, Thumbnail `Cover` frame), and provides a move instruction to the Design-Systems/ folder. Implementation is split: `skills/new-project/SKILL.md` orchestrates; each `use_figma` script lives in `skills/new-project/phases/*.md` and is **`Read` one phase at a time**. After page scaffolding, the agent **reposts a markdown checklist** in chat after each phase so the designer can track progress. |
-| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), **optionally** writes `tokens.css` after an explicit opt-in, then refreshes Figma canvas docs (**Steps 15a–15c** style guide with **Doc/** + slot **Text styles** + **Effect** styles, **16** MCP tables with **ALIAS →** + bound swatches, **17** Token Overview, **18** Thumbnail `Cover`). Doc chrome + token demos follow **Canvas documentation visual spec § A–G** (auto-layout hug, text sizing, grouped rows, § G premium polish). After inputs (Step 4), agents **repost a “Building your design system”** checklist after each unit; during Step 3, short **Collected:** lines between questions (`skills/create-design-system/SKILL.md`). |
-| Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction; after pushes to Figma, runs **9b–9e** (same premium style guide + **ALIAS →** MCP tables + Token Overview + Cover as **create-design-system**) so canvas docs stay aligned with variables |
+| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), **optionally** writes `tokens.css` after an explicit opt-in, then refreshes Figma canvas docs on a **1800px** canvas column (**Steps 15a–15c** style guide with **Doc/** + slot **Text styles** + **Effect** styles; tables 1640 wide with **ALIAS →** + bound swatches, **17** Token Overview, **18** Thumbnail `Cover`). Doc chrome + token demos follow **Canvas documentation visual spec § A–G** (auto-layout hug, text sizing, grouped rows, § G premium polish). After inputs (Step 4), agents **repost a “Building your design system”** checklist after each unit; during Step 3, short **Collected:** lines between questions (`skills/create-design-system/SKILL.md`). |
+| Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction; after pushes to Figma, runs **9b / 9d / 9e** (same premium style guide tables + Token Overview refresh + Thumbnail `Cover` as **create-design-system**) so canvas docs stay aligned with variables |
 | Create Component | `/create-component` | Installs shadcn/ui components, wires `tokens.css` into `globals.css`, draws components to the Figma canvas with token bindings, and optionally chains Code Connect |
 | Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings after designer review |
 | New Language | `/new-language` | Localizes a Figma frame into a new language by duplicating it, translating text inline via Claude, and writing strings back |
@@ -112,8 +112,8 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.fontSize` |
-| `Title/LG/font-size` | `var(--title-lg-font-size)` | `title-lg-font-size` | `.Typography.title.lg.fontSize` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.font.size` |
+| `Title/LG/font-size` | `var(--title-lg-font-size)` | `title-lg-font-size` | `.Typography.title.lg.font.size` |
 | `typeface/display` | `var(--typeface-display)` | `typeface-display` | `.Typeface.display` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
@@ -140,7 +140,7 @@ Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `
 3. Writes all five collections to the target Figma file via the Variables REST API (`PUT` — not `use_figma`; `codeSyntax` must be set here)
 4. Verifies the registry with a Variables GET, then **optionally** writes `tokens.css` to the local codebase (designer opt-in after push)
 5. Records `token_css_path` in `templates/agent-handoff.md` for downstream skills
-6. Runs **`use_figma`** to draw or refresh **style guide** pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`), the **`[MCP] Token Manifest`** on `↳ MCP Tokens`, **Token Overview** populated from live variables, and the **Thumbnail** `Cover` gradient from brand primaries
+6. Runs **`use_figma`** to draw or refresh **style guide** pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`) on a **1800px** canvas column (`_Header` + `_PageContent` 1800 wide; inner 1640; tables 1640 wide), **Token Overview** populated from live variables, and the **Thumbnail** `Cover` gradient from brand primaries
 
 ### How `/new-project` prepares the Foundations file
 
@@ -157,7 +157,7 @@ After Step 5, the agent shows a **chat checklist** and marks items complete as e
 
 ### How `/sync-design-system` updates canvas after a Figma push
 
-When the designer pushes token changes **to Figma** (options 1, 3, or 4 with confirmed push), the skill also runs **`use_figma`** to **redraw affected style guide pages** (Step 9b) and **rebuild the MCP Tokens manifest** (Step 9c), using the same layout rules as `/create-design-system`. Pushes **to code only** (option 2) skip canvas redraws.
+When the designer pushes token changes **to Figma** (options 1, 3, or 4 with confirmed push), the skill also runs **`use_figma`** to **redraw affected style guide pages** (Step 9b), **refresh the Token Overview** (Step 9d), and **update the Thumbnail `Cover`** gradient (Step 9e), using the same layout rules as `/create-design-system` (1800px canvas column; tables 1640 wide; **`Doc/*`** styles; variable-bound swatches). Pushes **to code only** (option 2) skip canvas redraws.
 
 ---
 
@@ -178,8 +178,8 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 | Skill | Syntax | Arguments | Description |
 |---|---|---|---|
 | /new-project | `/new-project` | none (interactive) | Scaffolds a full DL Figma project with documentation canvas (headers, TOC, Token Overview skeleton, cover) |
-| /create-design-system | `/create-design-system` | none | Creates five token collections; optional `tokens.css`; redraws style guide + MCP manifest + Token Overview + cover |
-| /sync-design-system | `/sync-design-system` | none (interactive) | Diffs and syncs Figma variables with local tokens; redraws style pages + MCP manifest after pushes to Figma |
+| /create-design-system | `/create-design-system` | none | Creates five token collections; optional `tokens.css`; redraws style guide + Token Overview + cover |
+| /sync-design-system | `/sync-design-system` | none (interactive) | Diffs and syncs Figma variables with local tokens; redraws style guide pages + Token Overview + cover after pushes to Figma |
 | /create-component | `/create-component [components...]` | components: shadcn component names | Installs components, wires tokens.css, draws to canvas |
 | /code-connect | `/code-connect` | none | Finds and publishes missing Code Connect mappings |
 | /new-language | `/new-language [locale] [node_id]` | locale: BCP 47 code, node_id: Figma node | Duplicates a frame for a new locale with inline translations |

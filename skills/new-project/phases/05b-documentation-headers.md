@@ -23,13 +23,14 @@ Master `_Header` on Documentation components; instances on other pages; `_Conten
 
 Call `use_figma` with the `fileKey` from Step 4. **Phase A (once):** On the `Documentation components` page, create a single master `_Header` with `figma.createComponent()` (components are scoped to their page — you must be on that page when creating it). **Phase B:** Loop all pages except `Thumbnail`; on each target page, append a `createInstance()` of that component at (0, 0) and override the `_title` / `_description` text nodes. **Phase C:** Append a plain `_Content` frame on every page (not a component instance). Skip placing a duplicate instance on `Documentation components` — the master component already provides the header there.
 
+**Canvas width:** `_Header` is **1800px wide** with `cornerRadius: 0` so the downstream `_PageContent` (also 1800 wide) butts directly against its bottom edge. `/create-design-system` later rebuilds documentation chrome at the same 1800 width (tables 1640 wide inside 80px padding). See `skills/create-design-system/SKILL.md` § **Canvas documentation visual spec**.
+
 ```javascript
 const descriptions = {
   "---":                        "Visual divider between page groups in the left sidebar (no component canvas).",
   "Thumbnail":                  "File cover frame (`Cover`) on the Thumbnail page.",
   "📝 Table of Contents":       "Index of all pages in this design system with links to each section.",
   "↳ Token Overview":           "How the token architecture works and how to use it with Claude.",
-  "↳ MCP Tokens":               "Machine-readable token manifest for agent and developer tooling.",
   "🖍️ Style Guide":             "Visual documentation of all design tokens in this system.",
   "↳ Primitives":               "Raw color ramps, spacing scale, corner radius scale, and elevation values.",
   "↳ Theme":                    "Semantic color tokens — light and dark mode aliases into Primitives.",
@@ -155,7 +156,7 @@ await figma.setCurrentPageAsync(docComponentsPage);
 
 const headerComponent = figma.createComponent();
 headerComponent.name         = '_Header';
-headerComponent.resize(1440, 320);
+headerComponent.resize(1800, 320);
 headerComponent.x            = 0;
 headerComponent.y            = 0;
 headerComponent.fills        = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
@@ -188,7 +189,7 @@ wordmark.letterSpacing   = { value: 2, unit: 'PIXELS' };
 wordmark.characters      = 'DETROIT LABS';
 wordmark.fills           = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 wordmark.textAlignHorizontal = 'RIGHT';
-wordmark.x = 1400 - wordmark.width;
+wordmark.x = 1760 - wordmark.width;
 wordmark.y = 48;
 headerComponent.appendChild(wordmark);
 
@@ -241,7 +242,7 @@ for (const page of figma.root.children) {
 
   const content = figma.createFrame();
   content.name         = '_Content';
-  content.resize(1440, 800);
+  content.resize(1800, 800);
   content.x            = 0;
   content.y            = 360;
   content.fills        = [{ type: 'SOLID', color: { r: 0.969, g: 0.969, b: 0.969 } }];

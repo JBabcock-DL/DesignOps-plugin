@@ -4,6 +4,8 @@ A Claude Code plugin that gives Detroit Labs designers seven skill-based command
 
 All skill logic lives in `SKILL.md` instruction files. There is no TypeScript code, no bundler, and no install script. Everything runs through the Claude Code agent using the Figma MCP connector for authentication.
 
+> **Ramping up a new agent (Claude Sonnet, Opus, future models)?** Have it read [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) before running `/new-project`, `/create-design-system`, or `/sync-design-system`. That file is a one-page quick reference covering canvas geometry (**1800**/**1640** widths, 80px padding on style-guide pages), iOS `codeSyntax` dot-path rules (**never** camelCase), body text variants, the removed `↳ MCP Tokens` page, and a pre-commit audit checklist.
+
 ---
 
 ## Table of Contents
@@ -22,6 +24,7 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
 - [Typical Workflow](#typical-workflow)
 - [Skill Chaining & Handoff Context](#skill-chaining--handoff-context)
 - [Token Architecture](#token-architecture)
+- [Design System Conventions (Quick Reference)](#design-system-conventions-quick-reference)
 - [Figma Project Structure](#figma-project-structure)
 - [Plugin File Structure](#plugin-file-structure)
 - [Contributing](#contributing)
@@ -102,7 +105,7 @@ The file lands in Drafts. At the end of the run Claude provides a one-step move 
 
 **Page hierarchy** — sourced from the Detroit Labs Foundations template and extended with shadcn/ui component pages, organized into atomic design groups:
 
-- Token & Style Docs (Table of Contents, Token Overview, MCP Tokens)
+- Token & Style Docs (Table of Contents, Token Overview)
 - Style Guide (Primitives, Theme, Layout, Text Styles, Effects)
 - Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
 - Atoms (Typography, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)
@@ -148,10 +151,9 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 9. Verifies the write with a GET call and reports final variable counts
 10. **Optionally writes `tokens.css`** — separate opt-in after Figma push (default path `src/styles/tokens.css` when accepted; see [Token Architecture](#token-architecture))
 11. Updates `templates/agent-handoff.md` with `token_css_path` **only if** `tokens.css` was written and handoff exists and is writable; otherwise the Step 14 report states next steps for `/create-component`
-12. **`use_figma` — Style guide (Steps 15a–15c)** — premium layout: **variable-bound** swatches (Dev Mode), **2-column** Theme cards with explicit **Light/Dark** previews, published **`Doc/*`** + **slot Text styles** + **`Effect/shadow-*`** effect styles, then `↳ Layout` / `↳ Text Styles` / `↳ Effects` (see **Canvas documentation visual spec § A–G** in the skill — auto-layout **hug**, **`textAutoResize`**, **`doc/...` row frames**, **§ G** premium polish)
-13. **`use_figma` — MCP Tokens (Step 16)** — builds `[MCP] Token Manifest` with JSON + tables for machine and human audit
-14. **`use_figma` — Token Overview (Step 17)** — replaces skeleton data, rebinds doc chrome to Theme/Typography variables, updates tables from live variables, removes `placeholder/*` notes
-15. **`use_figma` — Thumbnail (Step 18)** — updates `Cover` gradient stops from `color/primary/500` and `color/secondary/500`
+12. **`use_figma` — Style guide (Steps 15a–15c)** — premium layout on a **1800px** canvas column (`_Header` + `_PageContent` both 1800 wide; inner content 1640; tables 1640 wide): **variable-bound** swatches (Dev Mode), **2-column** Theme cards with explicit **Light/Dark** previews, published **`Doc/*`** + **slot Text styles** + **`Effect/shadow-*`** effect styles, then `↳ Layout` / `↳ Text Styles` / `↳ Effects` (see **Canvas documentation visual spec § A–G** in the skill — auto-layout **hug**, **`textAutoResize`**, **`doc/...` row frames**, **§ G** premium polish)
+13. **`use_figma` — Token Overview (Step 17)** — replaces skeleton data, rebinds doc chrome to Theme/Typography variables, updates tables from live variables, removes `placeholder/*` notes
+14. **`use_figma` — Thumbnail (Step 18)** — updates `Cover` gradient stops from `color/primary/500` and `color/secondary/500`
 
 **Requires:** Organization-tier Figma account for the Variables REST API write endpoint.
 
@@ -191,7 +193,7 @@ Diff a local token file against the current Figma variable state and push change
    - **Push both** — sync in both directions (only available when there are no conflicts)
    - **Review manually** — resolve each conflict one at a time before pushing
 5. Flags any legacy `Web`, `Android/M3`, or `iOS/HIG` collections as deprecated if found
-6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** in one skill run — **Step 9b** redraws affected style guide pages (one call per page batch, matching create-design-system **15a–15c** + **Doc/** / slot styles / effect styles), **Step 9c** rebuilds **`[MCP] Token Manifest`** (**ALIAS →**, bound swatches, **MODE** captions), **Step 9d** refreshes **`↳ Token Overview`**, **Step 9e** updates the Thumbnail **`Cover`** gradient — all following **Canvas documentation visual spec § A–G** like `/create-design-system`. Skipped when only pushing to code (option 2).
+6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** in one skill run — **Step 9b** redraws affected style guide pages (one call per page batch, matching create-design-system **15a–15c** + **Doc/** / slot styles / effect styles, **1800** canvas + **1640** tables), **Step 9d** refreshes **`↳ Token Overview`**, **Step 9e** updates the Thumbnail **`Cover`** gradient — all following **Canvas documentation visual spec § A–G** like `/create-design-system`. Skipped when only pushing to code (option 2).
 
 ---
 
@@ -433,8 +435,8 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.fontSize` |
-| `Title/LG/font-size` | `var(--title-lg-font-size)` | `title-lg-font-size` | `.Typography.title.lg.fontSize` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.font.size` |
+| `Title/LG/font-size` | `var(--title-lg-font-size)` | `title-lg-font-size` | `.Typography.title.lg.font.size` |
 | `typeface/display` | `var(--typeface-display)` | `typeface-display` | `.Typeface.display` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
@@ -494,6 +496,39 @@ If you opt in after the Figma push, `/create-design-system` writes `tokens.css` 
 **Primary CSS vars use M3 role names** (`--on-background`, `--outline`, `--primary-container`, `--error`, etc.). shadcn/ui compatibility aliases (`--foreground`, `--border`, `--destructive`, `--accent`, etc.) are defined as aliases pointing back to the M3 vars, so shadcn components resolve correctly with no additional mapping.
 
 **Dark mode** is toggled by adding `data-theme="dark"` to the `<html>` element. **Font scaling** is toggled by adding `data-font-scale="130"` (or any of the 8 scale values) to `<html>`.
+
+---
+
+## Design System Conventions (Quick Reference)
+
+Full details live in [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md). The highlights every agent needs:
+
+**Canvas geometry (style guide + sync redraws):**
+
+| Layer | Width | Notes |
+|---|---|---|
+| Page canvas | **1800px** | `_Header` + `_PageContent` both span this column. |
+| `_Header` | **1800 × 320** | `layoutMode: VERTICAL`, **`cornerRadius: 0`** (square seam against `_PageContent`). |
+| `_PageContent` (style guide) | **1800** wide, padding **80** | `y: 320`, fill literal `#FFFFFF`, `itemSpacing: 48`. |
+| `_PageContent` (TOC + Token Overview) | **1800** wide, padding **40** | Different padding — index pages keep the wider inner. |
+| Inner content / tables | **1640** | Column widths in every table sum to **exactly 1640**. |
+
+**`codeSyntax` — every variable, three strings, set via REST API (Plugin API is read-only):**
+
+- **WEB** — `var(--…)` CSS custom property (single `--color-*` namespace for Tailwind v4 `@theme`)
+- **ANDROID** — kebab-case M3 role (`surface-container-high`, not `surfaceContainerHigh`)
+- **iOS** — fully dot-separated lowercase path, **never camelCase**
+
+  ```text
+  correct: .Background.container.high · .Typography.headline.lg.font.size · .Corner.extra.small · .Status.on.error.fixed.muted
+  wrong:   .Background.containerHigh · .Typography.headline.lg.fontSize · .Corner.extraSmall · .Status.onErrorFixedMuted
+  ```
+
+- **Theme codeSyntax is explicit per token** — read from the table in `skills/create-design-system/SKILL.md` § 6, never derive from the Figma path.
+
+**Body text variants** — each Body size (LG/MD/SM) emits 5 slots grouped in `Body/{size}/`: `regular`, `emphasis` (weight 500), `italic`, `link` (underline), `strikethrough`. 3 sizes × 5 variants = 15 body slots.
+
+**Pages that do not exist** — `↳ MCP Tokens` and the `[MCP] Token Manifest` frame were removed as redundant. Do not reintroduce them. Sync redraw runs Steps **9b / 9d / 9e** (style guide + Token Overview + Cover) — there is no Step 9c.
 
 ---
 

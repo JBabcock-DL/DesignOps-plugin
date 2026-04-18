@@ -9,6 +9,8 @@ agent: general-purpose
 
 You are scaffolding a new Detroit Labs Foundations design system file in Figma.
 
+> **Before drawing anything on canvas, `Read` [`../create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md)** — it defines the canvas geometry (1800px-wide `_Header` + `_PageContent`, 40px padding on TOC/Token Overview, 80px padding on style-guide pages), the page list (**no `↳ MCP Tokens`**), and naming conventions. `/new-project` scaffolds the chrome so `/create-design-system` can later redraw matching widths.
+
 Your first action is to collect the required inputs using AskUserQuestion — do not output any text before the first AskUserQuestion call.
 
 > **Platform note:** Figma's public REST API does not support creating project folders or moving files between projects. The file is created in Drafts via the Figma MCP connector and page structure is built automatically. The user receives a single move instruction at the end to place it into the correct project folder. Do not attempt any REST API calls for folder creation or file moves.
@@ -154,7 +156,7 @@ The following pages are sourced directly from the Detroit Labs Foundations templ
 
 **Sections:**
 - Thumbnail
-- Table of Contents (Token Overview, MCP Tokens)
+- Table of Contents (Token Overview)
 - Style Guide (Primitives, Theme, Layout, Text Styles, Effects)
 - Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
 - Atoms (Typography, Text blocks, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)
