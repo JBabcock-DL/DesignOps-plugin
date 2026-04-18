@@ -274,7 +274,7 @@ Read only the variables belonging to affected collections. Resolve all alias tok
 
 ### 3. Redraw each affected page
 
-Before any `use_figma` canvas work, **`Read`** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ **A–F**). Token-bound doc chrome (**§ C**), token-demo bindings (**§ D**), auto-layout hug rules (**§ E**), and row hierarchy (**§ F**) must match that spec.
+Before any `use_figma` canvas work, **`Read`** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ **A–G**). Token-bound doc chrome (**§ C**), token-demo bindings (**§ D**), auto-layout hug rules (**§ E**), row hierarchy (**§ F**), and premium visual language (**§ G**) must match that spec.
 
 **Reliability:** run **one `use_figma` call per affected page** (same split as create-design-system **Steps 15a–15c**), not one mega-call across all pages — each call: navigate → delete `y > 360` → redraw that page only.
 
@@ -290,7 +290,7 @@ Per page:
 2. Delete all nodes with **`y > 360`** (keep doc header `y ≤ 360`).
 3. Redraw using the same spec as **create-design-system Steps 15a–15c** for that page. Authoritative detail: [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md).
 
-**↳ Primitives** — per **create-design-system Step 15a** + **§ A–F**: **`_PageContent`** shell; **`doc/primitives/ramp-row/*`** wraps each ramp’s cards; **64px** strips; **120×160** cards, **variable-bound** fills; Space/Corner/Typeface as **`doc/primitives/*-row/{token}`**; **`primaryAxisSizingMode: AUTO`** + **`textAutoResize`** on all text (§ **E**).
+**↳ Primitives** — per **create-design-system Step 15a** + **§ A–G**: **`_PageContent`** shell; **`doc/primitives/ramp-row/*`** wraps each ramp’s cards; **64px** strips; **120×160** cards, **variable-bound** fills; Space/Corner/Typeface as **`doc/primitives/*-row/{token}`**; **`primaryAxisSizingMode: AUTO`** + **`textAutoResize`** on all text (§ **E**).
 
 **↳ Theme** — per **Step 15b** + **§ F**: **`doc/theme/card-row-*`** holds **two** cards per row; **64px** strips; cards **`minHeight` 200**, **padding 28**, **radius 16**; **88×88** swatches + **`setExplicitVariableModeForCollection`** on **`doc/theme-preview/light|dark`**; **`Doc/*`** + live **`codeSyntax`**.
 
@@ -324,7 +324,7 @@ If a frame named `[MCP] Token Manifest` exists on the page, delete it entirely. 
 
 ### 3. Rebuild the manifest from scratch
 
-Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440 — **`layoutMode: VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, padding and `itemSpacing` per **create-design-system Step 16** and **Canvas documentation visual spec** § **A–F** (root fill → `color/background/default`, not a detached white-only fill). Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
+Create a new root frame named `[MCP] Token Manifest` at x=0, y=360, width=1440 — **`layoutMode: VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, padding and `itemSpacing` per **create-design-system Step 16** and **Canvas documentation visual spec** § **A–G** (root fill → `color/background/default`, not a detached white-only fill). Build its contents using the same spec as **create-design-system Step 16**, with the following two overrides:
 
 - In the `[MCP] JSON Manifest` text node, set `"skill": "sync-design-system"` (not `"create-design-system"`).
 - Set `"generated"` to the current ISO-8601 datetime at the time this step executes.
@@ -379,7 +379,7 @@ In `use_figma`, go to the `↳ Token Overview` page (`figma.setCurrentPageAsync`
 
 ### 2. Refresh content
 
-Execute the same population and rebinding logic as **create-design-system Step 17** (architecture diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per **Canvas documentation visual spec § A–F**). Use live variable data from Step 9b’s fetch when available; otherwise `GET /v1/files/:key/variables/local` once.
+Execute the same population and rebinding logic as **create-design-system Step 17** (architecture diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per **Canvas documentation visual spec § A–G**). Use live variable data from Step 9b’s fetch when available; otherwise `GET /v1/files/:key/variables/local` once.
 
 ### 3. Report
 

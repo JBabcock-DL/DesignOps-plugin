@@ -1777,7 +1777,7 @@ Immediately continue to **Steps 15a–18** (Figma canvas) in the same skill run 
 
 ## Canvas documentation visual spec
 
-Agents **must read this section** before executing Steps **15a–18** and any `use_figma` script that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure, binding, and Dev Mode rules (**§ A–F**; see [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md)).
+Agents **must read this section** before executing Steps **15a–18** and any `use_figma` script that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure, binding, and Dev Mode rules (**§ A–G**; see [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md)).
 
 ### A — Structure (geometry, naming; stable across all files)
 
@@ -1835,6 +1835,7 @@ Apply via Figma **variable bindings** on frame `fills` / `strokes` and text `fil
 | Effects preview card stroke | `color/border/subtle` | Theme · Light |
 | MCP manifest root / table chrome background | `color/background/default` | Theme · Light |
 | MCP table header row background | `color/background/variant` | Theme · Light |
+| MCP table body zebra (alternate rows, optional) | `color/background/container-lowest` | Theme · Light |
 
 **Typography:** After **`Doc/*`** and **slot text styles** exist (Step 15c), **all** style guide headings, token names, code, and MCP table body text must use **`textStyleId`** pointing at those styles — not one-off Inter with arbitrary sizes.
 
@@ -1877,6 +1878,23 @@ Broken style guides often show **empty or 10px-tall** sections because frames st
 | **↳ Effects** | `_PageContent` → `doc/effects/grid` (**VERTICAL** or **HORIZONTAL** wrap) → **`doc/effects/card/{tier}`** (**VERTICAL** per tier). |
 | **↳ MCP Tokens** | `[MCP] Token Manifest` root (**§ Step 16**) → collection frame → **`doc/mcp-table/{collection}/rows`** (**VERTICAL**) → **`doc/mcp-table/{collection}/row/...`** (**HORIZONTAL**) per table line. |
 
+### G — Premium visual language (**sleek · modern · editorial**)
+
+§ **G** builds on § **A–F**. The guides should feel like **shipping product documentation** (Polaris / Carbon / **Storybook** docs tone): confident spacing, restrained color, crisp type — not a dense internal spreadsheet.
+
+| Pillar | Do this |
+|---|---|
+| **Restraint** | Let **neutral surfaces** carry the layout. Use **`color/primary/subtle`** only for **small** highlights (one accent zone per section — e.g. spacing bar fill, a single “focus” chip). Avoid multicolor decorative frames. |
+| **Depth (subtle)** | Elevate **Theme token cards**, **Effects** tier cards, and **MCP collection** frames with **`effectStyleId` → `Effect/shadow-sm`** (or one restrained **`DROP_SHADOW`** from **`shadow/color`** + **`shadow/sm/blur`** at Effects · Light) so surfaces **float slightly** — **one** shadow recipe sitewide, low opacity. **Optional:** the same on the outer **`doc/primitives/section/{ramp}`** wrapper (whole ramp), **never** on every small swatch. **Ordering:** `Effect/shadow-sm` is created in **Step 15c §0** — Steps **15a–15b** run **before** that in the default checklist, so on **first** run **skip** `effectStyleId` on Primitives/Theme unless the agent publishes effect styles **earlier in the same combined `use_figma` script`** or the designer **re-runs** 15a–15b after 15c once. **Step 16** (after 15c) should always apply **`Effect/shadow-sm`** to MCP table frames. Do not stack multiple shadows. |
+| **Geometry** | Prefer **one radius scale** on docs: strips and outer panels **16**, inner swatches and chips **12**, large hero cards (Effects) **20–24**. Keep **parallel edges** aligned across a section (card grids share the same left/right margins). |
+| **Typography** | Strictly **`Doc/*`** text styles (**§ A**). Section strips: title + optional **`Doc/Caption`** subtitle (one line: what this group is *for*). On **light** cards, titles **`color/background/content`**, metadata **`color/background/content-muted`** — clear **title / body / code** tiers. |
+| **Whitespace** | Bias toward **more** padding inside cards (**28–32px**) and **48–64px** between major bands. Dense MCP tables still use **row `minHeight` 48** + **16px** horizontal cell padding — never cram text to the cell edge. |
+| **Swatches** | Color squares **fully fill** their frame corners (same radius as frame or slightly less with **2–4px** inner “mat” using **`color/background/default`** if you want a gallery inset). Theme Light/Dark previews use **identical** geometry side-by-side so comparison feels **controlled**. |
+| **MCP tables** | **Header band**: dedicated first row or child frame **`doc/mcp-table/{collection}/header`**, fill **`color/background/variant`**, bottom stroke **`color/border/subtle`**, column titles **`Doc/TokenName`**. **Body rows**: optional **zebra** — alternate row fill **`color/background/default`** / **`color/background/container-lowest`** (Theme · Light) at **~40% opacity** if opacity on fills is awkward, else skip zebra and rely on **row `minHeight` + dividers**. |
+| **Motion / craft** | No literal motion in static Figma — imply quality through **alignment**, **consistent naming**, and **pixel-perfect spacing** on the **8px** grid. After layout, **one pass**: nudge any off-grid `itemSpacing` / `padding` to multiples of **4** (prefer **8**). |
+
+**Anti-patterns (never):** rainbow gradient backgrounds on doc chrome; **3+** stroke weights in one card; arbitrary Inter sizes; **#000000` / `#FFFFFF`** detached fills on chrome when the Theme/Primitives variable exists; clip content that should hug height.
+
 ---
 
 ## Step 15a — Draw Style Guide: ↳ Primitives
@@ -1885,7 +1903,7 @@ Using values from Steps 5–9, run **one** `use_figma` execution for **`↳ Prim
 
 1. `figma.setCurrentPageAsync` → page named exactly `↳ Primitives`.
 2. Delete every node with **`y > 360`** (keep doc header `y ≤ 360`).
-3. Redraw per **Canvas documentation visual spec § A–F**: build **`_PageContent`** first (§ **E**–**F**), then sections. Section strips **1440×64px**, strip BG/text per **binding map**. Typography: if **`Doc/*`** text styles already exist in the file (from a prior run), assign **`textStyleId`**; otherwise use literal sizes matching the § **A** ramp (**strip title ~22px semibold**, token labels **14–16px**, code lines **13px** mono) — Step **15c** will publish **`Doc/*`** for subsequent passes.
+3. Redraw per **Canvas documentation visual spec § A–G**: build **`_PageContent`** first (§ **E**–**F**), apply **premium** surface + shadow rules (**§ G**), then sections. Section strips **1440×64px**, strip BG/text per **binding map**. Typography: if **`Doc/*`** text styles already exist in the file (from a prior run), assign **`textStyleId`**; otherwise use literal sizes matching the § **A** ramp (**strip title ~22px semibold**, token labels **14–16px**, code lines **13px** mono) — Step **15c** will publish **`Doc/*`** for subsequent passes.
 
 **↳ Primitives page content**
 
@@ -1894,7 +1912,7 @@ For each of the 5 color ramps (primary, secondary, tertiary, error, neutral), in
 1. Create **`doc/primitives/section/{ramp}`** (**`VERTICAL`**, **`primaryAxisSizingMode: AUTO`**).
 2. Draw the full-width **section label strip** (fixed height **64px**), **binding map** strip BG/text.
 3. Create **`doc/primitives/ramp-row/{ramp}`** (**`HORIZONTAL`**, **`primaryAxisSizingMode: AUTO`**, `itemSpacing` **12**). Append **11** child card frames — do **not** append 11 bare rectangles directly to the section without this row frame.
-4. Each **`doc/primitives/card/{ramp}-{stop}`**: **`VERTICAL`**, **`AUTO`** height, width **120**; top **120×120** (or **120×128**) swatch rect; below it a **vertical** stack (`itemSpacing` **4**) of text nodes (**`Doc/TokenName`** / **`Doc/Code`**): stop label, resolved hex, full path `color/primary/500`. Set **`textAutoResize`** on every text node (§ **E**). **Card color fill:** bind **`boundVariables.color`** to **`color/{ramp}/{stop}`** (§ **D**).
+4. Each **`doc/primitives/card/{ramp}-{stop}`**: **`VERTICAL`**, **`AUTO`** height, width **120**; top **120×120** (or **120×128**) swatch rect; below it a **vertical** stack (`itemSpacing` **4**) of text nodes (**`Doc/TokenName`** / **`Doc/Code`**): stop label, resolved hex, full path `color/primary/500`. Set **`textAutoResize`** on every text node (§ **E**). **Card color fill:** bind **`boundVariables.color`** to **`color/{ramp}/{stop}`** (§ **D**). *(Optional § **G**: if **`Effect/shadow-sm`** already exists, set **`effectStyleId`** on **`doc/primitives/section/{ramp}`** only — not on each swatch card.)*
 
 After all color ramps, draw three more sections (each with **`doc/primitives/section/...`** + inner **`.../rows`** **VERTICAL** stack per § **F**):
 
@@ -1918,7 +1936,7 @@ For each of the 7 semantic groups (`background/`, `border/`, `primary/`, `second
 2. Draw a **1440×64px** section label strip (human-readable name, e.g. `Background`) — **binding map**; title **`Doc/Section`**. Optional one-line **`Doc/Caption`** under the title inside the strip (usage hint).
 3. Create **`doc/theme/group-grid`** (**`VERTICAL`**, **`AUTO`**, **`itemSpacing` 24**) — this frame holds **only** two-card **rows**, not loose cards.
 4. For each pair of tokens in that group, append **`doc/theme/card-row-{n}`** (**`HORIZONTAL`**, **`AUTO`**, **`itemSpacing` 24`**, children **`layoutAlign: STRETCH`** vertically). Each **card**:
-   - **Frame:** `VERTICAL`, **`padding` 28**, **`itemSpacing` 16**, **`minHeight` 200**, **`cornerRadius` 16**, stroke bound to **`color/border/subtle`**, fill **`color/background/variant`**.
+   - **Frame:** `VERTICAL`, **`padding` 28**, **`itemSpacing` 16**, **`minHeight` 200**, **`cornerRadius` 16**, stroke bound to **`color/border/subtle`**, fill **`color/background/variant`**. **§ G:** when **`Effect/shadow-sm`** exists, set **`effectStyleId`** on the card (see § **G** *Depth* note for default step order vs. one combined script).
    - **Token path:** **`Doc/TokenName`** first line.
    - **Swatch row:** `HORIZONTAL`, **`itemSpacing` 24**. Each preview = **`VERTICAL`** stack inside named wrapper `doc/theme-preview/light` or `…/dark` (**no fill**); call **`setExplicitVariableModeForCollection`** on the wrapper; inner **88×88** rounded rect (**`cornerRadius` 12**) with **bound** Theme variable fill; **`Doc/Caption`** for **LIGHT** / **DARK**. § **E**: **`textAutoResize`** on all text.
    - **Code block:** three **`Doc/Code`** lines — WEB / ANDROID / iOS from Step 6 **`codeSyntax`**.
@@ -1954,7 +1972,7 @@ Use `figma.getLocalTextStyles()` / `figma.getLocalEffectStyles()`; **`loadFontAs
 
 ### ↳ Effects page
 
-`_PageContent` → **`doc/effects/grid`**. **Premium cards:** outer **`doc/effects/card/{tier}`** **~280×300px**, **`VERTICAL`**, **`AUTO`**, **`padding` 24**, **`cornerRadius` 20**, fill **`color/background/default`**, stroke **`color/border/subtle`**; inner **112×112** specimen with effect applied.
+`_PageContent` → **`doc/effects/grid`**. **Premium cards:** outer **`doc/effects/card/{tier}`** **~280×300px**, **`VERTICAL`**, **`AUTO`**, **`padding` 24**, **`cornerRadius` 20**, fill **`color/background/default`**, stroke **`color/border/subtle`**, **`effectStyleId` → `Effect/shadow-sm`** (§ **G**); inner **112×112** specimen with tier **`Effect/shadow-{tier}`** applied.
 - For each **`shadow/{tier}/blur`**, show **Light** and **Dark** previews using **`setExplicitVariableModeForCollection`** on **Effects** collection wrappers (same pattern as Theme § **D**). Apply matching **`Effect/shadow-{tier}`** to a pinned demo node via **`effectStyleId`** where the tier matches.
 - **`shadow/color`:** dedicated small card explaining RGBA + bound **`shadow/color`** variable fill on a swatch rect if separate from blur tiers.
 
@@ -1962,7 +1980,7 @@ Log the **Canvas checklist** row for Step 15c.
 
 ---
 
-*Detail for swatch geometry, Theme card layout, Layout/Text/Effects rows is in Steps **15a–15c** above. If any legacy instruction elsewhere in this file conflicts with **Canvas documentation visual spec § A–F**, the spec wins (token-bound chrome, Light doc mode, Dev Mode bindings, auto-layout hug rules).*
+*Detail for swatch geometry, Theme card layout, Layout/Text/Effects rows is in Steps **15a–15c** above. If any legacy instruction elsewhere in this file conflicts with **Canvas documentation visual spec § A–G**, the spec wins (token-bound chrome, Light doc mode, Dev Mode bindings, auto-layout hug rules, premium visual language).*
 
 ---
 
@@ -1970,7 +1988,7 @@ Log the **Canvas checklist** row for Step 15c.
 
 Navigate to the `↳ MCP Tokens` page using `figma.setCurrentPageAsync`. Find and delete any existing frame named `[MCP] Token Manifest`. Then build a new root frame named `[MCP] Token Manifest` positioned at x=0, y=360 (below the doc header), width=1440, **`layoutMode: VERTICAL`**, `primaryAxisSizingMode: AUTO`, `counterAxisSizingMode: FIXED`, padding 24, `itemSpacing` 24 — fill and strokes per **Canvas documentation visual spec § C** (root background → `color/background/default`, not detached `#FFFFFF` unless binding fails).
 
-Inside the root frame, first create the JSON manifest text node, then create the five collection table frames stacked vertically. Each collection frame: **`VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, padding **20**, **`itemSpacing` 12**. Inside each, add **`doc/mcp-table/{collection}/rows`** (**`VERTICAL`**, **`AUTO`**) and append **one** **`doc/mcp-table/{collection}/row/{path-or-mode-suffix}`** (**`HORIZONTAL`**, **`AUTO`**, **`minHeight` 48**, cell padding **16**) per table line — **never** orphan cell text nodes without a row frame (§ **E**–**F**).
+Inside the root frame, first create the JSON manifest text node, then create the five collection table frames stacked vertically. Each collection frame: **`VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, padding **20**, **`itemSpacing` 12**. Inside each, add **`doc/mcp-table/{collection}/rows`** (**`VERTICAL`**, **`AUTO`**) and append **one** **`doc/mcp-table/{collection}/row/{path-or-mode-suffix}`** (**`HORIZONTAL`**, **`AUTO`**, **`minHeight` 48**, cell padding **16**) per table line — **never** orphan cell text nodes without a row frame (§ **E**–**F**). **§ G:** apply **`Effect/shadow-sm`** to each **`[MCP] {collection}`** table frame (not every data row) for a **sleek** floating panel.
 
 **JSON manifest text node**
 
@@ -2014,7 +2032,7 @@ Log the **Canvas checklist** row for Step 16.
 
 ## Step 17 — Populate Token Overview
 
-Follow **Canvas documentation visual spec § A–F** for any new or updated frames/text on this page.
+Follow **Canvas documentation visual spec § A–G** for any new or updated frames/text on this page.
 
 Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page (Figma script: [`skills/new-project/phases/05d-token-overview.md`](skills/new-project/phases/05d-token-overview.md)). **Rebind documentation chrome** on `_PageContent` and each `token-overview/*` section shell: `fills` / `strokes` / text fills per the **Token binding map § C** (Theme Light + Primitives), or resolved equivalents from **this file** — so the overview reflects **this** design system, not generic grays.
 

@@ -148,7 +148,7 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 9. Verifies the write with a GET call and reports final variable counts
 10. **Optionally writes `tokens.css`** — separate opt-in after Figma push (default path `src/styles/tokens.css` when accepted; see [Token Architecture](#token-architecture))
 11. Updates `templates/agent-handoff.md` with `token_css_path` **only if** `tokens.css` was written and handoff exists and is writable; otherwise the Step 14 report states next steps for `/create-component`
-12. **`use_figma` — Style guide (Steps 15a–15c)** — premium layout: **variable-bound** swatches (Dev Mode), **2-column** Theme cards with explicit **Light/Dark** previews, published **`Doc/*`** + **slot Text styles** + **`Effect/shadow-*`** effect styles, then `↳ Layout` / `↳ Text Styles` / `↳ Effects` (see **Canvas documentation visual spec § A–F** in the skill — auto-layout **hug**, **`textAutoResize`**, **`doc/...` row frames**)
+12. **`use_figma` — Style guide (Steps 15a–15c)** — premium layout: **variable-bound** swatches (Dev Mode), **2-column** Theme cards with explicit **Light/Dark** previews, published **`Doc/*`** + **slot Text styles** + **`Effect/shadow-*`** effect styles, then `↳ Layout` / `↳ Text Styles` / `↳ Effects` (see **Canvas documentation visual spec § A–G** in the skill — auto-layout **hug**, **`textAutoResize`**, **`doc/...` row frames**, **§ G** premium polish)
 13. **`use_figma` — MCP Tokens (Step 16)** — builds `[MCP] Token Manifest` with JSON + tables for machine and human audit
 14. **`use_figma` — Token Overview (Step 17)** — replaces skeleton data, rebinds doc chrome to Theme/Typography variables, updates tables from live variables, removes `placeholder/*` notes
 15. **`use_figma` — Thumbnail (Step 18)** — updates `Cover` gradient stops from `color/primary/500` and `color/secondary/500`
@@ -191,7 +191,7 @@ Diff a local token file against the current Figma variable state and push change
    - **Push both** — sync in both directions (only available when there are no conflicts)
    - **Review manually** — resolve each conflict one at a time before pushing
 5. Flags any legacy `Web`, `Android/M3`, or `iOS/HIG` collections as deprecated if found
-6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** in one skill run — **Step 9b** redraws affected style guide pages (one call per page batch, matching create-design-system **15a–15c** + **Doc/** / slot styles / effect styles), **Step 9c** rebuilds **`[MCP] Token Manifest`** (**ALIAS →**, bound swatches, **MODE** captions), **Step 9d** refreshes **`↳ Token Overview`**, **Step 9e** updates the Thumbnail **`Cover`** gradient — all following **Canvas documentation visual spec § A–F** like `/create-design-system`. Skipped when only pushing to code (option 2).
+6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** in one skill run — **Step 9b** redraws affected style guide pages (one call per page batch, matching create-design-system **15a–15c** + **Doc/** / slot styles / effect styles), **Step 9c** rebuilds **`[MCP] Token Manifest`** (**ALIAS →**, bound swatches, **MODE** captions), **Step 9d** refreshes **`↳ Token Overview`**, **Step 9e** updates the Thumbnail **`Cover`** gradient — all following **Canvas documentation visual spec § A–G** like `/create-design-system`. Skipped when only pushing to code (option 2).
 
 ---
 
