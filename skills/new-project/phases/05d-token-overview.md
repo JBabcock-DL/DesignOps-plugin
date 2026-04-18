@@ -8,6 +8,12 @@ Draw the Token Overview documentation skeleton on `↳ Token Overview` with `pla
 
 ## Prerequisites
 - Phases 05, 05c, and 05b complete per orchestrator order.
+- Page's `_Header` on `↳ Token Overview` matches the current spec: `y=0`, **height 320**, **`cornerRadius: 0`**, **width 1800**. If `_Header` is missing or from an older version (height 360, cornerRadius 24, or absent), run **Phase 05b first** — this script places `_PageContent` at `y: 320` on the assumption that `_Header` ends exactly at 320 with a square seam.
+
+## Inputs
+- **`fileKey`** — the Figma file key.
+  - **Fresh run** inside `/new-project`: use the `fileKey` captured in Step 4.
+  - **Re-run** outside the orchestrator (fix cycle, plugin-update test, replay): `Read` `templates/agent-handoff.md` for `active_file_key`. If the handoff doc is empty or missing, ask the user to paste the `fileKey` or the full Figma URL (extract the key from `figma.com/design/:fileKey/…`) before continuing.
 
 ## Placeholders
 None in the script.
