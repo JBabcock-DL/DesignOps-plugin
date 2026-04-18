@@ -233,8 +233,34 @@ const CONFIG = {
   // to raw fontSize 14. Omit entirely to skip published styles for labels.
   labelStyle: { default: 'Label/MD', sm: 'Label/SM', lg: 'Label/LG', icon: 'Label/MD' },
 
-  // (size, variant) → inner label. Return '' for icon-only slots.
-  label: (size, _variant) => size === 'icon' ? '⬡' : 'Button',
+  // (size, variant) → inner label. Return null (or '') to suppress the text
+  // node entirely — buildVariant will collapse to a single centered icon
+  // slot for that size, which is how shadcn's `size=icon` renders.
+  label: (size, _variant) => size === 'icon' ? null : 'Button',
+
+  // Icon slots — 24×24 placeholder frames that preserve space even when no
+  // icon content is dropped in. Nodes are named `icon-slot/leading`,
+  // `icon-slot/trailing`, and `icon-slot/center` so designers can find them
+  // in the layers panel and drop SVG vectors in without detaching.
+  //   leading  : render a slot before the label (e.g. `<Plus />` on "Add")
+  //   trailing : render a slot after  the label (e.g. `<ChevronRight />`)
+  //   size     : width/height in px — 24 is the system default; do not vary
+  //              per-component without a token update.
+  // When `label` returns null (icon-only sizes), both leading/trailing
+  // settings are ignored and a single `icon-slot/center` is drawn instead.
+  iconSlots: { leading: true, trailing: true, size: 24 },
+
+  // Figma component properties exposed on the ComponentSet — designers
+  // change these on instances without detaching.
+  //   label        : TEXT property "Label" bound to the inner text node's
+  //                  `characters`. Default value = `label(defaultSize)`.
+  //   leadingIcon  : BOOLEAN property "Leading icon" bound to the visibility
+  //                  of `icon-slot/leading` on every variant.
+  //   trailingIcon : BOOLEAN property "Trailing icon" bound to the visibility
+  //                  of `icon-slot/trailing` on every variant.
+  // Set any flag to false to skip that property. BOOLEAN props require the
+  // matching `iconSlots.<side>` to be enabled above.
+  componentProps: { label: true, leadingIcon: true, trailingIcon: true },
 
   // Matrix state columns — group them as "default" (interactive cluster) or
   // "disabled" (right cluster). If every state has group 'default', the
@@ -270,11 +296,13 @@ const CONFIG = {
     'Use `default` for the single primary action in a flow.',
     'Use `outline` or `ghost` for secondary actions that shouldn\'t pull focus.',
     'Pair `icon` size with an aria-label on the underlying button element.',
+    'Drop a 24×24 vector into `icon-slot/leading` or `icon-slot/trailing` — or toggle the matching boolean property off — instead of detaching the instance.',
   ],
   usageDont: [
     'Don\'t stack two `default` buttons side-by-side — pick one primary.',
     'Don\'t use `destructive` for routine actions — reserve for irreversible ones.',
     'Don\'t override the size via className when a `size` variant exists.',
+    'Don\'t resize the 24×24 icon slots — the token is fixed so every button aligns across the system.',
   ],
 };
 
@@ -365,28 +393,62 @@ function bindNum(node, field, varName, fallback) {
 }
 
 // Build one fully complete ComponentNode — layout, spacing, radius, color,
-// and text label all applied and bound before this function returns.
-// Call once per variant. Pass results to combineAsVariants afterward.
+// icon slots, text label, AND element component properties all applied
+// and bound before this function returns. Call once per variant. Pass
+// the `.component` values to combineAsVariants afterward.
 //
-// name:       Figma variant name — single-property 'variant=default' or
-//             cross-product 'variant=default, size=sm' (comma+space separator)
-// fillVar:    Theme path for background fill e.g. 'color/primary'
+// Children are appended in reading order:
+//   [icon-slot/leading] → [text label] → [icon-slot/trailing]
+// OR (when `label` is null AND at least one slot is enabled):
+//   [icon-slot/center]
+//
+// Icon slots are empty 24×24 frames (no fill, no stroke) that preserve
+// space in the auto-layout even when no icon content is dropped in.
+// Designers find them by name in the layers panel.
+//
+// Per the Plugin API docs, element component properties (TEXT / BOOLEAN /
+// INSTANCE_SWAP) MUST be added to each variant component BEFORE combining.
+// After `combineAsVariants`, the ComponentSet merges identically-named
+// properties across variants into a single ComponentSet-level property
+// that designers see in the right panel.
+//
+// Return shape:
+//   { component, slots: { leading?, trailing?, center?, label? }, propKeys }
+//
+// name:         Figma variant name — single-property 'variant=default' or
+//               cross-product 'variant=default, size=sm' (comma+space separator)
+// fillVar:      Theme path for background fill e.g. 'color/primary'
 // fallbackFill: hex used when Theme collection is absent
 // options:
-//   label     — text to show inside the component (null = no text child)
-//   labelVar  — Theme path for label text color
-//   strokeVar — Theme path for stroke (null = no stroke)
-//   radiusVar — Layout path for corner radius
-//   padH      — Layout path for horizontal padding
-//   padV      — Layout path for vertical padding
+//   label          — text inside the component; null / '' → icon-only mode
+//   labelVar       — Theme path for label text color
+//   strokeVar      — Theme path for stroke (null = no stroke)
+//   radiusVar      — Layout path for corner radius
+//   padH           — Layout path for horizontal padding
+//   padV           — Layout path for vertical padding
+//   labelStyleName — published text style e.g. 'Label/MD'
+//   leadingSlot    — render icon-slot/leading before the label
+//   trailingSlot   — render icon-slot/trailing after the label
+//   iconSlotSize   — slot width/height in px (default 24)
+//   addLabelProp   — add TEXT "Label" property bound to the text node
+//   addLeadingProp — add BOOLEAN "Leading icon" property bound to leading slot visibility
+//   addTrailingProp— add BOOLEAN "Trailing icon" property bound to trailing slot visibility
+//   propLabelText  — default string for the TEXT "Label" property
 function buildVariant(name, fillVar, fallbackFill, {
-  label          = null,
-  labelVar       = 'color/background/content',
-  strokeVar      = null,
-  radiusVar      = 'radius/md',
-  padH           = 'space/md',
-  padV           = 'space/xs',
-  labelStyleName = null,   // published text style name e.g. 'Label/MD'
+  label            = null,
+  labelVar         = 'color/background/content',
+  strokeVar        = null,
+  radiusVar        = 'radius/md',
+  padH             = 'space/md',
+  padV             = 'space/xs',
+  labelStyleName   = null,
+  leadingSlot      = false,
+  trailingSlot     = false,
+  iconSlotSize     = 24,
+  addLabelProp     = false,
+  addLeadingProp   = false,
+  addTrailingProp  = false,
+  propLabelText    = 'Label',
 } = {}) {
   const c = figma.createComponent();
   c.name = name;
@@ -398,12 +460,20 @@ function buildVariant(name, fillVar, fallbackFill, {
   c.primaryAxisAlignItems = 'CENTER';
   c.counterAxisAlignItems = 'CENTER';
 
+  // Icon-only mode: no label → render a single centered slot, force square
+  // padding so the component ends up square (matches shadcn `size=icon`).
+  const hasLabel   = !!(label && String(label).length > 0);
+  const anySlot    = leadingSlot || trailingSlot;
+  const iconOnly   = !hasLabel && anySlot;
+  const padHEff    = iconOnly ? padH : padH;      // same for both axes when icon-only
+  const padVEff    = iconOnly ? padH : padV;      // square padding
+
   // Spacing — bind via Layout collection before combining
-  bindNum(c, 'paddingLeft',   padH,       16);
-  bindNum(c, 'paddingRight',  padH,       16);
-  bindNum(c, 'paddingTop',    padV,        8);
-  bindNum(c, 'paddingBottom', padV,        8);
-  bindNum(c, 'itemSpacing',  'space/sm',   8);
+  bindNum(c, 'paddingLeft',   padHEff,     16);
+  bindNum(c, 'paddingRight',  padHEff,     16);
+  bindNum(c, 'paddingTop',    padVEff,      8);
+  bindNum(c, 'paddingBottom', padVEff,      8);
+  bindNum(c, 'itemSpacing',  'space/sm',    8);
 
   // Border radius — all four corners individually (Figma requires each separately)
   ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
@@ -418,16 +488,37 @@ function buildVariant(name, fillVar, fallbackFill, {
     c.strokeWeight = 1;
   }
 
-  // Optional text label
-  if (label) {
+  // --- Helpers scoped to this variant -----------------------------------
+  // 24×24 placeholder frame. Transparent fill + 1px dashed stroke bound
+  // to `color/border/default` — invisible in renders, but discoverable
+  // on the canvas and in the layers panel. Designers drop SVG content
+  // into it later (stroke hides behind the child) or toggle the slot off
+  // via the matching Boolean component property. `cornerRadius: 4` keeps
+  // the placeholder visually distinct from the parent component chrome.
+  function makeIconSlot(slotName) {
+    const f = figma.createFrame();
+    f.name          = slotName;
+    f.layoutMode    = 'NONE';       // children, if any, are positioned manually
+    f.resize(iconSlotSize, iconSlotSize);
+    f.fills         = [];
+    bindColor(f, 'color/border/default', '#d4d4d8', 'strokes');
+    f.strokeWeight  = 1;
+    f.dashPattern   = [4, 3];
+    f.cornerRadius  = 4;
+    f.clipsContent  = false;
+    // Keep the slot from stretching with the auto-layout row
+    f.layoutPositioning = 'AUTO';
+    return f;
+  }
+
+  function makeLabel(text) {
     const txt = figma.createText();
     txt.fontName   = { family: labelFont, style: 'Medium' };
-    txt.characters = label;
+    txt.characters = text;
     // Prefer a published text style (Label/XS · Label/SM · Label/MD · Label/LG)
     // so every component label stays in sync with the Typography system.
     // Falls back to raw fontSize + bound font-family variable if the style
-    // doesn't exist in the file yet. (allTextStyles is resolved in §6.1
-    // before this function is ever called — safe to reference here.)
+    // doesn't exist in the file yet.
     const ts = labelStyleName
       ? allTextStyles.find(s => s.name === labelStyleName)
       : null;
@@ -440,12 +531,58 @@ function buildVariant(name, fillVar, fallbackFill, {
       }
     }
     bindColor(txt, labelVar, '#000000', 'fills');
-    c.appendChild(txt);
+    return txt;
+  }
+
+  // --- Assemble children -------------------------------------------------
+  const slots = { leading: null, trailing: null, center: null, label: null };
+
+  if (iconOnly) {
+    slots.center = makeIconSlot('icon-slot/center');
+    c.appendChild(slots.center);
+  } else {
+    if (leadingSlot) {
+      slots.leading = makeIconSlot('icon-slot/leading');
+      c.appendChild(slots.leading);
+    }
+    if (hasLabel) {
+      slots.label = makeLabel(label);
+      c.appendChild(slots.label);
+    }
+    if (trailingSlot) {
+      slots.trailing = makeIconSlot('icon-slot/trailing');
+      c.appendChild(slots.trailing);
+    }
+  }
+
+  // --- Element component properties -------------------------------------
+  // Added on THIS variant component BEFORE combineAsVariants (the API
+  // contract — see figma-use/component-patterns.md). After combining,
+  // the ComponentSet merges identically-named properties across variants
+  // into a single set-level property that designers see in the Properties
+  // panel. Each variant has its own key; we store them on `propKeys` only
+  // for optional debugging / reporting downstream.
+  const propKeys = {};
+  try {
+    if (addLabelProp && slots.label) {
+      propKeys.label = c.addComponentProperty('Label', 'TEXT', String(propLabelText));
+      slots.label.componentPropertyReferences = { characters: propKeys.label };
+    }
+    if (addLeadingProp && slots.leading) {
+      propKeys.leadingIcon = c.addComponentProperty('Leading icon', 'BOOLEAN', true);
+      slots.leading.componentPropertyReferences = { visible: propKeys.leadingIcon };
+    }
+    if (addTrailingProp && slots.trailing) {
+      propKeys.trailingIcon = c.addComponentProperty('Trailing icon', 'BOOLEAN', false);
+      slots.trailing.componentPropertyReferences = { visible: propKeys.trailingIcon };
+    }
+  } catch (err) {
+    console.warn(`addComponentProperty failed on variant '${name}':`, err && err.message ? err.message : err);
   }
 
   // Append to current page before any combining
   figma.currentPage.appendChild(c);
-  return c;
+  return { component: c, slots, propKeys };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -462,6 +599,19 @@ function buildVariant(name, fillVar, fallbackFill, {
 // so designers can see and edit the live variants in place — not parked
 // off-canvas. The matrix below contains instances of it that update
 // automatically when the designer edits the source ComponentSet.
+//
+// Every variant is assembled as:
+//   [icon-slot/leading 24×24] → [text label] → [icon-slot/trailing 24×24]
+// (OR a single `icon-slot/center 24×24` when `label()` returns null — the
+//  icon-only mode used by shadcn's `size=icon`).
+//
+// Icon slots are empty frames with no fill and no stroke — they reserve
+// space in auto-layout but render invisibly until a designer drops a
+// 24×24 vector inside. The ComponentSet exposes three element component
+// properties so designers edit instances WITHOUT DETACHING:
+//   • TEXT     "Label"         → bound to every variant's text characters
+//   • BOOLEAN  "Leading icon"  → bound to icon-slot/leading visibility
+//   • BOOLEAN  "Trailing icon" → bound to icon-slot/trailing visibility
 //
 // Everything below reads from the CONFIG object defined at §0. No
 // hardcoded component-specific constants are permitted past this point.
@@ -513,8 +663,24 @@ const padFallback = CONFIG.padH?.default ?? 'space/md';
 const radiusVar   = CONFIG.radius ?? 'radius/md';
 
 const labelStyleFallback = CONFIG.labelStyle?.default ?? null;
+const iconSlots          = CONFIG.iconSlots || {};
+const iconSlotSize       = iconSlots.size ?? 24;
+const leadingGlobal      = !!iconSlots.leading;
+const trailingGlobal     = !!iconSlots.trailing;
+const cp                 = CONFIG.componentProps || {};
 
-const variantNodes = [];
+// Pick a sensible default string for the TEXT "Label" property —
+// first non-null label across sizes/variants, or fall back to CONFIG.title.
+const defaultLabelText = (() => {
+  if (typeof CONFIG.label !== 'function') return String(CONFIG.label ?? CONFIG.title ?? 'Label');
+  for (const s of sizeList) {
+    const l = CONFIG.label(s, CONFIG.variants[0]);
+    if (l) return String(l);
+  }
+  return String(CONFIG.title ?? 'Label');
+})();
+
+const variantData = [];
 for (const v of CONFIG.variants) {
   for (const s of sizeList) {
     const st = CONFIG.style[v];
@@ -525,18 +691,39 @@ for (const v of CONFIG.variants) {
       : (CONFIG.label ?? CONFIG.title);
     const padH  = (s !== null && CONFIG.padH?.[s]) || padFallback;
     const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
-    variantNodes.push(buildVariant(
+    variantData.push(buildVariant(
       name, st.fill, st.fallback,
-      { label, labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, labelStyleName }
+      {
+        label,
+        labelVar:        st.labelVar,
+        strokeVar:       st.strokeVar,
+        radiusVar,
+        padH,
+        labelStyleName,
+        leadingSlot:     leadingGlobal,
+        trailingSlot:    trailingGlobal,
+        iconSlotSize,
+        addLabelProp:    !!cp.label,
+        addLeadingProp:  !!cp.leadingIcon  && leadingGlobal,
+        addTrailingProp: !!cp.trailingIcon && trailingGlobal,
+        propLabelText:   defaultLabelText,
+      }
     ));
   }
 }
 // Pre-position so combineAsVariants doesn't stack at (0,0)
 let cx = 0;
-for (const n of variantNodes) { n.x = cx; n.y = 0; cx += (n.width || 120) + 16; }
+for (const d of variantData) { d.component.x = cx; d.component.y = 0; cx += (d.component.width || 120) + 16; }
 
-const compSet = figma.combineAsVariants(variantNodes, figma.currentPage);
+const compSet = figma.combineAsVariants(variantData.map(d => d.component), figma.currentPage);
 compSet.name = `${CONFIG.title} — ComponentSet`;
+
+// Roll up the per-variant propKeys for the final reporting log.
+const propsAdded = {
+  label:        variantData.some(d => d.propKeys.label),
+  leadingIcon:  variantData.some(d => d.propKeys.leadingIcon),
+  trailingIcon: variantData.some(d => d.propKeys.trailingIcon),
+};
 // The ComponentSet is NOT parked off-canvas. It's reparented into the doc
 // frame as its own section later (§6.5.5) so designers can see and edit
 // the live variants in place, with all matrix instances updating from it.
@@ -1006,12 +1193,41 @@ if (pageContent.height < 500) {
 if (!compSet.parent || compSet.parent === figma.currentPage) {
   throw new Error('ComponentSet was not reparented into the doc frame. §6.6B did not run.');
 }
+// If iconSlots were requested, every variant must contain the named slot
+// frames — otherwise designers won't have the drop targets they expect.
+{
+  const needLeading  = !!CONFIG.iconSlots?.leading;
+  const needTrailing = !!CONFIG.iconSlots?.trailing;
+  if (needLeading || needTrailing) {
+    for (const variant of compSet.children) {
+      const hasLabelChild   = variant.children.some(n => n.type === 'TEXT');
+      const hasCenter       = !!variant.findOne(n => n.name === 'icon-slot/center');
+      // Variants without a label are icon-only → must have center slot.
+      if (!hasLabelChild && !hasCenter) {
+        throw new Error(`Variant '${variant.name}' has neither a label nor an icon-slot/center frame.`);
+      }
+      if (hasLabelChild) {
+        if (needLeading && !variant.findOne(n => n.name === 'icon-slot/leading')) {
+          throw new Error(`Variant '${variant.name}' is missing icon-slot/leading.`);
+        }
+        if (needTrailing && !variant.findOne(n => n.name === 'icon-slot/trailing')) {
+          throw new Error(`Variant '${variant.name}' is missing icon-slot/trailing.`);
+        }
+      }
+    }
+  }
+}
 figma.viewport.scrollAndZoomIntoView([pageContent]);
 {
   const vN = CONFIG.variants.length;
   const sN = CONFIG.states.length;
   const zN = Math.max((CONFIG.sizes ?? []).length, 1);
-  console.log(`${CONFIG.component} drawn: ${vN}v × ${sN}s × ${zN}sz = ${vN * sN * zN} matrix cells; ComponentSet lives inline in doc frame.`);
+  const props = Object.keys(propsAdded).filter(k => propsAdded[k]);
+  console.log(
+    `${CONFIG.component} drawn: ${vN}v × ${sN}s × ${zN}sz = ${vN * sN * zN} matrix cells; ` +
+    `ComponentSet lives inline in doc frame; ` +
+    `element props: ${props.length ? props.join(', ') : '(none)'}.`
+  );
 }
 ```
 
@@ -1021,13 +1237,16 @@ figma.viewport.scrollAndZoomIntoView([pageContent]);
 
 | Change | Edit in `CONFIG` |
 |---|---|
-| Different component | Replace the whole `CONFIG` — `component`, `title`, `pageName`, `summary`, `variants`, `sizes`, `style`, `padH`, `radius`, `label`, `labelStyle`, `states`, `applyStateOverride`, `properties`, `usageDo`, `usageDont`. |
+| Different component | Replace the whole `CONFIG` — `component`, `title`, `pageName`, `summary`, `variants`, `sizes`, `style`, `padH`, `radius`, `label`, `labelStyle`, `iconSlots`, `componentProps`, `states`, `applyStateOverride`, `properties`, `usageDo`, `usageDont`. |
 | No size axis (badge, alert) | `sizes: []` — matrix drops the 60px size-label column; ComponentSet variant names become `variant=X` only. |
 | Single variant only (card, separator) | `variants: ['default']` — matrix draws one row. |
 | Single state only (overlays, dialogs) | `states: [{ key: 'open', group: 'default' }]` — no DISABLED header group. |
 | State IS a Figma variant prop (checkbox, switch) | In `applyStateOverride`, call `instance.setProperties({ disabled: stateKey === 'disabled' ? 'true' : 'false' })` instead of opacity overrides — no schema change needed. |
 | Non-default padding/radius | Adjust `padH` per size and/or `radius`. |
-| Icon-only slot inside a size | Make `label` a function: `(size) => size === 'icon' ? '⬡' : 'Button'`. |
+| Icon-only slot inside a size | Have `label(size)` return `null` for that size — a single centered `icon-slot/center` is drawn, padding becomes square. (Legacy `'⬡'` glyph is deprecated.) |
+| No leading / trailing icons | `iconSlots: { leading: false, trailing: false }` — slots are skipped entirely and the corresponding BOOLEAN component props aren't added. |
+| Icons only on one side | `iconSlots: { leading: true, trailing: false }` (or vice versa) — only the enabled slot is rendered and only its matching BOOLEAN prop is added. |
+| No designer-facing text/boolean props | `componentProps: { label: false, leadingIcon: false, trailingIcon: false }` — the ComponentSet still works, but designers have to detach to edit text. Not recommended for a production design system. |
 
 **Variant properties in the ComponentSet** — keep these as Figma variant props (they appear in the Properties panel when an instance is selected):
 
@@ -1088,12 +1307,12 @@ After all components have been processed, call **AskUserQuestion**: "Run `/code-
 
 Output a summary table:
 
-| Component | Installed | Drawn to Canvas | Matrix (variants × states × sizes) | Notes |
-|---|---|---|---|---|
-| `button` | Yes | Yes | 6 × 4 × 4 = 96 cells | ComponentSet (24 nodes) inline in doc frame |
-| `input` | Already existed | Yes | 1 × 4 × 1 = 4 cells | State via instance overrides |
-| `card` | Yes | Yes | 1 × 1 × 1 = 1 cell | Single-state structure |
-| `dialog` | Yes | Failed | — | Figma write error: ... |
+| Component | Installed | Drawn to Canvas | Matrix (variants × states × sizes) | Icon slots | Element props | Notes |
+|---|---|---|---|---|---|---|
+| `button` | Yes | Yes | 6 × 4 × 4 = 96 cells | leading + trailing | Label, Leading icon, Trailing icon | ComponentSet (24 nodes) inline in doc frame |
+| `input` | Already existed | Yes | 1 × 4 × 1 = 4 cells | leading + trailing | Label, Leading icon, Trailing icon | State via instance overrides |
+| `card` | Yes | Yes | 1 × 1 × 1 = 1 cell | — | — | Single-state structure |
+| `dialog` | Yes | Failed | — | — | — | Figma write error: ... |
 
 Follow with:
 - Total installed: N

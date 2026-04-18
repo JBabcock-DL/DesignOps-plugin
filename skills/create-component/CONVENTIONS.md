@@ -109,6 +109,8 @@ The `/create-component` script in `SKILL.md` is split into two halves: a per-com
 | `radius` | `string` (Layout token) | `'radius/md'` | Corner radius applied to all variants. |
 | `label` | `string \| ((size, variant) => string)` | `(s) => s === 'icon' ? '⬡' : 'Button'` | Inner text per cell. Return `''` or `null` to skip the text node. |
 | `labelStyle` | `{ default: styleName, [size]: styleName }` _optional_ | `{ default: 'Label/MD', sm: 'Label/SM', lg: 'Label/LG', icon: 'Label/MD' }` | Published text style applied to the inner label per size (keys must match entries in `sizes`; `default` is the fallback). Names must resolve via `figma.getLocalTextStylesAsync()` — typically `Label/XS · Label/SM · Label/MD · Label/LG` from the `/create-design-system` Typography collection. If the style doesn't exist, `buildVariant` falls back to raw `fontSize: 14` + bound font-family variable. Omit the field entirely to always use the raw fallback (discouraged for production components). |
+| `iconSlots` | `{ leading: boolean, trailing: boolean, size?: number }` _optional_ | `{ leading: true, trailing: true, size: 24 }` | Render empty **24×24 placeholder frames** around the label so designers can drop SVG content without detaching. Slots are named `icon-slot/leading` and `icon-slot/trailing` and have no fill / no stroke (space-preserving). When `label()` returns `null` for a given size, both flags are ignored and a single `icon-slot/center` is drawn instead — this is the shadcn `size=icon` pattern. `size` defaults to **24** (the system token); do not deviate without a matching token update. Omit the whole field to skip icon slots entirely. See § 3.3. |
+| `componentProps` | `{ label: boolean, leadingIcon: boolean, trailingIcon: boolean }` _optional_ | `{ label: true, leadingIcon: true, trailingIcon: true }` | Figma element component properties added to the `ComponentSet` so designers edit instances **without detaching**. `label` → **TEXT** property `"Label"` bound to every variant's inner text characters; `leadingIcon` / `trailingIcon` → **BOOLEAN** properties `"Leading icon"` / `"Trailing icon"` bound to the matching `icon-slot/*` frame's `visible` field. BOOLEAN flags are ignored if the matching `iconSlots.<side>` is false. If `addComponentProperty` throws (older plugin contexts), the draw continues and designers fall back to detaching — see § 3.3. |
 | `states` | `{ key, group }[]` | `[{key:'default',group:'default'},…]` | Matrix columns. `group: 'default'` = interactive cluster (left); `group: 'disabled'` = disabled cluster (right). If **no** state has group `'disabled'`, the two-tier header collapses to a single row. |
 | `applyStateOverride` | `(instance, stateKey, ctx) => void` | opacity overlay / `setProperties` call | Applied to each matrix cell's instance. For opacity-based states (button-like), mutate `instance.opacity`. For components where state IS a Figma variant prop (checkbox, switch), call `instance.setProperties({...})` here instead. `ctx = { variant, size, componentNode }`. |
 | `properties` | `[name, type, default, required, description][]` | 5-tuple rows | Properties+Types table body. Columns are fixed at `PROPERTY / TYPE / DEFAULT / REQUIRED / DESCRIPTION`. |
@@ -150,6 +152,71 @@ When adding a component whose shape doesn't fit any row above, **add a new row t
 - Every `states` entry's `group` is either `'default'` or `'disabled'`.
 - `properties` rows are exactly 5-tuples.
 - `usageDo` and `usageDont` each have ≥ 3 bullets.
+- If `iconSlots.leading` is `true`, **every** variant with a non-null label has a child named `icon-slot/leading` (24×24). Same rule for `trailing`. The engine throws `Variant 'X' is missing icon-slot/Y` if not.
+- A variant with a null label AND any icon-slot setting enabled has exactly one child named `icon-slot/center` — never both a text node and a center slot.
+
+---
+
+## 3.3 — Icon slots & element component properties (designer-ready polish)
+
+Base the component structure on the [shadcn/ui component reference](https://ui.shadcn.com/docs/components). shadcn components accept `children` freely (text + icons) and use utility classes like `[&_svg]:size-4` to normalize icon sizing — we mirror that contract in Figma with **explicit slot frames** and **element component properties**, so designers get the same optionality without writing code.
+
+### 3.3.1 — The 24×24 icon slot rule
+
+Every component that can accept inline iconography has **named, empty 24×24 frames** where icons go. They preserve auto-layout space even when nothing is dropped in, so a button labeled `Save` looks identical whether or not it eventually gets a `<Plus />` icon.
+
+| Rule | Value |
+|---|---|
+| Slot size | **24 × 24** px (system-wide — never deviate per-component) |
+| Slot fill | **none** (`fills: []`) |
+| Slot stroke | `color/border/default` (Theme var, fallback `#d4d4d8`), 1 px, `dashPattern: [4, 3]` — visible but clearly a placeholder |
+| Slot `cornerRadius` | `4` — distinguishes the slot from the component chrome |
+| Slot layoutMode | `NONE` — the frame is a passive placeholder |
+| Slot `clipsContent` | `false` — a designer's dropped icon can overhang briefly during editing |
+| Layer name | `icon-slot/leading` · `icon-slot/trailing` · `icon-slot/center` |
+
+Layer ordering inside every variant is strict: **`icon-slot/leading` → text node → `icon-slot/trailing`**. When `CONFIG.label(size, variant)` returns `null` / `''`, the variant is "icon-only" — buildVariant drops both directional slots and emits a single centered `icon-slot/center` instead, and forces padding to be square so the component ends up square (this is the shadcn `size=icon` pattern — `h-10 w-10` for a 40×40 button around a 24×24 slot).
+
+Slots render as **dashed 24 × 24 outlines on canvas** so designers see exactly where to drop content, and they're also **discoverable by name** in the layers panel. Once a designer drops a 24 × 24 icon component, vector, or SVG child inside, the dashed stroke sits behind the child and becomes invisible in the final render. To hide a slot without editing it, designers flip the matching boolean component property (next section) — this sets the frame's `visible = false`, which hides both the stroke and any child content.
+
+### 3.3.2 — The three element component properties
+
+Inside `buildVariant` — **before** `combineAsVariants` is ever called — the script adds three properties to **each individual variant component** using `comp.addComponentProperty(name, type, default)`, then references them from the variant's inner nodes via `node.componentPropertyReferences`. After `combineAsVariants`, the ComponentSet automatically **unifies identically-named properties across variants** into a single set-level property — so designers see one `Label` / one `Leading icon` / one `Trailing icon` in Figma's right-hand Properties panel regardless of which `variant=…, size=…` combination their instance lands on.
+
+| Property | Type | Default | Bound to | Purpose |
+|---|---|---|---|---|
+| `Label` | `TEXT` | first non-null `CONFIG.label(size, variant)` | every variant's text node's `characters` | Designers change the button text without detaching the instance. |
+| `Leading icon` | `BOOLEAN` | `true` | every variant's `icon-slot/leading` `.visible` | Toggle the leading slot on/off without detaching. |
+| `Trailing icon` | `BOOLEAN` | `false` | every variant's `icon-slot/trailing` `.visible` | Toggle the trailing slot on/off without detaching. |
+
+Default BOOLEAN values are asymmetric (`Leading icon: true`, `Trailing icon: false`) on purpose: most shadcn buttons in the wild have a leading icon (e.g. `<Plus /> Add item`) and a bare tail. Individual designs can override per instance.
+
+Binding a **single property** across all 24 (or N) variants — rather than one property per variant — is the whole point. It gives the instance a unified `Label` / `Leading icon` / `Trailing icon` control set in the Properties panel regardless of which `variant=…, size=…` combination is selected.
+
+### 3.3.3 — Fallback when `addComponentProperty` throws
+
+Older Figma plugin contexts or non-standard file permissions can reject `addComponentProperty` calls. The script wraps the whole block in a `try / catch` and logs `addComponentProperty failed — ComponentSet still usable, designers will need to detach to edit text`. The draw continues; the audit checklist's component-property items become **soft warnings** in that case, not hard failures. Icon slots still work (they're plain frames), and the ComponentSet itself is still valid — the only regression is designers have to detach an instance to edit the text, which is the pre-property-API baseline.
+
+If you see that warning consistently across a run, check:
+1. The ComponentSet has at least one variant with a bindable text child.
+2. Figma plugin host is recent enough (the property API shipped in 2023).
+3. The file isn't read-only (branch permissions).
+
+### 3.3.4 — Which components get slots + props
+
+Follow the shadcn docs. Default assumption for every component CONFIG going forward:
+
+| Category | Components | Default `iconSlots` | Default `componentProps` |
+|---|---|---|---|
+| Button-like | `button`, `toggle`, `toggle-group` | `leading: true, trailing: true, size: 24` | `label: true, leadingIcon: true, trailingIcon: true` |
+| Input-like | `input`, `textarea`, `select` | `leading: true, trailing: true, size: 24` | `label: false` (input uses placeholder not child text), `leadingIcon: true, trailingIcon: true` |
+| Badge / Alert | `badge`, `alert` | `leading: true, trailing: false, size: 24` | `label: true, leadingIcon: true, trailingIcon: false` |
+| Tabs / menu items | `tabs`, `menubar`, `navigation-menu`, `dropdown-menu`, `context-menu`, `command` | `leading: true, trailing: true, size: 24` | `label: true, leadingIcon: true, trailingIcon: true` |
+| Checkable | `checkbox`, `radio-group`, `switch` | **omit** — the check/dot IS the glyph | `label: true` (if the component emits an adjacent label), `leadingIcon: false, trailingIcon: false` |
+| Structure / Layout | `card`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `skeleton`, `avatar` | **omit** | **omit** — no text property makes sense at the shell level |
+| Overlays | `dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `alert-dialog` | **omit** — overlays wrap arbitrary content | **omit** |
+
+When unsure, visit the [shadcn docs](https://ui.shadcn.com/docs/components) for that component and look at the example source: if `children` is text + an inline `<svg>`, the Figma counterpart gets slots + props.
 
 ---
 
@@ -381,8 +448,8 @@ All matrix chrome must use variable-bound paints (same rule as the style-guide t
 1. Navigate to the component's target page (`figma.setCurrentPageAsync`). Delete every node on the page **other than `_Header`**.
 2. Verify / create `_PageContent` at `x: 0, y: 320`, 1800 × AUTO, padding 80, fill `#FFFFFF`.
 3. Resolve the Theme / Layout / Typography collections, font-family values, and published text styles (Doc/* and Label/*).
-4. Build every variant `ComponentNode` via `buildVariant(...)` as siblings on the page. Bind each variant's label text to the appropriate `Label/*` text style via `CONFIG.labelStyle`.
-5. Call `figma.combineAsVariants(variantNodes, figma.currentPage)` → `ComponentSetNode`. Name it `{ComponentTitle} — ComponentSet`. Do NOT park at `y: -2000` — it will be reparented into the doc frame in step 6.
+4. Build every variant `ComponentNode` via `buildVariant(...)` as siblings on the page. Each variant is assembled as `[icon-slot/leading]? → [text label]? → [icon-slot/trailing]?` (or a single `icon-slot/center` when the label is null). Bind each variant's label text to the appropriate `Label/*` text style via `CONFIG.labelStyle`. **Inside `buildVariant`, immediately after appending children, add element component properties on THIS variant** via `comp.addComponentProperty('Label', 'TEXT', defaultText)`, `comp.addComponentProperty('Leading icon', 'BOOLEAN', true)`, `comp.addComponentProperty('Trailing icon', 'BOOLEAN', false)` per `CONFIG.componentProps`, and set `textNode.componentPropertyReferences = { characters: labelKey }` / `slot.componentPropertyReferences = { visible: booleanKey }` on the corresponding child nodes. The Figma Plugin API requires element props be added to components **before** combining — see `figma-use/component-patterns.md`. Wrap the property block in `try / catch`; on failure, log a warning and continue (soft downgrade per § 3.3.3). `buildVariant` returns `{ component, slots, propKeys }`.
+5. Call `figma.combineAsVariants(variantData.map(d => d.component), figma.currentPage)` → `ComponentSetNode`. Name it `{ComponentTitle} — ComponentSet`. The ComponentSet automatically unifies identically-named child properties into set-level properties (so you get one `"Label"` / one `"Leading icon"` / one `"Trailing icon"` in Figma's right panel, regardless of how many variants defined them). Do NOT park at `y: -2000` — it will be reparented into the doc frame in step 6.
 6. Build the `doc/component/{name}` root frame inside `_PageContent` in this order:
    - **Header** (title + summary + shadcn docs link).
    - **Properties table** — follow §4 spec.
@@ -409,7 +476,7 @@ Use this as the golden test case when validating `/create-component`. The output
   - `asChild` · `boolean` · `false` · no · Renders the styled classes onto the immediate child via Radix Slot.
   - `type` · `"button" \| "submit" \| "reset"` · `"button"` · no · Native HTML type.
   - `className` · `string` · `—` · no · Tailwind class escape hatch.
-- `doc/component/button/component-set-group` — 1640-wide section containing the **live `Button — ComponentSet`** (24 variant components, 6 variants × 4 sizes) laid out as a horizontal-wrap grid with 32 padding, 24 gap, dashed border, corner radius 16. Each variant's inner label uses the `Label/MD` (or `Label/SM` / `Label/LG`, per size) published text style. State is a _visual_ axis driven by the matrix below, not a Figma property — so we do **not** create 96 component nodes (see §14).
+- `doc/component/button/component-set-group` — 1640-wide section containing the **live `Button — ComponentSet`** (24 variant components, 6 variants × 4 sizes) laid out as a horizontal-wrap grid with 32 padding, 24 gap, dashed border, corner radius 16. Each variant's inner label uses the `Label/MD` (or `Label/SM` / `Label/LG`, per size) published text style. The three non-icon sizes (`sm`, `default`, `lg`) each render as `[icon-slot/leading 24×24] → text → [icon-slot/trailing 24×24]`; the `icon` size renders as a single centered `icon-slot/center 24×24`. The ComponentSet exposes three element properties in Figma's right panel: **`Label`** (TEXT, default `"Button"`), **`Leading icon`** (BOOLEAN, default on), **`Trailing icon`** (BOOLEAN, default off). State is a _visual_ axis driven by the matrix below, not a Figma property — so we do **not** create 96 component nodes (see §14).
 - `doc/component/button/matrix` — 1640 wide, 4 size groups (`sm`, `default`, `lg`, `icon`) × 6 variant rows × 4 state columns (default / hover / pressed / disabled). Total cells: 4 × 6 × 4 = **96 instances** — all pointing back to the ComponentSet above. Dashed outline; header groups "DEFAULT" (3 cols) + "DISABLED" (1 col); state labels row underneath; variant rows labeled Default / Destructive / Outline / Secondary / Ghost / Link.
 - `doc/component/button/usage` — 2-column Do / Don't grid, each with 3 bullets pulled from shadcn button guidance.
 
@@ -444,6 +511,20 @@ For components where `disabled` **IS** a Figma variant prop (`checkbox`, `switch
 - [ ] ComponentSet **reparented into the doc frame** as §3 (Component Set section) — NOT parked at `y: -2000` and NOT left on the page root
 - [ ] ComponentSet configured as `HORIZONTAL` + `WRAP` auto-layout, 1640 wide, 32 padding, 24 itemSpacing, 24 counterAxisSpacing, dashed stroke bound to `color/border/subtle`, fill bound to `color/background/variant`, `cornerRadius: 16`
 - [ ] State columns mapped correctly: if shadcn has no state prop, the matrix uses instance overrides (§13.1); if shadcn has a `disabled`/`checked`/etc. prop, the matrix uses `setProperties(...)`
+
+### Icon slots (§ 3.3)
+- [ ] If `CONFIG.iconSlots.leading` is true: every variant with a label contains a child named `icon-slot/leading` at **24 × 24** with no fill and a 1 px dashed stroke bound to `color/border/default`, `cornerRadius: 4`
+- [ ] If `CONFIG.iconSlots.trailing` is true: same, named `icon-slot/trailing`
+- [ ] Every variant whose `CONFIG.label(size, variant)` returns `null` contains exactly **one** child named `icon-slot/center` at 24 × 24 — and no text node
+- [ ] Icon-only variants have **square** padding (`paddingTop == paddingLeft`) so they render as squares — matches shadcn `h-10 w-10`
+- [ ] Slot layer order is `icon-slot/leading → text → icon-slot/trailing` (reading order)
+
+### Element component properties (§ 3.3)
+- [ ] If `CONFIG.componentProps.label` is true: the `ComponentSet` has a `TEXT` property named exactly `"Label"` with default = first non-null `CONFIG.label(...)` value
+- [ ] Every variant's text node has `componentPropertyReferences.characters` pointing to that property ID
+- [ ] If `CONFIG.componentProps.leadingIcon` is true: `ComponentSet` has a `BOOLEAN` property `"Leading icon"` (default `true`) referenced by every `icon-slot/leading`'s `visible` field
+- [ ] If `CONFIG.componentProps.trailingIcon` is true: same for `"Trailing icon"` (default `false`) and `icon-slot/trailing`
+- [ ] If `addComponentProperty` threw (soft failure): warning logged, no error thrown, matrix still rendered — this is an acceptable downgrade, not a bug
 
 ### Doc frame — header
 - [ ] `doc/component/{name}` root frame exists inside `_PageContent` with 5 children (header, properties, component-set-group, matrix, usage)
