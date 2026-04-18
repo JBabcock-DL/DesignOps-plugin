@@ -559,21 +559,21 @@ The nonlinear rule (Android 14 behaviour) prevents very large display text from 
 
 **ANDROID** — same string as the WEB custom property **without** `var(--` / `)`: **kebab-case** (e.g. `display-lg-font-size`).
 
-**iOS** — **dot path** under `.Typography.{slot}.{property}` with **lowerCamel** property tails: `fontSize`, `fontFamily`, `fontWeight`, `lineHeight`. Slot uses lowerCamel from the path (`displayLg`, `headlineMd`, `bodySm`, `labelSm`).
+**iOS** — **nested dot path** `.Typography.{category}.{size}.{property}`: `category` = first segment as lowercase word (`Display` → `display`, `Headline` → `headline`, `Body` → `body`, `Label` → `label`); `size` = second segment lowercased (`LG` → `lg`, `MD` → `md`, `SM` → `sm`); `property` = tail in **lowerCamel** (`font-size` → `fontSize`, `font-family` → `fontFamily`, `font-weight` → `fontWeight`, `line-height` → `lineHeight`). Example: `Display/LG/font-size` → `.Typography.display.lg.fontSize`.
 
 Every variable in all 12 slots follows this pattern — apply to all 48 variables:
 
 | Property | WEB example | ANDROID | iOS (semantic) |
 |---|---|---|---|
-| `Display/LG/font-family` | `var(--display-lg-font-family)` | `display-lg-font-family` | `.Typography.displayLg.fontFamily` |
-| `Display/LG/font-size` | `var(--display-lg-font-size)` | `display-lg-font-size` | `.Typography.displayLg.fontSize` |
-| `Display/LG/font-weight` | `var(--display-lg-font-weight)` | `display-lg-font-weight` | `.Typography.displayLg.fontWeight` |
-| `Display/LG/line-height` | `var(--display-lg-line-height)` | `display-lg-line-height` | `.Typography.displayLg.lineHeight` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
-| `Body/MD/font-family` | `var(--body-md-font-family)` | `body-md-font-family` | `.Typography.bodyMd.fontFamily` |
-| `Label/SM/font-weight` | `var(--label-sm-font-weight)` | `label-sm-font-weight` | `.Typography.labelSm.fontWeight` |
+| `Display/LG/font-family` | `var(--display-lg-font-family)` | `display-lg-font-family` | `.Typography.display.lg.fontFamily` |
+| `Display/LG/font-size` | `var(--display-lg-font-size)` | `display-lg-font-size` | `.Typography.display.lg.fontSize` |
+| `Display/LG/font-weight` | `var(--display-lg-font-weight)` | `display-lg-font-weight` | `.Typography.display.lg.fontWeight` |
+| `Display/LG/line-height` | `var(--display-lg-line-height)` | `display-lg-line-height` | `.Typography.display.lg.lineHeight` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.fontSize` |
+| `Body/MD/font-family` | `var(--body-md-font-family)` | `body-md-font-family` | `.Typography.body.md.fontFamily` |
+| `Label/SM/font-weight` | `var(--label-sm-font-weight)` | `label-sm-font-weight` | `.Typography.label.sm.fontWeight` |
 
-(Pattern repeats for all 12 slots: Display/LG, Display/MD, Display/SM, Headline/LG, Headline/MD, Headline/SM, Body/LG, Body/MD, Body/SM, Label/LG, Label/MD, Label/SM — each with the same 4 properties.)
+(Pattern repeats for all 12 slots: Display/LG, Display/MD, Display/SM, Headline/LG, Headline/MD, Headline/SM, Body/LG, Body/MD, Body/SM, Label/LG, Label/MD, Label/SM — each with the same 4 properties; iOS always `.Typography.{category}.{size}.{propertyCamel}`.)
 
 ---
 
@@ -805,14 +805,14 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   TYPOGRAPHY  (48 variables · 8 scale modes)
 ──────────────────────────────────────────────────────────────────────────────────────────────
   Body font: {bodyFont}   Display font: {displayFont}
-  Syntax pattern: {slot}/{property} → kebab → WEB var(--{slot}-{property}) · ANDROID kebab · iOS dot path
+  Syntax pattern: {Category}/{Size}/{property} → kebab → WEB var(--{kebab}) · ANDROID kebab · iOS .Typography.{category}.{size}.{propertyCamel}
 
   Slot          Prop          WEB syntax                      ANDROID          iOS (semantic)
   Display/LG    font-size     var(--display-lg-font-size)     display-lg-font-size     .Typography.display.lg.fontSize
                 font-family   var(--display-lg-font-family)   display-lg-font-family   .Typography.display.lg.fontFamily
                 font-weight   var(--display-lg-font-weight)   display-lg-font-weight   .Typography.display.lg.fontWeight
                 line-height   var(--display-lg-line-height)   display-lg-line-height   .Typography.display.lg.lineHeight
-  (pattern repeats for all 12 slots)
+  (pattern repeats for all 12 slots — iOS always `.Typography.{category}.{size}.{propertyCamel}`)
 
   Sizes — 100 (default) / 130 (large) / 200 (max):
   Slot           100      130      200
@@ -1981,7 +1981,7 @@ Apply to every variable in every collection.
 3. **WEB:** lowercase all tokens, join with `-`, wrap: `var(--color-primary-500)` / `var(--display-lg-font-size)`
    - Exception for Primitives: this derivation applies. For Theme: see rule 6 — codeSyntax is set explicitly from the Step 6 table, not derived.
 4. **ANDROID:** for tokens that use derivation (Primitives layout-adjacent, Layout, Effects), use the **WEB token string without** `var(--` / `)` — **kebab-case** (e.g. `space-md`, `shadow-sm-blur`, `color-primary-500`).
-5. **iOS:** for derived tokens, use **dot paths** — see Step 5 (Primitives), Step 7 (Typography), Step 8 (Layout), Step 9 (Effects).
+5. **iOS:** use **dot paths** — Step 5 (Primitives), Step 8 (Layout), Step 9 (Effects). **Typography:** for `Category/Size/property` variables, emit **`.Typography.{category}.{size}.{propertyCamel}`** (see Step 7 iOS rule — e.g. `Headline/MD/line-height` → `.Typography.headline.md.lineHeight`).
 6. **Theme (all platforms):** codeSyntax is set EXPLICITLY per token from the table in Step 6. The Figma path is a designer label; do not derive codeSyntax from it. Example: `color/background/content-muted` → WEB `var(--color-content-muted)`, ANDROID `on-surface-variant`, iOS `.Foreground.secondary` — path and all three codeSyntax columns are intentionally different.
 
 ### Platform exception summary
@@ -2014,7 +2014,7 @@ The full Theme codeSyntax table is in Step 6 — this is just a reminder that pa
 
 **Layout / Effects (pattern):**
 - `space/md` → WEB `var(--space-md)`, ANDROID `space-md`, iOS `.Layout.space.md`
-- `Display/LG/font-size` → WEB `var(--display-lg-font-size)`, ANDROID `display-lg-font-size`, iOS `.Typography.displayLg.fontSize`
+- `Display/LG/font-size` → WEB `var(--display-lg-font-size)`, ANDROID `display-lg-font-size`, iOS `.Typography.display.lg.fontSize`
 
 ---
 

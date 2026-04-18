@@ -432,7 +432,7 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headlineLg.fontSize` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.fontSize` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
 ### tokens.css — local codebase file
