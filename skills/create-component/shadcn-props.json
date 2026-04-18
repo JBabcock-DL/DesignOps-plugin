@@ -1,6 +1,6 @@
 {
   "$schema": "./shadcn-props.schema.json",
-  "$comment": "Curated per-component prop map consumed by /create-component Mode A. One entry per shadcn/ui component in the routing table. Each entry supplies: `properties` (Properties+Types table rows [name, type, default, required, description]), `componentProps` flags (which element component properties to create), `iconSlots` config (24x24 placeholder frames), `pageName` (target Figma page from routing table), `labelKey` (which cva variant axis drives the Figma `variant` property; the other axis becomes `size`), and `summary` (one sentence for the doc header). For components where Mode A cva extraction succeeds, these entries are merged with the extracted variants/sizes/defaults and the resolved classname token bindings. When Mode A is unavailable (shadcn not installed, source import fails), the entry alone drives Mode B synthetic rendering.",
+  "$comment": "Curated per-component prop map consumed by /create-component Mode A. Keys are kebab-case and should match every component listed under https://ui.shadcn.com/docs/components (install name from `npx shadcn add <name>`). Each entry supplies: `properties` (Properties+Types table rows [name, type, default, required, description]), `componentProps`, `iconSlots`, `pageName` (Detroit Labs Foundations page from /new-project scaffold), `labelKey` (cva axis for Figma `variant` when present), `summary`, and optional `composes`. Mode A merges with extract-cva + resolve-classes; missing source falls back to Mode B synthetic CONFIG.",
 
   "button": {
     "pageName": "\u21b3 Buttons",
@@ -15,6 +15,42 @@
       ["asChild", "boolean", "false", "no", "Renders styled classes onto the immediate child via Radix Slot."],
       ["type", "\"button\" | \"submit\" | \"reset\"", "\"button\"", "no", "Native HTML button type."],
       ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ]
+  },
+
+  "button-group": {
+    "pageName": "\u21b3 Button Group",
+    "labelKey": "variant",
+    "summary": "Grouped buttons for related actions (orientation + shared variant/size).",
+    "composes": [
+      {
+        "component": "button",
+        "slot": "items",
+        "cardinality": "many",
+        "count": 3,
+        "defaultProps": { "variant": "outline", "size": "default" }
+      }
+    ],
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Visual style applied to member buttons."],
+      ["size", "enum", "\"default\"", "no", "Size preset for member buttons."],
+      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Layout axis of the group."],
+      ["asChild", "boolean", "false", "no", "Renders onto child via Radix Slot."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": [
+      "Keep related actions in one group so spacing and focus order stay predictable.",
+      "Use `orientation=\"vertical\"` only when horizontal space is constrained.",
+      "Rely on member `Button` instances from `↳ Buttons` so paint updates propagate.",
+      "Expose at most one primary `default` button per group."
+    ],
+    "usageDont": [
+      "Do not mix unrelated actions into one group — split into separate groups.",
+      "Do not detach member buttons from the `Button` ComponentSet.",
+      "Do not override member sizing with ad-hoc frames — use the `size` prop.",
+      "Do not nest another full `ButtonGroup` inside a single group cell."
     ]
   },
 
@@ -628,5 +664,194 @@
       ["alt", "string", "\u2014", "no", "Alt text."],
       ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
     ]
+  },
+
+  "carousel": {
+    "pageName": "\u21b3 Carousel",
+    "labelKey": "variant",
+    "summary": "Slide carousel with prev/next controls and optional thumbnails (Embla).",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Scroll axis."],
+      ["opts", "Partial<EmblaOptionsType>", "\u2014", "no", "Embla carousel options."],
+      ["plugins", "EmblaPluginType[]", "\u2014", "no", "Embla plugins."],
+      ["setApi", "(api: CarouselApi) => void", "\u2014", "no", "Callback with Embla API instance."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Expose slide count to assistive tech.", "Keep controls keyboard reachable.", "Use tokens for slide chrome and focus rings.", "Prefer fixed slide aspect via `className`."],
+    "usageDont": ["Do not autoplay without pause control.", "Do not nest interactive controls inside slide without focus management.", "Do not hardcode pixel widths for responsive layouts.", "Do not omit labels on icon-only arrows."]
+  },
+
+  "chart": {
+    "pageName": "\u21b3 Chart",
+    "labelKey": "variant",
+    "summary": "Recharts-based chart shell with design-token friendly container.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["data", "unknown[]", "\u2014", "yes", "Series data passed to Recharts primitives."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch (dimensions + spacing)."]
+    ],
+    "usageDo": ["Bind chart colors to Theme CSS variables.", "Provide axis titles for screen readers.", "Keep default margins readable on 360px width.", "Export static snapshots for design reviews when needed."],
+    "usageDont": ["Do not encode secrets in chart data.", "Do not disable animation without designer sign-off.", "Do not mix arbitrary hex outside the token set.", "Do not overload one chart with \u003e5 series without legend."]
+  },
+
+  "combobox": {
+    "pageName": "\u21b3 Combobox",
+    "labelKey": "variant",
+    "summary": "Filterable autocomplete list (Command + Popover pattern).",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open state handler."],
+      ["value", "string", "\u2014", "no", "Controlled value."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Pair with `Command` items for keyboard nav.", "Debounce server fetches on input.", "Announce result count live.", "Keep trigger height aligned with `Text Field`."],
+    "usageDont": ["Do not block input while loading without a spinner.", "Do not hide the clear affordance when `value` is set.", "Do not nest another popover inside the list without portal strategy.", "Do not strip `aria-expanded` from the trigger."]
+  },
+
+  "direction": {
+    "pageName": "\u21b3 Typography",
+    "labelKey": "variant",
+    "summary": "RTL/LTR direction context provider for subtree layout and mirroring.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["dir", "\"ltr\" | \"rtl\"", "\"ltr\"", "no", "Document direction for descendants."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Set `dir` at the route shell for locale switches.", "Mirror spacing utilities when flipping to RTL.", "Test focus order in both directions.", "Document direction in handoff for engineers."],
+    "usageDont": ["Do not toggle `dir` without reflowing breakpoints.", "Do not nest conflicting direction providers.", "Do not rely on CSS `float` for critical layout.", "Do not forget mirrored icons for back navigation."]
+  },
+
+  "empty": {
+    "pageName": "\u21b3 Blank states",
+    "labelKey": "variant",
+    "summary": "Empty-state panel with title, description, and optional media + actions.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Offer a single primary recovery action.", "Keep copy concise (\u226412 words title).", "Use illustration tokens from brand kit.", "Log empty-state impressions if product requires."],
+    "usageDont": ["Do not use empty states for loading skeletons.", "Do not stack \u003e2 CTAs.", "Do not hide navigation to escape the state.", "Do not use alarmist copy for benign empties."]
+  },
+
+  "field": {
+    "pageName": "\u21b3 Field",
+    "labelKey": "variant",
+    "summary": "Form field primitive grouping label, control, hint, and error text.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Associate label `htmlFor` with control `id`.", "Surface errors inline below the control.", "Use `aria-describedby` for hints.", "Keep vertical rhythm consistent with `Text Field` page."],
+    "usageDont": ["Do not nest interactive elements inside the label.", "Do not rely on color alone for errors.", "Do not omit error text when `invalid`.", "Do not disable hints when errors show."]
+  },
+
+  "input-group": {
+    "pageName": "\u21b3 Input Group",
+    "labelKey": "variant",
+    "summary": "Grouped input with leading/trailing addons and focus ring continuity.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Keep addon width fixed for stable layout.", "Mirror focus ring across segments.", "Use icon buttons with `aria-label`.", "Test with long translated strings."],
+    "usageDont": ["Do not split focus across detached frames.", "Do not place two primary actions inside addons.", "Do not remove keyboard focus order on segments.", "Do not use low-contrast divider lines."]
+  },
+
+  "item": {
+    "pageName": "\u21b3 Lists",
+    "labelKey": "variant",
+    "summary": "Composable list row / media object primitive (shadcn Item).",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Visual density / emphasis."],
+      ["size", "enum", "\"default\"", "no", "Row height preset."],
+      ["asChild", "boolean", "false", "no", "Radix Slot composition."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Keep tap targets \u226544px tall on mobile.", "Align leading media to a 40px grid.", "Truncate titles with tooltip on hover.", "Use separators between dense rows."],
+    "usageDont": ["Do not nest interactive controls without spacing.", "Do not use `Item` as a full page layout root.", "Do not omit pressed state on touch rows.", "Do not mix conflicting `size` within one list."]
+  },
+
+  "kbd": {
+    "pageName": "\u21b3 Kbd",
+    "labelKey": "variant",
+    "summary": "Keyboard key cap styling for shortcuts and chord hints.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Use sentence case inside caps.", "Pair with visible command labels.", "Keep min width for single-letter keys.", "Use monospace token for key glyphs when available."],
+    "usageDont": ["Do not encode OS-specific glyphs without detection.", "Do not rely on color alone to imply modifier.", "Do not shrink below 24px height on mobile.", "Do not nest clickable areas inside `Kbd`."]
+  },
+
+  "native-select": {
+    "pageName": "\u21b3 Native Select",
+    "labelKey": "variant",
+    "summary": "Native `<select>` styling aligned with design-system tokens.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["value", "string", "\u2014", "no", "Controlled value."],
+      ["defaultValue", "string", "\u2014", "no", "Uncontrolled default."],
+      ["disabled", "boolean", "false", "no", "Disables the control."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Prefer native select when accessibility beats customization.", "Keep option list \u003c200 items for performance.", "Mirror `Select` page spacing tokens.", "Provide `aria-invalid` when in error state."],
+    "usageDont": ["Do not replace with custom dropdown without a11y review.", "Do not hide the focus ring.", "Do not use placeholder option as label substitute.", "Do not disable all options with no explanation."]
+  },
+
+  "sidebar": {
+    "pageName": "\u21b3 Sidebar",
+    "labelKey": "variant",
+    "summary": "Application sidebar shell with collapsible groups and rail mode.",
+    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "properties": [
+      ["defaultOpen", "boolean", "true", "no", "Uncontrolled default open."],
+      ["open", "boolean", "\u2014", "no", "Controlled open state."],
+      ["collapsible", "\"offcanvas\" | \"icon\" | \"none\"", "\"offcanvas\"", "no", "Collapse behavior."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Persist collapsed state per user.", "Keep active route contrast \u22654.5:1.", "Provide skip link to main content.", "Reserve 280px min width for expanded desktop rail."],
+    "usageDont": ["Do not trap focus when collapsed offcanvas is closed.", "Do not mix two different sidebar patterns in one product.", "Do not hide global nav without alternative entry.", "Do not animate width below 60fps on low-end devices."]
+  },
+
+  "spinner": {
+    "pageName": "\u21b3 Spinner",
+    "labelKey": "variant",
+    "summary": "Indeterminate loading spinner with token-bound stroke.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Pair with `aria-busy` on parent region.", "Provide `aria-label` describing wait state.", "Cap diameter at 48px for inline use.", "Use Theme primary stroke token."],
+    "usageDont": ["Do not use spinner for determinate progress.", "Do not stack multiple spinners in one card.", "Do not remove reduced-motion fallback.", "Do not use spinner as the only loading hint on slow networks."]
+  },
+
+  "typography": {
+    "pageName": "\u21b3 Typography",
+    "labelKey": "variant",
+    "summary": "Typography scale primitives mapping to design-system text styles.",
+    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
+    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "properties": [
+      ["variant", "enum", "\"default\"", "no", "Preset text role / size."],
+      ["as", "React.ElementType", "\"p\"", "no", "Polymorphic root element."],
+      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+    ],
+    "usageDo": ["Bind to published `Doc/*` / `Label/*` styles in Figma.", "Keep line length \u226465ch in paragraphs.", "Use responsive type tokens from Typography modes.", "Document locale-specific line height tweaks."],
+    "usageDont": ["Do not hardcode `fontSize` outside the scale.", "Do not nest heading levels out of order.", "Do not disable user zoom.", "Do not mix more than two families in one view."]
   }
 }

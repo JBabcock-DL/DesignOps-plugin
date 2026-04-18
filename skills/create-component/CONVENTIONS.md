@@ -405,7 +405,7 @@ Responsive prefixes (`sm`, `md`, `lg`, `xl`, `2xl`) are captured separately unde
 
 ## 3.5 — Curated prop map (`shadcn-props.json`)
 
-> Authoritative: [`skills/create-component/shadcn-props.json`](./shadcn-props.json). One entry per component in the SKILL.md §6 routing table.
+> Authoritative: [`skills/create-component/shadcn-props.json`](./shadcn-props.json). One entry per **kebab-case** component name from the [shadcn/ui Components index](https://ui.shadcn.com/docs/components) (CLI `npx shadcn add <name>`). Each key must have a matching row in the SKILL.md §6 routing table (`pageName` ↔ Foundations page).
 
 ### 3.5.1 — Why this file exists
 

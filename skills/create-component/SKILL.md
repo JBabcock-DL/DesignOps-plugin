@@ -346,21 +346,27 @@ For each successfully installed component, make **one `use_figma` call** using t
 | Component(s) | Target Page |
 |---|---|
 | `button` | `↳ Buttons` |
+| `button-group` | `↳ Button Group` |
 | `toggle` | `↳ Toggle` |
 | `toggle-group` | `↳ Toggle Group` |
 | `input` | `↳ Text Field` |
+| `input-group` | `↳ Input Group` |
 | `textarea` | `↳ Textarea` |
 | `checkbox` | `↳ Checkbox` |
 | `radio-group` | `↳ Radio` |
 | `select` | `↳ Select` |
+| `native-select` | `↳ Native Select` |
+| `combobox` | `↳ Combobox` |
 | `switch` | `↳ Switch` |
 | `slider` | `↳ Slider` |
 | `form` | `↳ Form Composite Groups` |
+| `field` | `↳ Field` |
 | `label` | `↳ Label` |
 | `input-otp` | `↳ Input OTP` |
 | `calendar` | `↳ Calendar` |
 | `date-picker` | `↳ Date Picker` |
 | `card` | `↳ Cards` |
+| `carousel` | `↳ Carousel` |
 | `separator` | `↳ Dividers` |
 | `aspect-ratio` | `↳ Aspect Ratio` |
 | `scroll-area` | `↳ Scroll Area` |
@@ -389,6 +395,13 @@ For each successfully installed component, make **one `use_figma` call** using t
 | `accordion` | `↳ Accordion` |
 | `collapsible` | `↳ Collapsible` |
 | `avatar` | `↳ Avatar` |
+| `chart` | `↳ Chart` |
+| `item` | `↳ Lists` |
+| `empty` | `↳ Blank states` |
+| `kbd` | `↳ Kbd` |
+| `spinner` | `↳ Spinner` |
+| `sidebar` | `↳ Sidebar` |
+| `direction`, `typography` | `↳ Typography` |
 
 **Complete `use_figma` code template** (substitute component-specific values where indicated):
 
@@ -1785,10 +1798,10 @@ If all nine assertions pass, the component is safe to mark **Drawn to Canvas = Y
 The following shadcn/ui components are supported. Pass any of these names to the skill.
 
 **Form & Input**
-`button` `input` `textarea` `checkbox` `radio-group` `select` `switch` `slider` `toggle` `toggle-group` `form` `label` `input-otp`
+`button` `button-group` `input` `input-group` `textarea` `checkbox` `radio-group` `select` `native-select` `combobox` `switch` `slider` `toggle` `toggle-group` `form` `field` `label` `input-otp`
 
 **Layout & Display**
-`card` `separator` `aspect-ratio` `scroll-area` `resizable`
+`card` `carousel` `separator` `aspect-ratio` `scroll-area` `resizable` `sidebar`
 
 **Overlay & Dialog**
 `dialog` `drawer` `sheet` `popover` `tooltip` `hover-card` `alert-dialog` `context-menu` `dropdown-menu` `menubar`
@@ -1797,10 +1810,13 @@ The following shadcn/ui components are supported. Pass any of these names to the
 `navigation-menu` `tabs` `breadcrumb` `pagination` `command`
 
 **Feedback & Status**
-`alert` `badge` `progress` `skeleton` `sonner` `toast`
+`alert` `badge` `progress` `skeleton` `sonner` `toast` `empty` `spinner`
 
 **Data Display**
-`table` `accordion` `collapsible` `calendar` `date-picker` `avatar`
+`table` `accordion` `collapsible` `calendar` `date-picker` `avatar` `chart` `item`
+
+**Typography & platform**
+`direction` `typography` `kbd`
 
 ---
 
