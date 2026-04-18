@@ -147,7 +147,7 @@ Font scaling toggle: `data-font-scale="130"` (or any of the 8 scale values) on `
 1. **`create_new_file`** — new design file in Drafts
 2. **`use_figma` Step 5** (`phases/05-scaffold-pages.md`) — full page list (Thumbnail, section dividers, style guide, brand, atoms, components, utilities)
 3. **`use_figma` Step 5c** (`phases/05c-table-of-contents.md`) — Table of Contents grid on `📝 Table of Contents` with `toc-link/{exact page name}` rows (layout only; no URL links yet)
-4. **`use_figma` Step 5b** (`phases/05b-documentation-headers.md`) — `_Header` + `_Content` on every page **except** `Thumbnail` (cover-only meta page)
+4. **`use_figma` Step 5b** (`phases/05b-documentation-headers.md`) — master `_Header` component (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout) on `Documentation components` and instances on every page **except** `Thumbnail` (cover-only meta page). No `_Content` placeholder — each downstream phase owns its own `_PageContent`.
 5. **`use_figma` Step 5d** (`phases/05d-token-overview.md`) — Token Overview skeleton on `↳ Token Overview` (`placeholder/*` nodes removed when `/create-design-system` runs)
 6. **`use_figma` Step 5e** (`phases/05e-cover-thumbnail.md`) — `Cover` frame on `Thumbnail`
 7. **`use_figma` Step 5c-links** (`phases/05f-toc-hyperlinks.md`) — URL hyperlinks on TOC text (runs **after** 5e so `Cover` exists)

@@ -4,11 +4,16 @@
 Runs **after** Phase 05c (TOC layout) in the orchestrator. Headers must exist before Step 5c-links can target `_Header` instances on each page.
 
 ## Goal
-Create the shared `_Header` component and place instances + `_Content` on every page except `Thumbnail`.
+Create the shared `_Header` component (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout, black fill) and place instances on every page except `Thumbnail`. The seam between `_Header` bottom (y=320) and the page's `_PageContent` top (y=320) must be exactly zero — the square bottom on `_Header` is what lets `_PageContent` butt directly against it without a visible gap.
 
 ## Prerequisites
 - Phase 05 (page list) complete.
-- Phase 05c complete (TOC page has `_PageContent` at y=360).
+- Phase 05c complete (TOC page has `_PageContent` at `y = 320` with literal `#FFFFFF` fill).
+
+## Inputs
+- **`fileKey`** — the Figma file key.
+  - **Fresh run** inside `/new-project`: use the `fileKey` captured in Step 4.
+  - **Re-run** outside the orchestrator (fix cycle, plugin-update test, replay): `Read` `templates/agent-handoff.md` for `active_file_key`. If the handoff doc is empty or missing, ask the user to paste the `fileKey` or the full Figma URL (extract the key from `figma.com/design/:fileKey/…`) before continuing.
 
 ## Placeholders
 None.
@@ -16,14 +21,41 @@ None.
 ## Instructions
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
+Before editing this script, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** § A and [`skills/create-design-system/CONVENTIONS.md`](../../create-design-system/CONVENTIONS.md) § 3 — both specify the current `_Header` geometry (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout, fill `color/neutral/950` bound with `#000000` fallback) and the zero-gap seam with `_PageContent` at `y = 320`.
+
+## Re-running on a non-empty file (idempotency)
+This script assumes the master `_Header` does not yet exist and that no page has an `_Header` instance. Before re-running on a file that already has headers (e.g. fixing the spec after an older run, or re-invoking after a plugin/skill update), first run a small wipe script with `use_figma` that removes every `_Header` component + instance and every obsolete `_Content` placeholder from older versions:
+
+```javascript
+const removedNodeIds = [];
+for (const page of figma.root.children) {
+  for (const child of [...page.children]) {
+    if (child.name === '_Header' || child.name === '_Content') {
+      removedNodeIds.push(child.id);
+      child.remove();
+    }
+  }
+}
+return { removedNodeIds };
+```
+
+Leave every `_PageContent` in place — Phases 05c and 05d own those.
+
 ## Success criteria
-Master `_Header` on Documentation components; instances on other pages; `_Content` frame on every non-Thumbnail page.
+- Master `_Header` component on `Documentation components` at `y: 0`, **1800 × 320**, **`cornerRadius: 0`**, `layoutMode: VERTICAL`, fill black (`color/neutral/950` bound when the variable exists, raw `#000000` fallback otherwise), `clipsContent: true`.
+- An `_Header` **instance** at `x: 0, y: 0` on every page except `Thumbnail` (and not a second instance on `Documentation components` — the master already provides the header there).
+- Each instance's `_title` text node carries the page's clean title and its `_description` text node carries the matching blurb from the `descriptions` map.
+- **No `_Content` placeholder frames are created.** The TOC (Phase 05c), Token Overview (Phase 05d), Thumbnail `Cover` (Phase 05e), and style-guide pages (populated later by `/create-design-system`) each own their own `_PageContent` at `y = 320`. The old dashed cream `_Content` overlay at `y = 360` is obsolete — it visually overlapped the new `_PageContent` frames.
+
+## Known Figma API gotchas this script must follow
+- **`resize()` before sizing modes.** The header component, `topRow`, `logoMark`, and `titleStack` all use auto-layout. Call `resize(w, h)` **before** assigning `primaryAxisSizingMode` / `counterAxisSizingMode` — otherwise the axis silently resets to `'FIXED'` and children collapse.
+- **Master component must be on its own page.** `figma.createComponent()` is scoped to the current page — you must call `figma.setCurrentPageAsync('Documentation components')` **before** `createComponent()`, or the master will land on the wrong page.
+- **Square corners, not rounded.** `cornerRadius: 0` on the master component. The TOC and Token Overview phases anchor `_PageContent` at `y = 320` on the assumption of a zero-gap square seam — a 24px (or any non-zero) corner radius creates a visible gap under the header.
+- **No absolute-positioned logo, no floating wordmark.** The header body is VERTICAL auto-layout with a `topRow` (HORIZONTAL, `SPACE_BETWEEN`) and a `titleStack` (VERTICAL). The only non-auto-layout sub-node is the 40×40 `logoMark` frame that stacks the white ellipse and the black "DL" text — those two nodes intentionally use absolute position inside a tiny fixed-size parent.
 
 ## Step 5b — Draw Documentation Headers (shared component)
 
-Call `use_figma` with the `fileKey` from Step 4. **Phase A (once):** On the `Documentation components` page, create a single master `_Header` with `figma.createComponent()` (components are scoped to their page — you must be on that page when creating it). **Phase B:** Loop all pages except `Thumbnail`; on each target page, append a `createInstance()` of that component at (0, 0) and override the `_title` / `_description` text nodes. **Phase C:** Append a plain `_Content` frame on every page (not a component instance). Skip placing a duplicate instance on `Documentation components` — the master component already provides the header there.
-
-**Canvas width:** `_Header` is **1800px wide** with `cornerRadius: 0` so the downstream `_PageContent` (also 1800 wide) butts directly against its bottom edge. `/create-design-system` later rebuilds documentation chrome at the same 1800 width (tables 1640 wide inside 80px padding). See `skills/create-design-system/SKILL.md` § **Canvas documentation visual spec**.
+Call `use_figma` with the `fileKey` from Step 4. **Phase A (once):** On the `Documentation components` page, create a single master `_Header` with `figma.createComponent()`. **Phase B:** Loop every page except `Thumbnail` and `Documentation components`; on each target page, append a `createInstance()` of that component at `(0, 0)` and override the `_title` / `_description` text nodes. **Phase C:** Override the master's own `_title` / `_description` for the `Documentation components` page. Do **not** create a duplicate instance on `Documentation components` — the master is the header for that page.
 
 ```javascript
 const descriptions = {
@@ -150,25 +182,97 @@ await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
 
+// ── Variable helpers — binds to color/neutral/950 (Primitives) when available,
+//    falls back to raw #000000 on a fresh file where /create-design-system has not run yet.
+const variableCollections = figma.variables.getLocalVariableCollections();
+const allColorVars = figma.variables.getLocalVariables('COLOR');
+const primCol  = variableCollections.find(c => c.name === 'Primitives');
+
+function getPrimColorVar(path) {
+  if (!primCol) return null;
+  return allColorVars.find(v => v.variableCollectionId === primCol.id && v.name === path) ?? null;
+}
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.slice(0, 2), 16) / 255,
+    g: parseInt(h.slice(2, 4), 16) / 255,
+    b: parseInt(h.slice(4, 6), 16) / 255,
+  };
+}
+function bindPrimColor(node, path, fallbackHex, target = 'fills') {
+  const variable = getPrimColorVar(path);
+  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
+  if (variable) {
+    try { paint.boundVariables = { color: figma.variables.createVariableAlias(variable) }; } catch (_) {}
+  }
+  node[target] = [paint];
+}
+
 // ── Phase A: master _Header component on Documentation components ──
+// Geometry (SKILL.md § A + CONVENTIONS.md § 3):
+//   1800 wide, 320 tall, cornerRadius 0, layoutMode VERTICAL,
+//   padding top 40 / bottom 61 / left 40 / right 40, itemSpacing 60, clipsContent true.
+//   Structure:
+//     ├── topRow (HORIZONTAL, 40 tall, STRETCH, SPACE_BETWEEN, CENTER)
+//     │   ├── logoMark (40×40, non-auto-layout: white ellipse + black "DL" centered)
+//     │   └── wordmark (TEXT "DETROIT LABS", Inter Semi Bold 12, white, tracking 2px)
+//     └── titleStack (VERTICAL, AUTO h, STRETCH w, itemSpacing 23)
+//         ├── _title (TEXT Inter Bold 64, white, STRETCH)
+//         └── _description (TEXT Inter Regular 16, white @ 70%, STRETCH)
 const docComponentsPage = figma.root.children.find(p => p.name === 'Documentation components');
 await figma.setCurrentPageAsync(docComponentsPage);
 
 const headerComponent = figma.createComponent();
-headerComponent.name         = '_Header';
+headerComponent.name = '_Header';
+// resize() BEFORE sizing-mode assignments — figma-use gotcha.
 headerComponent.resize(1800, 320);
-headerComponent.x            = 0;
-headerComponent.y            = 0;
-headerComponent.fills        = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
-headerComponent.cornerRadius = 24;
+headerComponent.layoutMode         = 'VERTICAL';
+headerComponent.primaryAxisSizingMode = 'FIXED';
+headerComponent.counterAxisSizingMode = 'FIXED';
+headerComponent.paddingTop    = 40;
+headerComponent.paddingBottom = 61;
+headerComponent.paddingLeft   = 40;
+headerComponent.paddingRight  = 40;
+headerComponent.itemSpacing   = 60;
+headerComponent.cornerRadius  = 0;
+headerComponent.clipsContent  = true;
+headerComponent.x = 0;
+headerComponent.y = 0;
+bindPrimColor(headerComponent, 'color/neutral/950', '#000000');
 docComponentsPage.appendChild(headerComponent);
 
+// topRow — brand + wordmark
+const topRow = figma.createFrame();
+topRow.name = 'topRow';
+topRow.layoutMode = 'HORIZONTAL';
+// resize() BEFORE sizing-mode assignments.
+topRow.resize(1720, 40);
+topRow.primaryAxisSizingMode = 'FIXED';
+topRow.counterAxisSizingMode = 'FIXED';
+topRow.primaryAxisAlignItems = 'SPACE_BETWEEN';
+topRow.counterAxisAlignItems = 'CENTER';
+topRow.layoutAlign = 'STRETCH';
+topRow.itemSpacing = 16;
+topRow.clipsContent = true;
+topRow.fills = [];
+headerComponent.appendChild(topRow);
+
+// logoMark — 40×40 non-auto-layout so the white ellipse and "DL" text can overlap.
+const logoMark = figma.createFrame();
+logoMark.name = 'logo';
+logoMark.resize(40, 40);
+logoMark.fills = [];
+logoMark.clipsContent = false;
+topRow.appendChild(logoMark);
+
 const logoCircle = figma.createEllipse();
+logoCircle.name = 'Ellipse';
 logoCircle.resize(40, 40);
-logoCircle.x     = 40;
-logoCircle.y     = 40;
+logoCircle.x = 0;
+logoCircle.y = 0;
 logoCircle.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-headerComponent.appendChild(logoCircle);
+logoMark.appendChild(logoCircle);
 
 const logoText = figma.createText();
 logoText.fontName    = { family: 'Inter', style: 'Bold' };
@@ -178,9 +282,9 @@ logoText.fills       = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
 logoText.textAlignHorizontal = 'CENTER';
 logoText.textAlignVertical   = 'CENTER';
 logoText.resize(40, 40);
-logoText.x = 40;
-logoText.y = 40;
-headerComponent.appendChild(logoText);
+logoText.x = 0;
+logoText.y = 0;
+logoMark.appendChild(logoText);
 
 const wordmark = figma.createText();
 wordmark.fontName        = { family: 'Inter', style: 'Semi Bold' };
@@ -189,9 +293,21 @@ wordmark.letterSpacing   = { value: 2, unit: 'PIXELS' };
 wordmark.characters      = 'DETROIT LABS';
 wordmark.fills           = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 wordmark.textAlignHorizontal = 'RIGHT';
-wordmark.x = 1760 - wordmark.width;
-wordmark.y = 48;
-headerComponent.appendChild(wordmark);
+topRow.appendChild(wordmark);
+
+// titleStack — page title + description
+const titleStack = figma.createFrame();
+titleStack.name = 'titleStack';
+titleStack.layoutMode = 'VERTICAL';
+// resize() BEFORE sizing-mode assignments.
+titleStack.resize(1720, 1);
+titleStack.primaryAxisSizingMode = 'AUTO';
+titleStack.counterAxisSizingMode = 'FIXED';
+titleStack.layoutAlign = 'STRETCH';
+titleStack.itemSpacing = 23;
+titleStack.clipsContent = true;
+titleStack.fills = [];
+headerComponent.appendChild(titleStack);
 
 const titleMaster = figma.createText();
 titleMaster.name       = '_title';
@@ -199,9 +315,8 @@ titleMaster.fontName   = { family: 'Inter', style: 'Bold' };
 titleMaster.fontSize   = 64;
 titleMaster.characters = 'Page Title';
 titleMaster.fills      = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-titleMaster.x = 40;
-titleMaster.y = 140;
-headerComponent.appendChild(titleMaster);
+titleMaster.layoutAlign = 'STRETCH';
+titleStack.appendChild(titleMaster);
 
 const descMaster = figma.createText();
 descMaster.name       = '_description';
@@ -211,11 +326,10 @@ descMaster.characters = 'Page description.';
 descMaster.fills      = [
   { type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.7 },
 ];
-descMaster.x = 40;
-descMaster.y = 240;
-headerComponent.appendChild(descMaster);
+descMaster.layoutAlign = 'STRETCH';
+titleStack.appendChild(descMaster);
 
-// ── Phase B + C: instances + _Content on every page except Thumbnail ──
+// ── Phase B + C: instances on every page except Thumbnail; master override on Documentation components ──
 for (const page of figma.root.children) {
   if (page.name === 'Thumbnail') continue;
 
@@ -236,20 +350,9 @@ for (const page of figma.root.children) {
     const descNode = instance.findOne(n => n.name === '_description' && n.type === 'TEXT');
     if (descNode) descNode.characters = desc || '';
   } else {
+    // Master lives on this page — override its own _title / _description directly.
     titleMaster.characters = title;
     descMaster.characters = desc || '';
   }
-
-  const content = figma.createFrame();
-  content.name         = '_Content';
-  content.resize(1800, 800);
-  content.x            = 0;
-  content.y            = 360;
-  content.fills        = [{ type: 'SOLID', color: { r: 0.969, g: 0.969, b: 0.969 } }];
-  content.cornerRadius = 16;
-  content.strokes      = [{ type: 'SOLID', color: { r: 0.8, g: 0.8, b: 0.8 } }];
-  content.strokeWeight = 1;
-  content.dashPattern  = [8, 4];
-  page.appendChild(content);
 }
 ```

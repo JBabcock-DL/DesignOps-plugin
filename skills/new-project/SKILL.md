@@ -106,7 +106,7 @@ Current: Step 5c — Table of Contents
 
 Mandatory order: **5c → 5b → 5d → 5e → 5c-links → Step 6 → Step 7**.
 
-**Why this order:** Step 5c draws the Table of Contents layout (no links). Step 5b creates the shared `_Header` and `_Content` on pages. Steps 5d and 5e build Token Overview and the Thumbnail `Cover`. Step **5c-links runs last** so the Thumbnail row can link to `Cover` and every other row links to that page’s `_Header`.
+**Why this order:** Step 5c draws the Table of Contents layout (no links). Step 5b creates the shared `_Header` component (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout, black fill) and places instances on every page except `Thumbnail`. Steps 5d and 5e build Token Overview and the Thumbnail `Cover`. Step **5c-links runs last** so the Thumbnail row can link to `Cover` and every other row links to that page’s `_Header`.
 
 For each row below, in order:
 
