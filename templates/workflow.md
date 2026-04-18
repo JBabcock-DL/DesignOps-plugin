@@ -32,7 +32,7 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 | Skill | Invocation | Description |
 |---|---|---|
 | New Project | `/new-project` | Creates a `<Project Name> — Foundations` design file via the Figma MCP, scaffolds the full Detroit Labs page hierarchy, draws documentation UI on the canvas (headers, TOC, Token Overview skeleton, Thumbnail `Cover` frame), and provides a move instruction to the Design-Systems/ folder. Implementation is split: `skills/new-project/SKILL.md` orchestrates; each `use_figma` script lives in `skills/new-project/phases/*.md` and is **`Read` one phase at a time**. After page scaffolding, the agent **reposts a markdown checklist** in chat after each phase so the designer can track progress. |
-| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), **optionally** writes `tokens.css` after an explicit opt-in, then refreshes Figma canvas docs (**Steps 15a–15c** style guide with **Doc/** + slot **Text styles** + **Effect** styles, **16** MCP tables with **ALIAS →** + bound swatches, **17** Token Overview, **18** Thumbnail `Cover`). Doc chrome + token demos follow **Canvas documentation visual spec § A–D**. After inputs (Step 4), agents **repost a “Building your design system”** checklist after each unit; during Step 3, short **Collected:** lines between questions (`skills/create-design-system/SKILL.md`). |
+| Create Design System | `/create-design-system` | Pushes brand tokens into five Figma variable collections (Primitives, Theme, Typography, Layout, Effects), **optionally** writes `tokens.css` after an explicit opt-in, then refreshes Figma canvas docs (**Steps 15a–15c** style guide with **Doc/** + slot **Text styles** + **Effect** styles, **16** MCP tables with **ALIAS →** + bound swatches, **17** Token Overview, **18** Thumbnail `Cover`). Doc chrome + token demos follow **Canvas documentation visual spec § A–F** (auto-layout hug, text sizing, grouped rows). After inputs (Step 4), agents **repost a “Building your design system”** checklist after each unit; during Step 3, short **Collected:** lines between questions (`skills/create-design-system/SKILL.md`). |
 | Sync Design System | `/sync-design-system` | Diffs a local token file against live Figma variable state and pushes changes in either direction; after pushes to Figma, runs **9b–9e** (same premium style guide + **ALIAS →** MCP tables + Token Overview + Cover as **create-design-system**) so canvas docs stay aligned with variables |
 | Create Component | `/create-component` | Installs shadcn/ui components, wires `tokens.css` into `globals.css`, draws components to the Figma canvas with token bindings, and optionally chains Code Connect |
 | Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings after designer review |
@@ -95,7 +95,7 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 |---|---|---|
 | `Primitives` | Default | Raw color ramps (primary, secondary, tertiary, error, neutral — 50–950), Space scale, Corner scale, elevation floats |
 | `Theme` | Light / Dark | 54 semantic color aliases in 7 groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`) pointing to Primitives per mode |
-| `Typography` | 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200 | 12 type style slots × 4 properties; sizes scale per mode on Android's font-scale curve |
+| `Typography` | 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200 | 15 type style slots (M3 Display/Headline/Title/Body/Label × LG–MD–SM) × 4 properties; font-family aliases Primitives `typeface/*`; sizes scale per mode on Android's font-scale curve |
 | `Layout` | Default | `space/*` and `radius/*` semantic aliases into Primitives |
 | `Effects` | Light / Dark | Shadow color (opacity per mode) and blur aliases into elevation Primitives |
 
@@ -113,17 +113,19 @@ Detroit Labs design systems use a five-collection Figma variable architecture pa
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.fontSize` |
+| `Title/LG/font-size` | `var(--title-lg-font-size)` | `title-lg-font-size` | `.Typography.title.lg.fontSize` |
+| `typeface/display` | `var(--typeface-display)` | `typeface-display` | `.Typeface.display` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
 ### tokens.css — Local Codebase File
 
 When the designer opts in, `/create-design-system` writes a `tokens.css` file (default path `src/styles/tokens.css`) that mirrors the Figma variable structure as CSS custom properties:
 
-- **Primitives block** — raw hex and px values in `:root`
+- **Primitives block** — raw hex and px values in `:root`, plus **`--typeface-display`** / **`--typeface-body`**
 - **Layout block** — semantic `--space-*` and `--radius-*` aliases in `:root`
 - **Theme Light block** — 54 semantic tokens as **`--color-*`** in `:root, [data-theme="light"]` (Tailwind `@theme`–friendly), plus shadcn/ui aliases (`--background`→`var(--color-background)`, `--foreground`→`var(--color-content)`, `--primary`→`var(--color-primary)`, etc.)
 - **Theme Dark block** — same structure in `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`
-- **Typography base block** — all 48 properties at 100% scale in `:root`
+- **Typography base block** — M3 role tokens (15 slots × 4 properties) at 100% scale in `:root`, plus semantic **`--text-h1-*`** … **`--text-small-*`** aliases
 - **Typography scale blocks** — 8 `[data-font-scale="N"]` blocks (85, 100, 110, 120, 130, 150, 175, 200) with only font-size and line-height overrides
 
 Canonical theme colors use **`--color-*`** (`--color-background`, `--color-content-muted`, `--color-border`, `--color-primary-subtle`, `--color-danger`, …). shadcn/ui names (`--background`, `--foreground`, `--border`, `--primary`, …) are aliases pointing at the same roles, so components resolve with no extra mapping.

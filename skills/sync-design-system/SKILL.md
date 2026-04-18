@@ -83,9 +83,9 @@ primitive values for diff purposes.
 **Mode-aware flattening:** For collections with multiple modes, flatten each
 mode into a separate key using the pattern `collection/mode/token-name`:
 - Theme (2 modes): `theme/light/color/background/default`, `theme/dark/color/background/default`, `theme/light/color/background/variant`, `theme/light/color/error/default`, etc.
-- Typography (8 modes): `typography/100/Headline-LG-font-size`, `typography/200/Headline-LG-font-size`, etc.
+- Typography (8 modes): `typography/100/Headline-LG-font-size`, `typography/100/Title-LG-font-size`, `typography/200/Headline-LG-font-size`, etc.
 - Effects (2 modes): `effects/light/shadow/color`, `effects/dark/shadow/color`
-- Primitives and Layout (1 mode each): `primitives/color-primary-500`, `layout/space-md`
+- Primitives and Layout (1 mode each): `primitives/color-primary-500`, `primitives/typeface-display`, `layout/space-md`
 
 If the file contains legacy collections (`Web`, `Android/M3`, `iOS/HIG`) from a
 pre-refactor run, include them in the read but flag them in the diff output as
@@ -188,9 +188,9 @@ Payload structure (Figma Variables bulk write format):
 - For NEW tokens, create the variable in the correct collection before setting
   its value. Infer the collection from the token name prefix using these rules:
   - `color/{ramp}/{stop}` (e.g. `color/primary/500`) → `Primitives`
-  - `Space/*`, `Corner/*`, `elevation/*` → `Primitives`
+  - `Space/*`, `Corner/*`, `elevation/*`, `typeface/*` → `Primitives`
   - `color/{group}/{token}` (e.g. `color/background/default`, `color/background/content`, `color/border/default`, `color/primary/default`) → `Theme`
-  - `Display/*`, `Headline/*`, `Body/*`, `Label/*` → `Typography`
+  - `Display/*`, `Headline/*`, `Title/*`, `Body/*`, `Label/*` → `Typography`
   - `space/*`, `radius/*` (lowercase) → `Layout`
   - `shadow/*` → `Effects`
   - When creating a Theme variable, write values for both `Light` and `Dark` modes.
@@ -254,9 +254,9 @@ Inspect the push payload — the set of tokens that were actually written to Fig
 | Token path pattern | Collection | Style Guide page to redraw |
 |---|---|---|
 | `color/{ramp}/{stop}` (e.g. `color/primary/500`) | Primitives | `↳ Primitives` |
-| `Space/*`, `Corner/*`, `elevation/*` | Primitives | `↳ Primitives` |
+| `Space/*`, `Corner/*`, `elevation/*`, `typeface/*` | Primitives | `↳ Primitives` |
 | `color/{group}/{token}` (e.g. `color/background/default`) | Theme | `↳ Theme` |
-| `Display/*`, `Headline/*`, `Body/*`, `Label/*` | Typography | `↳ Text Styles` |
+| `Display/*`, `Headline/*`, `Title/*`, `Body/*`, `Label/*` | Typography | `↳ Text Styles` |
 | `space/*`, `radius/*` (lowercase) | Layout | `↳ Layout` |
 | `shadow/*` | Effects | `↳ Effects` |
 
@@ -274,7 +274,7 @@ Read only the variables belonging to affected collections. Resolve all alias tok
 
 ### 3. Redraw each affected page
 
-Before any `use_figma` canvas work, **`Read`** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ **A–D**). Token-bound doc chrome (**§ C**) and token-demo bindings (**§ D**) must match that spec.
+Before any `use_figma` canvas work, **`Read`** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ **A–F**). Token-bound doc chrome (**§ C**), token-demo bindings (**§ D**), auto-layout hug rules (**§ E**), and row hierarchy (**§ F**) must match that spec.
 
 **Reliability:** run **one `use_figma` call per affected page** (same split as create-design-system **Steps 15a–15c**), not one mega-call across all pages — each call: navigate → delete `y > 360` → redraw that page only.
 
@@ -290,15 +290,15 @@ Per page:
 2. Delete all nodes with **`y > 360`** (keep doc header `y ≤ 360`).
 3. Redraw using the same spec as **create-design-system Steps 15a–15c** for that page. Authoritative detail: [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md).
 
-**↳ Primitives** — per **create-design-system Step 15a**: **56px** strips; **120×160** ramp cards with **variable-bound** fills to each **`color/{ramp}/{stop}`**; Space bars with **width** bound to **`Space/*`** when supported; Corner squares with **`cornerRadius`** bound to **`Corner/*`** when supported; literals only if **`Doc/*`** styles are absent (first run).
+**↳ Primitives** — per **create-design-system Step 15a** + **§ A–F**: **`_PageContent`** shell; **`doc/primitives/ramp-row/*`** wraps each ramp’s cards; **64px** strips; **120×160** cards, **variable-bound** fills; Space/Corner/Typeface as **`doc/primitives/*-row/{token}`**; **`primaryAxisSizingMode: AUTO`** + **`textAutoResize`** on all text (§ **E**).
 
-**↳ Theme** — per **Step 15b**: **56px** group strips; **2-column** premium token cards (**24px** padding, **12px** radius); **80×80** Light/Dark swatch pairs with **`setExplicitVariableModeForCollection`** on **`doc/theme-preview/light|dark`** wrappers and **bound** Theme variable fills; visible **LIGHT/DARK** labels; **`Doc/*`** text styles when present; WEB/ANDROID/iOS from live **`codeSyntax`**.
+**↳ Theme** — per **Step 15b** + **§ F**: **`doc/theme/card-row-*`** holds **two** cards per row; **64px** strips; cards **`minHeight` 200**, **padding 28**, **radius 16**; **88×88** swatches + **`setExplicitVariableModeForCollection`** on **`doc/theme-preview/light|dark`**; **`Doc/*`** + live **`codeSyntax`**.
 
-**↳ Text Styles** — per **Step 15c**: **12** rows; specimen **`textStyleId`** → published slot style (`Display/LG` …); metadata **`Doc/Code`**; dividers bound to **`color/border/subtle`**; republish **`Doc/*`** + slot styles in **§0** when Typography changed.
+**↳ Text Styles** — per **Step 15c**: **`doc/typography/row/{slot}`** per line; **15** slots; specimen **`textStyleId`**; metadata **`Doc/Code`**; **`textAutoResize`**; republish **`Doc/*`** + slot styles in **§0** when Typography changed.
 
-**↳ Layout** — per **Step 15c**: **56px** strips; spacing/radius sections with bound bars / **`cornerRadius`** where supported; **`Doc/*`** labels.
+**↳ Layout** — per **Step 15c**: **`doc/layout/row/{token}`** per token; **64px** strips; bound bars / **`cornerRadius`**; **`Doc/*`**.
 
-**↳ Effects** — per **Step 15c**: **~240×260** cards, **96×96** specimen, Light/Dark via **Effects** explicit modes; maintain **`Effect/shadow-*`** local effect styles; **`shadow/color`** swatch card as specified in create **Step 15c**.
+**↳ Effects** — per **Step 15c**: **`doc/effects/card/{tier}`**; **~280×300** cards, **112×112** specimen, Light/Dark explicit modes; **`Effect/shadow-*`** styles; **`shadow/color`** card per create **Step 15c**.
 
 ### 4. Report
 
@@ -379,7 +379,7 @@ In `use_figma`, go to the `↳ Token Overview` page (`figma.setCurrentPageAsync`
 
 ### 2. Refresh content
 
-Execute the same population and rebinding logic as **create-design-system Step 17** (architecture diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per **Canvas documentation visual spec § A–D**). Use live variable data from Step 9b’s fetch when available; otherwise `GET /v1/files/:key/variables/local` once.
+Execute the same population and rebinding logic as **create-design-system Step 17** (architecture diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per **Canvas documentation visual spec § A–F**). Use live variable data from Step 9b’s fetch when available; otherwise `GET /v1/files/:key/variables/local` once.
 
 ### 3. Report
 

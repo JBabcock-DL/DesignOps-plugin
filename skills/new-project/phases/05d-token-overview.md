@@ -223,6 +223,8 @@ const platformRows = [
   ['color/border/default',       'var(--color-border)',           'outline',               '.Border.default'],
   ['color/error/default',         'var(--color-danger)',           'error',                 '.Status.error'],
   ['Headline/LG/font-size',      'var(--headline-lg-font-size)',  'headline-lg-font-size', '.Typography.headline.lg.fontSize'],
+  ['Title/LG/font-size',         'var(--title-lg-font-size)',     'title-lg-font-size',    '.Typography.title.lg.fontSize'],
+  ['typeface/display',           'var(--typeface-display)',       'typeface-display',      '.Typeface.display'],
   ['space/md',                   'var(--space-md)',               'space-md',              '.Layout.space.md'],
   ['radius/md',                  'var(--radius-md)',              'radius-md',             '.Layout.radius.md'],
   ['shadow/color',               'var(--shadow-color)',           'shadow',                '.Effect.shadow.color'],

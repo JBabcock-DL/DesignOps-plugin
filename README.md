@@ -139,16 +139,16 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 
 1. Resolves the Figma file: **`--file-key` from arguments first**, then optional local `templates/agent-handoff.md`, then prompts
 2. Collects brand tokens interactively (primary, secondary, neutral, tertiary, and error colors; body and display font families; base font size, spacing unit, and border radius)
-3. Generates the `Primitives` collection: five full color ramps (primary, secondary, tertiary, error, neutral — 50–950 stops via Tailwind HSL interpolation), `Space/*` spacing scale, `Corner/*` radius scale, elevation floats
+3. Generates the `Primitives` collection: five full color ramps (primary, secondary, tertiary, error, neutral — 50–950 stops via Tailwind HSL interpolation), `Space/*` spacing scale, `Corner/*` radius scale, elevation floats, and **`typeface/display`** + **`typeface/body`** STRING primitives (single source for font family names)
 4. Creates the `Theme` collection (Light / Dark modes): **54** semantic color aliases across **7** groups — `background/` (canvas + container ladder + content + inverse + scrim/shadow; WEB `--color-background*`; ANDROID/iOS codeSyntax still uses M3 **surface** roles), `border/` (`default` / `subtle`; WEB `--color-border*`), `primary/`, `secondary/`, `tertiary/` (each includes standard + **fixed** roles), `error/` (same 8-token shape as brand hues + **fixed** roles), and `component/` (shadcn: input, ring, sidebar) — all aliasing Primitives per mode
-5. Creates the `Typography` collection (8 scale modes): 12 type style slots (Display, Headline, Body, Label — each in LG/MD/SM) × 4 properties (font-family, font-size, font-weight, line-height). Font sizes scale across 8 modes modeled on Android's font-scale curve: 85%, 100% (default), 110%, 120%, 130%, 150%, 175%, 200%. Large text uses nonlinear scaling (Android 14 behaviour) at high multipliers.
+5. Creates the `Typography` collection (8 scale modes): **15** type style slots (Material 3 baseline: Display, Headline, **Title**, Body, Label — each in LG/MD/SM) × 4 properties (font-family, font-size, font-weight, line-height). Every **`*/font-family`** aliases **`typeface/display`** or **`typeface/body`** so families are edited once in Primitives. Font sizes scale across 8 modes modeled on Android's font-scale curve: 85%, 100% (default), 110%, 120%, 130%, 150%, 175%, 200%. Large text uses nonlinear scaling (Android 14 behaviour) at high multipliers.
 6. Creates the `Layout` collection (Default mode): `space/*` and `radius/*` semantic aliases into Primitives
 7. Creates the `Effects` collection (Light / Dark modes): shadow color (opacity changes per mode) and blur aliases into elevation Primitives
 8. Writes all five collections to Figma via the Variables REST API with `codeSyntax` (WEB/ANDROID/iOS) on every variable
 9. Verifies the write with a GET call and reports final variable counts
 10. **Optionally writes `tokens.css`** — separate opt-in after Figma push (default path `src/styles/tokens.css` when accepted; see [Token Architecture](#token-architecture))
 11. Updates `templates/agent-handoff.md` with `token_css_path` **only if** `tokens.css` was written and handoff exists and is writable; otherwise the Step 14 report states next steps for `/create-component`
-12. **`use_figma` — Style guide (Steps 15a–15c)** — premium layout: **variable-bound** swatches (Dev Mode), **2-column** Theme cards with explicit **Light/Dark** previews, published **`Doc/*`** + **slot Text styles** + **`Effect/shadow-*`** effect styles, then `↳ Layout` / `↳ Text Styles` / `↳ Effects` (see **Canvas documentation visual spec § A–D** in the skill)
+12. **`use_figma` — Style guide (Steps 15a–15c)** — premium layout: **variable-bound** swatches (Dev Mode), **2-column** Theme cards with explicit **Light/Dark** previews, published **`Doc/*`** + **slot Text styles** + **`Effect/shadow-*`** effect styles, then `↳ Layout` / `↳ Text Styles` / `↳ Effects` (see **Canvas documentation visual spec § A–F** in the skill — auto-layout **hug**, **`textAutoResize`**, **`doc/...` row frames**)
 13. **`use_figma` — MCP Tokens (Step 16)** — builds `[MCP] Token Manifest` with JSON + tables for machine and human audit
 14. **`use_figma` — Token Overview (Step 17)** — replaces skeleton data, rebinds doc chrome to Theme/Typography variables, updates tables from live variables, removes `placeholder/*` notes
 15. **`use_figma` — Thumbnail (Step 18)** — updates `Cover` gradient stops from `color/primary/500` and `color/secondary/500`
@@ -191,7 +191,7 @@ Diff a local token file against the current Figma variable state and push change
    - **Push both** — sync in both directions (only available when there are no conflicts)
    - **Review manually** — resolve each conflict one at a time before pushing
 5. Flags any legacy `Web`, `Android/M3`, or `iOS/HIG` collections as deprecated if found
-6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** in one skill run — **Step 9b** redraws affected style guide pages (one call per page batch, matching create-design-system **15a–15c** + **Doc/** / slot styles / effect styles), **Step 9c** rebuilds **`[MCP] Token Manifest`** (**ALIAS →**, bound swatches, **MODE** captions), **Step 9d** refreshes **`↳ Token Overview`**, **Step 9e** updates the Thumbnail **`Cover`** gradient — all following **Canvas documentation visual spec § A–D** like `/create-design-system`. Skipped when only pushing to code (option 2).
+6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** in one skill run — **Step 9b** redraws affected style guide pages (one call per page batch, matching create-design-system **15a–15c** + **Doc/** / slot styles / effect styles), **Step 9c** rebuilds **`[MCP] Token Manifest`** (**ALIAS →**, bound swatches, **MODE** captions), **Step 9d** refreshes **`↳ Token Overview`**, **Step 9e** updates the Thumbnail **`Cover`** gradient — all following **Canvas documentation visual spec § A–F** like `/create-design-system`. Skipped when only pushing to code (option 2).
 
 ---
 
@@ -406,8 +406,9 @@ Theme  (Light mode / Dark mode)
 Typography  (8 scale modes: 85 · 100 · 110 · 120 · 130 · 150 · 175 · 200)
   ├── Display/LG–SM / font-family, font-size, font-weight, line-height
   ├── Headline/LG–SM / …
+  ├── Title/LG–SM / …
   ├── Body/LG–SM / …
-  └── Label/LG–SM / …   (48 variables, sizes scale per mode)
+  └── Label/LG–SM / …   (60 variables; font-family → Primitives typeface; sizes scale per mode)
 
 Layout  (Default mode)
   ├── space/xs–4xl    → Space/* aliases
@@ -433,6 +434,8 @@ Every variable carries `codeSyntax` for all three platforms. There are no separa
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
 | `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
 | `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.fontSize` |
+| `Title/LG/font-size` | `var(--title-lg-font-size)` | `title-lg-font-size` | `.Typography.title.lg.fontSize` |
+| `typeface/display` | `var(--typeface-display)` | `typeface-display` | `.Typeface.display` |
 | `space/md` | `var(--space-md)` | `space-md` | `.Layout.space.md` |
 
 ### tokens.css — local codebase file
