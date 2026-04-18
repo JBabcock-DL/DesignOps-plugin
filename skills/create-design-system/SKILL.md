@@ -69,12 +69,11 @@ Current: Building Primitives…
 - [ ] Drawing ↳ Primitives style guide (Step 15a)
 - [ ] Drawing ↳ Theme style guide (Step 15b)
 - [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (Step 15c)
-- [ ] Drawing MCP Tokens manifest page (Step 16)
 - [ ] Filling Token Overview from live variables (Step 17)
 - [ ] Updating Thumbnail cover (brand gradient) (Step 18)
 - [ ] Offering next step (`/create-component`)
 
-**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · rows 11–13 → Steps 15a–15c + Step 16 · rows 14–15 → Steps 17–18 · row 16 → Step 19.
+**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · rows 11–13 → Steps 15a–15c · rows 14–15 → Steps 17–18 · row 16 → Step 19.
 
 ---
 
@@ -279,7 +278,17 @@ Two **STRING** variables hold the font family names from Step 3 (wizard question
 | `typeface/display` | STRING | Display / heading family name (e.g. `Inter`) |
 | `typeface/body` | STRING | Body / UI text family name (e.g. `Inter`) |
 
-**Note:** Full typography metrics (sizes, weights, line heights, scale modes) live in the **Typography** collection (Step 7). Primitives hold **only** these two typeface strings plus color, space, corner, and elevation tokens.
+### Font-weight primitives (FLOAT)
+
+A small weight ladder used by body text **variants** (Step 7b). Primitives stay minimal on purpose — the existing Typography slots still carry their base weights as literals; only the `Body/*/emphasis/*` variant chain aliases this primitive so that "what does emphasis weigh" is edited in **one** place.
+
+| Variable | Type | Value | Used by |
+|---|---|---|---|
+| `font/weight/medium` | FLOAT | **500** | `Body/{LG\|MD\|SM}/emphasis/font-weight` alias target (Step 7b) |
+
+`codeSyntax` for `font/weight/medium`: WEB `var(--font-weight-medium)` · ANDROID `font-weight-medium` · iOS `.Font.weight.medium` (period between every word — never `.FontWeight.medium`).
+
+**Note:** Full typography metrics (sizes, weights, line heights, scale modes) live in the **Typography** collection (Step 7). Primitives hold **only** the two typeface strings, `font/weight/medium`, and the color / space / corner / elevation tokens.
 
 ### codeSyntax for Primitives
 
@@ -297,7 +306,7 @@ Apply to every Primitives variable:
 **Derivation rule:** strip the collection name, join all path segments with `-`, lowercase → WEB `var(--result)`.
 - **ANDROID:** same token shape as WEB custom properties **without** the `var(--` / `)` wrapper — **kebab-case** throughout (e.g. `color-primary-500`, `space-400`).
 - **iOS:** **dot-path semantics** — leading `.`, PascalCase **domain** segment (`Palette`, `Space`, `Corner`, `Elevation`), then **lower** segments matching the path (`primary`, `500`; `medium` for corners; numeric stops as-is).
-- **Corner names with hyphens** in Figma (`Extra-small`) → WEB `corner-extra-small` → ANDROID `corner-extra-small` → iOS `.Corner.extraSmall` (lowerCamel the last segment if needed for readability).
+- **Corner names with hyphens** in Figma (`Extra-small`) → WEB `corner-extra-small` → ANDROID `corner-extra-small` → iOS `.Corner.extra.small`. iOS paths put **a period between every word** — kebab hyphens become dots, never camelCase (so `extra-small` is `extra.small`, not `extraSmall`).
 
 ---
 
@@ -458,7 +467,7 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/background/inverse-content` | `var(--color-inverse-content)` | `inverse-on-surface` | `.Foreground.inverse` |
 | `color/background/inverse-primary` | `var(--color-inverse-brand)` | `inverse-primary` | `.Primary.inverse` |
 | `color/background/scrim` | `var(--color-scrim)` | `scrim` | `.Effect.scrim` |
-| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Background.shadowTint` |
+| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Background.shadow.tint` |
 
 #### `border/` — Outline roles (WEB `--color-border*`)
 
@@ -474,35 +483,35 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/primary/default` | `var(--color-primary)` | `primary` | `.Primary.default` |
 | `color/primary/content` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
 | `color/primary/subtle` | `var(--color-primary-subtle)` | `primary-container` | `.Primary.subtle` |
-| `color/primary/on-subtle` | `var(--color-on-primary-subtle)` | `on-primary-container` | `.Primary.onSubtle` |
+| `color/primary/on-subtle` | `var(--color-on-primary-subtle)` | `on-primary-container` | `.Primary.on.subtle` |
 | `color/primary/fixed` | `var(--color-primary-fixed)` | `primary-fixed` | `.Primary.fixed` |
-| `color/primary/fixed-dim` | `var(--color-primary-fixed-dim)` | `primary-fixed-dim` | `.Primary.fixedDim` |
-| `color/primary/on-fixed` | `var(--color-on-primary-fixed)` | `on-primary-fixed` | `.Primary.onFixed` |
-| `color/primary/on-fixed-variant` | `var(--color-on-primary-fixed-muted)` | `on-primary-fixed-variant` | `.Primary.onFixedMuted` |
+| `color/primary/fixed-dim` | `var(--color-primary-fixed-dim)` | `primary-fixed-dim` | `.Primary.fixed.dim` |
+| `color/primary/on-fixed` | `var(--color-on-primary-fixed)` | `on-primary-fixed` | `.Primary.on.fixed` |
+| `color/primary/on-fixed-variant` | `var(--color-on-primary-fixed-muted)` | `on-primary-fixed-variant` | `.Primary.on.fixed.muted` |
 | `color/secondary/default` | `var(--color-secondary)` | `secondary` | `.Secondary.default` |
 | `color/secondary/content` | `var(--color-on-secondary)` | `on-secondary` | `.Secondary.on` |
 | `color/secondary/subtle` | `var(--color-secondary-subtle)` | `secondary-container` | `.Secondary.subtle` |
-| `color/secondary/on-subtle` | `var(--color-on-secondary-subtle)` | `on-secondary-container` | `.Secondary.onSubtle` |
+| `color/secondary/on-subtle` | `var(--color-on-secondary-subtle)` | `on-secondary-container` | `.Secondary.on.subtle` |
 | `color/secondary/fixed` | `var(--color-secondary-fixed)` | `secondary-fixed` | `.Secondary.fixed` |
-| `color/secondary/fixed-dim` | `var(--color-secondary-fixed-dim)` | `secondary-fixed-dim` | `.Secondary.fixedDim` |
-| `color/secondary/on-fixed` | `var(--color-on-secondary-fixed)` | `on-secondary-fixed` | `.Secondary.onFixed` |
-| `color/secondary/on-fixed-variant` | `var(--color-on-secondary-fixed-muted)` | `on-secondary-fixed-variant` | `.Secondary.onFixedMuted` |
+| `color/secondary/fixed-dim` | `var(--color-secondary-fixed-dim)` | `secondary-fixed-dim` | `.Secondary.fixed.dim` |
+| `color/secondary/on-fixed` | `var(--color-on-secondary-fixed)` | `on-secondary-fixed` | `.Secondary.on.fixed` |
+| `color/secondary/on-fixed-variant` | `var(--color-on-secondary-fixed-muted)` | `on-secondary-fixed-variant` | `.Secondary.on.fixed.muted` |
 | `color/tertiary/default` | `var(--color-accent)` | `tertiary` | `.Tertiary.default` |
 | `color/tertiary/content` | `var(--color-on-accent)` | `on-tertiary` | `.Tertiary.on` |
 | `color/tertiary/subtle` | `var(--color-accent-subtle)` | `tertiary-container` | `.Tertiary.subtle` |
-| `color/tertiary/on-subtle` | `var(--color-on-accent-subtle)` | `on-tertiary-container` | `.Tertiary.onSubtle` |
+| `color/tertiary/on-subtle` | `var(--color-on-accent-subtle)` | `on-tertiary-container` | `.Tertiary.on.subtle` |
 | `color/tertiary/fixed` | `var(--color-accent-fixed)` | `tertiary-fixed` | `.Tertiary.fixed` |
-| `color/tertiary/fixed-dim` | `var(--color-accent-fixed-dim)` | `tertiary-fixed-dim` | `.Tertiary.fixedDim` |
-| `color/tertiary/on-fixed` | `var(--color-on-accent-fixed)` | `on-tertiary-fixed` | `.Tertiary.onFixed` |
-| `color/tertiary/on-fixed-variant` | `var(--color-on-accent-fixed-muted)` | `on-tertiary-fixed-variant` | `.Tertiary.onFixedMuted` |
+| `color/tertiary/fixed-dim` | `var(--color-accent-fixed-dim)` | `tertiary-fixed-dim` | `.Tertiary.fixed.dim` |
+| `color/tertiary/on-fixed` | `var(--color-on-accent-fixed)` | `on-tertiary-fixed` | `.Tertiary.on.fixed` |
+| `color/tertiary/on-fixed-variant` | `var(--color-on-accent-fixed-muted)` | `on-tertiary-fixed-variant` | `.Tertiary.on.fixed.muted` |
 | `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
-| `color/error/content` | `var(--color-on-danger)` | `on-error` | `.Status.onError` |
-| `color/error/subtle` | `var(--color-danger-subtle)` | `error-container` | `.Status.errorSubtle` |
-| `color/error/on-subtle` | `var(--color-on-danger-subtle)` | `on-error-container` | `.Status.onErrorSubtle` |
-| `color/error/fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
-| `color/error/fixed-dim` | `var(--color-danger-fixed-dim)` | `error-fixed-dim` | `.Status.errorFixedDim` |
-| `color/error/on-fixed` | `var(--color-on-danger-fixed)` | `on-error-fixed` | `.Status.onErrorFixed` |
-| `color/error/on-fixed-variant` | `var(--color-on-danger-fixed-muted)` | `on-error-fixed-variant` | `.Status.onErrorFixedMuted` |
+| `color/error/content` | `var(--color-on-danger)` | `on-error` | `.Status.on.error` |
+| `color/error/subtle` | `var(--color-danger-subtle)` | `error-container` | `.Status.error.subtle` |
+| `color/error/on-subtle` | `var(--color-on-danger-subtle)` | `on-error-container` | `.Status.on.error.subtle` |
+| `color/error/fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.error.fixed` |
+| `color/error/fixed-dim` | `var(--color-danger-fixed-dim)` | `error-fixed-dim` | `.Status.error.fixed.dim` |
+| `color/error/on-fixed` | `var(--color-on-danger-fixed)` | `on-error-fixed` | `.Status.on.error.fixed` |
+| `color/error/on-fixed-variant` | `var(--color-on-danger-fixed-muted)` | `on-error-fixed-variant` | `.Status.on.error.fixed.muted` |
 
 #### Extensions (not in core M3 baseline diagram — shadcn alignment)
 
@@ -511,7 +520,7 @@ codeSyntax values are **set explicitly per token** — they are NOT derived from
 | `color/component/input` | `var(--color-field)` | `input` | `.Component.field` |
 | `color/component/ring` | `var(--color-focus-ring)` | `ring` | `.Component.ring` |
 | `color/component/sidebar` | `var(--color-sidebar)` | `sidebar` | `.Component.sidebar` |
-| `color/component/sidebar-content` | `var(--color-on-sidebar)` | `sidebar-foreground` | `.Component.sidebarOn` |
+| `color/component/sidebar-content` | `var(--color-on-sidebar)` | `sidebar-foreground` | `.Component.sidebar.on` |
 
 ---
 
@@ -586,20 +595,20 @@ The nonlinear rule (Android 14 behaviour) prevents very large display text from 
 
 **ANDROID** — same string as the WEB custom property **without** `var(--` / `)`: **kebab-case** (e.g. `display-lg-font-size`).
 
-**iOS** — **nested dot path** `.Typography.{category}.{size}.{property}`: `category` = first segment as lowercase word (`Display` → `display`, `Headline` → `headline`, `Title` → `title`, `Body` → `body`, `Label` → `label`); `size` = second segment lowercased (`LG` → `lg`, `MD` → `md`, `SM` → `sm`); `property` = tail in **lowerCamel** (`font-size` → `fontSize`, `font-family` → `fontFamily`, `font-weight` → `fontWeight`, `line-height` → `lineHeight`). Example: `Display/LG/font-size` → `.Typography.display.lg.fontSize`.
+**iOS** — **nested dot path** `.Typography.{category}.{size}.{property}`: `category` = first segment as lowercase word (`Display` → `display`, `Headline` → `headline`, `Title` → `title`, `Body` → `body`, `Label` → `label`); `size` = second segment lowercased (`LG` → `lg`, `MD` → `md`, `SM` → `sm`); `property` = tail with **a period between every word** — kebab hyphens split into dot-separated lowercase segments, **never camelCase** (`font-size` → `font.size`, `font-family` → `font.family`, `font-weight` → `font.weight`, `line-height` → `line.height`). Example: `Display/LG/font-size` → `.Typography.display.lg.font.size`.
 
 Every variable in all **15** slots follows this pattern — apply to all **60** variables:
 
 | Property | WEB example | ANDROID | iOS (semantic) |
 |---|---|---|---|
-| `Display/LG/font-family` | `var(--display-lg-font-family)` | `display-lg-font-family` | `.Typography.display.lg.fontFamily` |
-| `Display/LG/font-size` | `var(--display-lg-font-size)` | `display-lg-font-size` | `.Typography.display.lg.fontSize` |
-| `Display/LG/font-weight` | `var(--display-lg-font-weight)` | `display-lg-font-weight` | `.Typography.display.lg.fontWeight` |
-| `Display/LG/line-height` | `var(--display-lg-line-height)` | `display-lg-line-height` | `.Typography.display.lg.lineHeight` |
-| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.fontSize` |
-| `Title/MD/font-size` | `var(--title-md-font-size)` | `title-md-font-size` | `.Typography.title.md.fontSize` |
-| `Body/MD/font-family` | `var(--body-md-font-family)` | `body-md-font-family` | `.Typography.body.md.fontFamily` |
-| `Label/SM/font-weight` | `var(--label-sm-font-weight)` | `label-sm-font-weight` | `.Typography.label.sm.fontWeight` |
+| `Display/LG/font-family` | `var(--display-lg-font-family)` | `display-lg-font-family` | `.Typography.display.lg.font.family` |
+| `Display/LG/font-size` | `var(--display-lg-font-size)` | `display-lg-font-size` | `.Typography.display.lg.font.size` |
+| `Display/LG/font-weight` | `var(--display-lg-font-weight)` | `display-lg-font-weight` | `.Typography.display.lg.font.weight` |
+| `Display/LG/line-height` | `var(--display-lg-line-height)` | `display-lg-line-height` | `.Typography.display.lg.line.height` |
+| `Headline/LG/font-size` | `var(--headline-lg-font-size)` | `headline-lg-font-size` | `.Typography.headline.lg.font.size` |
+| `Title/MD/font-size` | `var(--title-md-font-size)` | `title-md-font-size` | `.Typography.title.md.font.size` |
+| `Body/MD/font-family` | `var(--body-md-font-family)` | `body-md-font-family` | `.Typography.body.md.font.family` |
+| `Label/SM/font-weight` | `var(--label-sm-font-weight)` | `label-sm-font-weight` | `.Typography.label.sm.font.weight` |
 
 (Pattern repeats for all 15 slots — each with the same 4 properties; iOS always `.Typography.{category}.{size}.{propertyCamel}`.)
 
@@ -629,7 +638,86 @@ Step **13b** must emit the **per-property** semantic aliases (e.g. `--text-h1-fo
 
 ---
 
-## Step 8 — Generate the Layout collection
+## Step 7b — Body text variants: emphasis, italic, link, strikethrough
+
+Long-form prose needs four inline variants on top of each body size. These are modelled as **full slots** so they behave consistently with the rest of Typography (publishable Figma text styles + code-exportable variables). They extend — they do not replace — the base body slots (variable paths `Body/LG`, `Body/MD`, `Body/SM` / text styles `Body/LG/regular`, `Body/MD/regular`, `Body/SM/regular` — see § 8 step 2 for the text-style naming rule). Each body size therefore ships **five text styles** nested inside its `Body/{size}/` folder: `regular`, `emphasis`, `italic`, `link`, `strikethrough`.
+
+### 12 new slots (3 sizes × 4 variants)
+
+| Slot | Variant of | Weight | fontName `style` | `textDecoration` | Text-node fill |
+|---|---|---|---|---|---|
+| `Body/LG/emphasis`, `Body/MD/emphasis`, `Body/SM/emphasis` | base body | **500** (alias → `font/weight/medium` Primitive) | `Medium` | `NONE` | inherit paragraph |
+| `Body/LG/italic`, `Body/MD/italic`, `Body/SM/italic` | base body | base (400) | `Italic` | `NONE` | inherit paragraph |
+| `Body/LG/link`, `Body/MD/link`, `Body/SM/link` | base body | base (400) | `Regular` | **`UNDERLINE`** | bind to **`color/primary/default`** (the brand hue — `/content` is the text-on-primary pairing and is nearly white, invisible on neutral body backgrounds) |
+| `Body/LG/strikethrough`, `Body/MD/strikethrough`, `Body/SM/strikethrough` | base body | base (400) | `Regular` | **`STRIKETHROUGH`** | bind to **`color/background/content-muted`** |
+
+**Italic font-face availability:** the body family must ship an italic face (e.g. `Inter Italic`). The push script **attempts** `fontName.style = 'Italic'` and falls back to the base style with a console warning `italic face not loaded for {family} — Body/{size}/italic style created without italic glyph; add the Italic font face to the Figma file to resolve`.
+
+### 48 new Typography variables (aliases, all 8 modes)
+
+Each of the 12 variant slots gets the **same 4 properties** as every other slot:
+
+| Property | Alias target (all 8 modes) |
+|---|---|
+| `Body/{size}/{variant}/font-family` | **`typeface/body`** Primitive (same as base `Body/*/font-family`) |
+| `Body/{size}/{variant}/font-size` | **`Body/{size}/font-size`** — aliases the base, so size scales in lock-step across all 8 Android modes without duplicating the scaling formula |
+| `Body/{size}/{variant}/line-height` | **`Body/{size}/line-height`** — same lock-step cascade |
+| `Body/{size}/{variant}/font-weight` | `emphasis` → **`font/weight/medium`** Primitive (500); `italic` / `link` / `strikethrough` → **`Body/{size}/font-weight`** (base) |
+
+**Aliasing rationale:** 44 of the 48 new variables are alias-back chains, so the entire Body type ramp remains **one editable surface**: bumping `Body/MD/font-size` at mode 150 also updates `Body/MD/emphasis/font-size`, `Body/MD/italic/font-size`, `Body/MD/link/font-size`, and `Body/MD/strikethrough/font-size` at mode 150 automatically. Only the 3 `emphasis/font-weight` variables break this rule and alias the `font/weight/medium` Primitive instead.
+
+### codeSyntax for variant slots
+
+Same derivation as §7 but with the **4-segment** slot path (`body/{size}/{variant}/{property}`):
+
+| Example variable | WEB | ANDROID | iOS |
+|---|---|---|---|
+| `Body/LG/emphasis/font-size` | `var(--body-lg-emphasis-font-size)` | `body-lg-emphasis-font-size` | `.Typography.body.lg.emphasis.font.size` |
+| `Body/MD/italic/font-weight` | `var(--body-md-italic-font-weight)` | `body-md-italic-font-weight` | `.Typography.body.md.italic.font.weight` |
+| `Body/SM/link/line-height` | `var(--body-sm-link-line-height)` | `body-sm-link-line-height` | `.Typography.body.sm.link.line.height` |
+| `Body/LG/strikethrough/font-family` | `var(--body-lg-strikethrough-font-family)` | `body-lg-strikethrough-font-family` | `.Typography.body.lg.strikethrough.font.family` |
+
+(Pattern repeats for all 48 variant variables.)
+
+### Figma text styles (publish 12)
+
+After the 48 variables exist, create **12 text styles** with these bindings + style-level properties:
+
+```
+Body/LG/emphasis      ← fontSize/lineHeight/fontFamily/fontWeight bound to Body/LG/emphasis/*
+                        fontName.style = 'Medium'            (or Regular + explicit weight 500 binding)
+                        textDecoration = 'NONE'
+Body/LG/italic        ← same variable bindings (weight 400)
+                        fontName.style = 'Italic'            (fall back to 'Regular' + warn if face missing)
+                        textDecoration = 'NONE'
+Body/LG/link          ← same variable bindings (weight 400)
+                        fontName.style = 'Regular'
+                        textDecoration = 'UNDERLINE'
+Body/LG/strikethrough ← same variable bindings (weight 400)
+                        fontName.style = 'Regular'
+                        textDecoration = 'STRIKETHROUGH'
+```
+
+Same pattern for `Body/MD/*` and `Body/SM/*` — **12 published styles total.**
+
+### Text-node fill coupling (critical — not captured in the style)
+
+Figma text styles do **not** include fill color — the style captures size / line / weight / family / fontName / textDecoration, but the `fills` array lives on each text node. Every call site that applies a `link` or `strikethrough` style **must also** bind the text node's fill:
+
+| Style applied | Required fill binding |
+|---|---|
+| `Body/*/link` | `fills[0]` → `VARIABLE_ALIAS` → **`color/primary/default`** (Theme, inherits Light/Dark). Do **not** use `color/primary/content` — that token is the on-primary text/icon color (sits on `primary/default`) and will be invisible on neutral page/background fills. |
+| `Body/*/strikethrough` | `fills[0]` → `VARIABLE_ALIAS` → **`color/background/content-muted`** (Theme, inherits Light/Dark) |
+| `Body/*/emphasis`, `Body/*/italic` | no change — inherits whatever fill the surrounding paragraph already has |
+
+Codegen consumers (tokens.css, Compose, SwiftUI) cover this by pairing each body-variant class with its color custom property — see §13b additions.
+
+### Variable-build checklist
+
+1. In the Primitives collection, add `font/weight/medium = 500` (FLOAT) with the codeSyntax from §5.
+2. In the Typography collection, for each of `LG`, `MD`, `SM` × `emphasis`, `italic`, `link`, `strikethrough` (12 slots) and each of the 4 properties (48 variable rows), `figma.variables.createVariable(...)` then in **every** of the 8 modes set the `valuesByMode[modeId]` to the alias target from the table above. **Do not** set literal values — all 48 must resolve through aliases so the Android scale modes keep working without duplication.
+3. Write `codeSyntax` on each new variable per §7b pattern before publishing.
+4. Run the Step 15c Text Styles re-render (below) so the 12 new rows appear in the table.
 
 Create (or update) the `Layout` collection with a single **`Default`** mode.
 
@@ -769,11 +857,11 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   Radius — base {N}px
     Token                Value    WEB                       ANDROID / iOS
     Corner/None          0px      var(--corner-none)        corner-none · .Corner.none
-    Corner/Extra-small   {N}px    var(--corner-extra-small) corner-extra-small · .Corner.extraSmall
+    Corner/Extra-small   {N}px    var(--corner-extra-small) corner-extra-small · .Corner.extra.small
     Corner/Small         {N}px    var(--corner-small)       corner-small · .Corner.small
     Corner/Medium        {N}px    var(--corner-medium)      corner-medium · .Corner.medium
     Corner/Large         {N}px    var(--corner-large)       corner-large · .Corner.large
-    Corner/Extra-large   28px     var(--corner-extra-large) corner-extra-large · .Corner.extraLarge
+    Corner/Extra-large   28px     var(--corner-extra-large) corner-extra-large · .Corner.extra.large
     Corner/Full          9999px   var(--corner-full)        corner-full · .Corner.full
 
   Elevation
@@ -807,7 +895,7 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   color/background/inverse-content     {hex}   {hex}   var(--color-inverse-content)     inverse-on-surface          .Foreground.inverse
   color/background/inverse-primary {hex}  {hex}   var(--color-inverse-brand)       inverse-primary            .Primary.inverse
   color/background/scrim          rgba…   rgba…   var(--color-scrim)               scrim                     .Effect.scrim
-  color/background/shadow         rgba…   rgba…   var(--color-shadow-tint)         shadow                    .Background.shadowTint
+  color/background/shadow         rgba…   rgba…   var(--color-shadow-tint)         shadow                    .Background.shadow.tint
   — border/ (outline) —
   color/border/default            {hex}   {hex}   var(--color-border)              outline                   .Border.default
   color/border/subtle             {hex}   {hex}   var(--color-border-subtle)       outline-variant            .Border.subtle
@@ -815,43 +903,43 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   color/primary/default           {hex}   {hex}   var(--color-primary)             primary                   .Primary.default
   color/primary/content                {hex}   {hex}   var(--color-on-primary)          on-primary                 .Primary.on
   color/primary/subtle              {hex}   {hex}   var(--color-primary-subtle)        primary-container          .Primary.subtle
-  color/primary/on-subtle        {hex}   {hex}   var(--color-on-primary-subtle)     on-primary-container        .Primary.onSubtle
+  color/primary/on-subtle        {hex}   {hex}   var(--color-on-primary-subtle)     on-primary-container        .Primary.on.subtle
   color/primary/fixed             {hex}   {hex}   var(--color-primary-fixed)       primary-fixed              .Primary.fixed
-  color/primary/fixed-dim         {hex}   {hex}   var(--color-primary-fixed-dim)   primary-fixed-dim           .Primary.fixedDim
-  color/primary/on-fixed          {hex}   {hex}   var(--color-on-primary-fixed)    on-primary-fixed            .Primary.onFixed
-  color/primary/on-fixed-variant  {hex}   {hex}   var(--color-on-primary-fixed-muted) on-primary-fixed-variant  .Primary.onFixedMuted
+  color/primary/fixed-dim         {hex}   {hex}   var(--color-primary-fixed-dim)   primary-fixed-dim           .Primary.fixed.dim
+  color/primary/on-fixed          {hex}   {hex}   var(--color-on-primary-fixed)    on-primary-fixed            .Primary.on.fixed
+  color/primary/on-fixed-variant  {hex}   {hex}   var(--color-on-primary-fixed-muted) on-primary-fixed-variant  .Primary.on.fixed.muted
   — secondary/ —
   color/secondary/default         {hex}   {hex}   var(--color-secondary)           secondary                 .Secondary.default
   color/secondary/content              {hex}   {hex}   var(--color-on-secondary)        on-secondary               .Secondary.on
   color/secondary/subtle            {hex}   {hex}   var(--color-secondary-subtle)      secondary-container        .Secondary.subtle
-  color/secondary/on-subtle      {hex}   {hex}   var(--color-on-secondary-subtle)   on-secondary-container      .Secondary.onSubtle
+  color/secondary/on-subtle      {hex}   {hex}   var(--color-on-secondary-subtle)   on-secondary-container      .Secondary.on.subtle
   color/secondary/fixed           {hex}   {hex}   var(--color-secondary-fixed)     secondary-fixed            .Secondary.fixed
-  color/secondary/fixed-dim       {hex}   {hex}   var(--color-secondary-fixed-dim) secondary-fixed-dim         .Secondary.fixedDim
-  color/secondary/on-fixed        {hex}   {hex}   var(--color-on-secondary-fixed)  on-secondary-fixed          .Secondary.onFixed
-  color/secondary/on-fixed-variant {hex}  {hex}   var(--color-on-secondary-fixed-muted) on-secondary-fixed-variant .Secondary.onFixedMuted
+  color/secondary/fixed-dim       {hex}   {hex}   var(--color-secondary-fixed-dim) secondary-fixed-dim         .Secondary.fixed.dim
+  color/secondary/on-fixed        {hex}   {hex}   var(--color-on-secondary-fixed)  on-secondary-fixed          .Secondary.on.fixed
+  color/secondary/on-fixed-variant {hex}  {hex}   var(--color-on-secondary-fixed-muted) on-secondary-fixed-variant .Secondary.on.fixed.muted
   — tertiary/ —
   color/tertiary/default          {hex}   {hex}   var(--color-accent)              tertiary                  .Tertiary.default
   color/tertiary/content               {hex}   {hex}   var(--color-on-accent)           on-tertiary                .Tertiary.on
   color/tertiary/subtle             {hex}   {hex}   var(--color-accent-subtle)         tertiary-container         .Tertiary.subtle
-  color/tertiary/on-subtle       {hex}   {hex}   var(--color-on-accent-subtle)      on-tertiary-container       .Tertiary.onSubtle
+  color/tertiary/on-subtle       {hex}   {hex}   var(--color-on-accent-subtle)      on-tertiary-container       .Tertiary.on.subtle
   color/tertiary/fixed            {hex}   {hex}   var(--color-accent-fixed)        tertiary-fixed             .Tertiary.fixed
-  color/tertiary/fixed-dim        {hex}   {hex}   var(--color-accent-fixed-dim)    tertiary-fixed-dim          .Tertiary.fixedDim
-  color/tertiary/on-fixed         {hex}   {hex}   var(--color-on-accent-fixed)     on-tertiary-fixed           .Tertiary.onFixed
-  color/tertiary/on-fixed-variant {hex}   {hex}   var(--color-on-accent-fixed-muted) on-tertiary-fixed-variant  .Tertiary.onFixedMuted
+  color/tertiary/fixed-dim        {hex}   {hex}   var(--color-accent-fixed-dim)    tertiary-fixed-dim          .Tertiary.fixed.dim
+  color/tertiary/on-fixed         {hex}   {hex}   var(--color-on-accent-fixed)     on-tertiary-fixed           .Tertiary.on.fixed
+  color/tertiary/on-fixed-variant {hex}   {hex}   var(--color-on-accent-fixed-muted) on-tertiary-fixed-variant  .Tertiary.on.fixed.muted
   — error/ —
   color/error/default              {hex}   {hex}   var(--color-danger)              error                     .Status.error
-  color/error/content           {hex}   {hex}   var(--color-on-danger)           on-error                   .Status.onError
-  color/error/subtle         {hex}   {hex}   var(--color-danger-subtle)         error-container            .Status.errorSubtle
-  color/error/on-subtle   {hex}   {hex}   var(--color-on-danger-subtle)      on-error-container          .Status.onErrorSubtle
-  color/error/fixed        {hex}   {hex}   var(--color-danger-fixed)        error-fixed                .Status.errorFixed
-  color/error/fixed-dim    {hex}   {hex}   var(--color-danger-fixed-dim)    error-fixed-dim             .Status.errorFixedDim
-  color/error/on-fixed     {hex}   {hex}   var(--color-on-danger-fixed)     on-error-fixed              .Status.onErrorFixed
-  color/error/on-fixed-variant {hex} {hex} var(--color-on-danger-fixed-muted) on-error-fixed-variant    .Status.onErrorFixedMuted
+  color/error/content           {hex}   {hex}   var(--color-on-danger)           on-error                   .Status.on.error
+  color/error/subtle         {hex}   {hex}   var(--color-danger-subtle)         error-container            .Status.error.subtle
+  color/error/on-subtle   {hex}   {hex}   var(--color-on-danger-subtle)      on-error-container          .Status.on.error.subtle
+  color/error/fixed        {hex}   {hex}   var(--color-danger-fixed)        error-fixed                .Status.error.fixed
+  color/error/fixed-dim    {hex}   {hex}   var(--color-danger-fixed-dim)    error-fixed-dim             .Status.error.fixed.dim
+  color/error/on-fixed     {hex}   {hex}   var(--color-on-danger-fixed)     on-error-fixed              .Status.on.error.fixed
+  color/error/on-fixed-variant {hex} {hex} var(--color-on-danger-fixed-muted) on-error-fixed-variant    .Status.on.error.fixed.muted
   — component/ (shadcn extensions) —
   color/component/input           {hex}   {hex}   var(--color-field)               input                     .Component.field
   color/component/ring            {hex}   {hex}   var(--color-focus-ring)          ring                      .Component.ring
   color/component/sidebar         {hex}   {hex}   var(--color-sidebar)             sidebar                   .Component.sidebar
-  color/component/sidebar-content      {hex}   {hex}   var(--color-on-sidebar)          sidebar-foreground         .Component.sidebarOn
+  color/component/sidebar-content      {hex}   {hex}   var(--color-on-sidebar)          sidebar-foreground         .Component.sidebar.on
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
   TYPOGRAPHY  (60 variables · 8 scale modes)
@@ -860,10 +948,10 @@ Show the plan using this exact structure. Substitute all `{…}` placeholders wi
   Syntax pattern: {Category}/{Size}/{property} → kebab → WEB var(--{kebab}) · ANDROID kebab · iOS .Typography.{category}.{size}.{propertyCamel}
 
   Slot          Prop          WEB syntax                      ANDROID          iOS (semantic)
-  Display/LG    font-size     var(--display-lg-font-size)     display-lg-font-size     .Typography.display.lg.fontSize
-                font-family   var(--display-lg-font-family)   display-lg-font-family   .Typography.display.lg.fontFamily
-                font-weight   var(--display-lg-font-weight)   display-lg-font-weight   .Typography.display.lg.fontWeight
-                line-height   var(--display-lg-line-height)   display-lg-line-height   .Typography.display.lg.lineHeight
+  Display/LG    font-size     var(--display-lg-font-size)     display-lg-font-size     .Typography.display.lg.font.size
+                font-family   var(--display-lg-font-family)   display-lg-font-family   .Typography.display.lg.font.family
+                font-weight   var(--display-lg-font-weight)   display-lg-font-weight   .Typography.display.lg.font.weight
+                line-height   var(--display-lg-line-height)   display-lg-line-height   .Typography.display.lg.line.height
   (pattern repeats for all 15 slots — iOS always `.Typography.{category}.{size}.{propertyCamel}`)
 
   Sizes — 100 (default) / 130 (large) / 200 (max):
@@ -1607,6 +1695,68 @@ Construct the full CSS file content using this exact structure and write it to `
   --body-sm-font-weight:     400;
   --body-sm-line-height:     16px;
 
+  /* Body variants (Step 7b) — size / line / family alias the base body; only weight + decoration differ. */
+  --font-weight-medium:      500;
+
+  --body-lg-emphasis-font-family: var(--body-lg-font-family);
+  --body-lg-emphasis-font-size:   var(--body-lg-font-size);
+  --body-lg-emphasis-font-weight: var(--font-weight-medium);
+  --body-lg-emphasis-line-height: var(--body-lg-line-height);
+  --body-md-emphasis-font-family: var(--body-md-font-family);
+  --body-md-emphasis-font-size:   var(--body-md-font-size);
+  --body-md-emphasis-font-weight: var(--font-weight-medium);
+  --body-md-emphasis-line-height: var(--body-md-line-height);
+  --body-sm-emphasis-font-family: var(--body-sm-font-family);
+  --body-sm-emphasis-font-size:   var(--body-sm-font-size);
+  --body-sm-emphasis-font-weight: var(--font-weight-medium);
+  --body-sm-emphasis-line-height: var(--body-sm-line-height);
+
+  --body-lg-italic-font-family: var(--body-lg-font-family);
+  --body-lg-italic-font-size:   var(--body-lg-font-size);
+  --body-lg-italic-font-weight: var(--body-lg-font-weight);
+  --body-lg-italic-line-height: var(--body-lg-line-height);
+  --body-md-italic-font-family: var(--body-md-font-family);
+  --body-md-italic-font-size:   var(--body-md-font-size);
+  --body-md-italic-font-weight: var(--body-md-font-weight);
+  --body-md-italic-line-height: var(--body-md-line-height);
+  --body-sm-italic-font-family: var(--body-sm-font-family);
+  --body-sm-italic-font-size:   var(--body-sm-font-size);
+  --body-sm-italic-font-weight: var(--body-sm-font-weight);
+  --body-sm-italic-line-height: var(--body-sm-line-height);
+
+  --body-lg-link-font-family: var(--body-lg-font-family);
+  --body-lg-link-font-size:   var(--body-lg-font-size);
+  --body-lg-link-font-weight: var(--body-lg-font-weight);
+  --body-lg-link-line-height: var(--body-lg-line-height);
+  --body-md-link-font-family: var(--body-md-font-family);
+  --body-md-link-font-size:   var(--body-md-font-size);
+  --body-md-link-font-weight: var(--body-md-font-weight);
+  --body-md-link-line-height: var(--body-md-line-height);
+  --body-sm-link-font-family: var(--body-sm-font-family);
+  --body-sm-link-font-size:   var(--body-sm-font-size);
+  --body-sm-link-font-weight: var(--body-sm-font-weight);
+  --body-sm-link-line-height: var(--body-sm-line-height);
+
+  --body-lg-strikethrough-font-family: var(--body-lg-font-family);
+  --body-lg-strikethrough-font-size:   var(--body-lg-font-size);
+  --body-lg-strikethrough-font-weight: var(--body-lg-font-weight);
+  --body-lg-strikethrough-line-height: var(--body-lg-line-height);
+  --body-md-strikethrough-font-family: var(--body-md-font-family);
+  --body-md-strikethrough-font-size:   var(--body-md-font-size);
+  --body-md-strikethrough-font-weight: var(--body-md-font-weight);
+  --body-md-strikethrough-line-height: var(--body-md-line-height);
+  --body-sm-strikethrough-font-family: var(--body-sm-font-family);
+  --body-sm-strikethrough-font-size:   var(--body-sm-font-size);
+  --body-sm-strikethrough-font-weight: var(--body-sm-font-weight);
+  --body-sm-strikethrough-line-height: var(--body-sm-line-height);
+
+  /* Decoration + color coupling for link / strikethrough (Figma text styles carry the
+     text-decoration; these custom properties are the canonical web surface). */
+  --body-link-text-decoration:          underline;
+  --body-strikethrough-text-decoration: line-through;
+  --body-link-color:                    var(--color-primary-default);
+  --body-strikethrough-color:           var(--color-content-muted);
+
   --label-lg-font-family:    var(--typeface-body);
   --label-lg-font-size:      14px;
   --label-lg-font-weight:    500;
@@ -1673,6 +1823,66 @@ Construct the full CSS file content using this exact structure and write it to `
   --text-body-sm-font-size:   var(--body-sm-font-size);
   --text-body-sm-font-weight: var(--body-sm-font-weight);
   --text-body-sm-line-height: var(--body-sm-line-height);
+
+  /* Semantic body-variant aliases — use these in prose / component CSS. Pair each variant
+     with its decoration + color custom property (below) so <a class="text-body-link"> renders
+     with underline + brand color in one line. */
+  --text-body-lg-emphasis-font-family: var(--body-lg-emphasis-font-family);
+  --text-body-lg-emphasis-font-size:   var(--body-lg-emphasis-font-size);
+  --text-body-lg-emphasis-font-weight: var(--body-lg-emphasis-font-weight);
+  --text-body-lg-emphasis-line-height: var(--body-lg-emphasis-line-height);
+  --text-body-emphasis-font-family:    var(--body-md-emphasis-font-family);
+  --text-body-emphasis-font-size:      var(--body-md-emphasis-font-size);
+  --text-body-emphasis-font-weight:    var(--body-md-emphasis-font-weight);
+  --text-body-emphasis-line-height:    var(--body-md-emphasis-line-height);
+  --text-body-sm-emphasis-font-family: var(--body-sm-emphasis-font-family);
+  --text-body-sm-emphasis-font-size:   var(--body-sm-emphasis-font-size);
+  --text-body-sm-emphasis-font-weight: var(--body-sm-emphasis-font-weight);
+  --text-body-sm-emphasis-line-height: var(--body-sm-emphasis-line-height);
+
+  --text-body-lg-italic-font-family: var(--body-lg-italic-font-family);
+  --text-body-lg-italic-font-size:   var(--body-lg-italic-font-size);
+  --text-body-lg-italic-font-weight: var(--body-lg-italic-font-weight);
+  --text-body-lg-italic-line-height: var(--body-lg-italic-line-height);
+  --text-body-italic-font-family:    var(--body-md-italic-font-family);
+  --text-body-italic-font-size:      var(--body-md-italic-font-size);
+  --text-body-italic-font-weight:    var(--body-md-italic-font-weight);
+  --text-body-italic-line-height:    var(--body-md-italic-line-height);
+  --text-body-sm-italic-font-family: var(--body-sm-italic-font-family);
+  --text-body-sm-italic-font-size:   var(--body-sm-italic-font-size);
+  --text-body-sm-italic-font-weight: var(--body-sm-italic-font-weight);
+  --text-body-sm-italic-line-height: var(--body-sm-italic-line-height);
+  --text-body-italic-font-style:     italic;
+
+  --text-body-lg-link-font-family: var(--body-lg-link-font-family);
+  --text-body-lg-link-font-size:   var(--body-lg-link-font-size);
+  --text-body-lg-link-font-weight: var(--body-lg-link-font-weight);
+  --text-body-lg-link-line-height: var(--body-lg-link-line-height);
+  --text-body-link-font-family:    var(--body-md-link-font-family);
+  --text-body-link-font-size:      var(--body-md-link-font-size);
+  --text-body-link-font-weight:    var(--body-md-link-font-weight);
+  --text-body-link-line-height:    var(--body-md-link-line-height);
+  --text-body-sm-link-font-family: var(--body-sm-link-font-family);
+  --text-body-sm-link-font-size:   var(--body-sm-link-font-size);
+  --text-body-sm-link-font-weight: var(--body-sm-link-font-weight);
+  --text-body-sm-link-line-height: var(--body-sm-link-line-height);
+  --text-body-link-text-decoration: var(--body-link-text-decoration);
+  --text-body-link-color:           var(--body-link-color);
+
+  --text-body-lg-strikethrough-font-family: var(--body-lg-strikethrough-font-family);
+  --text-body-lg-strikethrough-font-size:   var(--body-lg-strikethrough-font-size);
+  --text-body-lg-strikethrough-font-weight: var(--body-lg-strikethrough-font-weight);
+  --text-body-lg-strikethrough-line-height: var(--body-lg-strikethrough-line-height);
+  --text-body-strikethrough-font-family:    var(--body-md-strikethrough-font-family);
+  --text-body-strikethrough-font-size:      var(--body-md-strikethrough-font-size);
+  --text-body-strikethrough-font-weight:    var(--body-md-strikethrough-font-weight);
+  --text-body-strikethrough-line-height:    var(--body-md-strikethrough-line-height);
+  --text-body-sm-strikethrough-font-family: var(--body-sm-strikethrough-font-family);
+  --text-body-sm-strikethrough-font-size:   var(--body-sm-strikethrough-font-size);
+  --text-body-sm-strikethrough-font-weight: var(--body-sm-strikethrough-font-weight);
+  --text-body-sm-strikethrough-line-height: var(--body-sm-strikethrough-line-height);
+  --text-body-strikethrough-text-decoration: var(--body-strikethrough-text-decoration);
+  --text-body-strikethrough-color:           var(--body-strikethrough-color);
 
   --text-label-font-family:  var(--label-lg-font-family);
   --text-label-font-size:    var(--label-lg-font-size);
@@ -1769,7 +1979,6 @@ Immediately continue to **Steps 15a–18** (Figma canvas) in the same skill run 
 | 15a | `Canvas: Step 15a ↳ Primitives — done` or `… skipped (reason)` |
 | 15b | `Canvas: Step 15b ↳ Theme — done` or `… skipped (reason)` |
 | 15c | `Canvas: Step 15c ↳ Layout + ↳ Text Styles + ↳ Effects — done` or `… skipped (reason)` |
-| 16 | `Canvas: Step 16 ↳ MCP Tokens — done` or `… skipped (reason)` |
 | 17 | `Canvas: Step 17 ↳ Token Overview — done` or `… skipped (reason)` |
 | 18 | `Canvas: Step 18 Thumbnail Cover — done` or `… skipped (reason)` |
 
@@ -1783,18 +1992,17 @@ Agents **must read this section** before executing Steps **15a–18** and any `u
 
 | Rule | Value |
 |---|---|
-| Content width | 1440px canvas column under doc header (`y > 360` body) |
-| Outer padding | 40px horizontal, 40px top / 80px bottom where a `_PageContent` wrapper exists |
-| Vertical rhythm | 8px grid (`itemSpacing` / gaps use multiples of 8); **48px** `itemSpacing` between **major** sections (ramps, Theme groups, MCP collection tables) |
-| Page body shell | One **`_PageContent`** frame per page: **`layoutMode: VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, **`counterAxisSizingMode: FIXED`**, **`layoutAlign: STRETCH`**, width **1360**, outer padding as above. All sections are children of this shell. |
+| Page canvas width | **1800px** — pages sit on a 1800px canvas column that the `_Header` and `_PageContent` frames both span. |
+| `_Header` component | Every page's `_Header` instance: **`layoutMode: VERTICAL`** (auto-layout, **not** `NONE`), **FIXED height 320**, **FIXED width 1800** (resize every existing instance to 1800 so it lines up with `_PageContent`), **`cornerRadius: 0`** (the square bottom edge lets `_PageContent` butt directly against it for a clean seam — **do not** re-introduce the legacy 24px radius). Internal structure: a horizontal top row (logo 40×40 + "DETROIT LABS" label, `spaceBetween`, height 40) and a vertical `_title` + `_description` stack. Padding `{40, 40, 40, 61}` (L·T·R·B, asymmetric bottom preserves the legacy description baseline). Outer `itemSpacing 60`, title-stack `itemSpacing 23`. |
+| `_PageContent` shell | One **`_PageContent`** frame per page, positioned **`x: 0, y: 320`** (directly beneath `_Header` with no gap): **`layoutMode: VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, **`counterAxisSizingMode: FIXED`**, **`layoutAlign: STRETCH`**, **width 1800**, **padding 80px on all four sides**, **`itemSpacing 48`**, **fill `#FFFFFF` (literal white, not token-bound)**. All sections/tables are children of this shell. Inner content width = **1640** (1800 − 80 − 80) — every `doc/table-group/*` and `doc/table/*` must render at **1640** wide. |
+| Vertical rhythm | 8px grid (`itemSpacing` / gaps use multiples of 8); **48px** `itemSpacing` between **major** sections (ramps, Theme groups, style-guide tables). |
 | Section frames | Auto-layout **`VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, **`counterAxisSizingMode: FIXED`**, width **fill (STRETCH)** inside `_PageContent`; **`layoutAlign: STRETCH`** |
 | Section shell | Inset panels: **`cornerRadius` 16**, stroke **`color/border/subtle`**, **`itemSpacing` 24**; section **fill** **`color/background/default`** (Theme · Light); **token cards** inside use **`color/background/variant`** so panels read as **cards on a calm base** (gallery pattern — see reference links below this table) |
-| Section group headers | Full-width strip **1440×64px**; title **`Doc/Section`**; optional **1px** bottom edge via stroke on strip (**`color/border/subtle`**) |
+| Section group headers | Full-width strip **1640×64px**; title **`Doc/Section`**; optional **1px** bottom edge via stroke on strip (**`color/border/subtle`**) |
 | Theme token grid | **2 columns**: section body stacks **`doc/theme/card-row-{n}`** rows (**§ F**). Each **card**: **`minHeight` 200**, **`padding` 28**, **`cornerRadius` 16**, stroke **`color/border/subtle`**, fill **`color/background/variant`** |
 | Theme swatch previews | **88×88px** minimum, **`cornerRadius` 12**; **`Doc/Caption`** for Light / Dark |
 | Primitives ramp cards | **120×160** cards (**`VERTICAL`** stacks, **`AUTO`** height), **`itemSpacing` 12** between cards; swatch fill bound per § **D** |
-| MCP table rows | Row **`HORIZONTAL`** frames **`minHeight` 48**, cell horizontal padding **16**; body container **`VERTICAL`**, **`AUTO`**; **`Doc/Code`** for cells |
-| Layer naming | Token Overview: `token-overview/{section}`, `_PageContent`; MCP: `[MCP] Token Manifest`, `token/{collection}/…`; Theme preview wrappers: `doc/theme-preview/light` / `dark`; style guide: **`doc/…`** prefix (e.g. `doc/primitives/ramp-row/primary`, `doc/theme/card-row-1`, `doc/mcp-table/theme/rows`) |
+| Layer naming | Token Overview: `token-overview/{section}`, `_PageContent`; Theme preview wrappers: `doc/theme-preview/light` / `dark`; style guide: **`doc/…`** prefix (e.g. `doc/primitives/ramp-row/primary`, `doc/theme/card-row-1`, `doc/table/{slug}/…`) |
 
 **Reference quality (browse for tone — do not copy trademarks):** [Shopify Polaris — tokens](https://polaris.shopify.com/tokens), [Material Design 3 — foundations](https://m3.material.io/foundations), [Carbon — color tokens](https://carbondesignsystem.com/elements/color/tokens), [Atlassian Design — tokens](https://atlassian.design/foundations/tokens), [Supernova — documenting design tokens](https://supernova.io/blog/documenting-design-tokens-a-guide-to-best-practices-with-supernova). Target **clear hierarchy**, **generous whitespace**, and **consistent card chrome** — not dense “spreadsheet only” layouts.
 
@@ -1803,8 +2011,8 @@ Agents **must read this section** before executing Steps **15a–18** and any `u
 | Style name | Role | Typical binding / source |
 |---|---|---|
 | `Doc/Section` | Semantic group strips + page section titles | Prefer **`setBoundVariable`** to **`Headline/LG/font-size`**, **`Headline/LG/font-family`**, **`Headline/LG/font-weight`**, **`Headline/LG/line-height`** (Typography · mode **100**). Strip text fill → **`color/neutral/50`** (Primitives); on light cards use **`color/background/content`**. |
-| `Doc/TokenName` | Token path on cards, MCP PATH column emphasis | Bind to **`Label/LG/font-size`** (and matching family/weight/line) or **`Headline/SM/*`** Typography vars at mode **100**; **16–18px** effective minimum. |
-| `Doc/Code` | WEB / ANDROID / iOS code lines, MCP dense cells | Bind to **`Label/SM/font-size`** (and matching family/weight/line) at mode **100**; **13–14px** mono; **line-height ≥ 1.45**. |
+| `Doc/TokenName` | Token path on cards, TOKEN column emphasis | Bind to **`Label/LG/font-size`** (and matching family/weight/line) or **`Headline/SM/*`** Typography vars at mode **100**; **16–18px** effective minimum. |
+| `Doc/Code` | WEB / ANDROID / iOS code lines, dense table cells | Bind to **`Label/SM/font-size`** (and matching family/weight/line) at mode **100**; **13–14px** mono; **line-height ≥ 1.45**. |
 | `Doc/Caption` | “Light” / “Dark” labels, helper lines, table column hints | Bind to **`Body/SM/*`** or **`Label/MD/*`** Typography vars at mode **100**; **12–14px**. |
 
 If **`Doc/*`** styles cannot bind (API limits), set resolved values from Typography mode **100** once, then still prefer variable-bound **fills** on chrome.
@@ -1833,11 +2041,8 @@ Apply via Figma **variable bindings** on frame `fills` / `strokes` and text `fil
 | Radius preview square fill | `color/neutral/100` | Primitives · Default |
 | Effects preview card fill | `color/background/default` | Theme · Light |
 | Effects preview card stroke | `color/border/subtle` | Theme · Light |
-| MCP manifest root / table chrome background | `color/background/default` | Theme · Light |
-| MCP table header row background | `color/background/variant` | Theme · Light |
-| MCP table body zebra (alternate rows, optional) | `color/background/container-lowest` | Theme · Light |
 
-**Typography:** After **`Doc/*`** and **slot text styles** exist (Step 15c), **all** style guide headings, token names, code, and MCP table body text must use **`textStyleId`** pointing at those styles — not one-off Inter with arbitrary sizes.
+**Typography:** After **`Doc/*`** and **slot text styles** exist (Step 15c), **all** style guide headings, token names, code, and table body text must use **`textStyleId`** pointing at those styles — not one-off Inter with arbitrary sizes.
 
 **Fallback:** if a path is missing, log a warning and resolve `color/neutral/200` / `color/neutral/800` from **this file’s** Primitives only.
 
@@ -1848,12 +2053,9 @@ Layers that **represent** a token’s value must expose that token in **Dev Mode
 | Surface | Binding rule |
 |---|---|
 | **Primitives** color ramp card fill | Bind **`boundVariables.color`** on the solid paint to the **Primitives** variable for `color/{ramp}/{stop}` (same path as the label). |
-| **Theme** color swatch | Bind paint to the **Theme** variable for that semantic path (e.g. `color/background/default`). To show **Light and Dark** side‑by‑side **while both stay bound to the same variable**: wrap each swatch in a frame and call **`wrapper.setExplicitVariableModeForCollection(themeCollection, lightModeId)`** (and parallel for **Dark**) — **Light** wrapper → Theme collection’s **Light** `modeId`, **Dark** wrapper → **Dark** `modeId` (`ExplicitVariableModesMixin` on frames). Inner rectangle fill uses **`boundVariables.color` → `figma.variables.createVariableAlias(themeVariable)`**. If the API is unavailable or throws, **fallback:** bind **one** swatch only + print the other mode’s resolved hex as text + log `Theme dual-preview: explicit mode unsupported — single bound swatch + hex fallback`. |
-| **MCP** SWATCH column (Primitives COLOR + Theme COLOR) | Same as above: **variable-bound** fills, not detached solids. |
+| **Theme** color swatch | Bind paint to the **Theme** variable for that semantic path (e.g. `color/background/default`). To show **Light and Dark** side‑by‑side **while both stay bound to the same variable**: wrap each swatch in a frame and call **`wrapper.setExplicitVariableModeForCollection(themeCollection, lightModeId)`** (and parallel for **Dark**) — **Light** wrapper → Theme collection’s **Light** `modeId`, **Dark** wrapper → **Dark** `modeId` (`ExplicitVariableModesMixin` on frames). Inner rectangle fill uses **`boundVariables.color` → `figma.variables.createVariableAlias(themeVariable)`**. **Hex-label caveat:** the accompanying hex text must be a **sibling** of the mode-scoped wrapper, **not a child** — otherwise its own text fill (bound to `color/background/content`) resolves inside the Dark wrapper to white and disappears on the white cell background. Keep chip **inside** the wrapper, hex **outside** it (see § **H.4**). If the API is unavailable or throws, **fallback:** bind **one** swatch only + print the other mode’s resolved hex as text + log `Theme dual-preview: explicit mode unsupported — single bound swatch + hex fallback`. |
 | **Layout** spacing bars | Bind **`width`** / **`minWidth`** to the **`space/*`** Layout variable where `setBoundVariable` accepts it; else resolved px + label. |
 | **Typography** specimen | **`textStyleId`** → published **`Display/LG`** … styles whose fields bind to Typography variables (below). |
-
-**MODE column (MCP):** For Theme, Typography, and Effects tables, **`MODE`** is the **authoritative scope** for multi‑mode collections (`light` / `dark` or `85` … `200`). Headers must spell that out (“Mode = collection mode”).
 
 ### E — Auto-layout and text sizing (**mandatory — prevents ~10px collapsed frames**)
 
@@ -1862,10 +2064,10 @@ Broken style guides often show **empty or 10px-tall** sections because frames st
 | Rule | Requirement |
 |---|---|
 | Hug contents | Any **`VERTICAL`** frame that stacks children with **variable height** MUST use **`primaryAxisSizingMode = 'AUTO'`** (Plugin API) so the frame **grows with its children**. Do **not** leave the default **100×100** box or call **`resize(w, 10)`** / **`resize(w, h)`** with a **tiny `h`** as a placeholder. |
-| Width vs height | Typical pattern: **`counterAxisSizingMode = 'FIXED'`** + explicit **`resize(1360, …)`** only when height is irrelevant because **AUTO** will expand; if you must `resize` before children exist, set height to something **≥ 200** temporarily, then rely on **AUTO** after children append, or **`resizeWithoutConstraints`** where supported. |
+| Width vs height | Typical pattern: **`counterAxisSizingMode = 'FIXED'`** + explicit **`resize(1640, …)`** only when height is irrelevant because **AUTO** will expand; if you must `resize` before children exist, set height to something **≥ 200** temporarily, then rely on **AUTO** after children append, or **`resizeWithoutConstraints`** where supported. |
 | Text auto-resize | Immediately after assigning **`text.characters`**, set **`text.textAutoResize = 'HEIGHT'`** (fixed width) or **`'WIDTH_AND_HEIGHT'`** so the text node reports a **real bounding height**. **`'NONE'`** (default in many scripts) often yields **~10px** layout contribution inside auto-layout — **this is the most common bug**. |
 | Child alignment | Use **`layoutAlign = 'STRETCH'`** on children that should fill the section width (token cards, strips). For **fixed-width** specimens (swatches), use **`MIN`** / center on cross axis as needed. |
-| Row grouping | **Never** place dozens of nodes as **direct siblings** under a wide parent without a **row** frame. Each **logical row** (one ramp’s swatches, one Theme **pair** of cards, one Layout token, one Typography specimen row, one MCP table line) = **one** auto-layout frame (`doc/.../row-*`) so **`itemSpacing`**, **`padding`**, and **`STRETCH`** apply predictably. |
+| Row grouping | **Never** place dozens of nodes as **direct siblings** under a wide parent without a **row** frame. Each **logical row** (one ramp’s swatches, one Theme **pair** of cards, one Layout token, one Typography specimen row, one style-guide table line) = **one** auto-layout frame (`doc/.../row-*`) so **`itemSpacing`**, **`padding`**, and **`STRETCH`** apply predictably. |
 
 ### F — Row-grouping hierarchy (examples; use the same idea on every page)
 
@@ -1876,7 +2078,6 @@ Broken style guides often show **empty or 10px-tall** sections because frames st
 | **↳ Layout** | `_PageContent` → `doc/layout/section/{spacing-or-radius}` (**VERTICAL**) → `doc/layout/rows` (**VERTICAL**) → **`doc/layout/row/{token}`** (**HORIZONTAL**) per token. |
 | **↳ Text Styles** | `_PageContent` → `doc/typography/rows` (**VERTICAL**) → **`doc/typography/row/{slot}`** (**HORIZONTAL**) per slot. |
 | **↳ Effects** | `_PageContent` → `doc/effects/grid` (**VERTICAL** or **HORIZONTAL** wrap) → **`doc/effects/card/{tier}`** (**VERTICAL** per tier). |
-| **↳ MCP Tokens** | `[MCP] Token Manifest` root (**§ Step 16**) → collection frame → **`doc/mcp-table/{collection}/rows`** (**VERTICAL**) → **`doc/mcp-table/{collection}/row/...`** (**HORIZONTAL**) per table line. |
 
 ### G — Premium visual language (**sleek · modern · editorial**)
 
@@ -1885,150 +2086,423 @@ Broken style guides often show **empty or 10px-tall** sections because frames st
 | Pillar | Do this |
 |---|---|
 | **Restraint** | Let **neutral surfaces** carry the layout. Use **`color/primary/subtle`** only for **small** highlights (one accent zone per section — e.g. spacing bar fill, a single “focus” chip). Avoid multicolor decorative frames. |
-| **Depth (subtle)** | Elevate **Theme token cards**, **Effects** tier cards, and **MCP collection** frames with **`effectStyleId` → `Effect/shadow-sm`** (or one restrained **`DROP_SHADOW`** from **`shadow/color`** + **`shadow/sm/blur`** at Effects · Light) so surfaces **float slightly** — **one** shadow recipe sitewide, low opacity. **Optional:** the same on the outer **`doc/primitives/section/{ramp}`** wrapper (whole ramp), **never** on every small swatch. **Ordering:** `Effect/shadow-sm` is created in **Step 15c §0** — Steps **15a–15b** run **before** that in the default checklist, so on **first** run **skip** `effectStyleId` on Primitives/Theme unless the agent publishes effect styles **earlier in the same combined `use_figma` script`** or the designer **re-runs** 15a–15b after 15c once. **Step 16** (after 15c) should always apply **`Effect/shadow-sm`** to MCP table frames. Do not stack multiple shadows. |
+| **Depth (subtle)** | Elevate **Theme token cards**, **Effects** tier cards, and outer **style-guide table** frames (`doc/table/{slug}`) with **`effectStyleId` → `Effect/shadow-sm`** (or one restrained **`DROP_SHADOW`** from **`shadow/color`** + **`shadow/sm/blur`** at Effects · Light) so surfaces **float slightly** — **one** shadow recipe sitewide, low opacity. **Optional:** the same on the outer **`doc/primitives/section/{ramp}`** wrapper (whole ramp), **never** on every small swatch. **Ordering:** `Effect/shadow-sm` is created in **Step 15c §0** — Steps **15a–15b** run **before** that in the default checklist, so on **first** run **skip** `effectStyleId` on Primitives/Theme unless the agent publishes effect styles **earlier in the same combined `use_figma` script`** or the designer **re-runs** 15a–15b after 15c once. Do not stack multiple shadows. |
 | **Geometry** | Prefer **one radius scale** on docs: strips and outer panels **16**, inner swatches and chips **12**, large hero cards (Effects) **20–24**. Keep **parallel edges** aligned across a section (card grids share the same left/right margins). |
 | **Typography** | Strictly **`Doc/*`** text styles (**§ A**). Section strips: title + optional **`Doc/Caption`** subtitle (one line: what this group is *for*). On **light** cards, titles **`color/background/content`**, metadata **`color/background/content-muted`** — clear **title / body / code** tiers. |
-| **Whitespace** | Bias toward **more** padding inside cards (**28–32px**) and **48–64px** between major bands. Dense MCP tables still use **row `minHeight` 48** + **16px** horizontal cell padding — never cram text to the cell edge. |
+| **Whitespace** | Bias toward **more** padding inside cards (**28–32px**) and **48–64px** between major bands. Dense style-guide tables still use **row `minHeight` 56** + **16px** horizontal cell padding — never cram text to the cell edge. |
 | **Swatches** | Color squares **fully fill** their frame corners (same radius as frame or slightly less with **2–4px** inner “mat” using **`color/background/default`** if you want a gallery inset). Theme Light/Dark previews use **identical** geometry side-by-side so comparison feels **controlled**. |
-| **MCP tables** | **Header band**: dedicated first row or child frame **`doc/mcp-table/{collection}/header`**, fill **`color/background/variant`**, bottom stroke **`color/border/subtle`**, column titles **`Doc/TokenName`**. **Body rows**: optional **zebra** — alternate row fill **`color/background/default`** / **`color/background/container-lowest`** (Theme · Light) at **~40% opacity** if opacity on fills is awkward, else skip zebra and rely on **row `minHeight` + dividers**. |
 | **Motion / craft** | No literal motion in static Figma — imply quality through **alignment**, **consistent naming**, and **pixel-perfect spacing** on the **8px** grid. After layout, **one pass**: nudge any off-grid `itemSpacing` / `padding` to multiples of **4** (prefer **8**). |
 
 **Anti-patterns (never):** rainbow gradient backgrounds on doc chrome; **3+** stroke weights in one card; arbitrary Inter sizes; **#000000` / `#FFFFFF`** detached fills on chrome when the Theme/Primitives variable exists; clip content that should hug height.
 
 ---
 
+### H — Table format spec
+
+§ **H** is the **single source of truth** for every data table drawn on `↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, and `↳ Effects`. Tables replace the dense, clipped single-stack rendering from earlier iterations. Reference quality for tone: [Ant Design — Base Color Palettes](https://ant.design/docs/spec/colors) (clean per-group tables, 54px rows, swatch chip + hex + code, one table per logical group). Do **not** copy trademarks — this spec maps the *pattern*, not the paint.
+
+Every table on every page uses the **same component geometry and token bindings**. Only the column definitions change per page (see **§ H.3** below).
+
+#### H.1 — Table component hierarchy
+
+Every table is built from this **exact** parent chain. No orphan cells, no direct-child rows on `_PageContent`.
+
+```
+_PageContent                                       VERTICAL · AUTO · FIXED · width 1800 · padding 80 all sides · fill #FFFFFF · x=0 y=320
+└── doc/table-group/{slug}                         VERTICAL · AUTO · STRETCH · itemSpacing 12
+    ├── doc/table-group/{slug}/title               TEXT · Doc/Section · fill color/background/content
+    ├── doc/table-group/{slug}/caption             TEXT · Doc/Caption · fill color/background/content-muted  (optional, 1 line)
+    └── doc/table/{slug}                           VERTICAL · AUTO · STRETCH · cornerRadius 16 · clipsContent
+        │                                          stroke 1 color/border/subtle · fill color/background/default
+        │                                          effectStyleId Effect/shadow-sm (when published — § G Depth)
+        ├── doc/table/{slug}/header                HORIZONTAL · FIXED height 56 · STRETCH · fill color/background/variant
+        │                                          bottom 1px stroke color/border/subtle
+        │   └── doc/table/{slug}/header/cell/{col} FIXED width per § H.3 · paddingH 20 · cross-axis CENTER
+        │       └── TEXT · Doc/Code (uppercase, tracking +0.04em) · fill color/background/content-muted
+        └── doc/table/{slug}/body                  VERTICAL · AUTO · STRETCH
+            └── doc/table/{slug}/row/{tokenPath}   HORIZONTAL · FIXED width 1640 · AUTO height · minHeight 64
+                │                                  paddingV 16 · paddingH 0 · bottom 1px stroke color/border/subtle
+                │                                  counterAxisAlignItems CENTER (so swatch + text cells align vertically)
+                │                                  (omit bottom stroke on the last child)
+                └── doc/table/{slug}/row/.../cell/{col}  VERTICAL (default) or HORIZONTAL (Theme LIGHT/DARK) · AUTO height · FIXED width per § H.3
+                    │                              paddingH 20 · paddingV 4 · itemSpacing 4 · cross-axis CENTER
+                    └── cell content — see § H.4 cell patterns
+```
+
+**Slug convention** (`{slug}` = stable per table for Dev Mode lookups):
+
+| Page | `{slug}` values |
+|---|---|
+| ↳ Primitives | `primitives/color/{ramp}`, `primitives/space`, `primitives/radius`, `primitives/elevation`, `primitives/typeface` |
+| ↳ Theme | `theme/background`, `theme/border`, `theme/primary`, `theme/secondary`, `theme/tertiary`, `theme/error`, `theme/component` |
+| ↳ Layout | `layout/spacing`, `layout/radius` |
+| ↳ Text Styles | `typography/styles` |
+| ↳ Effects | `effects/shadows`, `effects/color` |
+
+Row naming inside the body: **full token path** (e.g. `doc/table/primitives/color/primary/row/color/primary/500`). This lets agents address a row by name in follow-up scripts.
+
+#### H.2 — Auto-layout rules (prevents the 10px-collapse bug)
+
+These rules are **mandatory** on every frame inside a table. Failing any one of them produces the clipped, overflowed table seen in prior runs (see [reference comparison](https://www.figma.com/design/BLcvn6UptGIgtNzNfLU4TU/testingUpdates-%E2%80%94-Foundations?node-id=187-7) vs [Ant Design — Base Color Palettes](https://www.figma.com/design/BLcvn6UptGIgtNzNfLU4TU/testingUpdates-%E2%80%94-Foundations?node-id=179-4217)).
+
+| Frame | `layoutMode` | `primaryAxisSizingMode` | `counterAxisSizingMode` | `layoutAlign` | Notes |
+|---|---|---|---|---|---|
+| `doc/table/{slug}` | `VERTICAL` | `AUTO` | `FIXED` | `STRETCH` | Call `resizeWithoutConstraints(1640, 1)` after creation; AUTO expands height when header + body are appended. |
+| `doc/table/{slug}/header` | `HORIZONTAL` | `FIXED` (height **56**) | `FIXED` (width **1640**) | `STRETCH` | Set `resize(1640, 56)` **after** creation, **before** appending cells. `counterAxisAlignItems: CENTER`. |
+| `doc/table/{slug}/header/cell/{col}` | `HORIZONTAL` | `FIXED` (height **56**) | `FIXED` (width = column width) | `INHERIT` | Call `resize(colWidth, 56)` before appending text. `paddingLeft/paddingRight: 20`, `counterAxisAlignItems: CENTER`. |
+| `doc/table/{slug}/body` | `VERTICAL` | `AUTO` | `FIXED` (width **1640**) | `STRETCH` | |
+| `doc/table/{slug}/row/*` | `HORIZONTAL` | `FIXED` (width **1640**) | `AUTO` | `STRETCH` | `minHeight` **64**, `paddingTop/paddingBottom: 16`, `counterAxisAlignItems: CENTER` (vertically centers mixed-height cells — swatch cells are taller than mono-text cells and this is the single knob that keeps rows feeling aligned rather than crowded). Height hugs tallest cell. |
+| `doc/table/{slug}/row/*/cell/{col}` | `VERTICAL` (default) or `HORIZONTAL` (Theme `LIGHT`/`DARK`) | `AUTO` | `FIXED` (width = column width) | `INHERIT` | Call `resize(colWidth, 1)` before appending content; AUTO grows. **Padding:** `paddingLeft/paddingRight: 20`, `paddingTop/paddingBottom: 4`, `itemSpacing: 4`. Vertical cells: `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: MIN`. |
+| Cell text nodes | — | — | — | — | **Immediately after `text.characters`:** `text.resize(colWidth - 40, 1)` (account for 20px L + 20px R padding) then `text.textAutoResize = 'HEIGHT'`. Never leave `'NONE'` — that is the **root cause** of the 10px collapse. |
+| Cell inline wrappers (swatch chip + hex) | `HORIZONTAL` | `AUTO` | `AUTO` | `INHERIT` | `itemSpacing` **10**, `counterAxisAlignItems: CENTER`. See § H.4 **Theme** swatch entry — wrappers hold the **chip only**; hex text is a **sibling** in the cell. |
+
+**Never** `resize(w, h)` with `h < 20` as a scaffold — rely on `AUTO` for every height that depends on children.
+
+#### H.3 — Column specs per page
+
+All widths in pixels. Totals equal **1640** exactly (1800 page width − 80 + 80 `_PageContent` padding) so left/right edges align across every table on the page.
+
+**↳ Primitives**
+
+One table **per color ramp** (`primary`, `secondary`, `tertiary`, `error`, `neutral`). Group title = ramp name ("Primary"). Rows = 11 stops (50 → 950).
+
+| Col | Header | Width | Cell pattern |
+|---|---|---|---|
+| 1 | `TOKEN` | 320 | `Doc/Code` — path (`color/primary/500`) |
+| 2 | `SWATCH` | 96 | 48×48 rounded-rect · cornerRadius 10 · stroke 1 `color/border/subtle` · fill bound to the row's Primitives variable (§ D) |
+| 3 | `HEX` | 120 | `Doc/Code` — uppercase hex |
+| 4 | `WEB` | 360 | `Doc/Code` — `var(--color-primary-500)` |
+| 5 | `ANDROID` | 340 | `Doc/Code` |
+| 6 | `iOS` | 404 | `Doc/Code` |
+
+One table each for **Space**, **Corner Radius**, **Elevation**, **Typeface**:
+
+| Slug | Col widths (sum 1640) |
+|---|---|
+| `primitives/space` | `TOKEN` 260 · `VALUE` 100 · `PREVIEW` 260 · `WEB` 340 · `ANDROID` 320 · `iOS` 360 |
+| `primitives/radius` | `TOKEN` 260 · `VALUE` 100 · `PREVIEW` 260 · `WEB` 340 · `ANDROID` 320 · `iOS` 360 |
+| `primitives/elevation` | `TOKEN` 260 · `VALUE` 100 · `WEB` 400 · `ANDROID` 380 · `iOS` 500 |
+| `primitives/typeface` | `TOKEN` 320 · `SPECIMEN` 460 · `VALUE` 200 · `WEB` 320 · `ANDROID` 160 · `iOS` 180 |
+
+- **Space `PREVIEW`:** HORIZONTAL cell with a bar `height 16`, `cornerRadius 4`, fill `color/primary/200` (bound); `width` bound to the `Space/*` variable where `setBoundVariable` accepts it, else resolved px clamped to 200.
+- **Radius `PREVIEW`:** 64×64 square, fill `color/neutral/100`, stroke `color/border/subtle`; `cornerRadius` bound to the `Corner/*` variable.
+- **Typeface `SPECIMEN`:** single-line text `"The quick brown fox jumps over 1234567890"` at 24px using the typeface primitive (bound `fontName` when supported).
+
+**↳ Theme**
+
+One table **per semantic group** (`background`, `border`, `primary`, `secondary`, `tertiary`, `error`, `component`). Group title = group name (e.g. "Background"); caption = 1-line role summary (e.g. "Surfaces, containers, scrims").
+
+| Col | Header | Width | Cell pattern |
+|---|---|---|---|
+| 1 | `TOKEN` | 320 | `Doc/Code` — Figma path. Wide enough for `color/background/container-lowest` without wrapping. |
+| 2 | `LIGHT` | 140 | Cell (HORIZONTAL, AUTO) with two siblings per § H.4 **Theme** swatch pattern: (a) mode-scoped wrapper `doc/theme-preview/light` containing **only** the 28×28 chip (bound Theme var), (b) `Doc/Code` hex text **outside** the wrapper so its content-color fill resolves in Light. `itemSpacing 10`, `counterAxisAlignItems CENTER`. |
+| 3 | `DARK` | 140 | Same structure as LIGHT, but the mode-scoped wrapper uses the Dark mode id. **Hex text stays outside** the wrapper — never a child of the Dark-scoped frame, or it resolves white on white. |
+| 4 | `ALIAS →` | 260 | `Doc/Code` — resolved alias path (e.g. `color/primary/500` · `color/primary/400`); show both modes separated by ` · ` when they differ. Width tuned so the widest aliases (`color/neutral/100 · color/neutral/950`) stay on **one line** at Doc/Code 13px mono. |
+| 5 | `WEB` | 320 | `Doc/Code` — wide enough for `var(--color-background-container-lowest)` without wrapping. |
+| 6 | `ANDROID` | 220 | `Doc/Code` — fits `surface-container-lowest` without truncation. |
+| 7 | `iOS` | 240 | `Doc/Code` — fully dot-separated paths can be long (e.g. `.Status.on.error.fixed.muted`); this width keeps the worst-case 5-segment compounds on **one line** at Doc/Code 13px mono. |
+
+**Sum:** 320 + 140 + 140 + 260 + 320 + 220 + 240 = **1640**. **Row spacing rules for Theme specifically:** row `minHeight 64`, `paddingV 16`, `counterAxisAlignItems: CENTER` (the chip cells are 44px tall, the text cells are ~20px tall — centering is what makes the label and chip + hex read as aligned rather than top-stacked). Cell `paddingH 20` applies uniformly to all 7 cells, including the LIGHT/DARK swatch cells — the previous 16px padding was the subtle crowding source.
+
+Fallback when `setExplicitVariableModeForCollection` is unavailable: bind the LIGHT chip only, print the Dark hex as `Doc/Caption` text below the chip, and log `Theme dual-preview: explicit mode unsupported`.
+
+**↳ Layout**
+
+Two tables: `layout/spacing`, `layout/radius`.
+
+| Col | Header | Width |
+|---|---|---|
+| 1 | `TOKEN` | 280 |
+| 2 | `VALUE` | 100 |
+| 3 | `ALIAS →` | 280 |
+| 4 | `PREVIEW` | 240 |
+| 5 | `WEB` | 320 |
+| 6 | `ANDROID` | 220 |
+| 7 | `iOS` | 200 |
+
+**Sum:** 280 + 100 + 280 + 240 + 320 + 220 + 200 = **1640**.
+
+- `spacing` `PREVIEW`: bar identical to Primitives Space preview (bound width).
+- `radius` `PREVIEW`: 64×64 square with bound `cornerRadius`.
+
+**↳ Text Styles**
+
+Single table `typography/styles`. Rows appear in extended slot order (Display LG → Label SM). Each Body size emits a 5-row block — `Body/{size}/regular`, `Body/{size}/emphasis`, `Body/{size}/italic`, `Body/{size}/link`, `Body/{size}/strikethrough` — keeping the `Body/{size}/` text-style folder (§ 8 step 2) intact in the table as well. Total = 3 + 3 + 3 + 15 + 3 = **27 specimen rows**. Category dividers use **full-width sub-header rows** (single HORIZONTAL cell spanning 1640, fill `color/background/variant`, text `Doc/Caption` uppercase: "Display", "Headline", "Title", "Body", "Label").
+
+| Col | Header | Width | Cell pattern |
+|---|---|---|---|
+| 1 | `SLOT` | 220 | `Doc/TokenName` — slot name (`Headline/LG`, `Body/LG/strikethrough`). Widened so 3-segment body-variant paths stay on one line. |
+| 2 | `SPECIMEN` | 360 | TEXT with `textStyleId` → published slot style; characters = the slot name itself ("Headline LG"); `textAutoResize = 'HEIGHT'` with width resized to 320 (360 − 40). Display/LG rows wrap to two lines at this width, which is acceptable for the largest sizes. |
+| 3 | `SIZE / LINE` | 140 | VERTICAL stack — two `Doc/Code` lines: `{size}px` / `{lineHeight}px` |
+| 4 | `WEIGHT / FAMILY` | 180 | VERTICAL stack — two `Doc/Code` lines: `{weight}` / `{family}` |
+| 5 | `WEB` | 280 | `Doc/Code` single line — `--{slot}-font-size` pattern; fits `var(--body-lg-strikethrough-font-family)` (longest) on one line. |
+| 6 | `ANDROID` | 200 | `Doc/Code` — fits `body-lg-strikethrough-font-family` without wrapping. |
+| 7 | `iOS` | 260 | `Doc/Code` — 5- or 6-segment dot path (e.g. `.Typography.body.lg.strikethrough.font.family`) may soft-wrap to two lines at the widest slot; all other slots fit on one line. |
+
+**Sum:** 220 + 360 + 140 + 180 + 280 + 200 + 260 = **1640**.
+
+Row `minHeight` is determined by the specimen — `primaryAxisSizingMode: AUTO` on every row and cell ensures Display/LG rows (96px specimen) grow naturally while Label/SM rows stay compact.
+
+**↳ Effects**
+
+Two tables: `effects/shadows` (5 tier rows) and `effects/color` (1 row — shadow/color).
+
+`effects/shadows` (**sum 1640**):
+
+| Col | Header | Width | Cell pattern |
+|---|---|---|---|
+| 1 | `TIER` | 140 | `Doc/TokenName` — `sm` / `md` / `lg` / `xl` / `2xl` |
+| 2 | `LIGHT` | 180 | `doc/effect-preview/light/{tier}` wrapper with explicit Effects Light mode → 88×88 card `cornerRadius 12` fill `color/background/default` `effectStyleId Effect/shadow-{tier}` |
+| 3 | `DARK` | 180 | Same with Effects Dark mode |
+| 4 | `BLUR` | 120 | `Doc/Code` — blur value |
+| 5 | `ALIAS →` | 200 | `Doc/Code` — `elevation/{step}` |
+| 6 | `WEB` | 300 | `Doc/Code` |
+| 7 | `ANDROID` | 260 | `Doc/Code` |
+| 8 | `iOS` | 260 | `Doc/Code` |
+
+`effects/color` (**sum 1640**):
+
+| Col | Header | Width |
+|---|---|---|
+| `TOKEN` | 320 |
+| `LIGHT` | 180 |
+| `DARK` | 180 |
+| `VALUE` | 220 |
+| `WEB` | 320 |
+| `ANDROID` | 220 |
+| `iOS` | 200 |
+
+#### H.4 — Cell content patterns
+
+Cells are always a **VERTICAL AUTO** stack so multi-line cells (Theme LIGHT/DARK, Typography SIZE/LINE) grow without collapsing the row. Use these patterns exactly:
+
+| Pattern | Structure |
+|---|---|
+| **Mono line** (TOKEN, HEX, WEB, ANDROID, iOS, VALUE) | One `Doc/Code` text node. `text.resize(colWidth - 32, 1)` → `textAutoResize = 'HEIGHT'`. |
+| **Swatch chip + hex — Primitives** (`SWATCH` + `HEX` combined) | HORIZONTAL wrapper · itemSpacing 10 · cross-axis CENTER · children: [rounded-rect 28×28 cornerRadius 8 stroke 1 `color/border/subtle` fill bound to variable] + [`Doc/Code` hex text, fill `color/background/content`]. |
+| **Swatch chip + hex — Theme** (`LIGHT`/`DARK`) | **Structure matters here — this is the #1 dark-mode bug** (hex invisible on dark side). The cell is a HORIZONTAL outer wrapper with **two siblings**: [1] a **mode-scoped inner wrapper** `doc/theme-preview/{mode}` that calls `setExplicitVariableModeForCollection(themeCollection, modeId)` and contains **only** the 28×28 chip rect (bound fill → Theme variable), and [2] a `Doc/Code` hex text node **outside** that wrapper. The hex text's fill binds to `color/background/content` — which **must** resolve in the page's normal mode (Light), not the wrapper's scoped mode. If you place the hex inside the Dark wrapper, its fill resolves to white on the white cell and disappears. Layer tree: `cell (HORIZONTAL, AUTO) → [doc/theme-preview/{mode} (mode-scoped, chip only)] + [doc/code text (hex, sibling)]`. |
+| **Preview bar** (Space, Layout spacing) | HORIZONTAL wrapper · cross-axis CENTER · single rectangle height 16 cornerRadius 4 fill `color/primary/200` (bound); width bound to variable (or resolved px). |
+| **Preview square** (Radius) | HORIZONTAL wrapper · single 64×64 rect fill `color/neutral/100` stroke `color/border/subtle` cornerRadius bound to variable. |
+| **Two-line meta** (Typography SIZE/LINE, WEIGHT/FAMILY) | VERTICAL stack · itemSpacing 4 · two `Doc/Code` text nodes; the second line may use `color/background/content-muted` fill for visual hierarchy. |
+| **Category sub-header row** (Text Styles only) | Single row frame width 1640 minHeight 40 fill `color/background/variant`; single cell paddingH 24 with `Doc/Caption` uppercase text, letter-spacing +0.08em. |
+| **Alias →** | `Doc/Code` text, color `color/background/content-muted`, prefixed with `↳ ` (U+21B3) when the alias resolves to a primitive; `— (raw)` when the value is a hard-coded literal. |
+
+#### H.5 — Token binding map (table chrome → variable)
+
+Extends § C. Every chrome element below **must** use `setBoundVariable` / variable-bound paints. Fallback to resolved values from **this file's** variables only when the API refuses.
+
+| Table element | Variable | Collection · mode |
+|---|---|---|
+| Table outer fill | `color/background/default` | Theme · Light |
+| Table outer stroke | `color/border/subtle` | Theme · Light |
+| Table shadow (guide tables only) | `Effect/shadow-sm` (effectStyleId) | Effects · Light |
+| Header row fill | `color/background/variant` | Theme · Light |
+| Header row bottom stroke | `color/border/subtle` | Theme · Light |
+| Header text | `color/background/content-muted` | Theme · Light |
+| Body row bottom stroke | `color/border/subtle` | Theme · Light |
+| Primary cell text (TOKEN, HEX, VALUE, codeSyntax) | `color/background/content` | Theme · Light |
+| Muted cell text (second lines, alias, caption) | `color/background/content-muted` | Theme · Light |
+| Swatch chip stroke | `color/border/subtle` | Theme · Light |
+| Swatch chip fill | The row's own variable (Primitives or Theme) | per row (§ D) |
+| Radius preview square fill | `color/neutral/100` | Primitives |
+| Radius preview square stroke | `color/border/subtle` | Theme · Light |
+| Spacing preview bar fill | `color/primary/200` | Primitives |
+| Effects preview card fill | `color/background/default` | Theme · Light |
+| Category sub-header row fill | `color/background/variant` | Theme · Light |
+
+#### H.6 — Text-style usage (mandatory)
+
+Once Step 15c publishes the **`Doc/*`** styles, every cell and header text node MUST assign `textStyleId` — never raw `fontName`/`fontSize` on table bodies. On the **first** run (before 15c has published styles), fall back to literal values matching the § A ramp but log a warning and re-run 15a–15b after 15c to upgrade. This is the single gating rule that makes the tables feel like shipping product documentation rather than a dump.
+
+#### H.7 — Build-order checklist (applies to every table in every Step 15a–15c script)
+
+1. **Create** `doc/table/{slug}` → set `layoutMode`, both sizing modes, `layoutAlign`, radius, clipping, fill+stroke bindings. `resizeWithoutConstraints(1640, 1)`. Do not call `resize(1640, 10)` — AUTO will expand.
+2. **Create** `doc/table/{slug}/header` → `resize(1640, 56)` → append cells in column order; each cell `resize(colWidth, 56)` **before** appending its text node.
+3. **Create** `doc/table/{slug}/body` → do **not** resize; STRETCH + AUTO handles it.
+4. For each data row: **create** the row frame → `resize(1640, 1)` → set `minHeight 64`, `paddingTop/paddingBottom 16`, `counterAxisAlignItems: CENTER` → append cells (each cell `resize(colWidth, 1)` before appending content, with `paddingLeft/paddingRight 20`).
+5. For each text node: set `characters` → `resize(textWidth, 1)` → `textAutoResize = 'HEIGHT'` → assign `textStyleId` (or fallback literals) → bind fill.
+6. After all rows are appended, remove the bottom stroke from the last row (`row.strokes = []` or set `strokeBottomWeight = 0`) so the outer `clipsContent` radius reads clean.
+7. Apply `effectStyleId` to the outer `doc/table/{slug}` frame **only** if `Effect/shadow-sm` already exists in the file (Step 15c § 0 publishes it; earlier steps may skip — see § G Depth).
+
+Any legacy instruction in Steps 15a–15c that conflicts with § **H** is superseded; § **H** wins for tables.
+
+---
+
 ## Step 15a — Draw Style Guide: ↳ Primitives
 
-Using values from Steps 5–9, run **one** `use_figma` execution for **`↳ Primitives` only**.
+Run **one** `use_figma` execution against **`↳ Primitives` only**. All tables drawn here MUST follow **§ H** (hierarchy, auto-layout rules, column widths, binding map, build order). The agent does not re-derive geometry — it reads § H and emits frames accordingly.
 
-1. `figma.setCurrentPageAsync` → page named exactly `↳ Primitives`.
-2. Delete every node with **`y > 360`** (keep doc header `y ≤ 360`).
-3. Redraw per **Canvas documentation visual spec § A–G**: build **`_PageContent`** first (§ **E**–**F**), apply **premium** surface + shadow rules (**§ G**), then sections. Section strips **1440×64px**, strip BG/text per **binding map**. Typography: if **`Doc/*`** text styles already exist in the file (from a prior run), assign **`textStyleId`**; otherwise use literal sizes matching the § **A** ramp (**strip title ~22px semibold**, token labels **14–16px**, code lines **13px** mono) — Step **15c** will publish **`Doc/*`** for subsequent passes.
+**Script skeleton**
 
-**↳ Primitives page content**
+1. `figma.setCurrentPageAsync` → `↳ Primitives`.
+2. Delete every node on the page **other than `_Header`** (the doc header instance stays). The `_Header` occupies `y: 0–320`; the old cream `y > 360` cutoff is obsolete now that `_PageContent` starts at `y: 320`.
+3. Ensure the `_Header` instance has `layoutMode: VERTICAL`, `cornerRadius: 0`, `width: 1800` (see § A `_Header component`). If it is an instance, detaching is **not** allowed — edit its main component on the `Documentation components` page once, per § A; here, just assert and `resize(1800, 320)` on the instance if the width differs.
+4. Create **`_PageContent`** at `(0, 320)` — **VERTICAL**, `primaryAxisSizingMode: AUTO`, `counterAxisSizingMode: FIXED`, **width 1800**, **padding 80 on all four sides** (`paddingTop/Bottom/Left/Right = 80`), `itemSpacing 48`, `layoutAlign: STRETCH`. **Fill: literal `#FFFFFF` (not token-bound).** Inner content width = **1640** for every table/section child.
+5. Resolve Primitives variable IDs once (read from Step 4 REST snapshot or live `figma.variables.getLocalVariablesAsync('COLOR' | 'FLOAT' | 'STRING')`). Cache `{ path → variableId }` keyed by canonical path.
+6. For each **table spec row** below, call the shared `buildTable(spec)` helper (see § H.7 checklist) with the slug, group title, caption, column spec from § H.3, and the row list resolved from the cached Primitives variables.
 
-For each of the 5 color ramps (primary, secondary, tertiary, error, neutral), in order:
+**Tables to draw (in order)**
 
-1. Create **`doc/primitives/section/{ramp}`** (**`VERTICAL`**, **`primaryAxisSizingMode: AUTO`**).
-2. Draw the full-width **section label strip** (fixed height **64px**), **binding map** strip BG/text.
-3. Create **`doc/primitives/ramp-row/{ramp}`** (**`HORIZONTAL`**, **`primaryAxisSizingMode: AUTO`**, `itemSpacing` **12**). Append **11** child card frames — do **not** append 11 bare rectangles directly to the section without this row frame.
-4. Each **`doc/primitives/card/{ramp}-{stop}`**: **`VERTICAL`**, **`AUTO`** height, width **120**; top **120×120** (or **120×128**) swatch rect; below it a **vertical** stack (`itemSpacing` **4**) of text nodes (**`Doc/TokenName`** / **`Doc/Code`**): stop label, resolved hex, full path `color/primary/500`. Set **`textAutoResize`** on every text node (§ **E**). **Card color fill:** bind **`boundVariables.color`** to **`color/{ramp}/{stop}`** (§ **D**). *(Optional § **G**: if **`Effect/shadow-sm`** already exists, set **`effectStyleId`** on **`doc/primitives/section/{ramp}`** only — not on each swatch card.)*
+| Order | `{slug}` | Group title | Caption (`Doc/Caption`) | Rows |
+|---|---|---|---|---|
+| 1 | `primitives/color/primary` | Primary | Brand anchor — used for the most prominent actions, links, and focus. | 11 stops `color/primary/{50 … 950}` |
+| 2 | `primitives/color/secondary` | Secondary | Supporting brand color for secondary actions and decorative surfaces. | 11 stops `color/secondary/*` |
+| 3 | `primitives/color/tertiary` | Tertiary | Accent hue for highlights, chips, and illustrative moments. | 11 stops `color/tertiary/*` |
+| 4 | `primitives/color/error` | Error | Destructive and error feedback — do not use for incidental UI. | 11 stops `color/error/*` |
+| 5 | `primitives/color/neutral` | Neutral | Greyscale foundation for text, borders, and calm surfaces. | 11 stops `color/neutral/*` |
+| 6 | `primitives/space` | Space | Spacing scale on a 4px base grid. | All `Space/*` FLOATs |
+| 7 | `primitives/radius` | Corner Radius | Corner rounding primitives from square through pill. | All `Corner/*` FLOATs |
+| 8 | `primitives/elevation` | Elevation | Raw blur steps consumed by `shadow/*/blur` aliases in Effects. | All `elevation/*` FLOATs |
+| 9 | `primitives/typeface` | Typeface | Font family primitives. Display for headings, Body for paragraph text. | 2 rows (`typeface/display`, `typeface/body`) |
 
-After all color ramps, draw three more sections (each with **`doc/primitives/section/...`** + inner **`.../rows`** **VERTICAL** stack per § **F**):
+**Column definitions per slug** are in **§ H.3**. Cell content patterns are in **§ H.4** (use the *swatch chip + hex* pattern for the 5 color-ramp tables, *preview bar* for Space, *preview square* for Radius, *mono line* for Elevation, *specimen* for Typeface).
 
-5. **Space Scale** — `Doc/Section` title `Space Scale`; each `Space/*` = **`doc/primitives/space-row/{token}`** (**`HORIZONTAL`**, **`AUTO`**): bar (width bound to **`Space/*`** or resolved px cap **800**) + metadata column (name, px, WEB **`Doc/Code`**).
-6. **Corner Radius** — each `Corner/*` = **`doc/primitives/corner-row/{token}`** (**`HORIZONTAL`**, **`AUTO`**): **120×120** preview + labels.
-7. **Typeface** — two **`doc/primitives/typeface-row/{display|body}`** rows (**`HORIZONTAL`**, **`AUTO`**): path, resolved string, WEB `codeSyntax`.
+**Swatch binding (color ramp tables):** the 48×48 rect in the `SWATCH` cell must bind `boundVariables.color` → `figma.variables.createVariableAlias(primitiveVariable)` for the row's own Primitives variable (§ D / § H.5). The `HEX` column prints the resolved hex.
 
-Log the **Canvas checklist** row for Step 15a.
+On completion, log the **Canvas checklist** row for Step 15a, including total table count (**9**) and total row count.
 
 ---
 
 ## Step 15b — Draw Style Guide: ↳ Theme
 
-Run **one** `use_figma` execution for **`↳ Theme` only** (same delete `y > 360` rule, then redraw).
+Run **one** `use_figma` execution against **`↳ Theme` only`. All tables follow **§ H**.
 
-**↳ Theme page**
+**Script skeleton**
 
-For each of the 7 semantic groups (`background/`, `border/`, `primary/`, `secondary/`, `tertiary/`, `error/`, `component/`):
+1. `figma.setCurrentPageAsync` → `↳ Theme`.
+2. Delete every node other than `_Header`.
+3. Ensure `_Header` has `layoutMode: VERTICAL`, `cornerRadius: 0`, `width: 1800` (§ A). Resize instance to 1800 if needed.
+4. Create **`_PageContent`** per Step 15a rules (1800 wide, `x: 0, y: 320`, 80 padding all sides, white fill).
+5. Resolve the Theme collection's `light` and `dark` `modeId` once via `figma.variables.getVariableCollectionByIdAsync(themeCollectionId)` → `modes`. Cache.
+6. For each semantic group, call `buildTable(spec)` with slug `theme/{group}`, columns per § H.3, rows = the group's Theme variables.
 
-1. Create **`doc/theme/group/{group}`** (**`VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, **`STRETCH`** width).
-2. Draw a **1440×64px** section label strip (human-readable name, e.g. `Background`) — **binding map**; title **`Doc/Section`**. Optional one-line **`Doc/Caption`** under the title inside the strip (usage hint).
-3. Create **`doc/theme/group-grid`** (**`VERTICAL`**, **`AUTO`**, **`itemSpacing` 24**) — this frame holds **only** two-card **rows**, not loose cards.
-4. For each pair of tokens in that group, append **`doc/theme/card-row-{n}`** (**`HORIZONTAL`**, **`AUTO`**, **`itemSpacing` 24`**, children **`layoutAlign: STRETCH`** vertically). Each **card**:
-   - **Frame:** `VERTICAL`, **`padding` 28**, **`itemSpacing` 16**, **`minHeight` 200**, **`cornerRadius` 16**, stroke bound to **`color/border/subtle`**, fill **`color/background/variant`**. **§ G:** when **`Effect/shadow-sm`** exists, set **`effectStyleId`** on the card (see § **G** *Depth* note for default step order vs. one combined script).
-   - **Token path:** **`Doc/TokenName`** first line.
-   - **Swatch row:** `HORIZONTAL`, **`itemSpacing` 24**. Each preview = **`VERTICAL`** stack inside named wrapper `doc/theme-preview/light` or `…/dark` (**no fill**); call **`setExplicitVariableModeForCollection`** on the wrapper; inner **88×88** rounded rect (**`cornerRadius` 12**) with **bound** Theme variable fill; **`Doc/Caption`** for **LIGHT** / **DARK**. § **E**: **`textAutoResize`** on all text.
-   - **Code block:** three **`Doc/Code`** lines — WEB / ANDROID / iOS from Step 6 **`codeSyntax`**.
-5. If explicit mode APIs fail, use § **D** fallback (one swatch + hex line).
+**Tables to draw (in order)**
 
-Log the **Canvas checklist** row for Step 15b.
+| Order | `{slug}` | Group title | Caption | Rows |
+|---|---|---|---|---|
+| 1 | `theme/background` | Background | Surfaces, containers, scrims, and overlays. | 16 (`color/background/*`) |
+| 2 | `theme/border` | Border | Stroke tokens for dividers and outlines. | 2 (`color/border/*`) |
+| 3 | `theme/primary` | Primary | Primary brand roles and their on-color companions. | 8 (`color/primary/*`) |
+| 4 | `theme/secondary` | Secondary | Secondary brand roles for supporting actions. | 8 (`color/secondary/*`) |
+| 5 | `theme/tertiary` | Tertiary | Tertiary / decorative accent roles. | 8 (`color/tertiary/*`) |
+| 6 | `theme/error` | Error | Feedback color for destructive and error states. | 8 (`color/error/*`) |
+| 7 | `theme/component` | Component | shadcn-aligned component tokens (ring, input, muted, popover). | 4 (`color/component/*`) |
+
+**Per-row cell content:**
+
+- `TOKEN` cell → `Doc/Code` with the Figma path (e.g. `color/background/default`).
+- `LIGHT` cell → follow § H.4 **Theme** swatch pattern exactly: the cell is a HORIZONTAL `AUTO` frame with **two siblings** — [a] inner wrapper **`doc/theme-preview/light`** that calls `setExplicitVariableModeForCollection(themeCollection, lightModeId)` and contains **only** the 28×28 chip (bound to the row's Theme variable, § D), and [b] the `Doc/Code` hex text node placed as a **sibling** of the wrapper, **not a child**. The hex text's fill binds to `color/background/content` and must resolve in the page's normal mode.
+- `DARK` cell → same structure, wrapper **`doc/theme-preview/dark`** + Dark `modeId`. **Critical:** never parent the hex text under the Dark-scoped wrapper — inside that wrapper `color/background/content` resolves to white and the text disappears on the white cell. This is the single most common Theme-table bug; § H.4 and this step spell out the fix.
+- `ALIAS →` cell → resolved Primitives path for Light and Dark. If both modes alias the same primitive, print one line; if different, print two `Doc/Code` lines `light · {path}` / `dark · {path}`.
+- `WEB` / `ANDROID` / `iOS` cells → `Doc/Code`, pulled from Step 6 `codeSyntax` — never derived.
+
+**Fallback:** when `setExplicitVariableModeForCollection` throws, bind only the LIGHT chip, add a `Doc/Caption` line under the DARK chip with the resolved Dark hex, and log `Theme dual-preview: explicit mode unsupported` once per table.
+
+On completion, log the **Canvas checklist** row for Step 15b.
 
 ---
 
 ## Step 15c — Draw Style Guide: ↳ Layout, ↳ Text Styles, ↳ Effects
 
-Run **one** `use_figma` execution that visits **three pages in order** (`↳ Layout` → `↳ Text Styles` → `↳ Effects`). At the **start** of the script (before page navigation), publish **local Text styles** and **Effect styles** so later drawing can assign **`textStyleId`** / **`effectStyleId`**. On **each** page: delete `y > 360`, then redraw.
+Run **one** `use_figma` execution that visits three pages in order: `↳ Layout` → `↳ Text Styles` → `↳ Effects`. **Before** navigating to any page, publish **Doc / slot / effect styles** (subsection **0** below) so tables on all three pages can assign `textStyleId` and `effectStyleId` without fallbacks.
 
 ### 0 — Publish `Doc/*`, slot Text styles, and Effect styles (idempotent)
 
-Use `figma.getLocalTextStyles()` / `figma.getLocalEffectStyles()`; **`loadFontAsync`** for any `fontName` you set.
+Use `figma.getLocalTextStylesAsync()` / `figma.getLocalEffectStylesAsync()`; `loadFontAsync` for every `fontName` you set.
 
-1. **`Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`** — For each name, **`find` or `figma.createTextStyle()`**. Bind typography fields per § **A** Documentation type ramp (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*` or `Label/MD/*` at Typography mode **100**) via **`setBoundVariable('fontSize', variable)`** (and parallel fields) where the API allows; otherwise set resolved literals from mode **100** once.
-2. **Slot text styles (15)** — For **each** name in **slot order** below, **`find` or `figma.createTextStyle()`**, then bind **`{Slot}/font-size`**, **`{Slot}/font-family`**, **`{Slot}/font-weight`**, **`{Slot}/line-height`** (Typography · mode **100**) with **`setBoundVariable`** when supported so **Dev Mode** shows variable links. *(Collection variables and local Text styles are different objects — every name below needs its own Text style for specimens.)* If a style already exists, **update** bindings/values to match current variables.
+1. **`Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`** — find or `figma.createTextStyle()`. Bind fields to the Documentation type ramp in § **A** (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*` or `Label/MD/*` at Typography mode **100**) via `setBoundVariable('fontSize', variable)` and parallel fields when the API allows; otherwise set resolved literals from mode **100**.
+2. **Slot text styles (15 base + 12 body variants = 27)** — for each slot in order below, find or create `{Slot}`, then bind `{Slot}/font-size`, `{Slot}/font-family`, `{Slot}/font-weight`, `{Slot}/line-height` (Typography · mode **100**) with `setBoundVariable`. Collection variables and Text styles are different objects — every slot needs its own Text style.
 
-   **Slot order** (publish styles, then **`doc/typography/row/{slot}`** on **`↳ Text Styles`**): `Display/LG`, `Display/MD`, `Display/SM`, `Headline/LG`, `Headline/MD`, `Headline/SM`, `Title/LG`, `Title/MD`, `Title/SM`, `Body/LG`, `Body/MD`, `Body/SM`, `Label/LG`, `Label/MD`, `Label/SM`.
-3. **Effect styles** — For each shadow tier **`sm`**, **`md`**, **`lg`**, **`xl`**, **`2xl`**, create or update a local **`Effect/shadow-{tier}`** style: **`effects`** = one **`DROP_SHADOW`** built from resolved **`shadow/color`** (Effects · **Light**) + resolved **`shadow/{tier}/blur`** at **Light** (opacity/spread tuned to match the Foundations recipe used on canvas). **`Effect/shadow-color-only`** optional: single **`DROP_SHADOW`** or color chip note for `shadow/color` education. If duplicate names exist from an old run, **`remove()`** the older duplicate after migrating references, or update in place.
+   **Important naming rule for Body slots:** the three base body **text styles** are named `Body/LG/regular`, `Body/MD/regular`, `Body/SM/regular` (not `Body/LG`) so they nest inside the size folder alongside the 4 variants in Figma's Text Styles panel. The underlying **variable** paths stay `Body/LG/font-size`, `Body/LG/font-weight`, `Body/LG/font-family`, `Body/LG/line-height` — text-style names and variable names are separate namespaces, so the bindings are unchanged. If an earlier run created `Body/LG`, `Body/MD`, `Body/SM` at the root of the Body folder, rename them to `Body/{size}/regular` during this step.
+
+   **Base slot order (15 — variable group path · text style name):**
+   - `Display/LG` · `Display/LG`
+   - `Display/MD` · `Display/MD`
+   - `Display/SM` · `Display/SM`
+   - `Headline/LG` · `Headline/LG`
+   - `Headline/MD` · `Headline/MD`
+   - `Headline/SM` · `Headline/SM`
+   - `Title/LG` · `Title/LG`
+   - `Title/MD` · `Title/MD`
+   - `Title/SM` · `Title/SM`
+   - `Body/LG` · **`Body/LG/regular`**
+   - `Body/MD` · **`Body/MD/regular`**
+   - `Body/SM` · **`Body/SM/regular`**
+   - `Label/LG` · `Label/LG`
+   - `Label/MD` · `Label/MD`
+   - `Label/SM` · `Label/SM`
+
+   **Body variant slots (12 — per § 7b):** `Body/LG/emphasis`, `Body/LG/italic`, `Body/LG/link`, `Body/LG/strikethrough`, `Body/MD/emphasis`, `Body/MD/italic`, `Body/MD/link`, `Body/MD/strikethrough`, `Body/SM/emphasis`, `Body/SM/italic`, `Body/SM/link`, `Body/SM/strikethrough`. These combined with `Body/{size}/regular` yield five text styles per body size, all nested inside the `Body/{size}/` folder: `regular`, `emphasis`, `italic`, `link`, `strikethrough`.
+
+   For each variant style, after binding the 4 typography variables:
+   - `emphasis` — set `fontName = { family, style: 'Medium' }` (loadFontAsync first). If the Medium face isn't available, leave the base `Regular` family+style and rely on the bound `font-weight = 500` variable.
+   - `italic` — set `fontName = { family, style: 'Italic' }`. On error (face missing), fall back to `{ family, style: 'Regular' }` and `console.warn('italic face not loaded for ' + family + ' — Body/' + size + '/italic style created without italic glyph; add the Italic font face to the Figma file to resolve')`.
+   - `link` — `fontName.style = 'Regular'`, `textDecoration = 'UNDERLINE'`.
+   - `strikethrough` — `fontName.style = 'Regular'`, `textDecoration = 'STRIKETHROUGH'`.
+
+   Text styles **do not** carry fill; the `link` / `strikethrough` color lives on the text node (see § 7b coupling rule and the Text Styles page row-rendering rule below).
+
+3. **Effect styles** — for each tier in `sm`, `md`, `lg`, `xl`, `2xl`, create or update `Effect/shadow-{tier}`: `effects` = one `DROP_SHADOW` built from resolved `shadow/color` + resolved `shadow/{tier}/blur` (Effects · Light). Remove any legacy duplicates after migrating references.
 
 ### ↳ Layout page
 
-`_PageContent` → **`doc/layout/section/spacing`** and **`doc/layout/section/radius`** per § **F**. Each section: **64px** strip + **`doc/layout/rows`** (**`VERTICAL`**, **`AUTO`**, **`itemSpacing` 16`**). Every token = **`doc/layout/row/{token}`** (**`HORIZONTAL`**, **`AUTO`**, **`itemSpacing` 24**, cross-axis **center** or **stretch** as needed). Spacing bars: fill **`color/primary/200`** (bind Primitives); **bind `width`** to `space/*` when possible. Radius: **`cornerRadius`** on square bound to `radius/*`. Labels **`Doc/Code`** / **`Doc/Caption`**. § **E** on all frames and text.
+1. `figma.setCurrentPageAsync` → `↳ Layout`. Delete every node **other than `_Header`** (or whose `y >= 320`). Build `_PageContent` per § A rules (1800 wide, `x: 0, y: 320`, 80 padding all sides, white fill).
+2. Call `buildTable(spec)` **twice** with § H tables:
+
+| Order | `{slug}` | Group title | Caption | Rows |
+|---|---|---|---|---|
+| 1 | `layout/spacing` | Spacing | Semantic spacing aliases mapped to Primitive space steps. | All `space/*` |
+| 2 | `layout/radius` | Radius | Semantic radius aliases mapped to Primitive corner steps. | All `radius/*` |
+
+- `VALUE` cell → `Doc/Code` resolved px.
+- `ALIAS →` cell → `Doc/Code` primitive path (e.g. `Space/400`).
+- `PREVIEW` cell → *preview bar* (spacing) or *preview square* (radius) per § H.4, bound to the row's own Layout variable.
+- `WEB` / `ANDROID` / `iOS` cells → `Doc/Code` from Step 8 `codeSyntax`.
 
 ### ↳ Text Styles page
 
-`_PageContent` → **`doc/typography/rows`** (**`VERTICAL`**, **`AUTO`**, **`itemSpacing` 24**). For each of the **15** slots in **§0 slot order**:
+1. `figma.setCurrentPageAsync` → `↳ Text Styles`. Delete every node **other than `_Header`** (or whose `y >= 320`). Build `_PageContent` per § A rules.
+2. Call `buildTable(spec)` **once** with `{slug}` = `typography/styles`.
+3. Insert **5 category sub-header rows** (§ H.4 *category sub-header row* pattern, full-width 1640 × 40) in this order: **Display**, **Headline**, **Title**, **Body**, **Label**. Each sub-header precedes its specimen rows for that category.
+4. Specimen rows (**27 total** — 3 Display + 3 Headline + 3 Title + **15 Body** + 3 Label), in this order within each category:
+   - **Display / Headline / Title / Label:** `{Category}/LG`, `{Category}/MD`, `{Category}/SM` (3 rows each).
+   - **Body:** each size emits **5 rows in a block** — `Body/{size}/regular`, `Body/{size}/emphasis`, `Body/{size}/italic`, `Body/{size}/link`, `Body/{size}/strikethrough` — then the next size repeats. 3 sizes × 5 variants = 15 Body rows. **Order inside each block is fixed** — regular first so the reader sees the default before the decorated variants below it. The regular row binds to the `Body/{size}/regular` text style (§ 8 step 2).
 
-- **`doc/typography/row/{slot}`** — **`HORIZONTAL`**, **`primaryAxisSizingMode: AUTO`**, **`paddingTop`/`paddingBottom` 20**, **`itemSpacing` 32**, optional bottom stroke on the row frame bound to **`color/border/subtle`** (divider).
-- **Specimen column:** fixed-width frame (**~420px**) so wrapped metadata does not squash the specimen; text uses **`textStyleId`** → slot style — **never** raw `fontName`/`fontSize` on the specimen. **`textAutoResize = 'HEIGHT'`** with explicit width on the specimen text.
-- **Metadata column:** **`VERTICAL`** stack (`itemSpacing` **8`) of **`Doc/Code`** lines (four variable paths + optional “modes **85–200**” caption).
+Common cell content for every specimen row:
+
+| Column | Cell content |
+|---|---|
+| `SLOT` | `Doc/TokenName` — the published text-style name, e.g. `Headline/LG`, `Body/LG/regular`, `Body/LG/link`. For Body rows always use the 3-segment `Body/{size}/{variant}` form so the label matches the style name shown in the Text Styles panel. |
+| `SPECIMEN` | TEXT node with `textStyleId` → the published slot or variant style; `characters` = the slot name prose (`Headline LG`, `Body LG emphasis`, `Body LG link`, …). `resize(420, 1)` then `textAutoResize = 'HEIGHT'`. Row `primaryAxisSizingMode: AUTO` so Display/LG (~96px) expands naturally while Body variants stay compact. **Fill binding (variants only — critical):** for any `/link` row the specimen text node's `fills[0]` **must** be bound to **`color/primary/default`** via `setBoundVariableForPaint` (the brand hue — **not** `color/primary/content`, which is the text-on-primary pairing and is invisible on neutral backgrounds); for `/strikethrough` rows bind to **`color/background/content-muted`**. For base / `/emphasis` / `/italic` rows leave fill as the default `color/background/content`. Without this binding the styles publish correctly but the preview lies about the intended presentation. |
+| `SIZE / LINE` | VERTICAL stack — two `Doc/Code` lines: resolved `{fontSize}px` / `{lineHeight}px` at mode **100**. Variants resolve through their base-body alias, so values match the base row in the block. |
+| `WEIGHT / FAMILY` | VERTICAL stack — two `Doc/Code` lines: resolved `{fontWeight}` / `{fontFamily}`. `/emphasis` rows resolve to `500` (via `font/weight/medium`); other variants share the base weight. |
+| `WEB` | `Doc/Code` — from Step 7 / 7b `codeSyntax`. Variants show the 4-segment `var(--body-{size}-{variant}-font-size)`. |
+| `ANDROID` | `Doc/Code` — matching kebab for the slot (e.g. `body-lg-link-font-size`). |
+| `iOS` | `Doc/Code` — 5-segment dot path for variants (e.g. `.Typography.body.lg.link.font.size`). |
+
+Caption under the table title: `Doc/Caption` — "Specimen renders at mode 100 — full 8-mode scale (85 → 200) ships via the Typography collection. Body variants extend each size with emphasis / italic / link / strikethrough per §7b." This tells the reader the table shows base values only, while Dev Mode surfaces all 8 modes.
 
 ### ↳ Effects page
 
-`_PageContent` → **`doc/effects/grid`**. **Premium cards:** outer **`doc/effects/card/{tier}`** **~280×300px**, **`VERTICAL`**, **`AUTO`**, **`padding` 24**, **`cornerRadius` 20**, fill **`color/background/default`**, stroke **`color/border/subtle`**, **`effectStyleId` → `Effect/shadow-sm`** (§ **G**); inner **112×112** specimen with tier **`Effect/shadow-{tier}`** applied.
-- For each **`shadow/{tier}/blur`**, show **Light** and **Dark** previews using **`setExplicitVariableModeForCollection`** on **Effects** collection wrappers (same pattern as Theme § **D**). Apply matching **`Effect/shadow-{tier}`** to a pinned demo node via **`effectStyleId`** where the tier matches.
-- **`shadow/color`:** dedicated small card explaining RGBA + bound **`shadow/color`** variable fill on a swatch rect if separate from blur tiers.
+1. `figma.setCurrentPageAsync` → `↳ Effects`. Delete every node **other than `_Header`** (or whose `y >= 320`). Build `_PageContent` per § A rules.
+2. Resolve Effects collection `light` / `dark` `modeId` as in Step 15b.
+3. Call `buildTable(spec)` twice:
+
+| Order | `{slug}` | Group title | Caption | Rows |
+|---|---|---|---|---|
+| 1 | `effects/shadows` | Shadows | Drop shadow tiers — each alias points to an Elevation primitive. | 5 (`sm`, `md`, `lg`, `xl`, `2xl`) |
+| 2 | `effects/color` | Shadow Color | Shared shadow color referenced by every tier. | 1 (`shadow/color`) |
+
+- `effects/shadows` `LIGHT` / `DARK` cells → 88×88 `cornerRadius 12` card inside `doc/effect-preview/{mode}/{tier}` wrapper with explicit Effects mode set; card fill `color/background/default` + `effectStyleId = Effect/shadow-{tier}` + a small inner `Doc/Code` label showing the tier name.
+- `effects/shadows` `BLUR` / `ALIAS →` → `Doc/Code` (blur value in px; alias path `elevation/{step}`).
+- `effects/color` `LIGHT` / `DARK` cells → *swatch chip + hex* pattern, 32×32 chip bound to `shadow/color` in the wrapper's mode.
+- `WEB` / `ANDROID` / `iOS` cells → `Doc/Code` from Step 9 `codeSyntax`.
 
 Log the **Canvas checklist** row for Step 15c.
 
 ---
 
-*Detail for swatch geometry, Theme card layout, Layout/Text/Effects rows is in Steps **15a–15c** above. If any legacy instruction elsewhere in this file conflicts with **Canvas documentation visual spec § A–G**, the spec wins (token-bound chrome, Light doc mode, Dev Mode bindings, auto-layout hug rules, premium visual language).*
-
----
-
-## Step 16 — Draw MCP Tokens Page
-
-Navigate to the `↳ MCP Tokens` page using `figma.setCurrentPageAsync`. Find and delete any existing frame named `[MCP] Token Manifest`. Then build a new root frame named `[MCP] Token Manifest` positioned at x=0, y=360 (below the doc header), width=1440, **`layoutMode: VERTICAL`**, `primaryAxisSizingMode: AUTO`, `counterAxisSizingMode: FIXED`, padding 24, `itemSpacing` 24 — fill and strokes per **Canvas documentation visual spec § C** (root background → `color/background/default`, not detached `#FFFFFF` unless binding fails).
-
-Inside the root frame, first create the JSON manifest text node, then create the five collection table frames stacked vertically. Each collection frame: **`VERTICAL`**, **`primaryAxisSizingMode: AUTO`**, padding **20**, **`itemSpacing` 12**. Inside each, add **`doc/mcp-table/{collection}/rows`** (**`VERTICAL`**, **`AUTO`**) and append **one** **`doc/mcp-table/{collection}/row/{path-or-mode-suffix}`** (**`HORIZONTAL`**, **`AUTO`**, **`minHeight` 48**, cell padding **16**) per table line — **never** orphan cell text nodes without a row frame (§ **E**–**F**). **§ G:** apply **`Effect/shadow-sm`** to each **`[MCP] {collection}`** table frame (not every data row) for a **sleek** floating panel.
-
-**JSON manifest text node**
-
-Create a text node named `[MCP] JSON Manifest` at the top of the root frame (y=0 within the frame). Set its content to the full token manifest as a minified JSON string in this shape — substitute all `{…}` placeholders with actual resolved values, no aliases:
-
-```
-{ "meta": { "generated": "<ISO-8601 timestamp>", "skill": "create-design-system", "file": "<TARGET_FILE_KEY>" }, "collections": { "Primitives": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "<css-var>", "android": "<kebab-case>", "ios": "<dot.path>" }, ... }, "Theme": { "light": { "<path>": { "type": "COLOR", "value": "<hex>", "web": "...", "android": "...", "ios": "..." }, ... }, "dark": { ... } }, "Typography": { "100": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "130": { ... }, ... }, "Layout": { "<path>": { "type": "FLOAT", "value": <number>, "web": "...", "android": "...", "ios": "..." }, ... }, "Effects": { "<path>": { ... }, ... } } }
-```
-
-Apply **`Doc/Code`** (`textStyleId`) if that style exists from Step **15c**; otherwise use the closest monospace at **≥13px**. Width: 1440px. Set **`textAutoResize = 'HEIGHT'`** (§ **E**) so the JSON block does not collapse the manifest frame height.
-
-**Collection table frames**
-
-Create five sub-frames stacked vertically below the JSON text node, each named as follows. Each frame has a header row and one data row per token. Every data row is also a named frame following the pattern `token/{collection}/{path}` (include **`/{mode}/`** where applicable) so agents can look up individual tokens by layer name.
-
-**`ALIAS →` column (human + Dev Mode context):** For each variable, inspect `valuesByMode[modeId]` from the Plugin API (or REST `variables/local`). If the value is **`VARIABLE_ALIAS`**, resolve the **target variable’s `name`** (Figma path, e.g. `color/neutral/50`, `Space/300`, `elevation/400`, `typeface/display`) and print that string in **`ALIAS →`**. If the value is a **raw COLOR / FLOAT / STRING** (no alias), print **`— (raw)`** or **`— (RGBA)`** for hard-coded Theme tokens (`color/background/scrim`, `shadow/color`, etc.). Typography **`*/font-family`** rows should show **`typeface/display`** or **`typeface/body`**. Other Typography properties are normally raw FLOATs per mode — print **`—`** when not an alias.
-
-**`MODE` column:** First header row note (small **`Doc/Caption`** above the table or subtitle inside the collection frame): **`MODE` = Figma variable collection mode** (`light` / `dark` for Theme & Effects; `85` … `200` for Typography).
-
-**SWATCH column (Theme + Primitives COLOR only):** **`≥28×28px`** (use **32×32** when space allows). Fill paint must use **`boundVariables.color` → `figma.variables.createVariableAlias(variable)`** for the **same variable** as that row (§ **D**). Do **not** use a detached solid for COLOR swatches.
-
-Column specs and row content per collection:
-
-- **[MCP] Primitives** — `PATH | TYPE | VALUE | SWATCH | WEB | ANDROID | iOS`. One row per Primitives variable. **SWATCH:** variable-bound **Primitives** color for COLOR types; blank for FLOAT. Text: **`Doc/Code`** or **13px** mono.
-
-- **[MCP] Theme** — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS`. **Two rows** per Theme variable (`light`, `dark`). Row names `token/theme/light/{path}`, `token/theme/dark/{path}`. **`MODE`** cell literal `light` / `dark`. **`VALUE`** resolved hex still shown for quick reading. **`SWATCH`** uses **explicit `setExplicitVariableModeForCollection` on the row frame** OR the swatch wrapper so the bound Theme color resolves in that mode (same technique as Step **15b**). If that is too heavy, bind swatch without explicit mode and keep **`VALUE`** authoritative — log once per table.
-
-- **[MCP] Typography** — `PATH | PROPERTY | MODE | ALIAS → | VALUE | WEB | ANDROID | iOS`. One row per variable × mode (**480** rows — 60 variables × 8 modes). For **`*/font-family`**, **`ALIAS →`** should read **`typeface/display`** or **`typeface/body`** (Primitives). **`ALIAS →`** per rule above for all other properties.
-
-- **[MCP] Layout** — `PATH | TYPE | VALUE | ALIAS → | WEB | ANDROID | iOS`. **`ALIAS →`** = aliased Primitive (`Space/300`, `Corner/Medium`, …).
-
-- **[MCP] Effects** — `PATH | MODE | TYPE | ALIAS → | VALUE | SWATCH | WEB | ANDROID | iOS`. **`SWATCH`** only for **`shadow/color`** (bound variable). Blur rows leave SWATCH blank or use a neutral **`—`**. **`ALIAS →`**: blur rows → **`elevation/*`** target; `shadow/color` → **`— (RGBA)`**.
-
-**Column widths (guideline, adjust if needed):** PATH **320px**, MODE **64px**, TYPE **56px**, ALIAS → **200px**, VALUE **96px**, SWATCH **40px** (cell fits **32px** rect + padding), WEB **200px**, ANDROID **200px**, iOS **220px**.
-
-All column headers: **`Doc/TokenName`** or bold **`Doc/Code`**; header row backgrounds **`color/background/variant`** (bound per § **C**). Add a **`Doc/Caption`** table subtitle: **“MODE = collection mode name in Figma.”**
-
-Log the **Canvas checklist** row for Step 16.
+*If any instruction in an earlier section of this file conflicts with § H or with the step rewrites above, § H and the rewrites win (stable table hierarchy, Light doc mode, Dev Mode bindings, auto-layout hug rules).*
 
 ---
 
@@ -2178,7 +2652,7 @@ Apply to every variable in every collection.
 3. **WEB:** lowercase all tokens, join with `-`, wrap: `var(--color-primary-500)` / `var(--display-lg-font-size)`
    - Exception for Primitives: this derivation applies. For Theme: see rule 6 — codeSyntax is set explicitly from the Step 6 table, not derived.
 4. **ANDROID:** for tokens that use derivation (Primitives layout-adjacent, Layout, Effects), use the **WEB token string without** `var(--` / `)` — **kebab-case** (e.g. `space-md`, `shadow-sm-blur`, `color-primary-500`).
-5. **iOS:** use **dot paths** — Step 5 (Primitives), Step 8 (Layout), Step 9 (Effects). **Typography:** for `Category/Size/property` variables, emit **`.Typography.{category}.{size}.{propertyCamel}`** (see Step 7 iOS rule — e.g. `Headline/MD/line-height` → `.Typography.headline.md.lineHeight`).
+5. **iOS:** use **fully dot-separated paths** — Step 5 (Primitives), Step 8 (Layout), Step 9 (Effects). Rule: **every word gets its own segment separated by a period** — split on both `/` and kebab `-`. **Never camelCase** (write `.Secondary.on.subtle`, not `.Secondary.onSubtle`; `.font.size`, not `.fontSize`). **Typography:** for `Category/Size/property` variables, emit **`.Typography.{category}.{size}.{property}`** where `property` is the kebab tail with dots (see Step 7 iOS rule — e.g. `Headline/MD/line-height` → `.Typography.headline.md.line.height`).
 6. **Theme (all platforms):** codeSyntax is set EXPLICITLY per token from the table in Step 6. The Figma path is a designer label; do not derive codeSyntax from it. Example: `color/background/content-muted` → WEB `var(--color-content-muted)`, ANDROID `on-surface-variant`, iOS `.Foreground.secondary` — path and all three codeSyntax columns are intentionally different.
 
 ### Platform exception summary
@@ -2194,13 +2668,13 @@ Selected examples showing intentional name divergence:
 | `color/background/default` | `var(--color-background)` | `surface` | `.Background.default` |
 | `color/background/container-high` | `var(--color-background-container-high)` | `surface-container-high` | `.Background.high` |
 | `color/background/inverse` | `var(--color-inverse-surface)` | `inverse-surface` | `.Background.inverse` |
-| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Background.shadowTint` |
+| `color/background/shadow` | `var(--color-shadow-tint)` | `shadow` | `.Background.shadow.tint` |
 | `color/background/variant` | `var(--color-background-variant)` | `surface-variant` | `.Background.variant` |
 | `color/background/content-muted` | `var(--color-content-muted)` | `on-surface-variant` | `.Foreground.secondary` |
 | `color/border/default` | `var(--color-border)` | `outline` | `.Border.default` |
 | `color/primary/fixed` | `var(--color-primary-fixed)` | `primary-fixed` | `.Primary.fixed` |
 | `color/primary/content` | `var(--color-on-primary)` | `on-primary` | `.Primary.on` |
-| `color/error/fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.errorFixed` |
+| `color/error/fixed` | `var(--color-danger-fixed)` | `error-fixed` | `.Status.error.fixed` |
 | `color/error/default` | `var(--color-danger)` | `error` | `.Status.error` |
 
 The full Theme codeSyntax table is in Step 6 — this is just a reminder that path ≠ codeSyntax for Theme.
@@ -2211,8 +2685,8 @@ The full Theme codeSyntax table is in Step 6 — this is just a reminder that pa
 
 **Layout / Effects (pattern):**
 - `space/md` → WEB `var(--space-md)`, ANDROID `space-md`, iOS `.Layout.space.md`
-- `Display/LG/font-size` → WEB `var(--display-lg-font-size)`, ANDROID `display-lg-font-size`, iOS `.Typography.display.lg.fontSize`
-- `Title/LG/line-height` → WEB `var(--title-lg-line-height)`, ANDROID `title-lg-line-height`, iOS `.Typography.title.lg.lineHeight`
+- `Display/LG/font-size` → WEB `var(--display-lg-font-size)`, ANDROID `display-lg-font-size`, iOS `.Typography.display.lg.font.size`
+- `Title/LG/line-height` → WEB `var(--title-lg-line-height)`, ANDROID `title-lg-line-height`, iOS `.Typography.title.lg.line.height`
 
 ---
 
