@@ -4,7 +4,7 @@
 Runs **after** Phase 05 (pages exist) and **before** Phase 05b in the orchestrator.
 
 ## Goal
-Draw the TOC body inside `_PageContent` on `📝 Table of Contents`. **Do not** set hyperlinks here (Phase 05f).
+Draw the TOC body inside `_PageContent` on `📝 Table of Contents` as a **single-column stacked list** of full-width section cards, grouped by system band. **Do not** set hyperlinks here (Phase 05f).
 
 ## Prerequisites
 - Phase 05 complete.
@@ -15,14 +15,36 @@ None.
 ## Instructions
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
-Before editing this script, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ A–G). The TOC renders at the same 1720 inner width as `↳ Token Overview` and follows the same `Doc/*` text-style + shadow-sm rhythm as style-guide pages — so the four system "bands" each get a 64-tall strip (`color/background/variant`) above a 2-column card grid, cards use `color/background/default` + `color/border/subtle` + `Effect/shadow-sm`, and every text node either carries `textStyleId` (when Doc/* styles exist) or a raw-font fallback that `/create-design-system` Step 15c § 0 can upgrade.
+Before editing this script, **`Read`** [`skills/create-design-system/CONVENTIONS.md`](../../create-design-system/CONVENTIONS.md) § 3 (canvas geometry) and the `skills/create-design-system/SKILL.md` section **Canvas documentation visual spec** (§ A–G). The TOC renders at the same 1720 inner width as `↳ Token Overview`, uses a **literal `#FFFFFF`** `_PageContent` fill (not the `color/background/default` token — it may resolve to an off-white tint), and follows the same `Doc/*` text-style + shadow-sm rhythm as style-guide pages. Layout is a **single-column stacked list**: the four system "bands" each get a 64-tall strip (`color/background/variant`) followed by a `band-list/{slug}` VERTICAL stack of full-width `toc-card/{title}` section cards (each card spans the full **1720** inner width). Cards use `color/background/default` + `color/border/subtle` + `Effect/shadow-sm`, and every text node either carries `textStyleId` (when Doc/* styles exist) or a raw-font fallback that `/create-design-system` Step 15c § 0 can upgrade.
+
+## Re-running on a non-empty file (idempotency)
+This script **appends** a new `_PageContent` frame to `📝 Table of Contents` — it does **not** clean up prior runs. Before re-running on a file that already has TOC content (e.g. testing layout changes, or re-invoking after a plugin/skill update), first run a small wipe script with `use_figma` that targets the page and removes any existing `_PageContent` child:
+
+```javascript
+const page = figma.root.children.find(p => p.name === '📝 Table of Contents');
+await figma.setCurrentPageAsync(page);
+const removedNodeIds = [];
+for (const c of page.children.filter(c => c.name === '_PageContent')) {
+  removedNodeIds.push(c.id);
+  c.remove();
+}
+return { removedNodeIds };
+```
+
+Leave `_Header` in place — Phase 05b owns it.
 
 ## Success criteria
-Four band strips (`band-strip/{slug}`) separating Foundations / Atoms / Components / Platform; each band has a 2-column card grid (`toc-card/{title}`) of section cards; summary bar at the bottom; no URL hyperlinks yet.
+Four band strips (`band-strip/{slug}`) separating Foundations / Atoms / Components / Platform; under each band a single-column `band-list/{slug}` stack of full-width `toc-card/{title}` section cards (1720 wide each); summary bar at the bottom; no URL hyperlinks yet; `_PageContent` positioned at `y: 320` with a **literal `#FFFFFF`** fill (not token-bound).
+
+## Known Figma API gotchas this script must follow
+- **`resize()` before sizing modes.** For any frame where `primaryAxisSizingMode` or `counterAxisSizingMode` is `'AUTO'`, call `resize(w, h)` **before** assigning the sizing modes. Calling `resize()` after an `'AUTO'` assignment silently resets that axis to `'FIXED'` — the symptom is child containers that collapse to 1 px tall and their content renders off the visible area.
+- **Literal white, not bound.** `_PageContent.fills` must be `[{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }]`. Do **not** `bindThemeColor(pageContent, 'color/background/default', …)` — the token often resolves to an off-white in Theme · Light and breaks the visual match with the rest of the documentation.
+- **Auto-layout all the way down.** Every card, strip, and row is auto-layout. Do not precompute `cardHeight` or a running `currentY` — heights hug content.
+- **Do not set hyperlinks here.** Phase 05f (`/new-project` Step 5c-links) runs last and owns every TOC link.
 
 ## Step 5c — Draw Table of Contents
 
-Call `use_figma` with the `fileKey` from Step 4. Navigate to the `📝 Table of Contents` page. Wrap all TOC body content in a `_PageContent` vertical auto-layout frame at `y = 360` (below the header once Step 5b runs). Section cards, rows, and strips are all auto-layout so heights hug content — do not precompute `cardHeight` or a running `currentY`. **Do not** set hyperlinks here; Step **5c-links** (phase 05f) runs after Steps 5b, 5d, and 5e.
+Call `use_figma` with the `fileKey` from Step 4. Navigate to the `📝 Table of Contents` page. Wrap all TOC body content in a `_PageContent` vertical auto-layout frame at `y = 320` (directly beneath `_Header` once Step 5b runs — zero gap seam, per CONVENTIONS.md § 3). Each system band emits **one** `band-strip/{slug}` followed by **one** `band-list/{slug}` VERTICAL stack of full-width `toc-card/{title}` section cards — no 2-column grid. Section cards, rows, and strips are all auto-layout so heights hug content — do not precompute `cardHeight` or a running `currentY`. **Do not** set hyperlinks here; Step **5c-links** (phase 05f) runs after Steps 5b, 5d, and 5e.
 
 ```javascript
 // Navigate to the Table of Contents page
@@ -122,14 +144,13 @@ async function tryApplyEffectStyle(node, styleName) {
   } catch (_) {}
 }
 
-// ── Page geometry (§ 3 — TOC shares 1800 wide, 40 padding, inner 1720 with Token Overview) ──
+// ── Page geometry (CONVENTIONS.md § 3 — TOC shares 1800 wide, 40 padding all sides, inner 1720 with Token Overview) ──
 const PAGE_WIDTH     = 1800;
 const PAGE_PADDING   = 40;
 const SECTION_WIDTH  = PAGE_WIDTH - PAGE_PADDING * 2; // 1720
-const COL_GAP        = 24;
-const CARD_WIDTH     = Math.floor((SECTION_WIDTH - COL_GAP) / 2); // 848
 const CARD_PADDING   = 24;
 const STRIP_HEIGHT   = 64;
+const CARD_INNER     = SECTION_WIDTH - CARD_PADDING * 2; // 1672 — width available inside a full-width card
 
 // ── Band definitions (system areas, Figma file reading order) ──
 const bands = [
@@ -185,20 +206,24 @@ bands.forEach(b => {
 });
 
 // ── _PageContent ──
+// CONVENTIONS.md § 3: y=320 (zero-gap seam below _Header), padding 40 all sides,
+// fill LITERAL #FFFFFF (not token-bound — the color/background/default variable
+// may resolve to an off-white in Theme · Light and break the match with other doc pages).
+// resize() MUST come before sizing-mode assignments (figma-use gotcha).
 const pageContent = figma.createFrame();
 pageContent.name = '_PageContent';
 pageContent.layoutMode = 'VERTICAL';
+pageContent.resize(PAGE_WIDTH, 100);
 pageContent.primaryAxisSizingMode = 'AUTO';
 pageContent.counterAxisSizingMode = 'FIXED';
-pageContent.resize(PAGE_WIDTH, 100);
 pageContent.paddingTop    = PAGE_PADDING;
-pageContent.paddingBottom = 80;
+pageContent.paddingBottom = PAGE_PADDING;
 pageContent.paddingLeft   = PAGE_PADDING;
 pageContent.paddingRight  = PAGE_PADDING;
 pageContent.itemSpacing   = 32;
-bindThemeColor(pageContent, 'color/background/default', '#ffffff');
+pageContent.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
 pageContent.x = 0;
-pageContent.y = 360;
+pageContent.y = 320;
 tocPage.appendChild(pageContent);
 
 // ── Band strip helper (64px color/background/variant strip with Doc/Caption title) ──
@@ -206,12 +231,13 @@ async function bandStrip(band) {
   const strip = figma.createFrame();
   strip.name = `band-strip/${band.slug}`;
   strip.layoutMode = 'HORIZONTAL';
+  // resize() before sizing-mode assignments (figma-use gotcha).
+  strip.resize(SECTION_WIDTH, STRIP_HEIGHT);
   strip.primaryAxisSizingMode = 'FIXED';
   strip.counterAxisSizingMode = 'FIXED';
   strip.counterAxisAlignItems = 'CENTER';
   strip.primaryAxisAlignItems = 'SPACE_BETWEEN';
   strip.layoutAlign = 'STRETCH';
-  strip.resize(SECTION_WIDTH, STRIP_HEIGHT);
   strip.paddingLeft = strip.paddingRight = 24;
   strip.paddingTop = strip.paddingBottom = 0;
   strip.itemSpacing = 16;
@@ -252,14 +278,16 @@ async function bandStrip(band) {
   pageContent.appendChild(strip);
 }
 
-// ── Card helper ──
+// ── Card helper — full-width (SECTION_WIDTH) stacked card, no columns ──
 async function sectionCard(section) {
   const card = figma.createFrame();
   card.name = `toc-card/${section.title}`;
   card.layoutMode = 'VERTICAL';
+  // resize() before sizing-mode assignments (figma-use gotcha).
+  card.resize(SECTION_WIDTH, 100);
   card.primaryAxisSizingMode = 'AUTO';
   card.counterAxisSizingMode = 'FIXED';
-  card.resize(CARD_WIDTH, 100);
+  card.layoutAlign = 'STRETCH';
   card.paddingTop = card.paddingBottom = CARD_PADDING;
   card.paddingLeft = card.paddingRight = CARD_PADDING;
   card.itemSpacing = 0;
@@ -276,9 +304,9 @@ async function sectionCard(section) {
   sectionTitle.layoutAlign = 'STRETCH';
   card.appendChild(sectionTitle);
 
-  // Underline stroke
+  // Underline stroke (1px, card-inner width)
   const underline = figma.createRectangle();
-  underline.resize(CARD_WIDTH - CARD_PADDING * 2, 1);
+  underline.resize(CARD_INNER, 1);
   bindThemeColor(underline, 'color/border/subtle', '#ededed');
   underline.layoutAlign = 'STRETCH';
   card.appendChild(underline);
@@ -291,7 +319,7 @@ async function sectionCard(section) {
   titleGap.layoutAlign = 'STRETCH';
   card.appendChild(titleGap);
 
-  // Page rows
+  // Page rows — full card-inner width, 40 tall, name left + arrow right
   for (let ri = 0; ri < section.pages.length; ri++) {
     const pageName = section.pages[ri];
     const isLast = ri === section.pages.length - 1;
@@ -299,9 +327,10 @@ async function sectionCard(section) {
     const linkRow = figma.createFrame();
     linkRow.name = `toc-link/${pageName}`;
     linkRow.layoutMode = 'HORIZONTAL';
+    // resize() before sizing-mode assignments (figma-use gotcha).
+    linkRow.resize(CARD_INNER, 40);
     linkRow.primaryAxisSizingMode = 'FIXED';
     linkRow.counterAxisSizingMode = 'FIXED';
-    linkRow.resize(CARD_WIDTH - CARD_PADDING * 2, 40);
     linkRow.itemSpacing = 8;
     linkRow.primaryAxisAlignItems = 'SPACE_BETWEEN';
     linkRow.counterAxisAlignItems = 'CENTER';
@@ -327,7 +356,7 @@ async function sectionCard(section) {
 
     if (!isLast) {
       const rowBorder = figma.createRectangle();
-      rowBorder.resize(CARD_WIDTH - CARD_PADDING * 2, 1);
+      rowBorder.resize(CARD_INNER, 1);
       bindThemeColor(rowBorder, 'color/border/subtle', '#ededed');
       rowBorder.layoutAlign = 'STRETCH';
       card.appendChild(rowBorder);
@@ -337,51 +366,25 @@ async function sectionCard(section) {
   return card;
 }
 
-// ── Render each band (strip + 2-column grid) ──
+// ── Render each band (strip + single-column full-width section-card stack) ──
 for (const band of bands) {
   await bandStrip(band);
 
-  const grid = figma.createFrame();
-  grid.name = `band-grid/${band.slug}`;
-  grid.layoutMode = 'VERTICAL';
-  grid.primaryAxisSizingMode = 'AUTO';
-  grid.counterAxisSizingMode = 'FIXED';
-  grid.resize(SECTION_WIDTH, 100);
-  grid.itemSpacing = 24;
-  grid.fills = [];
-  grid.layoutAlign = 'STRETCH';
-  pageContent.appendChild(grid);
+  const list = figma.createFrame();
+  list.name = `band-list/${band.slug}`;
+  list.layoutMode = 'VERTICAL';
+  // resize() before sizing-mode assignments (figma-use gotcha).
+  list.resize(SECTION_WIDTH, 1);
+  list.primaryAxisSizingMode = 'AUTO';
+  list.counterAxisSizingMode = 'FIXED';
+  list.itemSpacing = 16;
+  list.fills = [];
+  list.layoutAlign = 'STRETCH';
+  pageContent.appendChild(list);
 
-  for (let i = 0; i < band.sections.length; i += 2) {
-    const leftSection  = band.sections[i];
-    const rightSection = band.sections[i + 1];
-
-    const rowWrapper = figma.createFrame();
-    rowWrapper.name = `band-grid/${band.slug}/row/${i / 2}`;
-    rowWrapper.layoutMode = 'HORIZONTAL';
-    rowWrapper.primaryAxisSizingMode = 'FIXED';
-    rowWrapper.counterAxisSizingMode = 'AUTO';
-    rowWrapper.counterAxisAlignItems = 'MIN';
-    rowWrapper.itemSpacing = COL_GAP;
-    rowWrapper.fills = [];
-    rowWrapper.layoutAlign = 'STRETCH';
-    rowWrapper.resize(SECTION_WIDTH, 1);
-    grid.appendChild(rowWrapper);
-
-    const leftCard = await sectionCard(leftSection);
-    rowWrapper.appendChild(leftCard);
-
-    if (rightSection) {
-      const rightCard = await sectionCard(rightSection);
-      rowWrapper.appendChild(rightCard);
-    } else {
-      // Empty placeholder column so the single-card row keeps the two-column rhythm.
-      const empty = figma.createFrame();
-      empty.name = 'toc-card/_empty';
-      empty.resize(CARD_WIDTH, 1);
-      empty.fills = [];
-      rowWrapper.appendChild(empty);
-    }
+  for (const section of band.sections) {
+    const card = await sectionCard(section);
+    list.appendChild(card);
   }
 }
 

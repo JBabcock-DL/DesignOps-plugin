@@ -94,12 +94,12 @@ Column widths per table are defined in §11 below. **Every table column set sums
 
 ### TOC + Token Overview use the same outer width
 
-| Page               | `_PageContent` width | Inner content | Padding L/R |
-| ------------------ | -------------------- | ------------- | ----------- |
-| `📝 Table of Contents` | **1800**          | **1720**      | **40**      |
-| `↳ Token Overview` | **1800**            | **1720**      | **40**      |
+| Page               | `_PageContent` width | Inner content | Padding (all 4 sides) | `y` | Fill |
+| ------------------ | -------------------- | ------------- | --------------------- | --- | ---- |
+| `📝 Table of Contents` | **1800**          | **1720**      | **40**                | **320** | **`#FFFFFF` literal** (not tokened) |
+| `↳ Token Overview` | **1800**            | **1720**      | **40**                | **320** | **`#FFFFFF` literal** (not tokened) |
 
-(Padding is 40 on these index pages, not 80. Only the **style guide** pages use 80.)
+(Padding is 40 on all 4 sides of these index pages, not 80. Only the **style guide** pages use 80. `_PageContent.y = 320` matches the style-guide seam — `_Header` ends at 320, `_PageContent` starts at 320 with zero gap. `_PageContent` fill is **literal `#FFFFFF`** — do **not** bind to `color/background/default`; the token may resolve to an off-white tint and will break the visual match with the rest of the documentation.)
 
 ### TOC + Token Overview render with the same chrome as style-guide pages
 
@@ -111,7 +111,8 @@ Both pages now follow the full style-guide visual language — there is **no** "
 | Every fill and stroke                 | `setBoundVariable` against Theme · Light or Primitives (§ 12); hex literals are fallbacks.                                                                |
 | Section shells / cards / panels / tables | `cornerRadius 16` outer, bound `color/background/default` fill + `color/border/subtle` stroke + `effectStyleId: Effect/shadow-sm` once § G Depth is published. |
 | Token Overview platform-mapping table | Uses the full § H hierarchy — `doc/table/token-overview/platform-mapping` → `header` → `body` → `row/{tokenPath}` → `cell/{key}` — no absolute `x`/`y` positioning, row `minHeight 64`, cell `paddingH 20`, last row has no bottom stroke. Columns sum to **1640** (TOKEN 400 · WEB 420 · ANDROID 340 · iOS 480). |
-| TOC band strips                       | **64px full-width strips** named `band-strip/{foundations|atoms|components|platform}` with fill `color/background/variant` and `cornerRadius 12`, containing a `Doc/Caption` uppercase title (letter-spacing +0.08em) over a `Doc/Caption` subtitle + right-aligned `Doc/Code` count. Each strip is followed by a `band-grid/{slug}` 2-column card grid (`CARD_WIDTH` = `(1720 − 24) / 2 = 848`). |
+| TOC band strips                       | **64px full-width strips** named `band-strip/{foundations\|atoms\|components\|platform}` with fill `color/background/variant` and `cornerRadius 12`, containing a `Doc/Caption` uppercase title (letter-spacing +0.08em) over a `Doc/Caption` subtitle + right-aligned `Doc/Code` count. Each strip is followed by a **`band-list/{slug}`** — a **single-column VERTICAL stack** of full-width **`toc-card/{title}`** section cards (each card spans the full **1720** inner width; no 2-column grid). Section cards hug their content height; there is no `band-grid` wrapper. |
+| TOC section card                      | Full-width card (**1720** × auto) with `cornerRadius 16`, bound `color/background/default` fill + `color/border/subtle` stroke + `shadow-sm`, `padding 24` all sides. Header: `Doc/Section` title + 1px underline in `color/border/subtle`. Body: stacked **`toc-link/{page}`** rows (HORIZONTAL auto-layout, `primaryAxisAlignItems: SPACE_BETWEEN`, fixed 40 tall) with `Doc/TokenName` page name on the left and `Doc/Caption` `→` arrow on the right, separated by 1px `color/border/subtle` row dividers. |
 | TOC summary bar                       | Dark `color/neutral/950` (Primitives) bar at 72px, `Doc/Caption` centered `color/neutral/50` text, `cornerRadius 12`, shadow-sm.                            |
 
 ---
