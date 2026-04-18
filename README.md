@@ -4,7 +4,10 @@ A Claude Code plugin that gives Detroit Labs designers seven skill-based command
 
 All skill logic lives in `SKILL.md` instruction files. There is no TypeScript code, no bundler, and no install script. Everything runs through the Claude Code agent using the Figma MCP connector for authentication.
 
-> **Ramping up a new agent (Claude Sonnet, Opus, future models)?** Have it read [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) before running `/new-project`, `/create-design-system`, or `/sync-design-system`. That file is a one-page quick reference covering canvas geometry (**1800**/**1640** widths, 80px padding on style-guide pages), iOS `codeSyntax` dot-path rules (**never** camelCase), body text variants, the removed `↳ MCP Tokens` page, and a pre-commit audit checklist.
+> **Ramping up a new agent (Claude Sonnet, Opus, future models)?** Read these two quick-reference guides before running any skill:
+>
+> - [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) — canvas geometry (**1800**/**1640** widths, 80px padding on style-guide pages), iOS `codeSyntax` dot-path rules (**never** camelCase), body text variants, the removed `↳ MCP Tokens` page, full table format spec (hierarchy, column widths, cell patterns, chrome bindings, build order), and a pre-commit audit checklist.
+> - [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) — the **matrix-default** layout every component uses: header + properties table + variant × state specimen matrix + Do/Don't usage notes. Covers per-category state axes, per-component variant rows, instance-vs-component handling, the `ComponentSet` parked at `y: -2000` pattern, and a button reference implementation.
 
 ---
 
@@ -219,9 +222,18 @@ Install one or more shadcn/ui components, wire them to the project's CSS token f
 2. Initializes shadcn/ui if not already set up (`npx shadcn@latest init`)
 3. **Wires `tokens.css` into the project's global CSS** — removes shadcn's generated `@layer base` variable block and adds `@import 'tokens.css'` so all shadcn components resolve their CSS custom properties from the design system (both files use the same variable names)
 4. Installs each component via `npx shadcn@latest add <component>`
-5. Draws the component structure on the Figma canvas, routing each component to its designated page in the Foundations scaffold
+5. Draws the component into a **documentation matrix** (default layout — see below) on the Figma canvas, routing each component to its designated page in the Foundations scaffold
 6. Binds Figma variable tokens from the `Theme`, `Layout`, and `Typography` collections to each canvas component
 7. Offers to chain into `/code-connect`
+
+**Matrix-default canvas layout** — every component, even single-state ones, renders into a 3-section documentation frame at 1640 inner width:
+
+1. **Header** — title + 1-line summary + shadcn source link.
+2. **Properties table** — 5 columns (PROPERTY · TYPE · DEFAULT · REQUIRED · DESCRIPTION) summing to 1640, rows pulled from the `VariantProps<…>` union in the installed shadcn source.
+3. **Variant × State matrix** — rows = variant (Primary / Destructive / Outline / …), columns = state (default · hover · pressed | disabled), size groups stacked vertically (`sm` / `default` / `lg` / `icon`). Two-tier header groups interactive states under **DEFAULT** and inactive states under **DISABLED**. Cells contain one **instance** of the appropriate component variant; states that aren't Figma variant props are applied as instance overrides. The `ComponentSet` itself is parked at `x: 0, y: -2000` above the visible page — resolvable for Code Connect and the Assets panel, but not cluttering the doc.
+4. **Usage notes** — 2-column Do / Don't grid with 3+ bullets each.
+
+Full spec, per-category state axes, audit checklist, and a button reference implementation live in [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md).
 
 Because `tokens.css` defines **canonical** Tailwind-friendly theme vars (`--color-background`, `--color-content`, `--color-border`, `--color-primary`, …) plus shadcn aliases (`--background` → `var(--color-background)`, `--foreground` → `var(--color-content)`, `--primary` → `var(--color-primary)`, …), Web and shadcn stay aligned without extra mapping.
 

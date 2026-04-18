@@ -9,6 +9,8 @@ agent: general-purpose
 
 Install shadcn/ui components into the local codebase and draw them onto the Figma canvas with token variable bindings.
 
+> **Before you draw anything, read** [`CONVENTIONS.md`](./CONVENTIONS.md) — the quick-reference guide that agents (Sonnet, Haiku, future Claude versions) can load to match the house style on the first pass. It documents the canvas geometry, the matrix-default layout, the properties table, state / variant / size axes, the `Doc/*` text styles, and the audit checklist. Every rule in this SKILL should round-trip with that file; if they ever disagree, **this SKILL is authoritative** and `CONVENTIONS.md` must be updated to match.
+
 ---
 
 ## Interactive input contract
@@ -132,6 +134,10 @@ If a component install fails, log the error, mark it `failed`, and continue to t
 ### Step 6 — Draw components to Figma canvas
 
 > **Critical rule:** Every component's page navigation, creation, and all variable bindings must happen inside a **single `use_figma` call**. Each call runs in an isolated plugin context — page state set in one call does NOT carry over to the next call.
+>
+> **Default layout = matrix.** Every component — single-state, single-variant, or full cross-product — renders into a **Variant × State specimen matrix** inside a documentation frame that also carries a properties/types table and Do/Don't usage notes. The flat wrapping "grid of variants" output from earlier revisions of this skill is **deprecated**. See [`CONVENTIONS.md`](./CONVENTIONS.md) §§ 1–14 for the full spec.
+>
+> **One component per page.** The page is already scaffolded by `/new-project` step 5b — do not create pages here. Delete every node other than `_Header`, then build `_PageContent` + the doc frame.
 
 For each successfully installed component, make **one `use_figma` call** using the complete template below.
 
@@ -340,124 +346,290 @@ function buildVariant(name, fillVar, fallbackFill, {
   return c;
 }
 
-// ── Layout helper — call after combineAsVariants to prevent stacking ─────
-// Applies wrapping auto-layout to the component set and places it on canvas.
-// startX / startY: canvas coordinates for the top-left of the set.
-function layoutSet(set, name, startX = 100, startY = 100) {
-  set.name = name;
-  // Enable wrapping auto-layout so variants form a readable grid
-  set.layoutMode         = 'HORIZONTAL';
-  set.layoutWrap         = 'WRAP';
-  set.itemSpacing        = 32;
-  set.counterAxisSpacing = 32;
-  set.paddingTop         = 40;
-  set.paddingBottom      = 40;
-  set.paddingLeft        = 40;
-  set.paddingRight       = 40;
-  // Place at explicit canvas position
-  set.x = startX;
-  set.y = startY;
+// ── 6. DEFAULT DRAW FLOW — matrix documentation frame (every component) ─
+// Every component renders the same 3-section doc frame per CONVENTIONS.md §1:
+//   1. Header   (title + summary + source link)
+//   2. Properties + Types table
+//   3. Variant × State specimen matrix
+//   4. Do / Don't usage notes
+// The ComponentSet lives at y: -2000 (above the visible page) so Figma's
+// Assets panel + Code Connect can resolve it; the matrix displays instances.
+
+const COMPONENT = 'button';                // ← substitute per component
+const PAGE_NAME = '↳ Buttons';             // ← from routing table
+const DOC_FRAME_WIDTH  = 1640;             // inner content width
+const GUTTER_W_SIZE    = 60;               // size-label column
+const GUTTER_W_VARIANT = 160;              // variant-label column
+
+// --- 6.0  _PageContent scaffold -----------------------------------------
+// Delete everything other than _Header, then build _PageContent.
+
+for (const node of [...figma.currentPage.children]) {
+  if (node.name !== '_Header' && node.type !== 'COMPONENT_SET') node.remove();
 }
 
-// Pre-position helper — space nodes out before combining so Figma doesn't
-// stack them at (0, 0). combineAsVariants respects existing x/y values.
-function spreadNodes(nodes) {
-  let cx = 0;
-  for (const n of nodes) {
-    n.x = cx;
-    n.y = 0;
-    cx += (n.width || 120) + 16;
-  }
+const pageContent = figma.createFrame();
+pageContent.name = '_PageContent';
+pageContent.layoutMode            = 'VERTICAL';
+pageContent.primaryAxisSizingMode = 'AUTO';
+pageContent.counterAxisSizingMode = 'FIXED';
+pageContent.layoutAlign           = 'STRETCH';
+pageContent.resize(1800, 1);
+pageContent.paddingTop    = 80;
+pageContent.paddingBottom = 80;
+pageContent.paddingLeft   = 80;
+pageContent.paddingRight  = 80;
+pageContent.itemSpacing   = 48;
+pageContent.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+pageContent.x = 0;
+pageContent.y = 320;
+figma.currentPage.appendChild(pageContent);
+
+// --- 6.1  Resolve published Doc/* text styles ---------------------------
+// CONVENTIONS.md §7 — every doc text node must assign textStyleId.
+
+const allTextStyles = await figma.getLocalTextStylesAsync();
+const getDocStyle = name => allTextStyles.find(s => s.name === name) ?? null;
+const DOC = {
+  section:   getDocStyle('Doc/Section'),
+  tokenName: getDocStyle('Doc/TokenName'),
+  code:      getDocStyle('Doc/Code'),
+  caption:   getDocStyle('Doc/Caption'),
+};
+
+function makeText(chars, styleKey, fallbackSize = 13) {
+  const t = figma.createText();
+  t.fontName = { family: labelFont, style: 'Regular' };
+  t.characters = chars;
+  if (DOC[styleKey]) t.textStyleId = DOC[styleKey].id;
+  else t.fontSize = fallbackSize;
+  t.textAutoResize = 'HEIGHT';   // CRITICAL — prevents 10px row collapse
+  return t;
 }
 
-// ── 6a. CROSS-PRODUCT MULTI-VARIANT pattern (Button — 24 variants) ──────
-// For components with two variant properties, generate every combination.
-// Variant name format: 'variant=default, size=sm'  (comma + space, no quotes)
+// --- 6.2  Build the ComponentSet (variant x size only — NOT state) ------
+// State (hover/pressed/disabled) is an instance override in the matrix,
+// not a Figma variant property. CONVENTIONS.md §13.1 explains why.
 
 const BUTTON_VARIANTS = ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'];
-const BUTTON_SIZES    = ['default', 'sm', 'lg', 'icon'];
+const BUTTON_SIZES    = ['sm', 'default', 'lg', 'icon'];
 
 const BUTTON_STYLE = {
-  default:     { fill: 'color/primary/default',    fallback: '#1a1a1a', lv: 'color/primary/content',             stroke: null },
-  destructive: { fill: 'color/error/default',       fallback: '#ef4444', lv: 'color/error/content',        stroke: null },
-  outline:     { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/background/content',          stroke: 'color/border/default' },
-  secondary:   { fill: 'color/secondary/default',  fallback: '#6b7280', lv: 'color/secondary/content',           stroke: null },
-  ghost:       { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/background/content',          stroke: null },
-  link:        { fill: 'color/background/default',   fallback: '#ffffff', lv: 'color/primary/default',        stroke: null },
+  default:     { fill: 'color/primary/default',    fallback: '#1a1a1a', lv: 'color/primary/content',    stroke: null },
+  destructive: { fill: 'color/error/default',      fallback: '#ef4444', lv: 'color/error/content',      stroke: null },
+  outline:     { fill: 'color/background/default', fallback: '#ffffff', lv: 'color/background/content', stroke: 'color/border/default' },
+  secondary:   { fill: 'color/secondary/default',  fallback: '#6b7280', lv: 'color/secondary/content',  stroke: null },
+  ghost:       { fill: 'color/background/default', fallback: '#ffffff', lv: 'color/background/content', stroke: null },
+  link:        { fill: 'color/background/default', fallback: '#ffffff', lv: 'color/primary/default',    stroke: null },
 };
 const BUTTON_PAD_H = { default: 'space/md', sm: 'space/xs', lg: 'space/lg', icon: 'space/xs' };
 
-const nodes = [];
+const variantNodes = [];
 for (const v of BUTTON_VARIANTS) {
   for (const s of BUTTON_SIZES) {
     const st = BUTTON_STYLE[v];
-    nodes.push(buildVariant(
+    variantNodes.push(buildVariant(
       `variant=${v}, size=${s}`,
       st.fill, st.fallback,
-      { label: s === 'icon' ? '⬡' : 'Button', labelVar: st.lv, strokeVar: st.stroke,
+      { label: s === 'icon' ? '⬡' : 'Button',
+        labelVar: st.lv, strokeVar: st.stroke,
         radiusVar: 'radius/md', padH: BUTTON_PAD_H[s] }
     ));
   }
 }
-spreadNodes(nodes);
-const compSet = figma.combineAsVariants(nodes, figma.currentPage);
-layoutSet(compSet, "Button", 100, 100);
+// Pre-position so combineAsVariants doesn't stack at (0,0)
+let cx = 0;
+for (const n of variantNodes) { n.x = cx; n.y = 0; cx += (n.width || 120) + 16; }
 
-// ── 6b. SINGLE-PROPERTY MULTI-VARIANT pattern (Badge — 4 variants) ──────
-// Use this pattern when the component has exactly one variant dimension.
+const compSet = figma.combineAsVariants(variantNodes, figma.currentPage);
+compSet.name = 'Button — ComponentSet';
+// Park above the visible page — resolvable for Code Connect, out of the doc flow
+compSet.x = 0;
+compSet.y = -2000;
 
-const badgeNodes = [
-  buildVariant('variant=default',     'color/primary/default',   '#1a1a1a', { label: 'Badge', labelVar: 'color/primary/content' }),
-  buildVariant('variant=secondary',   'color/secondary/default', '#6b7280', { label: 'Badge', labelVar: 'color/secondary/content' }),
-  buildVariant('variant=destructive', 'color/error/default',      '#ef4444', { label: 'Badge', labelVar: 'color/error/content' }),
-  buildVariant('variant=outline',     'color/background/default', '#ffffff', { label: 'Badge', labelVar: 'color/background/content', strokeVar: 'color/border/default' }),
+// Index the variant components so the matrix can createInstance() per cell
+const variantByKey = {};
+for (const node of compSet.children) {
+  // node.name = "variant=default, size=sm"
+  const parts = node.name.split(', ').reduce((acc, kv) => {
+    const [k, val] = kv.split('=');
+    acc[k] = val;
+    return acc;
+  }, {});
+  variantByKey[`${parts.variant}|${parts.size}`] = node;
+}
+
+// --- 6.3  Doc frame root inside _PageContent ----------------------------
+
+const docRoot = figma.createFrame();
+docRoot.name = `doc/component/${COMPONENT}`;
+docRoot.layoutMode            = 'VERTICAL';
+docRoot.primaryAxisSizingMode = 'AUTO';
+docRoot.counterAxisSizingMode = 'FIXED';
+docRoot.layoutAlign           = 'STRETCH';
+docRoot.itemSpacing           = 48;
+docRoot.fills = [];
+pageContent.appendChild(docRoot);
+docRoot.resize(DOC_FRAME_WIDTH, 1);
+
+// --- 6.4  Header (title + summary) -------------------------------------
+
+const header = figma.createFrame();
+header.name = `doc/component/${COMPONENT}/header`;
+header.layoutMode = 'VERTICAL';
+header.primaryAxisSizingMode = 'AUTO';
+header.counterAxisSizingMode = 'FIXED';
+header.layoutAlign = 'STRETCH';
+header.itemSpacing = 12;
+header.fills = [];
+docRoot.appendChild(header);
+header.resize(DOC_FRAME_WIDTH, 1);
+
+const title = makeText('Button', 'section', 32);
+bindColor(title, 'color/background/content', '#0a0a0a', 'fills');
+header.appendChild(title);
+
+const summary = makeText(
+  'Trigger an action or navigate. Follows shadcn/ui defaults — six visual variants, four sizes.',
+  'caption', 14,
+);
+bindColor(summary, 'color/background/content-muted', '#6b7280', 'fills');
+header.appendChild(summary);
+
+// --- 6.5  Properties table (CONVENTIONS.md §4) --------------------------
+// Columns sum to 1640: PROPERTY 240 · TYPE 380 · DEFAULT 160 · REQUIRED 120 · DESCRIPTION 740
+// Build via buildTable(...) — the same helper used in /create-design-system
+// Step 15a–15c. Copy its implementation into this script if not already
+// available. Rows for button:
+//   variant · "default" | "destructive" | ...  · "default" · no · Visual style.
+//   size    · "default" | "sm" | "lg" | "icon" · "default" · no · Height + padding preset.
+//   disabled · boolean · false · no · Disables pointer + keyboard interaction.
+//   asChild · boolean · false · no · Renders styled classes onto child via Radix Slot.
+//   type    · "button" | "submit" | "reset"    · "button"  · no · Native HTML type.
+//   className · string · — · no · Tailwind escape hatch.
+//
+// (See CONVENTIONS.md §4 for the full column spec and row-ordering rule.)
+
+const propertiesTable = buildPropertiesTable(COMPONENT, [
+  ['variant', '"default" | "destructive" | "outline" | "secondary" | "ghost" | "link"', '"default"', 'no', 'Visual style.'],
+  ['size',    '"default" | "sm" | "lg" | "icon"',                                        '"default"', 'no', 'Overall height + padding preset.'],
+  ['disabled','boolean',                                                                  'false',    'no', 'Disables pointer + keyboard interaction; adds visual dim.'],
+  ['asChild', 'boolean',                                                                  'false',    'no', 'Renders styled classes onto the immediate child via Radix Slot.'],
+  ['type',    '"button" | "submit" | "reset"',                                            '"button"', 'no', 'Native HTML button type.'],
+  ['className','string',                                                                  '—',        'no', 'Tailwind class escape hatch.'],
+]);
+docRoot.appendChild(propertiesTable);
+
+// --- 6.6  Matrix (CONVENTIONS.md §5) ------------------------------------
+// Variant × State, grouped by size. For button:
+//   - 6 variants (rows)
+//   - 4 states (columns): default · hover · pressed | disabled
+//   - 4 sizes (stacked groups): sm · default · lg · icon
+
+const BUTTON_STATES = [
+  { key: 'default',  group: 'default'  },
+  { key: 'hover',    group: 'default'  },
+  { key: 'pressed',  group: 'default'  },
+  { key: 'disabled', group: 'disabled' },
 ];
-spreadNodes(badgeNodes);
-const badgeSet = figma.combineAsVariants(badgeNodes, figma.currentPage);
-layoutSet(badgeSet, "Badge", 100, 100);
 
-// ── 6c. SINGLE-STATE pattern ─────────────────────────────────────────────
-// For components with no variants (separator, label, card, etc.).
+const matrix = buildMatrix({
+  name: COMPONENT,
+  sizes: BUTTON_SIZES,
+  variants: BUTTON_VARIANTS,
+  states: BUTTON_STATES,
+  variantByKey,                          // map from 6.2
+  applyStateOverride: (instance, stateKey) => {
+    // Instance-level paint overrides for states not modeled as variant props.
+    // Prefer token-bound fills — fall back to opacity tweak only when missing.
+    if (stateKey === 'hover')    instance.opacity = 0.92;
+    if (stateKey === 'pressed')  instance.opacity = 0.85;
+    if (stateKey === 'disabled') instance.opacity = 0.5;
+  },
+});
+docRoot.appendChild(matrix);
 
-const comp = buildVariant('Card', 'color/background/default', '#ffffff',
-  { label: 'Card', labelVar: 'color/background/content', radiusVar: 'radius/lg' });
-// Position single-state components explicitly — they land at (0,0) by default.
-comp.x = 100;
-comp.y = 100;
+// --- 6.7  Usage notes (CONVENTIONS.md §6) -------------------------------
+
+const usage = buildUsageNotes({
+  doBullets: [
+    'Use `default` for the single primary action in a flow.',
+    'Use `outline` or `ghost` for secondary actions that shouldn\'t pull focus.',
+    'Pair `icon` size with an aria-label on the underlying button element.',
+  ],
+  dontBullets: [
+    'Don\'t stack two `default` buttons side-by-side — pick one primary.',
+    'Don\'t use `destructive` for routine actions — reserve for irreversible ones.',
+    'Don\'t override the size via className when a `size` variant exists.',
+  ],
+});
+docRoot.appendChild(usage);
 ```
 
-**Cross-product variant matrix** — for multi-property components, generate every combination. Use `'propA=valueA, propB=valueB'` (comma + space) as the variant name:
+**Helpers referenced above** — `buildPropertiesTable`, `buildMatrix`, `buildUsageNotes` — follow the exact hierarchy and auto-layout rules in **[`CONVENTIONS.md`](./CONVENTIONS.md) §§ 4–10**. Use the same implementation pattern as `buildTable(...)` from `/create-design-system` Step 15a–15c (§ H.7 in that SKILL): create the outer frame → set `layoutMode` + both sizing modes → `resizeWithoutConstraints(1640, 1)` → append header + body children (each cell `resize(colWidth, 1)` before appending content) → set `textAutoResize = 'HEIGHT'` on every text node. If any of the three helpers is not already available in the execution context, **inline them** inside this `use_figma` call — do not split the work across multiple calls.
 
-| Component | Properties | Total variants | Example name |
-|---|---|---|---|
-| `button` | `variant`(6) × `size`(4) | 24 | `variant=outline, size=sm` |
-| `checkbox` | `checked`(false/true/indeterminate) × `disabled`(false/true) | 6 | `checked=true, disabled=false` |
-| `radio-group` | `selected`(false/true) × `disabled`(false/true) | 4 | `selected=true, disabled=false` |
-| `switch` | `checked`(false/true) × `disabled`(false/true) | 4 | `checked=true, disabled=false` |
+**Matrix cell population — the important detail:**
 
-**Single-property variant list** — one `buildVariant` call per value, then `combineAsVariants`:
+For each cell at (size, variant, state):
 
-| Component | Property | Values | Fill variable guidance |
-|---|---|---|---|
-| `badge` | `variant` | default, secondary, destructive, outline | default→`color/primary/default`, secondary→`color/secondary/default`, destructive→`color/error/default`, outline→`color/background/default`+stroke |
-| `input` | `state` | default, focus, disabled, error | all→`color/component/input`; error adds stroke `color/error/default` |
-| `textarea` | `state` | default, focus, disabled, error | same as input |
-| `select` | `state` | default, open, disabled | `color/background/default`; open adds stroke `color/component/ring` |
-| `alert` | `variant` | default, destructive | default→`color/background/variant`; destructive→`color/error/subtle` |
-| `avatar` | `size` | sm, md, lg | `color/background/variant`; vary `padH`: sm→`space/xs`, md→`space/sm`, lg→`space/md` |
-| `progress` | `value` | 0, 25, 50, 75, 100 | track→`color/background/variant`; indicator→`color/primary/default` |
-| `skeleton` | `shape` | line, circle, rect | `color/background/variant` |
-| `tabs` | `state` | active, inactive | active→`color/background/default`+stroke `color/primary/default`; inactive→`color/background/variant` |
-| `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `command`, `context-menu`, `dropdown-menu`, `menubar`, `navigation-menu` | `state` | open, closed | `color/background/container-highest`; `radius/lg` |
-| `accordion`, `collapsible` | `state` | open, closed | `color/background/default` |
-| `toggle`, `toggle-group` | `pressed` | false, true | false→`color/background/default`; true→`color/tertiary/subtle` |
+```js
+const key = `${variant}|${size}`;
+const componentNode = variantByKey[key];
+const instance = componentNode.createInstance();
+// If the state IS a Figma variant prop (checkbox disabled, etc.):
+//   instance.setProperties({ disabled: state === 'disabled' ? 'true' : 'false' });
+// Otherwise, for button-style state-as-visual-only:
+applyStateOverride(instance, state);
+cellFrame.appendChild(instance);
+```
 
-**Single-state components** (no variants — use pattern 6c):
-`breadcrumb`, `pagination`, `table`, `card`, `form`, `label`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast`
+The `applyStateOverride` callback is component-specific. Pass bound Theme tokens (`color/{variant}/hover`, `color/{variant}/pressed`) when they exist in the file — see CONVENTIONS.md § 13.1 for the decision rule.
 
-For cards and sheets use `radiusVar: 'radius/lg'`. For compact items (label, separator) use `padH: 'space/xs'`.
+**Variant properties in the ComponentSet** — keep these as Figma variant props (they appear in the Properties panel when an instance is selected):
 
-If any collection is absent, `getColorVar`/`getLayoutVar`/`getTypoVar` return null and all bindings automatically fall back to the hardcoded hex/px fallback values — no separate branch needed.
+| Component | Figma variant properties | Example variant name |
+|---|---|---|
+| `button` | `variant`(6) × `size`(4) = **24** | `variant=outline, size=sm` |
+| `toggle`, `toggle-group` | `variant`(2) × `size`(3) × `pressed`(false/true) | `variant=default, size=sm, pressed=false` |
+| `checkbox` | `checked`(false/true/indeterminate) × `disabled`(false/true) = **6** | `checked=true, disabled=false` |
+| `radio-group`, `switch` | `checked`/`selected`(false/true) × `disabled`(false/true) = **4** | `checked=true, disabled=false` |
+| `badge`, `alert` | `variant` only | `variant=destructive` |
+| `input`, `textarea`, `select` | no Figma variants — use instance overrides for focus/error/disabled | `Component` (single root) |
+| `dialog`, `alert-dialog`, `drawer`, `sheet`, `popover`, `tooltip`, `hover-card`, `dropdown-menu`, `context-menu`, `menubar`, `command`, `navigation-menu` | no Figma variants (only `open` state is visible) | `Component` |
+| `card`, `separator`, `form`, `label`, `aspect-ratio`, `scroll-area`, `resizable`, `slider`, `input-otp`, `calendar`, `date-picker`, `sonner`, `toast`, `breadcrumb`, `pagination`, `table`, `accordion`, `collapsible`, `avatar`, `progress`, `skeleton`, `tabs` | no Figma variants | `Component` |
+
+**Matrix state axis** — what columns the matrix draws, read from the component's category in [`CONVENTIONS.md` § 7](./CONVENTIONS.md):
+
+| Category | Components | States (grouped DEFAULT \| DISABLED) |
+|---|---|---|
+| Button-like | `button`, `toggle`, `toggle-group` | `default` · `hover` · `pressed` \| `disabled` |
+| Input-like | `input`, `textarea`, `select` | `default` · `focus` · `error` \| `disabled` |
+| Checkable | `checkbox`, `radio-group`, `switch` | `unchecked` · `checked` · `indeterminate`† \| `disabled` |
+| Tabs / segmented | `tabs`, `navigation-menu`, `menubar` | `inactive` · `hover` · `active` \| `disabled` |
+| Link / nav | `breadcrumb`, `pagination` | `default` · `hover` · `active` \| `disabled` |
+| Slider | `slider` | `default` · `hover` · `dragging` \| `disabled` |
+| Anchored overlay | `popover`, `tooltip`, `hover-card`, `dropdown-menu`, `context-menu`, `command` | `open` (single column) |
+| Modal overlay | `dialog`, `alert-dialog`, `drawer`, `sheet` | `open` (single column) |
+| Display / status | `alert`, `badge`, `progress`, `skeleton`, `avatar`, `sonner`, `toast` | `default` (single column) |
+| Structure | `card`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`, `accordion`, `collapsible`, `table`, `form`, `label`, `calendar`, `date-picker`, `input-otp` | `default` (single column) |
+
+† `indeterminate` is checkbox-only; omit for radio / switch.
+
+**State handling rule:** if a state maps to an existing Figma variant prop (e.g. `checkbox` disabled), populate the cell by calling `instance.setProperties({ disabled: 'true' })`. Otherwise, the state is a **visual overlay** applied to the instance (hover/pressed for buttons) — see the `applyStateOverride` callback in the template above and the decision tree in [`CONVENTIONS.md` § 13.1](./CONVENTIONS.md).
+
+**Fill / padding guidance per shadcn variant** (same as earlier revisions; unchanged except that these feed `buildVariant` via the `fill`/`lv`/`stroke` keys, not a separate layout helper):
+
+| Component | Variant | Fill variable |
+|---|---|---|
+| `badge` | default / secondary / destructive / outline | `color/primary/default` · `color/secondary/default` · `color/error/default` · `color/background/default` + stroke |
+| `alert` | default / destructive | `color/background/variant` · `color/error/subtle` |
+| `toggle` | default / outline | `color/background/default` (stroke on outline) |
+| `avatar` | size sm / md / lg | `color/background/variant`; vary padH |
+| `progress` | value 0 / 25 / 50 / 75 / 100 | track `color/background/variant`, indicator `color/primary/default` |
+
+For cards, sheets, dialogs use `radiusVar: 'radius/lg'`. For compact items (label, separator) use `padH: 'space/xs'`.
+
+If any collection is absent, `getColorVar` / `getLayoutVar` / `getTypoVar` return null and bindings fall back to the hardcoded hex / px fallbacks — no separate branch needed.
 
 If the `use_figma` call throws, mark the component `draw_failed` and continue to the next.
 
@@ -472,12 +644,12 @@ After all components have been processed, call **AskUserQuestion**: "Run `/code-
 
 Output a summary table:
 
-| Component | Installed | Drawn to Canvas | Notes |
-|---|---|---|---|
-| `button` | Yes | Yes | 6 variants created |
-| `input` | Already existed | Yes | Default state only |
-| `card` | Yes | Yes | Token bindings applied |
-| `dialog` | Yes | Failed | Figma write error: ... |
+| Component | Installed | Drawn to Canvas | Matrix (variants × states × sizes) | Notes |
+|---|---|---|---|---|
+| `button` | Yes | Yes | 6 × 4 × 4 = 96 cells | ComponentSet (24 nodes) parked at y=-2000 |
+| `input` | Already existed | Yes | 1 × 4 × 1 = 4 cells | State via instance overrides |
+| `card` | Yes | Yes | 1 × 1 × 1 = 1 cell | Single-state structure |
+| `dialog` | Yes | Failed | — | Figma write error: ... |
 
 Follow with:
 - Total installed: N
@@ -526,6 +698,7 @@ The following shadcn/ui components are supported. Pass any of these names to the
 ## Notes
 
 - **No manual Figma community kit import required.** Components are installed from the shadcn CLI into the local codebase, and the agent draws them directly to the Figma canvas as proper Figma components using `figma.createComponent()` and `figma.combineAsVariants()`. These are real Figma components with component keys — required for Code Connect to resolve mappings.
+- **Matrix-default layout.** Every component renders into a 3-section documentation frame (properties table → variant × state matrix → Do/Don't usage notes) at 1640px inner width on a 1800px `_PageContent`. This matches the canvas geometry used by `/create-design-system` style-guide pages so the entire file reads as one system. The `ComponentSet` is parked at `y: -2000` above the visible page — still resolvable for Code Connect and Figma's Assets panel, but not cluttering the doc flow. See [`CONVENTIONS.md`](./CONVENTIONS.md) for the full layout, audit checklist, and button reference implementation.
 - **Canvas placement** uses `use_figma` for general frame and variant creation. The agent routes each component to its designated page in the Detroit Labs Foundations scaffold (see Step 5 routing table) using `figma.setCurrentPageAsync`. If the file was not scaffolded by `/new-project`, it falls back to the current active page with a warning.
 - **Token bindings** are a best-effort match based on variable names in the `Theme`, `Layout`, and `Typography` collections created by `/create-design-system`. Review bindings in Figma after the skill completes and adjust any that do not match your intended semantic mapping.
 - **shadcn/ui version:** Always installs the latest release via `npx shadcn@latest`. To pin a version, the designer should configure the shadcn version in `package.json` before invoking this skill.
