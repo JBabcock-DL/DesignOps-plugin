@@ -234,7 +234,7 @@ Write `color/background/scrim` and `color/background/shadow` as hard-coded COLOR
 
 ### codeSyntax for Theme
 
-Mechanical rules, WEB/iOS exception lists, and ANDROID-only quick reference: **[`06-theme-codesyntax.md`](./06-theme-codesyntax.md)** (supplements the row tables below — keep them in sync when editing).
+Mechanical rules, WEB/iOS exception lists, and ANDROID-only quick reference: **[`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md)** (supplements the row tables below — keep them in sync when editing).
 
 codeSyntax values are **set explicitly per token** — they are NOT derived from the Figma variable path. Path segments like `background/` and `primary/` are **Figma-only labels** for designers.
 

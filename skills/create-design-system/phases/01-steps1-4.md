@@ -111,6 +111,8 @@ Parse the response and identify:
 - Existing variable names and their IDs within each collection
 - Any collections that match `Primitives`, `Theme`, `Typography`, `Layout`, or `Effects`
 
+Then apply the **after Step 4 branch** in [`SKILL.md`](../SKILL.md) (*After Step 4 — variables present vs missing*): either continue with token generation (**phase 02** onward) or skip to canvas/documentation (**phases 06–08**) when variables are already sufficient and the designer is not rebuilding tokens.
+
 **Error — 403:** Authentication or tier issue. Report the full error message and abort:
 > "The Figma MCP connector does not have write access to this file. Check authentication and that your Figma org is on Organization or Enterprise tier."
 

@@ -1,8 +1,61 @@
-# Design System Conventions — Quick Reference
+# Design System Conventions — Authoritative Spec
 
-> **Audience:** AI agents (Claude, Sonnet, etc.) ramping up on `/new-project`, `/create-design-system`, or `/sync-design-system`. Read this **before** running any of those skills so you match the house style on the first pass.
+> **Audience:** AI agents (Claude, Sonnet, Opus, Composer, etc.) ramping up on `/new-project`, `/create-design-system`, or `/sync-design-system`. Read this **in full** before running any of those skills.
 >
-> **Authoritative source:** [`skills/create-design-system/SKILL.md`](./SKILL.md) — this file is a curated summary. When it disagrees with the skill, the skill wins.
+> **Precedence:** This file is **authoritative** for canvas geometry, table structure, column widths, cell patterns, auto-layout sizing rules, and token bindings. Phase files under [`phases/`](./phases/) **orchestrate** (which step, which page, which slug, which row set, which AskUserQuestion, which `codeSyntax` table). They do not own geometry, columns, cells, or sizing rules. **When a phase file disagrees with this document, CONVENTIONS wins.** If a phase file encodes a deviation that should stick, move the rule here first, then reference it from the phase.
+>
+> **Figma auto-layout vocabulary used throughout this file:** **Hug** (frame fits its children) = Plugin API `primaryAxisSizingMode`/`counterAxisSizingMode = 'AUTO'`. **Fixed** (pinned dimension) = `= 'FIXED'`. **Fill** (frame expands to fill its parent) = `layoutGrow = 1` on the primary axis, or `layoutAlign = 'STRETCH'` on the counter axis (`STRETCH` is the legacy API name — the Figma UI calls this "Fill container"). Every rule below uses Hug / Fixed / Fill in prose and the API literal in code blocks and tables.
+
+---
+
+## 0. Known gotchas (read before every canvas run)
+
+These four rules produce every table-collapse / invisible-text / wrong-padding bug observed in real runs. Every phase file cross-references this section by anchor — do not paraphrase; do not re-state with different numbers.
+
+### 0.1 Row AND cell height stays **Fixed at 1** unless you set the height axis to **Hug** first
+
+Applies at BOTH levels — `doc/table/{slug}/row/{tokenPath}` (row frame) AND `doc/table/{slug}/row/{tokenPath}/cell/{col}` (body cell). The `1` in `resize(1640, 1)` / `resize(colWidth, 1)` is a **width-setting placeholder** — if the height axis isn't already **Hug** before the resize call, the `1` sticks as a permanent **Fixed** height and the row/cell draws as a 1px sliver.
+
+**Required order — rows (`doc/table/{slug}/row/{tokenPath}`):**
+
+```js
+row.layoutMode              = 'HORIZONTAL';
+row.counterAxisSizingMode   = 'AUTO';    // height: Hug tallest cell
+row.primaryAxisSizingMode   = 'FIXED';   // width: Fixed 1640
+row.resize(1640, 1);                     // safe now — height axis is Hug
+row.minHeight               = 64;
+row.paddingTop              = 16;
+row.paddingBottom           = 16;
+row.counterAxisAlignItems   = 'CENTER';
+```
+
+**Required order — body cells (`.../row/*/cell/{col}`):**
+
+```js
+cell.layoutMode             = 'VERTICAL'; // or 'HORIZONTAL' for Theme LIGHT/DARK
+cell.primaryAxisSizingMode  = 'AUTO';     // height: Hug content
+cell.counterAxisSizingMode  = 'FIXED';    // width: Fixed colWidth
+cell.resize(colWidth, 1);                 // safe now — height axis is Hug
+cell.paddingLeft            = 20;
+cell.paddingRight           = 20;
+cell.paddingTop             = 4;
+cell.paddingBottom          = 4;
+cell.itemSpacing            = 4;
+```
+
+Equivalent: call `resizeWithoutConstraints(w, 1)` — the same trick already used on `doc/table/{slug}`. Either approach works; pick one and use it everywhere.
+
+### 0.2 Text nodes collapse rows at ~10px unless `textAutoResize = 'HEIGHT'` is set
+
+Immediately after `text.characters = "…"`, call `text.resize(colWidth - 40, 1)` (where `40` = left padding `20` + right padding `20`), then `text.textAutoResize = 'HEIGHT'`. Never leave `'NONE'` — that is the **root cause** of the 10px collapse. Mono-line cells use `colWidth - 40` everywhere. If you see `- 32` in any phase file, it is wrong.
+
+### 0.3 Theme hex text must be a **sibling** of the mode-scoped wrapper, not a child
+
+Theme LIGHT/DARK cells are HORIZONTAL with **two siblings**: [1] `doc/theme-preview/{mode}` holding **only** the chip (bound fill; `setExplicitVariableModeForCollection(themeCollection, modeId)` applied), [2] `Doc/Code` hex text **outside** that wrapper. If the hex text is parented inside the Dark wrapper, its `color/background/content` fill resolves to white on a white cell and vanishes.
+
+### 0.4 `Doc/*` text styles and `Effect/shadow-*` must exist before 15a/15b bind to them
+
+Step 15c § 0 publishes `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`. On a **first** run, execute 15c § 0 **before** 15a/15b so the first pass binds `textStyleId` / `effectStyleId` cleanly. Falling back to raw `fontName`/`fontSize` and then re-running 15a/15b to upgrade wastes a full pass.
 
 ---
 
@@ -73,7 +126,7 @@ The Figma path (`color/background/content-muted`) is a **designer label**. The t
 | `color/primary/subtle`          | `var(--color-primary-subtle)`  | `primary-container`  | `.Primary.subtle`        |
 | `color/error/default`           | `var(--color-danger)`          | `error`              | `.Status.error`          |
 
-Always read Theme codeSyntax from **Step 6** in [`phases/02-steps5-9.md`](./phases/02-steps5-9.md), with the supplement [`phases/06-theme-codesyntax.md`](./phases/06-theme-codesyntax.md). Never transform the path.
+Always read Theme codeSyntax from **Step 6** in [`phases/02-steps5-9.md`](./phases/02-steps5-9.md), with the supplement [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md). Never transform the path.
 
 ---
 
@@ -228,7 +281,7 @@ _PageContent                                       VERTICAL · AUTO · FIXED · 
 
 | Page | `{slug}` values |
 |---|---|
-| ↳ Primitives | `primitives/color/{ramp}`, `primitives/space`, `primitives/radius`, `primitives/elevation`, `primitives/typeface` |
+| ↳ Primitives | `primitives/color/{ramp}`, `primitives/space`, `primitives/radius`, `primitives/elevation`, `primitives/typeface`, `primitives/font-weight` |
 | ↳ Theme | `theme/background`, `theme/border`, `theme/primary`, `theme/secondary`, `theme/tertiary`, `theme/error`, `theme/component` |
 | ↳ Layout | `layout/spacing`, `layout/radius` |
 | ↳ Text Styles | `typography/styles` |
@@ -240,22 +293,26 @@ Rows are named **full token path** (e.g. `doc/table/primitives/color/primary/row
 
 ## 9. Auto-layout rules that prevent the 10px-collapse bug
 
-These rules are **mandatory** on every frame inside a table. Failing any one of them produces clipped, collapsed tables.
+These rules are **mandatory** on every frame inside a table. Failing any one of them produces clipped, collapsed tables. The row / body-cell rows below are the specific scenario covered in detail by **§ 0.1** — set the height axis to **Hug** before `resize`. Cell-text rows are the scenario in **§ 0.2**.
 
-| Frame | `layoutMode` | `primaryAxisSizingMode` | `counterAxisSizingMode` | `layoutAlign` | Notes |
-|---|---|---|---|---|---|
-| `doc/table/{slug}` | VERTICAL | AUTO | FIXED | STRETCH | Call `resizeWithoutConstraints(1640, 1)` after creation. |
-| `doc/table/{slug}/header` | HORIZONTAL | FIXED (56) | FIXED (1640) | STRETCH | `resize(1640, 56)` **before** appending cells. `counterAxisAlignItems: CENTER`. |
-| Header cells | HORIZONTAL | FIXED (56) | FIXED (col width) | INHERIT | `resize(colWidth, 56)` before appending text. `paddingH: 20`, center-aligned. |
-| `doc/table/{slug}/body` | VERTICAL | AUTO | FIXED (1640) | STRETCH | |
-| Body rows | HORIZONTAL | FIXED (1640) | AUTO | STRETCH | `minHeight: 64`, `paddingV: 16`, `counterAxisAlignItems: CENTER`. |
-| Body cells | VERTICAL or HORIZONTAL | AUTO | FIXED (col width) | INHERIT | `resize(colWidth, 1)` before content. `paddingH: 20`, `paddingV: 4`, `itemSpacing: 4`. Vertical cells: `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: MIN`. |
-| Cell text nodes | — | — | — | — | **Immediately after `text.characters`:** `text.resize(colWidth - 40, 1)` → `text.textAutoResize = 'HEIGHT'`. Never leave `'NONE'` — that is the **root cause** of the 10px collapse. |
-| Cell inline wrappers | HORIZONTAL | AUTO | AUTO | INHERIT | `itemSpacing: 10`, `counterAxisAlignItems: CENTER`. |
+Column headers use the Plugin API literals; the **Sizing** column restates each in Hug / Fixed / Fill prose so designers and agents match up.
 
-**Never** `resize(w, h)` with `h < 20` as a scaffold — rely on `AUTO` for every height that depends on children.
+| Frame | `layoutMode` | Primary / counter sizing (Hug · Fixed · Fill) | `layoutAlign` | Notes |
+|---|---|---|---|---|
+| `doc/table/{slug}` | VERTICAL | primary **Hug** (`AUTO`) · counter **Fixed 1640** (`FIXED`) | `STRETCH` (Fill width in parent) | Call `resizeWithoutConstraints(1640, 1)` after creation. |
+| `doc/table/{slug}/header` | HORIZONTAL | primary **Fixed 1640** · counter **Fixed 56** | `STRETCH` (Fill width in parent) | `resize(1640, 56)` **before** appending cells. `counterAxisAlignItems: CENTER`. |
+| Header cells | HORIZONTAL | primary **Fixed colWidth** · counter **Fixed 56** | `INHERIT` | `resize(colWidth, 56)` before appending text. `paddingH: 20`, center-aligned. |
+| `doc/table/{slug}/body` | VERTICAL | primary **Hug** (`AUTO`) · counter **Fixed 1640** | `STRETCH` (Fill width in parent) | |
+| **Body rows** (§ 0.1) | HORIZONTAL | primary **Fixed 1640** · counter **Hug** (`AUTO`) — **set Hug before `resize`** | `STRETCH` | `minHeight: 64`, `paddingV: 16`, `counterAxisAlignItems: CENTER`. |
+| **Body cells** (§ 0.1) | VERTICAL or HORIZONTAL | primary **Hug** (`AUTO`) · counter **Fixed colWidth** — **set Hug before `resize`** | `INHERIT` | `resize(colWidth, 1)` after sizing modes are set. `paddingH: 20`, `paddingV: 4`, `itemSpacing: 4`. Vertical cells: `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: MIN`. |
+| Cell text nodes (§ 0.2) | — | — | — | **Immediately after `text.characters`:** `text.resize(colWidth - 40, 1)` → `text.textAutoResize = 'HEIGHT'`. Never leave `'NONE'` — that is the **root cause** of the 10px collapse. |
+| Cell inline wrappers | HORIZONTAL | primary **Hug** · counter **Hug** | `INHERIT` | `itemSpacing: 10`, `counterAxisAlignItems: CENTER`. |
 
-**The #1 bug you will hit:** forgetting `text.textAutoResize = 'HEIGHT'` after setting characters. The text node defaults to `'NONE'`, contributes ~10px to the row's layout, and the entire row collapses. Always set it.
+**Never** `resize(w, h)` with `h < 20` as a scaffold — rely on **Hug** (`AUTO`) for every height that depends on children. See **§ 0.1** for the full call order on body rows and body cells.
+
+**The #1 and #2 bugs you will hit:**
+1. Forgetting to set the height axis to **Hug** (`AUTO`) before `resize(1640, 1)` / `resize(colWidth, 1)`. The `1` sticks as a **Fixed** height and the row/cell renders as a 1px sliver. → § 0.1.
+2. Forgetting `text.textAutoResize = 'HEIGHT'` after setting characters. The text node defaults to `'NONE'`, contributes ~10px to the row, and the row collapses. → § 0.2.
 
 ---
 
@@ -274,7 +331,7 @@ These rules are **mandatory** on every frame inside a table. Failing any one of 
 | 5 | `ANDROID` | 340 | Doc/Code |
 | 6 | `iOS` | 404 | Doc/Code |
 
-**Space / Radius / Elevation / Typeface** (one table each):
+**Space / Radius / Elevation / Typeface / Font weight** (one table each):
 
 | Slug | Col widths (sum 1640) |
 |---|---|
@@ -282,10 +339,12 @@ These rules are **mandatory** on every frame inside a table. Failing any one of 
 | `primitives/radius` | TOKEN 260 · VALUE 100 · PREVIEW 260 · WEB 340 · ANDROID 320 · iOS 360 |
 | `primitives/elevation` | TOKEN 260 · VALUE 100 · WEB 400 · ANDROID 380 · iOS 500 |
 | `primitives/typeface` | TOKEN 320 · SPECIMEN 460 · VALUE 200 · WEB 320 · ANDROID 160 · iOS 180 |
+| `primitives/font-weight` | TOKEN 260 · VALUE 100 · WEB 400 · ANDROID 380 · iOS 500 |
 
 - Space PREVIEW: bar height 16, cornerRadius 4, fill `color/primary/200` (bound); width bound to the `Space/*` variable (or resolved px clamped to 200).
 - Radius PREVIEW: 64×64 square, fill `color/neutral/100`, stroke `color/border/subtle`; `cornerRadius` bound to the `Corner/*` variable.
 - Typeface SPECIMEN: single line `"The quick brown fox jumps over 1234567890"` at 24px using the bound typeface primitive.
+- Font weight **VALUE:** `Doc/Code` — resolved numeric weight (**500** for `font/weight/medium`). **WEB / ANDROID / iOS:** from that variable’s `codeSyntax` (Step 11). Same cell layout pattern as Elevation (no swatch).
 
 ### ↳ Theme (one table per semantic group — 7 tables)
 
@@ -406,12 +465,12 @@ Every chrome element below **must** use `setBoundVariable` / variable-bound pain
 1. **Create** `doc/table/{slug}` → set `layoutMode`, both sizing modes, `layoutAlign`, radius, clipping, fill + stroke bindings. `resizeWithoutConstraints(1640, 1)`. Do **not** call `resize(1640, 10)` — AUTO will expand.
 2. **Create** `doc/table/{slug}/header` → `resize(1640, 56)` → append cells in column order; each cell `resize(colWidth, 56)` **before** appending its text node.
 3. **Create** `doc/table/{slug}/body` → do **not** resize; STRETCH + AUTO handles it.
-4. For each data row: **create** the row frame → `resize(1640, 1)` → set `minHeight 64`, `paddingTop/paddingBottom 16`, `counterAxisAlignItems: CENTER` → append cells (each cell `resize(colWidth, 1)` before appending content, with `paddingLeft/paddingRight 20`).
+4. For each data row: **create** the row frame → set `layoutMode: 'HORIZONTAL'`, `counterAxisSizingMode: 'AUTO'` (Hug height), `primaryAxisSizingMode: 'FIXED'` (Fixed 1640 width) **before** `resize(1640, 1)` → then set `minHeight 64`, `paddingTop/paddingBottom 16`, `counterAxisAlignItems: CENTER` → append cells. For each cell, set `primaryAxisSizingMode: 'AUTO'` (Hug height) + `counterAxisSizingMode: 'FIXED'` (Fixed colWidth) **before** `resize(colWidth, 1)`, with `paddingLeft/paddingRight 20`. **See § 0.1** — skipping the Hug-before-resize sequence is what produces 1px-tall rows and cells.
 5. For each text node: set `characters` → `resize(textWidth, 1)` → `textAutoResize = 'HEIGHT'` → assign `textStyleId` (or fallback literals) → bind fill.
 6. After all rows are appended, remove the bottom stroke from the last row (`row.strokes = []` or `strokeBottomWeight = 0`) so the outer `clipsContent` radius reads clean.
 7. Apply `effectStyleId` to the outer `doc/table/{slug}` frame **only** if `Effect/shadow-sm` already exists in the file (Step 15c §0 publishes it; 15a/15b may skip on first run).
 
-Step 15a draws **9 tables** on ↳ Primitives (5 color ramps + Space + Radius + Elevation + Typeface). Step 15b draws **7 tables** on ↳ Theme (one per semantic group). Step 15c draws **2 + 1 + 2 = 5 tables** across ↳ Layout, ↳ Text Styles, ↳ Effects.
+Step 15a draws **10 tables** on ↳ Primitives (5 color ramps + Space + Radius + Elevation + Typeface + Font weight). Step 15b draws **7 tables** on ↳ Theme (one per semantic group). Step 15c draws **2 + 1 + 2 = 5 tables** across ↳ Layout, ↳ Text Styles, ↳ Effects.
 
 ---
 
@@ -431,11 +490,13 @@ Step 15a draws **9 tables** on ↳ Primitives (5 color ramps + Space + Radius + 
 - [ ] Does every table render at 1640 wide with columns summing to exactly 1640?
 - [ ] Does every row have `minHeight: 64`, `paddingV: 16`, `counterAxisAlignItems: CENTER`?
 - [ ] Does every body cell have `paddingH: 20` (not 16)?
-- [ ] Did I call `textAutoResize = 'HEIGHT'` after every `text.characters` assignment?
+- [ ] **§ 0.1** — Did I set `counterAxisSizingMode: 'AUTO'` (Hug) on every body row **before** `resize(1640, 1)`? (Symptom when missed: 1px-tall rows.)
+- [ ] **§ 0.1** — Did I set `primaryAxisSizingMode: 'AUTO'` (Hug) on every body cell **before** `resize(colWidth, 1)`? (Symptom when missed: 1px-tall cells inside a taller row.)
+- [ ] **§ 0.2** — Did I call `textAutoResize = 'HEIGHT'` after every `text.characters` assignment?
 - [ ] Did I use `resizeWithoutConstraints(1640, 1)` on table roots instead of `resize(1640, 10)`?
-- [ ] On Theme LIGHT/DARK cells: is the hex text a **sibling** of the mode-scoped wrapper (not a child)?
+- [ ] **§ 0.3** — On Theme LIGHT/DARK cells: is the hex text a **sibling** of the mode-scoped wrapper (not a child)?
 - [ ] Did I remove the bottom stroke from the last row of every table?
-- [ ] Did I apply `Effect/shadow-sm` only after Step 15c §0 published it?
+- [ ] **§ 0.4** — Did I apply `Effect/shadow-sm` only after Step 15c §0 published it?
 
 ### Text & bindings
 - [ ] Is every cell bound to `Doc/Section`, `Doc/TokenName`, `Doc/Code`, or `Doc/Caption` (never raw `fontName`/`fontSize`)?
@@ -470,9 +531,9 @@ If any box is unchecked, fix before reporting "done."
 | ---------------------------------- | -------------------------------------------------------------------------- |
 | `.designops-registry.json` (Figma component keys + `nodeId` map for `/create-component`, `/code-connect`, `/sync-design-system`) | [`skills/create-component/registry.schema.json`](../create-component/registry.schema.json) + [`skills/create-component/SKILL.md`](../create-component/SKILL.md) Step 5 + [`skills/create-component/resolver/merge-registry.mjs`](../create-component/resolver/merge-registry.mjs) |
 | Full skill orchestration           | [`skills/create-design-system/SKILL.md`](./SKILL.md) (phase table)          |
-| Canvas geometry + auto-layout rules | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § **A–G** |
-| Table format spec (hierarchy, columns, cells, bindings) | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § **H** |
-| Theme codeSyntax table (explicit)  | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **6** + [`phases/06-theme-codesyntax.md`](./phases/06-theme-codesyntax.md) |
+| Visual language (tone, reference links, premium pillars) | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § **A–G** |
+| Table format spec (hierarchy, columns, cells, bindings, build order) | This file §§ **0, 3, 8–14** (authoritative) |
+| Theme codeSyntax table (explicit)  | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **6** + [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) |
 | Typography codeSyntax rule         | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7** / **7b**        |
 | Body text variant rules            | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7b** + [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) §0 |
 | Sync redraw steps (9b, 9d, 9e)     | [`skills/sync-design-system/SKILL.md`](../sync-design-system/SKILL.md)     |

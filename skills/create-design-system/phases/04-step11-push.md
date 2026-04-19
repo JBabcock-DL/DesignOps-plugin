@@ -87,7 +87,7 @@ Use the **same** value logic as the Phase 1 REST spec (Steps 5–9): ramps, Them
 
 ## REST — `codeSyntax` UPDATE only
 
-After each Plugin pass, build the lookup table of `codeSyntax` for **every variable in that collection** from Steps 5–9 (same cells as Phase 1 — Theme: Step 6 tables + [`06-theme-codesyntax.md`](./06-theme-codesyntax.md) overrides).
+After each Plugin pass, build the lookup table of `codeSyntax` for **every variable in that collection** from Steps 5–9 (same cells as Phase 1 — Theme: Step 6 tables + [`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md) overrides).
 
 **Payload shape (per pass):**
 

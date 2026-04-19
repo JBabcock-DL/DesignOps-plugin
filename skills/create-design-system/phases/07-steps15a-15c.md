@@ -1,25 +1,39 @@
 # Steps 15a–15c — Style guide canvas
 
-Before each `use_figma` script in these steps, **prepend** the JavaScript from **[`../helpers/canvas.js`](../helpers/canvas.js)** (paste the file body at the top of the plugin script, or concatenate in your tooling). Then follow the **Canvas documentation visual spec** in [`06-canvas-documentation-spec.md`](./06-canvas-documentation-spec.md).
+Orchestration only. **[`CONVENTIONS.md`](../CONVENTIONS.md) is authoritative** for canvas geometry, table hierarchy, column widths, cell patterns, auto-layout (Hug / Fixed / Fill), bindings, and build order. This file owns: which page, which slug, which row set. When something here disagrees with CONVENTIONS, CONVENTIONS wins.
+
+Required reads before any `use_figma` call: CONVENTIONS **§ 0** (known gotchas — read every run), **§§ 3, 8–13** (geometry, hierarchy, columns, cells, bindings, build order), and [`06-canvas-documentation-spec.md`](./06-canvas-documentation-spec.md) § A–G (visual language).
+
+### Agent-driven only — no workspace scripts
+
+Canvas steps are entirely agent-driven. The agent composes JavaScript inline for each `use_figma` call. Do **not** write, commit, or point designers at standalone `.js` files, helper bundles, `_tmp*` scaffolds, or a `scripts/` folder under this skill.
+
+When this run skipped phases 02–04 because variables were already in the file (see [`SKILL.md`](../SKILL.md) *After Step 4 — variables present vs missing*), these steps still draw/update the canvas against live variables — same structure and bindings as a full run.
 
 ---
 
-## Step 15a — Draw Style Guide: ↳ Primitives
+## Per-page build shape (shared by 15a, 15b, 15c pages)
 
-Run **one** `use_figma` execution against **`↳ Primitives` only**. All tables drawn here MUST follow **§ H** (hierarchy, auto-layout rules, column widths, binding map, build order). The agent does not re-derive geometry — it reads § H and emits frames accordingly.
+Every page follows the same 4-step shape. Execute in order:
 
-**Script skeleton**
+1. `figma.setCurrentPageAsync` → target page.
+2. Delete every node on the page **other than `_Header`**.
+3. Assert `_Header` (VERTICAL, `cornerRadius: 0`, width 1800). If the instance width differs, `resize(1800, 320)`. See CONVENTIONS § 3, § 8 (do not detach — edit the main component on `Documentation components`).
+4. Build **`_PageContent`** per CONVENTIONS § 3 (1800 wide at `x: 0, y: 320`, 80 padding all sides, white literal fill, inner content width 1640).
+5. Resolve variable IDs once and cache `{ path → variableId }` (Primitives live `getLocalVariablesAsync('COLOR' | 'FLOAT' | 'STRING')`; Theme/Effects mode IDs via `getVariableCollectionByIdAsync`).
+6. For each table in the page's table list below, build per CONVENTIONS **§§ 8–13** (structure, columns, cells, bindings, build order — including the Hug-before-resize rule in § 0.1).
 
-1. `figma.setCurrentPageAsync` → `↳ Primitives`.
-2. Delete every node on the page **other than `_Header`** (the doc header instance stays). The `_Header` occupies `y: 0–320`; the old cream `y > 360` cutoff is obsolete now that `_PageContent` starts at `y: 320`.
-3. Ensure the `_Header` instance has `layoutMode: VERTICAL`, `cornerRadius: 0`, `width: 1800` (see § A `_Header component`). If it is an instance, detaching is **not** allowed — edit its main component on the `Documentation components` page once, per § A; here, just assert and `resize(1800, 320)` on the instance if the width differs.
-4. Create **`_PageContent`** at `(0, 320)` — **VERTICAL**, `primaryAxisSizingMode: AUTO`, `counterAxisSizingMode: FIXED`, **width 1800**, **padding 80 on all four sides** (`paddingTop/Bottom/Left/Right = 80`), `itemSpacing 48`, `layoutAlign: STRETCH`. **Fill: literal `#FFFFFF` (not token-bound).** Inner content width = **1640** for every table/section child.
-5. Resolve Primitives variable IDs once (read from Step 4 REST snapshot or live `figma.variables.getLocalVariablesAsync('COLOR' | 'FLOAT' | 'STRING')`). Cache `{ path → variableId }` keyed by canonical path.
-6. For each **table spec row** below, call the shared `buildTable(spec)` helper (see § H.7 checklist) with the slug, group title, caption, column spec from § H.3, and the row list resolved from the cached Primitives variables.
+**Rebuild rule:** each step is a full redraw under `_PageContent`, not a diff. Every row's token, bindings, value, and `codeSyntax` text must come from the current variable snapshot. As long as the script completes and variables exist locally, tables cannot stay "missing" unless a path is absent from its collection.
 
-**Tables to draw (in order)**
+---
 
-| Order | `{slug}` | Group title | Caption (`Doc/Caption`) | Rows |
+## Step 15a — ↳ Primitives
+
+One `use_figma` execution against `↳ Primitives`. Follow the per-page shape above.
+
+**Tables (in order)**
+
+| Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
 | 1 | `primitives/color/primary` | Primary | Brand anchor — used for the most prominent actions, links, and focus. | 11 stops `color/primary/{50 … 950}` |
 | 2 | `primitives/color/secondary` | Secondary | Supporting brand color for secondary actions and decorative surfaces. | 11 stops `color/secondary/*` |
@@ -30,29 +44,19 @@ Run **one** `use_figma` execution against **`↳ Primitives` only**. All tables 
 | 7 | `primitives/radius` | Corner Radius | Corner rounding primitives from square through pill. | All `Corner/*` FLOATs |
 | 8 | `primitives/elevation` | Elevation | Raw blur steps consumed by `shadow/*/blur` aliases in Effects. | All `elevation/*` FLOATs |
 | 9 | `primitives/typeface` | Typeface | Font family primitives. Display for headings, Body for paragraph text. | 2 rows (`typeface/display`, `typeface/body`) |
+| 10 | `primitives/font-weight` | Font weight | Shared emphasis weight (Typography `Body/*/emphasis` aliases this Primitive). | 1 row (`font/weight/medium`) |
 
-**Column definitions per slug** are in **§ H.3**. Cell content patterns are in **§ H.4** (use the *swatch chip + hex* pattern for the 5 color-ramp tables, *preview bar* for Space, *preview square* for Radius, *mono line* for Elevation, *specimen* for Typeface).
+Column widths and cell content patterns per slug live in CONVENTIONS **§ 10** (columns) and **§ 11** (cells — swatch chip + hex for color ramps, preview bar for Space, preview square for Radius, mono line for Elevation, specimen for Typeface, VALUE + codeSyntax for Font weight). Swatch binding rules live in CONVENTIONS **§ 12**.
 
-**Swatch binding (color ramp tables):** the 48×48 rect in the `SWATCH` cell must bind `boundVariables.color` → `figma.variables.createVariableAlias(primitiveVariable)` for the row's own Primitives variable (§ D / § H.5). The `HEX` column prints the resolved hex.
-
-On completion, log the **Canvas checklist** row for Step 15a, including total table count (**9**) and total row count.
+On completion, log the Canvas checklist row for 15a (10 tables).
 
 ---
 
-## Step 15b — Draw Style Guide: ↳ Theme
+## Step 15b — ↳ Theme
 
-Run **one** `use_figma` execution against **`↳ Theme` only`. All tables follow **§ H**.
+One `use_figma` execution against `↳ Theme`. Follow the per-page shape above. Resolve Theme `light` / `dark` `modeId` once and cache.
 
-**Script skeleton**
-
-1. `figma.setCurrentPageAsync` → `↳ Theme`.
-2. Delete every node other than `_Header`.
-3. Ensure `_Header` has `layoutMode: VERTICAL`, `cornerRadius: 0`, `width: 1800` (§ A). Resize instance to 1800 if needed.
-4. Create **`_PageContent`** per Step 15a rules (1800 wide, `x: 0, y: 320`, 80 padding all sides, white fill).
-5. Resolve the Theme collection's `light` and `dark` `modeId` once via `figma.variables.getVariableCollectionByIdAsync(themeCollectionId)` → `modes`. Cache.
-6. For each semantic group, call `buildTable(spec)` with slug `theme/{group}`, columns per § H.3, rows = the group's Theme variables.
-
-**Tables to draw (in order)**
+**Tables (in order)**
 
 | Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
@@ -64,120 +68,80 @@ Run **one** `use_figma` execution against **`↳ Theme` only`. All tables follow
 | 6 | `theme/error` | Error | Feedback color for destructive and error states. | 8 (`color/error/*`) |
 | 7 | `theme/component` | Component | shadcn-aligned component tokens (ring, input, muted, popover). | 4 (`color/component/*`) |
 
-**Per-row cell content:**
+Cell patterns (TOKEN, LIGHT / DARK with `setExplicitVariableModeForCollection`, ALIAS →, WEB / ANDROID / iOS) live in CONVENTIONS **§ 11**. The **Theme hex-sibling rule** (hex text must be a sibling of the mode-scoped wrapper, never a child) is CONVENTIONS **§ 0.3** — read it before building LIGHT/DARK cells. Fallback when `setExplicitVariableModeForCollection` throws is specified in CONVENTIONS § 11.
 
-- `TOKEN` cell → `Doc/Code` with the Figma path (e.g. `color/background/default`).
-- `LIGHT` cell → follow § H.4 **Theme** swatch pattern exactly: the cell is a HORIZONTAL `AUTO` frame with **two siblings** — [a] inner wrapper **`doc/theme-preview/light`** that calls `setExplicitVariableModeForCollection(themeCollection, lightModeId)` and contains **only** the 28×28 chip (bound to the row's Theme variable, § D), and [b] the `Doc/Code` hex text node placed as a **sibling** of the wrapper, **not a child**. The hex text's fill binds to `color/background/content` and must resolve in the page's normal mode.
-- `DARK` cell → same structure, wrapper **`doc/theme-preview/dark`** + Dark `modeId`. **Critical:** never parent the hex text under the Dark-scoped wrapper — inside that wrapper `color/background/content` resolves to white and the text disappears on the white cell. This is the single most common Theme-table bug; § H.4 and this step spell out the fix.
-- `ALIAS →` cell → resolved Primitives path for Light and Dark. If both modes alias the same primitive, print one line; if different, print two `Doc/Code` lines `light · {path}` / `dark · {path}`.
-- `WEB` / `ANDROID` / `iOS` cells → `Doc/Code`, pulled from Step 6 `codeSyntax` — never derived.
-
-**Fallback:** when `setExplicitVariableModeForCollection` throws, bind only the LIGHT chip, add a `Doc/Caption` line under the DARK chip with the resolved Dark hex, and log `Theme dual-preview: explicit mode unsupported` once per table.
-
-On completion, log the **Canvas checklist** row for Step 15b.
+On completion, log the Canvas checklist row for 15b.
 
 ---
 
-## Step 15c — Draw Style Guide: ↳ Layout, ↳ Text Styles, ↳ Effects
+## Step 15c — ↳ Layout, ↳ Text Styles, ↳ Effects
 
-Run **one** `use_figma` execution that visits three pages in order: `↳ Layout` → `↳ Text Styles` → `↳ Effects`. **Before** navigating to any page, publish **Doc / slot / effect styles** (subsection **0** below) so tables on all three pages can assign `textStyleId` and `effectStyleId` without fallbacks.
+One `use_figma` execution that visits three pages in order: `↳ Layout` → `↳ Text Styles` → `↳ Effects`. **Before** navigating, publish Doc/slot/effect styles (§ 0 below) so tables on all three pages can assign `textStyleId` / `effectStyleId` directly. This is the first-run ordering rule — see CONVENTIONS § 0.4.
 
-### 0 — Publish `Doc/*`, slot Text styles, and Effect styles (idempotent)
+### § 0 — Publish `Doc/*`, slot Text styles, and Effect styles (idempotent)
 
 Use `figma.getLocalTextStylesAsync()` / `figma.getLocalEffectStylesAsync()`; `loadFontAsync` for every `fontName` you set.
 
-1. **`Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`** — find or `figma.createTextStyle()`. Bind fields to the Documentation type ramp in § **A** (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*` or `Label/MD/*` at Typography mode **100**) via `setBoundVariable('fontSize', variable)` and parallel fields when the API allows; otherwise set resolved literals from mode **100**.
-2. **Slot text styles (15 base + 12 body variants = 27)** — for each slot in order below, find or create `{Slot}`, then bind `{Slot}/font-size`, `{Slot}/font-family`, `{Slot}/font-weight`, `{Slot}/line-height` (Typography · mode **100**) with `setBoundVariable`. Collection variables and Text styles are different objects — every slot needs its own Text style.
+1. **`Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`** — find or `figma.createTextStyle()`. Bind to the Documentation type ramp in [`06-canvas-documentation-spec.md`](./06-canvas-documentation-spec.md) § A (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*` / `Label/MD/*` at Typography mode **100**) via `setBoundVariable('fontSize', variable)` and parallel fields; otherwise set resolved literals from mode **100**.
 
-   **Important naming rule for Body slots:** the three base body **text styles** are named `Body/LG/regular`, `Body/MD/regular`, `Body/SM/regular` (not `Body/LG`) so they nest inside the size folder alongside the 4 variants in Figma's Text Styles panel. The underlying **variable** paths stay `Body/LG/font-size`, `Body/LG/font-weight`, `Body/LG/font-family`, `Body/LG/line-height` — text-style names and variable names are separate namespaces, so the bindings are unchanged. If an earlier run created `Body/LG`, `Body/MD`, `Body/SM` at the root of the Body folder, rename them to `Body/{size}/regular` during this step.
+2. **Slot text styles (15 base + 12 body variants = 27)** — for each slot, find or create, then bind `{Slot}/font-size`, `{Slot}/font-family`, `{Slot}/font-weight`, `{Slot}/line-height` (Typography · mode **100**) via `setBoundVariable`. Text styles and collection variables are separate namespaces; every slot needs its own Text style.
 
-   **Base slot order (15 — variable group path · text style name):**
-   - `Display/LG` · `Display/LG`
-   - `Display/MD` · `Display/MD`
-   - `Display/SM` · `Display/SM`
-   - `Headline/LG` · `Headline/LG`
-   - `Headline/MD` · `Headline/MD`
-   - `Headline/SM` · `Headline/SM`
-   - `Title/LG` · `Title/LG`
-   - `Title/MD` · `Title/MD`
-   - `Title/SM` · `Title/SM`
-   - `Body/LG` · **`Body/LG/regular`**
-   - `Body/MD` · **`Body/MD/regular`**
-   - `Body/SM` · **`Body/SM/regular`**
-   - `Label/LG` · `Label/LG`
-   - `Label/MD` · `Label/MD`
-   - `Label/SM` · `Label/SM`
+   **Body naming rule:** the three base body text styles are named `Body/LG/regular`, `Body/MD/regular`, `Body/SM/regular` so they nest inside the size folder with the 4 variants. Variable paths stay `Body/LG/font-size` etc. If an earlier run created `Body/LG` / `Body/MD` / `Body/SM` at the root of the Body folder, rename them to `Body/{size}/regular` during this step.
 
-   **Body variant slots (12 — per § 7b):** `Body/LG/emphasis`, `Body/LG/italic`, `Body/LG/link`, `Body/LG/strikethrough`, `Body/MD/emphasis`, `Body/MD/italic`, `Body/MD/link`, `Body/MD/strikethrough`, `Body/SM/emphasis`, `Body/SM/italic`, `Body/SM/link`, `Body/SM/strikethrough`. These combined with `Body/{size}/regular` yield five text styles per body size, all nested inside the `Body/{size}/` folder: `regular`, `emphasis`, `italic`, `link`, `strikethrough`.
+   **Base slots (15 — variable group · text style name):** `Display/LG`, `Display/MD`, `Display/SM`, `Headline/LG`, `Headline/MD`, `Headline/SM`, `Title/LG`, `Title/MD`, `Title/SM`, `Body/LG · Body/LG/regular`, `Body/MD · Body/MD/regular`, `Body/SM · Body/SM/regular`, `Label/LG`, `Label/MD`, `Label/SM`.
 
-   For each variant style, after binding the 4 typography variables:
-   - `emphasis` — set `fontName = { family, style: 'Medium' }` (loadFontAsync first). If the Medium face isn't available, leave the base `Regular` family+style and rely on the bound `font-weight = 500` variable.
-   - `italic` — set `fontName = { family, style: 'Italic' }`. On error (face missing), fall back to `{ family, style: 'Regular' }` and `console.warn('italic face not loaded for ' + family + ' — Body/' + size + '/italic style created without italic glyph; add the Italic font face to the Figma file to resolve')`.
+   **Body variants (12, per § 7b):** `Body/{LG,MD,SM}/{emphasis,italic,link,strikethrough}`. Combined with `Body/{size}/regular` this yields 5 text styles per body size. For each variant, after binding the 4 typography variables:
+   - `emphasis` — `fontName = { family, style: 'Medium' }` (loadFontAsync first). If Medium is missing, keep `Regular` family+style and rely on the bound `font-weight = 500`.
+   - `italic` — `fontName = { family, style: 'Italic' }`. On error fall back to `Regular` and `console.warn('italic face not loaded for ' + family + ' — Body/' + size + '/italic created without italic glyph; add the Italic face to resolve')`.
    - `link` — `fontName.style = 'Regular'`, `textDecoration = 'UNDERLINE'`.
    - `strikethrough` — `fontName.style = 'Regular'`, `textDecoration = 'STRIKETHROUGH'`.
 
-   Text styles **do not** carry fill; the `link` / `strikethrough` color lives on the text node (see § 7b coupling rule and the Text Styles page row-rendering rule below).
+   Text styles do not carry fill; `link` / `strikethrough` color lives on the text node (see § 7b coupling rule and the Text Styles rendering rule below).
 
 3. **Effect styles** — for each tier in `sm`, `md`, `lg`, `xl`, `2xl`, create or update `Effect/shadow-{tier}`: `effects` = one `DROP_SHADOW` built from resolved `shadow/color` + resolved `shadow/{tier}/blur` (Effects · Light). Remove any legacy duplicates after migrating references.
 
 ### ↳ Layout page
 
-1. `figma.setCurrentPageAsync` → `↳ Layout`. Delete every node **other than `_Header`** (or whose `y >= 320`). Build `_PageContent` per § A rules (1800 wide, `x: 0, y: 320`, 80 padding all sides, white fill).
-2. Call `buildTable(spec)` **twice** with § H tables:
+Follow the per-page shape above. Tables:
 
 | Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
 | 1 | `layout/spacing` | Spacing | Semantic spacing aliases mapped to Primitive space steps. | All `space/*` |
 | 2 | `layout/radius` | Radius | Semantic radius aliases mapped to Primitive corner steps. | All `radius/*` |
 
-- `VALUE` cell → `Doc/Code` resolved px.
-- `ALIAS →` cell → `Doc/Code` primitive path (e.g. `Space/400`).
-- `PREVIEW` cell → *preview bar* (spacing) or *preview square* (radius) per § H.4, bound to the row's own Layout variable.
-- `WEB` / `ANDROID` / `iOS` cells → `Doc/Code` from Step 8 `codeSyntax`.
+Cell patterns (VALUE, ALIAS →, PREVIEW — preview bar for spacing, preview square for radius — WEB/ANDROID/iOS) are in CONVENTIONS § 11.
 
 ### ↳ Text Styles page
 
-1. `figma.setCurrentPageAsync` → `↳ Text Styles`. Delete every node **other than `_Header`** (or whose `y >= 320`). Build `_PageContent` per § A rules.
-2. Call `buildTable(spec)` **once** with `{slug}` = `typography/styles`.
-3. Insert **5 category sub-header rows** (§ H.4 *category sub-header row* pattern, full-width 1640 × 40) in this order: **Display**, **Headline**, **Title**, **Body**, **Label**. Each sub-header precedes its specimen rows for that category.
-4. Specimen rows (**27 total** — 3 Display + 3 Headline + 3 Title + **15 Body** + 3 Label), in this order within each category:
-   - **Display / Headline / Title / Label:** `{Category}/LG`, `{Category}/MD`, `{Category}/SM` (3 rows each).
-   - **Body:** each size emits **5 rows in a block** — `Body/{size}/regular`, `Body/{size}/emphasis`, `Body/{size}/italic`, `Body/{size}/link`, `Body/{size}/strikethrough` — then the next size repeats. 3 sizes × 5 variants = 15 Body rows. **Order inside each block is fixed** — regular first so the reader sees the default before the decorated variants below it. The regular row binds to the `Body/{size}/regular` text style (§ 8 step 2).
+Follow the per-page shape above. Build the `typography/styles` table per CONVENTIONS § 8–13.
 
-Common cell content for every specimen row:
+Insert **5 category sub-header rows** (CONVENTIONS § 11 *category sub-header row*, full-width 1640 × 40) in order: **Display**, **Headline**, **Title**, **Body**, **Label**. Each precedes its specimen rows.
+
+Specimen rows (**27 total** — 3 Display + 3 Headline + 3 Title + **15 Body** + 3 Label):
+- **Display / Headline / Title / Label:** `{Category}/LG`, `{Category}/MD`, `{Category}/SM`.
+- **Body:** each size emits **5 rows in a block** — `Body/{size}/{regular, emphasis, italic, link, strikethrough}` — then the next size. 3 × 5 = 15 Body rows. Regular first so the reader sees the default before decorated variants.
+
+Cell content:
 
 | Column | Cell content |
 |---|---|
-| `SLOT` | `Doc/TokenName` — the published text-style name, e.g. `Headline/LG`, `Body/LG/regular`, `Body/LG/link`. For Body rows always use the 3-segment `Body/{size}/{variant}` form so the label matches the style name shown in the Text Styles panel. |
-| `SPECIMEN` | TEXT node with `textStyleId` → the published slot or variant style; `characters` = the slot name prose (`Headline LG`, `Body LG emphasis`, `Body LG link`, …). `resize(420, 1)` then `textAutoResize = 'HEIGHT'`. Row `primaryAxisSizingMode: AUTO` so Display/LG (~96px) expands naturally while Body variants stay compact. **Fill binding (variants only — critical):** for any `/link` row the specimen text node's `fills[0]` **must** be bound to **`color/primary/default`** via `setBoundVariableForPaint` (the brand hue — **not** `color/primary/content`, which is the text-on-primary pairing and is invisible on neutral backgrounds); for `/strikethrough` rows bind to **`color/background/content-muted`**. For base / `/emphasis` / `/italic` rows leave fill as the default `color/background/content`. Without this binding the styles publish correctly but the preview lies about the intended presentation. |
-| `SIZE / LINE` | VERTICAL stack — two `Doc/Code` lines: resolved `{fontSize}px` / `{lineHeight}px` at mode **100**. Variants resolve through their base-body alias, so values match the base row in the block. |
-| `WEIGHT / FAMILY` | VERTICAL stack — two `Doc/Code` lines: resolved `{fontWeight}` / `{fontFamily}`. `/emphasis` rows resolve to `500` (via `font/weight/medium`); other variants share the base weight. |
-| `WEB` | `Doc/Code` — from Step 7 / 7b `codeSyntax`. Variants show the 4-segment `var(--body-{size}-{variant}-font-size)`. |
-| `ANDROID` | `Doc/Code` — matching kebab for the slot (e.g. `body-lg-link-font-size`). |
-| `iOS` | `Doc/Code` — 5-segment dot path for variants (e.g. `.Typography.body.lg.link.font.size`). |
+| `SLOT` | `Doc/TokenName` — published text-style name, e.g. `Headline/LG`, `Body/LG/regular`, `Body/LG/link`. Always use the 3-segment `Body/{size}/{variant}` form for Body rows. |
+| `SPECIMEN` | TEXT with `textStyleId` → the published slot/variant style; `characters` = the slot name prose. **Fill binding (variants only — critical):** for `/link` rows bind `fills[0]` to **`color/primary/default`** (the brand hue — **not** `color/primary/content`, which is invisible on neutral backgrounds); for `/strikethrough` rows bind to **`color/background/content-muted`**. Base / `/emphasis` / `/italic` rows keep the default `color/background/content`. Without this binding the published style is correct but the preview lies. Row and text sizing per CONVENTIONS § 0.1, § 0.2, § 9. |
+| `SIZE / LINE` | VERTICAL stack — two `Doc/Code` lines: resolved `{fontSize}px` / `{lineHeight}px` at mode **100**. Variants resolve through their base-body alias. |
+| `WEIGHT / FAMILY` | VERTICAL stack — two `Doc/Code` lines: resolved `{fontWeight}` / `{fontFamily}`. `/emphasis` rows resolve to `500` (via `font/weight/medium`). |
+| `WEB` / `ANDROID` / `iOS` | `Doc/Code` from Step 7 / 7b `codeSyntax`. |
 
-Caption under the table title: `Doc/Caption` — "Specimen renders at mode 100 — full 8-mode scale (85 → 200) ships via the Typography collection. Body variants extend each size with emphasis / italic / link / strikethrough per §7b." This tells the reader the table shows base values only, while Dev Mode surfaces all 8 modes.
+Caption under the table title (`Doc/Caption`): *"Specimen renders at mode 100 — full 8-mode scale (85 → 200) ships via the Typography collection. Body variants extend each size with emphasis / italic / link / strikethrough per §7b."*
 
 ### ↳ Effects page
 
-1. `figma.setCurrentPageAsync` → `↳ Effects`. Delete every node **other than `_Header`** (or whose `y >= 320`). Build `_PageContent` per § A rules.
-2. Resolve Effects collection `light` / `dark` `modeId` as in Step 15b.
-3. Call `buildTable(spec)` twice:
+Follow the per-page shape above. Resolve Effects `light` / `dark` `modeId` as in 15b. Tables:
 
 | Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
 | 1 | `effects/shadows` | Shadows | Drop shadow tiers — each alias points to an Elevation primitive. | 5 (`sm`, `md`, `lg`, `xl`, `2xl`) |
 | 2 | `effects/color` | Shadow Color | Shared shadow color referenced by every tier. | 1 (`shadow/color`) |
 
-- `effects/shadows` `LIGHT` / `DARK` cells → 88×88 `cornerRadius 12` card inside `doc/effect-preview/{mode}/{tier}` wrapper with explicit Effects mode set; card fill `color/background/default` + `effectStyleId = Effect/shadow-{tier}` + a small inner `Doc/Code` label showing the tier name.
-- `effects/shadows` `BLUR` / `ALIAS →` → `Doc/Code` (blur value in px; alias path `elevation/{step}`).
-- `effects/color` `LIGHT` / `DARK` cells → *swatch chip + hex* pattern, 32×32 chip bound to `shadow/color` in the wrapper's mode.
-- `WEB` / `ANDROID` / `iOS` cells → `Doc/Code` from Step 9 `codeSyntax`.
+Cell patterns (LIGHT / DARK shadow card with `effectStyleId` inside `doc/effect-preview/{mode}/{tier}`, BLUR, ALIAS →, swatch chip + hex for `effects/color`, WEB/ANDROID/iOS) live in CONVENTIONS § 11.
 
-Log the **Canvas checklist** row for Step 15c.
-
----
-
-*If any instruction in an earlier section of this file conflicts with § H or with the step rewrites above, § H and the rewrites win (stable table hierarchy, Light doc mode, Dev Mode bindings, auto-layout hug rules).*
-
----
+Log the Canvas checklist row for 15c.

@@ -9,7 +9,9 @@ agent: general-purpose
 
 You are the Create Design System agent for the Detroit Labs DesignOps plugin. Your job is to collect brand tokens from the designer, build five variable collections with proper Light/Dark and typography scale modes, and push the result to the target Figma file.
 
-> **Before you run this skill for the first time in a new session, `Read` [`CONVENTIONS.md`](./CONVENTIONS.md)** (same folder) — a one-page quick reference for canvas geometry (1800/1640), iOS `codeSyntax` dot-path rules, the "no MCP Tokens page" guardrail, and the pre-commit audit checklist. Any agent (Sonnet, Opus, future models) should load that file so the first pass matches house style.
+> **[`CONVENTIONS.md`](./CONVENTIONS.md) is the authoritative canvas / table spec.** Read it **in full** on the first run of every session. It owns: canvas geometry (1800/1640), the five-collection architecture, codeSyntax casing for all three platforms, § 0 known-gotcha rules (row / cell Hug-before-resize, textAutoResize HEIGHT, Theme hex-sibling, Doc/\* + Effect publish order), table hierarchy, column widths per page, cell patterns, chrome→variable binding map, build-order checklist, and the pre-commit audit checklist.
+>
+> **Phase files under [`phases/`](./phases/) orchestrate** — which step, which page, which slug, which row set, which AskUserQuestion to fire, which codeSyntax table to apply. They do **not** own geometry, columns, cells, or auto-layout rules. **When a phase file disagrees with CONVENTIONS.md, CONVENTIONS wins.**
 
 ---
 
@@ -68,20 +70,23 @@ Current: Building Primitives…
 - [ ] Verifying variables wrote correctly
 - [ ] Optional: write `tokens.css` (your choice — Step 12.5, then Step 13 if yes)
 - [ ] Summarizing results (counts & file links)
+- [ ] Publishing Doc/\* text styles + Effect/shadow-\* (Step 15c § 0 — run **before** 15a/15b on first runs; see CONVENTIONS § 0.4)
 - [ ] Drawing ↳ Primitives style guide (Step 15a)
 - [ ] Drawing ↳ Theme style guide (Step 15b)
-- [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (Step 15c)
+- [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (rest of Step 15c)
 - [ ] Filling Token Overview from live variables (Step 17)
 - [ ] Updating Thumbnail cover (brand gradient) (Step 18)
 - [ ] Offering next step (`/create-component`)
 
-**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · rows 11–13 → Steps 15a–15c · rows 14–15 → Steps 17–18 · row 16 → Step 19.
+**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · row 11 → Step 15c § 0 (pre-pass on first runs) · rows 12–14 → Steps 15a–15c bodies · rows 15–16 → Steps 17–18 · row 17 → Step 19.
+
+**Docs-only path** (variables already present — see "After Step 4" below): start the checklist at **row 11** (publish Doc/\* + Effect styles) and continue through row 17. Rows 1–10 are marked `[x] (skipped — variables present)` up front.
 
 ---
 
 ## Phase execution (required)
 
-Work through the phases **in order**. For each phase, **`Read` the linked file in full** for that segment before executing — phase files are authoritative; this orchestrator only routes.
+Work through the phases **in order**, except when **After Step 4 — variables present vs missing** (subsection below) says to **skip 02–04** and go straight to **06 → 07 → 08** (documentation draw/update). For each phase you execute, **`Read` the linked file in full** — phase files are authoritative; this orchestrator only routes.
 
 | Phase | Scope | Read path |
 |------|--------|-----------|
@@ -94,9 +99,23 @@ Work through the phases **in order**. For each phase, **`Read` the linked file i
 | 07 | Steps 15a–15c — style-guide pages | [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) |
 | 08 | Steps 17–19 + appendix | [`phases/08-steps17-appendix.md`](./phases/08-steps17-appendix.md) |
 
-**Also load when applying Theme `codeSyntax`:** [`phases/06-theme-codesyntax.md`](./phases/06-theme-codesyntax.md) (supplements Step 6 tables in phase 02).
+**First-run ordering (important):** On the first invocation of a session, execute phase 07's **Step 15c § 0** (publish `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`) **before** 15a/15b so the first pass can bind `textStyleId` / `effectStyleId` directly instead of emitting fallback `fontName`/`fontSize` literals that a second pass would need to upgrade. See [`CONVENTIONS.md`](./CONVENTIONS.md) § 0.4.
 
-**Canvas scripts:** prepend helpers from [`helpers/canvas.js`](./helpers/canvas.js) to `use_figma` scripts in Steps 15a–17 per phase 07.
+### After Step 4 — variables present vs missing
+
+**Step 4** (phase 01) reads the file’s variable registry. Use it **before** phase 02 to decide whether to **generate and push tokens** or **draw/update documentation only**.
+
+| Situation | What to run |
+|-----------|-------------|
+| **No or insufficient variables** — e.g. missing **`Primitives`** or **`Theme`**, collections empty, or nothing local to bind the style guide to | Continue in order: **02 → 03 → 04 → 05**, then **06 → 07 → 08** (full pipeline). |
+| **Variables already in the file** — the registry shows the expected collections (at minimum **`Primitives`** and **`Theme`**) populated with variables suitable for bindings, and the designer has **not** asked to regenerate or replace tokens | **Skip 02–04** (no new generation, no Step 10 plan for a fresh build). **Read 06**, then run **07** and **08** to **draw or refresh** style-guide canvas work (Steps 15a–c, 17–19). Optionally run **05** Step 12 (verify) after canvas if useful. |
+| Designer **explicitly** wants new ramps, Theme changes, or a full token rebuild | Run **02 → 03 → 04** even when variables already exist. |
+
+If the snapshot is **ambiguous** (partial collections, legacy naming), call **AskUserQuestion** once: **regenerate tokens** vs **documentation-only refresh** — then follow the matching row above.
+
+**Also load when applying Theme `codeSyntax`:** [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) (supplements Step 6 tables in phase 02).
+
+**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **inline** for each `use_figma` call; follow [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and [`CONVENTIONS.md`](./CONVENTIONS.md). **Do not** add canvas `.js` files, helper bundles, or scratch scripts to the workspace as part of this skill.
 
 **Foundations page list (shared with `/new-project`):** [`../shared/pages.json`](../shared/pages.json).
 
