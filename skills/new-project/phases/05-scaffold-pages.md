@@ -1,5 +1,9 @@
 # Phase 05 — Scaffold page hierarchy
 
+## Single source of truth (page names)
+
+The ordered `pages` array must stay **byte-for-byte aligned** with [`skills/shared/pages.json`](../../shared/pages.json) (`pages` field). When you add or rename a Foundations page, update the JSON first, then mirror the same strings (including emoji and `---` section markers) in the `const pages = [...]` array below.
+
 ## Goal
 Create every page in the Detroit Labs Foundations template via one `use_figma` invocation.
 

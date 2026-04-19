@@ -22,7 +22,7 @@
 
 ## 2. `codeSyntax` is explicit and MANDATORY on every variable
 
-Figma API fact: `codeSyntax` is **read-only** from `use_figma`. Set it via the **Variables REST API** (`PUT /v1/files/:key/variables`) — that is the only path that works.
+Figma API fact: `codeSyntax` is **not** applied via raw variable creation in the Plugin API for this workflow. After variables exist, set `codeSyntax` with a compact **REST `PUT`** whose body is **only** `variables` entries (`action: "UPDATE"` + `codeSyntax`) — see [`phases/04-step11-push.md`](./phases/04-step11-push.md).
 
 Every variable carries three strings: **WEB**, **ANDROID**, **iOS**.
 
@@ -73,7 +73,7 @@ The Figma path (`color/background/content-muted`) is a **designer label**. The t
 | `color/primary/subtle`          | `var(--color-primary-subtle)`  | `primary-container`  | `.Primary.subtle`        |
 | `color/error/default`           | `var(--color-danger)`          | `error`              | `.Status.error`          |
 
-Always read Theme codeSyntax from **Step 6** in `SKILL.md`. Never transform the path.
+Always read Theme codeSyntax from **Step 6** in [`phases/02-steps5-9.md`](./phases/02-steps5-9.md), with the supplement [`phases/06-theme-codesyntax.md`](./phases/06-theme-codesyntax.md). Never transform the path.
 
 ---
 
@@ -469,14 +469,14 @@ If any box is unchecked, fix before reporting "done."
 | Topic                              | File                                                                       |
 | ---------------------------------- | -------------------------------------------------------------------------- |
 | `.designops-registry.json` (Figma component keys + `nodeId` map for `/create-component`, `/code-connect`, `/sync-design-system`) | [`skills/create-component/registry.schema.json`](../create-component/registry.schema.json) + [`skills/create-component/SKILL.md`](../create-component/SKILL.md) Step 5 + [`skills/create-component/resolver/merge-registry.mjs`](../create-component/resolver/merge-registry.mjs) |
-| Full skill orchestration           | [`skills/create-design-system/SKILL.md`](./SKILL.md)                       |
-| Canvas geometry + auto-layout rules | [`skills/create-design-system/SKILL.md`](./SKILL.md) § **A–G**             |
-| Table format spec (hierarchy, columns, cells, bindings) | [`skills/create-design-system/SKILL.md`](./SKILL.md) § **H** |
-| Theme codeSyntax table (explicit)  | [`skills/create-design-system/SKILL.md`](./SKILL.md) § **6**               |
-| Typography codeSyntax rule         | [`skills/create-design-system/SKILL.md`](./SKILL.md) § **7b**              |
-| Body text variant rules            | [`skills/create-design-system/SKILL.md`](./SKILL.md) § **7b** + Step 15c §0 |
+| Full skill orchestration           | [`skills/create-design-system/SKILL.md`](./SKILL.md) (phase table)          |
+| Canvas geometry + auto-layout rules | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § **A–G** |
+| Table format spec (hierarchy, columns, cells, bindings) | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § **H** |
+| Theme codeSyntax table (explicit)  | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **6** + [`phases/06-theme-codesyntax.md`](./phases/06-theme-codesyntax.md) |
+| Typography codeSyntax rule         | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7** / **7b**        |
+| Body text variant rules            | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7b** + [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) §0 |
 | Sync redraw steps (9b, 9d, 9e)     | [`skills/sync-design-system/SKILL.md`](../sync-design-system/SKILL.md)     |
-| New-project page scaffold          | [`skills/new-project/phases/05-scaffold-pages.md`](../new-project/phases/05-scaffold-pages.md) |
+| New-project page scaffold          | [`skills/shared/pages.json`](../shared/pages.json) + [`skills/new-project/phases/05-scaffold-pages.md`](../new-project/phases/05-scaffold-pages.md) |
 | `_Header` template                 | [`skills/new-project/phases/05b-documentation-headers.md`](../new-project/phases/05b-documentation-headers.md) |
 
 When you are unsure, **`Read` the relevant file** rather than guessing. All these files live under `skills/` and are designed to be read in full by the agent before executing the relevant step.

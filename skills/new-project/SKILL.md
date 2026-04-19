@@ -152,7 +152,7 @@ For each row below, in order:
 
 ## Page Structure Reference
 
-The following pages are sourced directly from the Detroit Labs Foundations template (`rJQsr4aou5yjzUhaEM0I2f`) and hardcoded in `skills/new-project/phases/05-scaffold-pages.md`. To update them, run `use_figma` on the template file with `figma.root.children.map(p => p.name)` and replace the `pages` array in that phase file.
+The following pages are sourced directly from the Detroit Labs Foundations template (`rJQsr4aou5yjzUhaEM0I2f`). The canonical ordered list lives in [`skills/shared/pages.json`](../shared/pages.json) and is mirrored in `skills/new-project/phases/05-scaffold-pages.md` for the scaffold script. To update them, edit the JSON first, then align the `pages` array in that phase file.
 
 **Sections:**
 - Thumbnail
