@@ -19,7 +19,7 @@ node skills/create-design-system/scripts/bundle-canvas-mcp.mjs
 Regenerate after editing any of:
 
 - [`../_lib.js`](../_lib.js)
-- Any page template in [`../`](../) (`primitives.js`, `theme.js`, `layout.js`, `text-styles.js`, `effects.js`)
+- Any page template in [`../`](../) (`primitives.js`, `theme.js`, `layout.js`, `text-styles.js`, `effects.js`, `token-overview.js`)
 - Any `_step*-runner.fragment.js` in this directory
 
 Commit both the `.mcp.js` and `.min.mcp.js` outputs.
@@ -33,6 +33,7 @@ Commit both the `.mcp.js` and `.min.mcp.js` outputs.
 | 15c ↳ Layout        | [`step-15c-layout.mcp.js`](./step-15c-layout.mcp.js)               | [`step-15c-layout.min.mcp.js`](./step-15c-layout.min.mcp.js) |
 | 15c ↳ Text Styles   | [`step-15c-text-styles.mcp.js`](./step-15c-text-styles.mcp.js)     | [`step-15c-text-styles.min.mcp.js`](./step-15c-text-styles.min.mcp.js) |
 | 15c ↳ Effects       | [`step-15c-effects.mcp.js`](./step-15c-effects.mcp.js)             | [`step-15c-effects.min.mcp.js`](./step-15c-effects.min.mcp.js) |
+| 17 ↳ Token Overview | [`step-17-token-overview.mcp.js`](./step-17-token-overview.mcp.js) | [`step-17-token-overview.min.mcp.js`](./step-17-token-overview.min.mcp.js) |
 
 Each bundle concatenates `_lib.js` + the page template + the per-step runner fragment. The runner resolves variables, mode IDs, Doc/* style IDs, and the target page **inside the plugin** and calls `await build(ctx)`. `ctx.variableMap` is never passed inline — [`ensureLocalVariableMapOnCtx`](../_lib.js) hydrates it on entry to `build(ctx)`.
 

@@ -452,43 +452,47 @@ Inspect the push payload from 6.C / 6.R (the set of tokens actually written). Ma
 | `space/*`, `radius/*` (lowercase) | Layout | `↳ Layout` |
 | `shadow/*` | Effects | `↳ Effects` |
 
-Build a deduplicated list of affected pages. Then for each page:
+Build a deduplicated list of affected pages. Then:
 
 1. **Re-read affected collections from Figma.** `GET /v1/files/:key/variables/local`, filter to only variables in affected collections. Resolve alias tokens. Use the live post-write state — not the pre-diff snapshot.
 
 2. Before any `use_figma` call, **`Read`** [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§§ **A–G**). Token-bound doc chrome (**§ C**), token-demo bindings (**§ D**), auto-layout hug rules (**§ E**), row hierarchy (**§ F**), and premium visual language (**§ G**) must match that spec.
 
-3. **Reliability:** run **one `use_figma` call per affected page** (same split as create-design-system Steps 15a–15c), not one mega-call across all pages — each call: navigate → delete `y > 360` → redraw that page only. Compose each call’s Plugin API script **inline** in the MCP `code` field; do **not** write throwaway `.mcp-*`, `*-payload.json`, or scratch `.js` files to the workspace to stage payloads (same rule as [`../create-design-system/phases/07-steps15a-15c.md`](../create-design-system/phases/07-steps15a-15c.md) § *Agent-driven only*; **Distribution §** in that file covers bundles + Claude Code source root). For **`↳ Primitives`** only, **prefer** `Read` [`../create-design-system/canvas-templates/bundles/step-15a-primitives.mcp.js`](../create-design-system/canvas-templates/bundles/step-15a-primitives.mcp.js) and pass its full contents as `code` (see [`../create-design-system/canvas-templates/bundles/README.md`](../create-design-system/canvas-templates/bundles/README.md)). Otherwise use committed **`_lib.js`** + page templates; you may **omit `variableMap` from `ctx`** — see [`../create-design-system/conventions/16-mcp-use-figma-workflow.md`](../create-design-system/conventions/16-mcp-use-figma-workflow.md) and **`ensureLocalVariableMapOnCtx`** in [`../create-design-system/canvas-templates/_lib.js`](../create-design-system/canvas-templates/_lib.js). After every redraw, apply **create-design-system §0.1** end-of-script hygiene: **`_PageContent`** and **`doc/table-group/*`** must **Hug** vertically (no fixed placeholder heights, no `clipsContent` on groups); **`codeSyntax.iOS`** (not `IOS`) for iOS cells; run the optional machine gates in [`../create-design-system/conventions/14-audit.md`](../create-design-system/conventions/14-audit.md) when validating.
+3. **Reliability — committed bundles only (parity with create-design-system phase 07):** For each affected page, run **`use_figma` once per committed `.min.mcp.js` bundle** below. Do **not** invent ad-hoc concatenated scripts or one mega-call across unrelated pages. Do **not** write throwaway `.mcp-*`, `*-payload.json`, or scratch `.js` under the repo (same rule as [`../create-design-system/phases/07-steps15a-15c.md`](../create-design-system/phases/07-steps15a-15c.md) § *Agent-driven only*). **Transport:** prefer file-backed `code` when the host supports it ([`../create-design-system/RFC-figma-mcp-bundle-transport.md`](../create-design-system/RFC-figma-mcp-bundle-transport.md)); otherwise **editor `Read`** the `.min.mcp.js` and pass **verbatim** as `code` — never shell `cat` / `type` for the full bundle ([`../create-design-system/conventions/17-table-redraw-runbook.md`](../create-design-system/conventions/17-table-redraw-runbook.md), [`AGENTS.md`](../../AGENTS.md)). MCP **`serverIdentifier`:** use the workspace connector id (often `plugin-figma-figma`), not the bare slug `figma`.
 
-| Affected page(s) | `use_figma` batch |
-|---|---|
-| `↳ Primitives` only | One execution: **Primitives** redraw (create-design-system Step 15a spec). |
-| `↳ Theme` only | One execution: **Theme** redraw (Step 15b spec). |
-| `↳ Layout`, `↳ Text Styles`, and/or `↳ Effects` | One execution can redraw **all three** in sequence if all affected (Step 15c spec). If only one or two are affected, still one execution but only those pages. |
+| If this page is in the affected set | Committed bundle (`Read` this path relative to repo or skill root) |
+|--------------------------------------|---------------------------------------------------------------------|
+| `↳ Primitives` | [`../create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js) |
+| `↳ Theme` | [`../create-design-system/canvas-templates/bundles/step-15b-theme.min.mcp.js`](../create-design-system/canvas-templates/bundles/step-15b-theme.min.mcp.js) |
+| `↳ Layout` | [`../create-design-system/canvas-templates/bundles/step-15c-layout.min.mcp.js`](../create-design-system/canvas-templates/bundles/step-15c-layout.min.mcp.js) |
+| `↳ Text Styles` | [`../create-design-system/canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../create-design-system/canvas-templates/bundles/step-15c-text-styles.min.mcp.js) |
+| `↳ Effects` | [`../create-design-system/canvas-templates/bundles/step-15c-effects.min.mcp.js`](../create-design-system/canvas-templates/bundles/step-15c-effects.min.mcp.js) |
 
-Per page:
+**15c split:** If **Layout**, **Text Styles**, and **Effects** are **all** affected, run **three** sequential `use_figma` calls (one bundle each) — same as [`../create-design-system/phases/07-steps15a-15c.md`](../create-design-system/phases/07-steps15a-15c.md). If only one or two of those pages are affected, run only the matching bundle(s). Do **not** merge them into a single custom script.
 
-1. Navigate: `figma.setCurrentPageAsync(page)` — exact page name (e.g. `↳ Primitives`).
-2. Delete all nodes with `y > 360` (keep doc header `y ≤ 360`).
-3. Redraw using the same spec as create-design-system Steps 15a–15c for that page. Authoritative detail: [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md).
+Each committed bundle performs full-page redraw under `_PageContent` for its target page (navigate → clear below header → rebuild per template). Authoritative geometry and cell rules: [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md) §0 + **Canvas documentation visual spec**.
 
-**↳ Primitives** — per create-design-system Step 15a + §§ A–G: `_PageContent` shell; `doc/primitives/ramp-row/*` wraps each ramp's cards; 64px strips; 120×160 cards, **variable-bound** fills; Space/Corner/Typeface as `doc/primitives/*-row/{token}`; `primaryAxisSizingMode: AUTO` + `textAutoResize` on all text (§ E).
+**↳ Primitives** — Step 15a: `_PageContent` shell; `doc/primitives/ramp-row/*`; variable-bound swatches (§0.7); § E text rules.
 
-**↳ Theme** — per Step 15b + § F: `doc/theme/card-row-*` holds **two** cards per row; 64px strips; cards `minHeight: 200`, padding 28, radius 16; 88×88 swatches + `setExplicitVariableModeForCollection` on `doc/theme-preview/light|dark`; `Doc/*` + live `codeSyntax`.
+**↳ Theme** — Step 15b: `doc/theme/card-row-*`; Light/Dark previews; `Doc/*` + live `codeSyntax`.
 
-**↳ Text Styles** — per Step 15c: `doc/typography/row/{slot}` in § 0 slot order; specimen `textStyleId`; metadata `Doc/Code`; `textAutoResize`; republish `Doc/*` + slot styles in § 0 when Typography changed.
+**↳ Text Styles** — Step 15c typography table: `doc/typography/row/{slot}`; specimen `textStyleId`; `Doc/*`.
 
-**↳ Layout** — per Step 15c: `doc/layout/row/{token}` per token; 64px strips; bound bars / `cornerRadius`; `Doc/*`.
+**↳ Layout** — Step 15c: `doc/layout/row/{token}`; bound previews; `Doc/*`.
 
-**↳ Effects** — per Step 15c: `doc/effects/card/{tier}`; ~280×300 cards, 112×112 specimen, Light/Dark explicit modes; `Effect/shadow-*` styles; `shadow/color` card per create Step 15c.
+**↳ Effects** — Step 15c: `doc/effects/card/{tier}`; Light/Dark; `Effect/shadow-*`; `shadow/color`.
+
+After every redraw, apply **create-design-system §0.1** hygiene where applicable; **`codeSyntax.iOS`** (not `IOS`) for iOS cells; optional gates in [`../create-design-system/conventions/14-audit.md`](../create-design-system/conventions/14-audit.md).
 
 Report: `Style guide updated: {comma-separated redrawn page names}.` Log the 9b checklist row.
 
 #### 6.Canvas.9d — Refresh `↳ Token Overview`
 
-In `use_figma`, navigate to `↳ Token Overview` (`figma.setCurrentPageAsync`). If the page does not exist, log `Canvas: Step 9d ↳ Token Overview — skipped (page missing)` and continue to 9e.
+If the page does not exist, log `Canvas: Step 9d ↳ Token Overview — skipped (page missing)` and continue to 9e.
 
-Execute the same population and rebinding logic as **create-design-system Step 17** — authoritative steps: [`../create-design-system/phases/08-steps17-appendix.md`](../create-design-system/phases/08-steps17-appendix.md). In `use_figma`: architecture-diagram fills, platform-mapping table rows and `codeSyntax` cells, Dark Mode phone fills, delete `placeholder/*`, fix `TBD`, **rebind documentation chrome** on `_PageContent` and `token-overview/*` per Canvas documentation visual spec §§ A–G. Use the live variable data from 6.Canvas.9b's fetch where available; otherwise `GET /v1/files/:key/variables/local` once.
+**Happy path:** one `use_figma` call with the committed bundle — **`Read`** [`../create-design-system/canvas-templates/bundles/step-17-token-overview.min.mcp.js`](../create-design-system/canvas-templates/bundles/step-17-token-overview.min.mcp.js) (or `codeWorkspacePath` when supported) and pass as `code`, plus runtime `fileKey`. Same transport rules as 9b ([`../create-design-system/conventions/17-table-redraw-runbook.md`](../create-design-system/conventions/17-table-redraw-runbook.md), [`AGENTS.md`](../../AGENTS.md)). If the bundle returns **`ok: false`** and **`skipped: 'page missing'`**, treat that as **9d skipped (page missing)** — do not fail the canvas chain.
+
+The bundle implements **create-design-system Step 17** — behavior and edge cases: [`../create-design-system/phases/08-steps17-appendix.md`](../create-design-system/phases/08-steps17-appendix.md). It upgrades `Doc/*` on text under `_PageContent`, refreshes platform-mapping `codeSyntax` cells, clears §0.9 shadows on the platform-mapping subtree, applies `Effect/shadow-sm` only to eligible section shells, deletes `placeholder/*`, and replaces `TBD` where possible. Use live variables from 6.Canvas.9b's fetch when already in memory; the script also resolves from the file via the Plugin API.
 
 **Token Overview platform-mapping (same rule as Step 17):** **Do not** assign **`Effect/shadow-sm`** to **`doc/table/token-overview/platform-mapping`** or any descendant. After any pass that touches effects or styles, ensure every node in that subtree stays **flat**: set **`effects = []`** *and* clear **`effectStyleId`** on each affected frame or text node — clearing only the style link can leave a baked **`DROP_SHADOW`** in **`effects`** (**create-design-system** `SKILL.md` §0.9).
 

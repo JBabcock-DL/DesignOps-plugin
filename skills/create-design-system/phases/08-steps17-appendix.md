@@ -1,9 +1,13 @@
 
 ## Step 17 — Populate Token Overview
 
-Data reference: [`../data/platform-mapping-rows.json`](../data/platform-mapping-rows.json) (minimum row set + column widths). §0 rules apply — see [`../conventions/00-gotchas.md`](../conventions/00-gotchas.md).
+**Happy path (MCP):** `Read` [`../canvas-templates/bundles/step-17-token-overview.min.mcp.js`](../canvas-templates/bundles/step-17-token-overview.min.mcp.js) → pass **verbatim** as `use_figma` → `code` (plus runtime `fileKey`, `description`, `skillNames: "figma-use"`), or use **`codeWorkspacePath`** when the host supports it ([`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md)). Regenerate bundles after editing [`../canvas-templates/token-overview.js`](../canvas-templates/token-overview.js): `node skills/create-design-system/scripts/bundle-canvas-mcp.mjs`. Transport + bundle index: [`../conventions/17-table-redraw-runbook.md`](../conventions/17-table-redraw-runbook.md).
 
-Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page with auto-layout section shells, a `doc/table/token-overview/platform-mapping` table, and amber `placeholder/*` notes. This step: (a) upgrades every doc text node to `textStyleId`, (b) refreshes cell text with live `codeSyntax` values, (c) deletes scaffold placeholders.
+Data reference: [`../data/platform-mapping-rows.json`](../data/platform-mapping-rows.json) (minimum row set + column widths; mirrored as `STEP17_MIN_PLATFORM_ROWS` in `token-overview.js`). §0 rules apply — see [`../conventions/00-gotchas.md`](../conventions/00-gotchas.md).
+
+The `/new-project` skill's Step 5d drew this page with auto-layout section shells, a `doc/table/token-overview/platform-mapping` table, and amber `placeholder/*` notes. The committed bundle: (a) upgrades doc text to `textStyleId` (heuristic), (b) refreshes platform-mapping cells with live `codeSyntax`, (c) applies §0.9 shadow hygiene on the platform-mapping subtree, (d) rebinds arch boxes + `phone-frame/light|dark` fills, (e) deletes `placeholder/*`, (f) replaces `TBD` in text. It does **not** yet rebind **Typography scale** specimen `fontSize` per mode (appendix **Typography scale** subsection) — extend [`token-overview.js`](../canvas-templates/token-overview.js) if needed.
+
+**Procedural detail** below is the full spec for debugging, manual runs, or future bundle extensions.
 
 **Pre-pass — upgrade text styles + shadows**
 

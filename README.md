@@ -38,7 +38,7 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
 
 Each skill is an instruction file (`SKILL.md`) that tells the Claude Code agent exactly how to perform a design ops task. When you invoke a skill, Claude reads the instructions and executes the steps using:
 
-- **Agent policy (all skills)** — MCP payloads (e.g. Figma `use_figma` `code`) go **inline in each tool call**; do **not** add throwaway `.mcp-*`, `*-payload.json`, or scratch scripts to the repo to stage them. See **[`AGENTS.md`](AGENTS.md)** and **[`.cursor/rules/mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc)** (Cursor).
+- **Agent policy (all skills)** — MCP payloads (e.g. Figma `use_figma` `code`) go **inline in each tool call**; do **not** add throwaway `.mcp-*`, `*-payload.json`, or scratch scripts to the repo to stage them. See **[`AGENTS.md`](AGENTS.md)** and Cursor rules **[`mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc)** + **[`cursor-designops-skill-root.mdc`](.cursor/rules/cursor-designops-skill-root.mdc)**.
 - **Figma MCP connector** — all Figma file creation, canvas writes (pages, frames, variables, components), Code Connect, and read operations
 - **Figma REST API** — variable write-back for `/create-design-system` and `/sync-design-system`
 - **Filesystem access** — reading and writing local token files (`tokens.css`, `tokens.json`, `tailwind.config.js`) for sync and component wiring
@@ -54,6 +54,7 @@ Each skill is an instruction file (`SKILL.md`) that tells the Claude Code agent 
 |---|---|
 | **Claude Code** | CLI or desktop app — this is a Claude Code plugin, not a Figma plugin |
 | **Figma MCP connector** | Must be active in Claude Code (Settings → MCP → Figma). Handles all Figma authentication — no personal access token needed for `/new-project` |
+| **Cursor (if you use it here)** | Enable the **Figma** MCP connector in Cursor and complete OAuth. Open **this repository** as the workspace (or add it via **Add Folder to Workspace**) so `skills/create-design-system/canvas-templates/bundles/*.min.mcp.js` resolves. Project rules under [`.cursor/rules/`](.cursor/rules/) apply automatically. Use the MCP **server** name Cursor shows for your project (see [`AGENTS.md`](AGENTS.md)) — not necessarily the string `figma`. |
 | **Organization-tier Figma account** | Required for the Variables REST API (write) used by `/create-design-system` and `/sync-design-system` |
 | **Node.js** (for `/create-component`) | Required to run `npx shadcn@latest add` locally |
 
@@ -72,6 +73,10 @@ Each skill is an instruction file (`SKILL.md`) that tells the Claude Code agent 
 3. Connect the Figma MCP connector in **Settings → MCP → Figma** and complete the OAuth flow with your organization Figma account.
 
 4. Verify the setup by running `/new-project` — Claude will prompt for team name and project name if no arguments are provided.
+
+### Cursor (optional)
+
+Cursor agents only see files under **workspace folders**. If you open **another** repository as your main project, **File → Add Folder to Workspace…** and add the **same DesignOps plugin root** Claude Code uses — the directory that contains `skills/create-design-system/` and `.claude-plugin/plugin.json` (often a versioned subfolder of `~/.claude/plugins/cache/` or `%USERPROFILE%\.claude\plugins\cache\`), or your local git clone of this repo. Otherwise canvas **`.min.mcp.js`** paths will not resolve. See **[`.cursor/rules/cursor-designops-skill-root.mdc`](.cursor/rules/cursor-designops-skill-root.mdc)** and **[`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md)** § *Source root — Cursor*.
 
 ---
 

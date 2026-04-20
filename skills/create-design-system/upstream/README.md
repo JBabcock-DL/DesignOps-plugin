@@ -6,12 +6,17 @@ Artifacts for filing and validating **file-backed `code`** (`codeWorkspacePath` 
 |-----|---------|
 | [`MCP-USE-FIGMA-BUNDLE-MRE.md`](./MCP-USE-FIGMA-BUNDLE-MRE.md) | Minimal reproducible report for maintainers (transport + `fetch` + no team `fileKey`). |
 | [`OPTION-D-ACCEPTANCE-CRITERIA.md`](./OPTION-D-ACCEPTANCE-CRITERIA.md) | Security, parity, and error-handling acceptance criteria. |
-| [`STEP-15-POST-OPTION-D-VALIDATION.md`](./STEP-15-POST-OPTION-D-VALIDATION.md) | Post-fix validation checklist (designer-supplied `fileKey`, five bundles). |
+| [`STEP-15-POST-OPTION-D-VALIDATION.md`](./STEP-15-POST-OPTION-D-VALIDATION.md) | Post-fix validation checklist (designer-supplied `fileKey`, six bundles: Steps 15a–15c + Step 17 Token Overview). |
 | [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) | Full RFC + copy-paste issue **Title** and **Body** for trackers. |
 
 ## Repo tracking
 
 - [DesignOps-plugin#4](https://github.com/JBabcock-DL/DesignOps-plugin/issues/4) — central tracking; link this folder and the RFC in upstream tickets.
+
+## Maintainer actions (in-repo)
+
+- Track implementation status on [DesignOps-plugin#4](https://github.com/JBabcock-DL/DesignOps-plugin/issues/4).
+- After upstream ships `codeWorkspacePath` (or equivalent), run [`STEP-15-POST-OPTION-D-VALIDATION.md`](./STEP-15-POST-OPTION-D-VALIDATION.md) against a **designer-authorized** file (no committed `fileKey`).
 
 ## Filing checklist (human)
 

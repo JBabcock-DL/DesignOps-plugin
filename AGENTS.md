@@ -14,7 +14,7 @@ When a tool accepts an **inline** argument (e.g. Figma **`use_figma`** → `code
 
 If you accidentally create a staging file, **delete it** before finishing; the deliverable is tool/Figma state, not extra repo noise.
 
-**If you are tempted to stage a payload because the inline `code` arg feels too big:** stop and `Read` the committed **`.min.mcp.js`** variant of the bundle (e.g. [`skills/create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js`](skills/create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js)) — that is the wire-sized payload the tool expects. Do **not** create a smaller clipboard file as a workaround; retry the MCP call with the minified bundle instead.
+**If you are tempted to stage a payload because the inline `code` arg feels too big:** stop and `Read` the committed **`.min.mcp.js`** variant of the bundle (e.g. [`skills/create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js`](skills/create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js) or [`step-17-token-overview.min.mcp.js`](skills/create-design-system/canvas-templates/bundles/step-17-token-overview.min.mcp.js)) — that is the wire-sized payload the tool expects. Do **not** create a smaller clipboard file as a workaround; retry the MCP call with the minified bundle instead.
 
 ### Host vs agent transport (Figma `use_figma`)
 
@@ -27,6 +27,7 @@ If you accidentally create a staging file, **delete it** before finishing; the d
 ### Where this is spelled out for canvas
 
 - [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md) — read templates/data, plain `code`, ~50k cap, split calls, MCP host limits
+- [`skills/create-design-system/conventions/17-table-redraw-runbook.md`](skills/create-design-system/conventions/17-table-redraw-runbook.md) — bundle path matrix (15a–15c + Step 17)
 - [`skills/create-design-system/phases/07-steps15a-15c.md`](skills/create-design-system/phases/07-steps15a-15c.md) — § *Agent-driven only — no workspace scripts*
 - [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md) — Canvas (Steps 15a–17)
 - [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) — canvas redraw reliability bullet
@@ -37,7 +38,9 @@ MCP comparison of a **golden** style-guide table vs a regressed one showed: **he
 
 ### IDE rule (Cursor)
 
-Project rule file (always on in Cursor): [`.cursor/rules/mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc)
+Project rule files (always on in Cursor): [`.cursor/rules/mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc), [`.cursor/rules/cursor-designops-skill-root.mdc`](.cursor/rules/cursor-designops-skill-root.mdc).
+
+**Skill / bundle paths in Cursor:** Agents only see files under **workspace folders**. If the user’s primary folder is **not** the DesignOps plugin, they must **Add Folder to Workspace** for the plugin root (same tree as Claude Code’s `${CLAUDE_PLUGIN_ROOT}`, typically under `~/.claude/plugins/cache/`). Otherwise `skills/create-design-system/canvas-templates/bundles/*.min.mcp.js` will not resolve. See [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md) § *Source root — Cursor*.
 
 ### Cursor — Figma MCP `server` identifier
 

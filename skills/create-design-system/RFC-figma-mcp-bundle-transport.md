@@ -82,7 +82,7 @@ When the bundle is fully self-contained, allow a **small** JSON `params` object 
 
 ## Relation to current DesignOps workaround
 
-Until upstream ships this, this repository ships **committed** [`canvas-templates/bundles/step-15a-primitives.mcp.js`](./canvas-templates/bundles/step-15a-primitives.mcp.js) and [`scripts/bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs) so agents can `Read` **one** file into `use_figma.code`.
+Until upstream ships this, this repository ships **committed** bundles under [`canvas-templates/bundles/`](./canvas-templates/bundles/) (Steps **15a–15c** + **Step 17** Token Overview, readable + `.min.mcp.js`) and [`scripts/bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs) so agents can `Read` **one** file per call into `use_figma.code` (see [`conventions/17-table-redraw-runbook.md`](./conventions/17-table-redraw-runbook.md)).
 
 ---
 

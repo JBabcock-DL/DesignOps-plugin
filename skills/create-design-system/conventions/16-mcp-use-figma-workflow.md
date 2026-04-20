@@ -10,11 +10,17 @@
 
 Designers may run this skill from **Claude Code with the DesignOps plugin installed locally** without opening this repository as the workspace. Treat **paths in this skill** (`canvas-templates/`, `canvas-templates/bundles/`, `data/`, `phases/`) as relative to **the installed skill directory** inside the plugin tree — not to an unrelated project `cwd`. The on-disk layout matches this git repository.
 
+### Source root — Cursor
+
+Cursor agents can only read files under **workspace folders**. The plugin tree is **not** visible if the user opened **only** another repository.
+
+**Parity with Claude Code:** add the **same plugin root** Claude uses to the Cursor workspace — **File → Add Folder to Workspace…** — choosing the directory that contains `skills/create-design-system/` and `.claude-plugin/plugin.json` (`labs-design-ops`). That directory is usually a subfolder of **`~/.claude/plugins/cache/`** (macOS/Linux) or **`%USERPROFILE%\.claude\plugins\cache\`** (Windows) after a marketplace install; developers may instead add a local **DesignOps-plugin** git clone. See the always-on Cursor rule [`.cursor/rules/cursor-designops-skill-root.mdc`](../../../.cursor/rules/cursor-designops-skill-root.mdc).
+
 ---
 
 ## Default workflow (keep it simple)
 
-1. **Read canonical sources** — **Preferred for Step 15a:** the committed bundle [`canvas-templates/bundles/step-15a-primitives.mcp.js`](../canvas-templates/bundles/step-15a-primitives.mcp.js) (one `Read` → full `code`). **Otherwise:** [`canvas-templates/_lib.js`](../canvas-templates/_lib.js) plus the page template (`primitives.js`, `theme.js`, etc.) and, when the phase file says so, manifests under [`data/`](../data/). Resolve **live** `{ path → variableId }` and row payloads **inside** the plugin context where possible (or build `ctx` in the script per [`phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md)).
+1. **Read canonical sources** — **Happy path:** the committed **minified** bundle [`canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) (and the other `.min.mcp.js` files per [`17-table-redraw-runbook.md`](./17-table-redraw-runbook.md)) — one `Read` → full `code`. Use readable `.mcp.js` only for debugging/diffing. **Fallback:** [`canvas-templates/_lib.js`](../canvas-templates/_lib.js) plus the page template (`primitives.js`, `theme.js`, etc.) and manifests under [`data/`](../data/). Resolve **live** `{ path → variableId }` and row payloads **inside** the plugin context where possible (or build `ctx` in the script per [`phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md)).
 2. **Compose plain Figma Plugin API JavaScript** — either use the bundle file verbatim as `code`, or concatenate helpers + template + entry (`build(ctx)` or equivalent). Pass the result as the **`code`** argument to **`use_figma`**. Load the **`figma-use`** skill when tool docs require it.
 3. **Deliverable is Figma file state** — not scratch files in the repo (see [`AGENTS.md`](../../../AGENTS.md) and [`.cursor/rules/mcp-inline-payloads.mdc`](../../../.cursor/rules/mcp-inline-payloads.mdc)).
 
@@ -74,3 +80,4 @@ Each `use_figma` invocation should be able to run **alone**: imports from the sa
 | Repo-wide inline MCP payloads | [`AGENTS.md`](../../../AGENTS.md), [`mcp-inline-payloads.mdc`](../../../.cursor/rules/mcp-inline-payloads.mdc) |
 | Bundle regen + esbuild caveat | [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md), [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs) |
 | Upstream bundle transport RFC (draft) | [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) |
+| Table redraw bundle paths + transport checklist | [`17-table-redraw-runbook.md`](./17-table-redraw-runbook.md) |

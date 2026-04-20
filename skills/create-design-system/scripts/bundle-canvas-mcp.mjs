@@ -237,3 +237,10 @@ const lib = readUtf8('_lib.js');
   const runner = readRunner('_step15c-effects-runner.fragment.js');
   writeBundlePair('step-15c-effects', lib + effects + runner);
 }
+
+// ── Step 17 — Token Overview ───────────────────────────────────────────────
+{
+  const tokenOverview = readUtf8('token-overview.js');
+  const runner = readRunner('_step17-runner.fragment.js');
+  writeBundlePair('step-17-token-overview', lib + tokenOverview + runner);
+}
