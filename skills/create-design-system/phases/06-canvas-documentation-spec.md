@@ -1,7 +1,9 @@
 
 ## Canvas documentation visual spec
 
-Agents **must read this section** before executing Steps **15a–18** and any `use_figma` script that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure, binding, and Dev Mode rules (**§ A–G**; see [`../../sync-design-system/SKILL.md`](../../sync-design-system/SKILL.md)).
+Agents **must read this section** before executing Steps **15a–18** and any **`use_figma`** work that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure, binding, and Dev Mode rules (**§ A–G**; see [`../../sync-design-system/SKILL.md`](../../sync-design-system/SKILL.md)).
+
+**How that code runs:** only via the **`use_figma` MCP tool** — inline `code` strings per call. Do **not** add throwaway workspace files (`.mcp-*`, `*-payload.json`, scratch `.js`, etc.) to hold or transport that script; see [`./07-steps15a-15c.md`](./07-steps15a-15c.md) § *Agent-driven only — no workspace scripts*.
 
 > **Precedence:** Table geometry, column widths, cell patterns, chrome → variable bindings, auto-layout sizing rules, and build order are authoritative in the **conventions shards** — §0 in [`../SKILL.md`](../SKILL.md) and [`../conventions/03-through-07-geometry-and-doc-styles.md`](../conventions/03-through-07-geometry-and-doc-styles.md), [`../conventions/08-hierarchy-and-09-autolayout.md`](../conventions/08-hierarchy-and-09-autolayout.md), [`../conventions/10-column-spec.md`](../conventions/10-column-spec.md), [`../conventions/column-widths.json`](../conventions/column-widths.json), [`../conventions/11-cells-12-bindings-13-build-order.md`](../conventions/11-cells-12-bindings-13-build-order.md). This spec is authoritative for **visual language only** (tone, whitespace, depth, anti-patterns). When a rule in this file disagrees with those conventions, **the conventions win**.
 >

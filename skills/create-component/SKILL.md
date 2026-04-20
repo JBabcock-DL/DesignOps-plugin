@@ -21,6 +21,8 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **Tools you will use:** `AskUserQuestion`, `Shell` (for `npx shadcn@latest` + file reads), `Read` / `Glob` / `Grep`, `use_figma` (one call per component), `get_screenshot` (final visual check).
 
+**MCP payloads:** Each `use_figma` invocation must pass its Plugin API script **inline** in the tool’s `code` field (built from this SKILL + committed `templates/*.figma.js` where referenced). Do **not** add throwaway `.mcp-*` / `*-payload.json` / scratch copies under the repo to stage that script — see [`AGENTS.md`](../../AGENTS.md).
+
 **Seven steps. Do not skip any.**
 
 | # | Step | Tool | Required inputs | Expected outcome |

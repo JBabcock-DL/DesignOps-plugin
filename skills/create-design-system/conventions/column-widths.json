@@ -65,7 +65,7 @@
         { "id": "TOKEN", "width": 320 },
         { "id": "LIGHT", "width": 140 },
         { "id": "DARK", "width": 140 },
-        { "id": "ALIAS", "width": 260 },
+        { "id": "ALIAS →", "width": 260 },
         { "id": "WEB", "width": 320 },
         { "id": "ANDROID", "width": 220 },
         { "id": "iOS", "width": 240 }
@@ -75,7 +75,7 @@
       "columns": [
         { "id": "TOKEN", "width": 280 },
         { "id": "VALUE", "width": 100 },
-        { "id": "ALIAS", "width": 280 },
+        { "id": "ALIAS →", "width": 280 },
         { "id": "PREVIEW", "width": 240 },
         { "id": "WEB", "width": 320 },
         { "id": "ANDROID", "width": 220 },
@@ -86,7 +86,7 @@
       "columns": [
         { "id": "TOKEN", "width": 280 },
         { "id": "VALUE", "width": 100 },
-        { "id": "ALIAS", "width": 280 },
+        { "id": "ALIAS →", "width": 280 },
         { "id": "PREVIEW", "width": 240 },
         { "id": "WEB", "width": 320 },
         { "id": "ANDROID", "width": 220 },
@@ -106,25 +106,25 @@
     },
     "effects/shadows": {
       "columns": [
-        { "id": "TIER", "width": 140 },
+        { "id": "TOKEN", "width": 140 },
         { "id": "LIGHT", "width": 180 },
         { "id": "DARK", "width": 180 },
         { "id": "BLUR", "width": 120 },
-        { "id": "ALIAS", "width": 200 },
+        { "id": "ALIAS →", "width": 200 },
         { "id": "WEB", "width": 300 },
         { "id": "ANDROID", "width": 260 },
         { "id": "iOS", "width": 260 }
       ]
     },
     "effects/color": {
+      "note": "Gold: 6 columns only (no VALUE). LIGHT/DARK carry rgba text next to chip.",
       "columns": [
         { "id": "TOKEN", "width": 320 },
-        { "id": "LIGHT", "width": 180 },
-        { "id": "DARK", "width": 180 },
-        { "id": "VALUE", "width": 220 },
-        { "id": "WEB", "width": 320 },
-        { "id": "ANDROID", "width": 220 },
-        { "id": "iOS", "width": 200 }
+        { "id": "LIGHT", "width": 220 },
+        { "id": "DARK", "width": 220 },
+        { "id": "WEB", "width": 340 },
+        { "id": "ANDROID", "width": 280 },
+        { "id": "iOS", "width": 260 }
       ]
     },
     "token-overview/platform-mapping": {

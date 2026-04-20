@@ -1,0 +1,30 @@
+---
+description: MCP payloads must be inline in tool calls — no throwaway staging files in the repo
+alwaysApply: true
+---
+
+# MCP payloads — inline only (repo-wide)
+
+Applies to **every** agent session in this repository (Cursor, Claude Code, or any tool that reads project rules).
+
+## Rule
+
+When a tool accepts an **inline** argument (body, `code`, JSON blob, etc.):
+
+1. **Compose that payload in the tool invocation** for that call.
+2. If you hit size limits, use **multiple sequential tool calls**, each with a **self-contained** payload — not chained via files on disk.
+3. **Do not** create throwaway workspace artifacts whose only purpose is holding, minifying, or JSON-wrapping content before it is pasted into MCP:
+   - Forbidden name patterns include: `.mcp-*`, `_mcp-*`, `*-once.js`, `*-payload.json`, `_tmp*`, ad hoc `scratch/` under `skills/`.
+   - Shell one-liners that only write those files are the **same anti-pattern**.
+
+## Exception (committed skill artifacts)
+
+When **`SKILL.md` or a phase file explicitly points** at a **committed** path in this repo (e.g. `skills/new-project/phases/*.md` fenced `javascript` blocks, `skills/create-component/templates/*.figma.js`), **read that file** and use its contents in the tool call. Do **not** duplicate that content into a parallel `.mcp-*` “staging” copy.
+
+## Rationale
+
+The deliverable is **remote/tool state** (Figma file, published mappings, etc.), not throwaway source files. Staging files pollute git, confuse reviewers, and drift from the canonical skill instructions.
+
+## Canonical detail (canvas)
+
+For Figma **`use_figma`** style-guide and canvas work, see [`skills/create-design-system/phases/07-steps15a-15c.md`](../../skills/create-design-system/phases/07-steps15a-15c.md) § *Agent-driven only — no workspace scripts* and [`skills/create-design-system/SKILL.md`](../../skills/create-design-system/SKILL.md) (Canvas / Steps 15a–17).

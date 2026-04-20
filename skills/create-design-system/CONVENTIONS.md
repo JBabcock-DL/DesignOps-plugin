@@ -10,7 +10,7 @@
 
 **Authoritative for agents (in skill context):** [`SKILL.md`](./SKILL.md) — section **Known gotchas (§0 — paired with `conventions/00-gotchas.md`)**.
 
-**File copy for deep links / humans:** [`conventions/00-gotchas.md`](./conventions/00-gotchas.md) (~55 lines). **Edit both together** when changing §0.
+**File copy for deep links / humans:** [`conventions/00-gotchas.md`](./conventions/00-gotchas.md) (~115 lines). **Edit both together** when changing §0.
 
 ## Shard TOC (approximate line counts — use for liveness messages)
 

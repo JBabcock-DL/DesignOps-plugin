@@ -27,6 +27,8 @@ When you need a Figma file key or publish confirmation, use **AskUserQuestion** 
 - **Figma MCP connector authenticated** — The primary MCP path uses `mcp__claude_ai_Figma__*` tools and requires no PAT. The CLI path (Step 3b) is used only when `get_design_context` or `send_code_connect_mappings` is unavailable or returns a persistent error.
 - **Figma Personal Access Token (CLI path only)** — Required only when the CLI path is used. The PAT must have `Code Connect → Write` scope. The designer creates it during Step 3b-3; it is not needed up front.
 
+**MCP payloads:** Pass mapping payloads and tool inputs **inline** in each MCP / CLI invocation; do **not** create `.mcp-*`, `*-payload.json`, or scratch staging files under the repo ([`AGENTS.md`](../../AGENTS.md)).
+
 ---
 
 ## Agent Instructions

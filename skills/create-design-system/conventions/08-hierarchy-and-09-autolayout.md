@@ -4,10 +4,10 @@ Every table on every style-guide page uses the **same** parent chain. No orphan 
 
 ```
 _PageContent                                       VERTICAL · AUTO · FIXED · width 1800 · padding 80 · fill #FFFFFF · x=0 y=320
-└── doc/table-group/{slug}                         VERTICAL · AUTO · STRETCH · itemSpacing 12
+└── doc/table-group/{slug}                         VERTICAL · AUTO · STRETCH · itemSpacing 12 · **clipsContent `false`** (never fixed placeholder height — see **§0.1** note in [`00-gotchas.md`](./00-gotchas.md))
     ├── doc/table-group/{slug}/title               TEXT · Doc/Section · fill color/background/content
     ├── doc/table-group/{slug}/caption             TEXT · Doc/Caption · fill color/background/content-muted  (optional, 1 line)
-    └── doc/table/{slug}                           VERTICAL · AUTO · STRETCH · cornerRadius 16 · clipsContent
+    └── doc/table/{slug}                           VERTICAL · AUTO · STRETCH · cornerRadius 16 · clipsContent · **`{slug}` may contain slashes** (e.g. `primitives/color/primary`) — automation must detect table roots by **direct children** named `…/header` and `…/body`, not by a `^doc/table/[^/]+$` pattern.
         │                                          stroke 1 color/border/subtle · fill color/background/default
         │                                          effectStyleId Effect/shadow-sm (when published — § G Depth)
         ├── doc/table/{slug}/header                HORIZONTAL · FIXED height 56 · width 1640 · fill color/background/variant
@@ -48,7 +48,7 @@ Column headers use the Plugin API literals; the **Sizing** column restates each 
 |---|---|---|---|---|
 | `doc/table/{slug}` | VERTICAL | primary **Hug** (`AUTO`) · counter **Fixed 1640** (`FIXED`) | `STRETCH` (Fill width in parent) | Call `resizeWithoutConstraints(1640, 1)` after creation. |
 | `doc/table/{slug}/header` | HORIZONTAL | primary **Fixed 1640** · counter **Fixed 56** | `STRETCH` (Fill width in parent) | `resize(1640, 56)` **before** appending cells. `counterAxisAlignItems: CENTER`. |
-| Header cells | HORIZONTAL | primary **Fixed colWidth** · counter **Fixed 56** | `INHERIT` | `resize(colWidth, 56)` before appending text. `paddingH: 20`, center-aligned. |
+| Header cells | HORIZONTAL | primary **Fixed colWidth** · counter **Fixed 56** | `INHERIT` | `resize(colWidth, 56)` before appending text. `paddingH: 20`, center-aligned. **Hard rule:** header cells are **never** the VERTICAL / Hug / `resize(colWidth, 1)` body-cell recipe — that combination yields **1px-tall header cells** when label text is still `textAutoResize: 'NONE'` (see **§ 0.5** / **§ 0.6** in [`00-gotchas.md`](./00-gotchas.md)). |
 | `doc/table/{slug}/body` | VERTICAL | primary **Hug** (`AUTO`) · counter **Fixed 1640** | `STRETCH` (Fill width in parent) | |
 | **Body rows** (§ 0.1) | HORIZONTAL | primary **Fixed 1640** · counter **Hug** (`AUTO`) — **set Hug before `resize`** | `STRETCH` | `minHeight: 64`, `paddingV: 16`, `counterAxisAlignItems: CENTER`. |
 | **Body cells** (§ 0.1) | VERTICAL or HORIZONTAL | primary **Hug** (`AUTO`) · counter **Fixed colWidth** — **set Hug before `resize`** | `INHERIT` | `resize(colWidth, 1)` after sizing modes are set. `paddingH: 20`, `paddingV: 4`, `itemSpacing: 4`. Vertical cells: `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: MIN`. |

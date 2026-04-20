@@ -83,7 +83,7 @@ Capture the returned `fileKey`. This is the file you will scaffold in Step 5.
 
 1. `Read` `skills/new-project/phases/05-scaffold-pages.md` before running the script.
 2. Before every `use_figma` in this skill: load the **figma-use** skill if your environment requires it (see [templates/workflow.md](../../templates/workflow.md)).
-3. Call `use_figma` **once** with the Step 4 `fileKey` and the JavaScript from that phase file.
+3. Call `use_figma` **once** with the Step 4 `fileKey` and the JavaScript from that phase file — pass that script as the MCP **`code` argument** after `Read`ing the phase file. Do **not** write a parallel `.mcp-*`, `*-payload.json`, or scratch `.js` under the repo to stage it (repo-wide policy: [`AGENTS.md`](../../AGENTS.md)).
 
 ### After Step 5 succeeds — progress checklist (required)
 

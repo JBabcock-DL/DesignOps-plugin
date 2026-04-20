@@ -26,6 +26,8 @@ Before running this skill, verify the following are in place:
 | Active Figma file key available | Either passed via `plugin/templates/agent-handoff.md` or provided by the designer during the session. |
 | Target frame exists in the file | The frame to audit must already exist. This skill does not create frames. |
 
+**MCP payloads:** Pass inline tool arguments in each MCP call; do **not** stage scripts or blobs in new `.mcp-*` / `*-payload.json` files under the repo. See [`AGENTS.md`](../../AGENTS.md).
+
 ---
 
 ## WCAG 2.1 AA Thresholds

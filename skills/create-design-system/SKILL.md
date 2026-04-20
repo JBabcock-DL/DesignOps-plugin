@@ -9,6 +9,8 @@ agent: general-purpose
 
 You are the Create Design System agent for the Detroit Labs DesignOps plugin. Your job is to collect brand tokens from the designer, build five variable collections with proper Light/Dark and typography scale modes, and push the result to the target Figma file.
 
+**Repo-wide agent policy (MCP):** Inline payloads in each tool call — no `.mcp-*` / scratch staging files in the repo. See [`AGENTS.md`](../../AGENTS.md).
+
 **Authoritative table/canvas rules** live in [`conventions/`](./conventions/) **shards** plus this file’s **§0** below — **not** in a single giant read. Index and §→file map: [`CONVENTIONS.md`](./CONVENTIONS.md) (router only, ~90 lines). **Do not** `Read` every shard at session start; follow **Conventions load map** for your current phase only.
 
 **Phase files under [`phases/`](./phases/) orchestrate** — which step, which page, which slug, which row set, which AskUserQuestion to fire, which codeSyntax table to apply. They do **not** own geometry, columns, cells, or auto-layout rules. **When a phase file disagrees with the conventions shards or this §0, the conventions win.**
@@ -19,7 +21,7 @@ You are the Create Design System agent for the Detroit Labs DesignOps plugin. Yo
 
 > **Paired copy:** The same text is in [`conventions/00-gotchas.md`](./conventions/00-gotchas.md). **Edit both together.**
 
-These four rules produce every table-collapse / invisible-text / wrong-padding bug observed in real runs. Every phase file cross-references this section by anchor — do not paraphrase; do not re-state with different numbers.
+These rules produce every table-collapse / invisible-text / wrong-padding bug observed in real runs (including runs where **§0.1** was applied to body rows but **header cells** or **textAutoResize** were still wrong). Every phase file cross-references this section by anchor — do not paraphrase; do not re-state with different numbers.
 
 ### 0.1 Row AND cell height stays **Fixed at 1** unless you set the height axis to **Hug** first
 
@@ -54,6 +56,10 @@ cell.itemSpacing            = 4;
 
 Equivalent: call `resizeWithoutConstraints(w, 1)` — the same trick already used on `doc/table/{slug}`. Either approach works; pick one and use it everywhere.
 
+**After `appendChild` into a STRETCH parent,** Figma may assign **`layoutSizingVertical: 'FIXED'`** (and **`counterAxisSizingMode: 'FIXED'`** on `HORIZONTAL` rows) even when you intended Hug height — rows and body cells **lock to ~1px or minHeight-only** and code reads as “fixed height collapse.” **Re-assert** `counterAxisSizingMode = 'AUTO'` on body rows, `primaryAxisSizingMode = 'AUTO'` on **VERTICAL** body cells, and set **`layoutSizingVertical = 'HUG'`** (and `layoutSizingHorizontal = 'FIXED'` on cells / `'FILL'` on rows) **after** the node is in the tree, then `resizeWithoutConstraints(1640, 1)` / `resize(colWidth, 1)` again.
+
+**`doc/table-group/{slug}` must never use a placeholder `resize(1640, 80)` (or any fixed height) with `primaryAxisSizingMode: 'FIXED'`** — that frame **clips** the full `doc/table/{slug}` (often `clipsContent: true`), so the UI shows a **~80px band** with overlapped titles and **invisible** rows. Table groups are **`VERTICAL` · primary `AUTO` (Hug)** · counter **`FIXED` 1640** · `layoutSizingVertical: 'HUG'` · `resizeWithoutConstraints(1640, 1)` · `clipsContent: false`** (clipping belongs on the inner **`doc/table/{slug}`** chrome only, per §8).
+
 ### 0.2 Text nodes collapse rows at ~10px unless `textAutoResize = 'HEIGHT'` is set
 
 Immediately after `text.characters = "…"`, call `text.resize(colWidth - 40, 1)` (where `40` = left padding `20` + right padding `20`), then `text.textAutoResize = 'HEIGHT'`. Never leave `'NONE'` — that is the **root cause** of the 10px collapse. Mono-line cells use `colWidth - 40` everywhere. If you see `- 32` in any phase file, it is wrong.
@@ -65,6 +71,38 @@ Theme LIGHT/DARK cells are HORIZONTAL with **two siblings**: [1] `doc/theme-prev
 ### 0.4 `Doc/*` text styles and `Effect/shadow-*` must exist before 15a/15b bind to them
 
 Step 15c § 0 publishes `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`. On a **first** run, execute 15c § 0 **before** 15a/15b so the first pass binds `textStyleId` / `effectStyleId` cleanly. Falling back to raw `fontName`/`fontSize` and then re-running 15a/15b to upgrade wastes a full pass.
+
+### 0.5 Header cells must **not** reuse the body-cell factory (VERTICAL + Hug is wrong here)
+
+**Observed failure mode (MCP diff, 2026):** A “good” table ([`testingUpdates — Foundations`](https://www.figma.com/design/BLcvn6UptGIgtNzNfLU4TU/testingUpdates-%E2%80%94-Foundations?node-id=204-7)) uses **`doc/table/.../header/cell/*` as `layoutMode: 'HORIZONTAL'`** with **`primaryAxisSizingMode: 'FIXED'`** and **`counterAxisSizingMode: 'FIXED'`**, explicit `resize(colWidth, headerHeight)` **before** text, and header text with **`textAutoResize: 'HEIGHT'`**. A broken run ([`v44-updates — Foundations`](https://www.figma.com/design/uCpQaRsW4oiXW3DsC6cLZm/v44-updates-%E2%80%94-Foundations?node-id=106-10)) reused **body** rules (`VERTICAL` + primary `AUTO` + `resize(colWidth, 1)` while text was still `'NONE'`) for header cells → **every header cell height stuck at 1px** while the header **row** stayed ~56px tall — unreadable chrome.
+
+**Required pattern — each `doc/table/{slug}/header/cell/{col}` (Primitives / Theme / Layout / Effects / Token Overview):**
+
+```js
+cell.layoutMode              = 'HORIZONTAL';
+cell.primaryAxisSizingMode   = 'FIXED';   // width: colWidth
+cell.counterAxisSizingMode   = 'FIXED';   // height: header band (56 per §8 / build-order; do not leave Hug here)
+cell.resize(colWidth, 56);               // before appendChild(labelText)
+// then mono-line text: characters → resize(colWidth - 40, 1) → textAutoResize = 'HEIGHT' → textStyleId → fill
+```
+
+Body cells stay **§ 0.1** (`VERTICAL`, Hug-then-resize). **Never** call the same “create body cell” helper for header cells without swapping to the block above.
+
+### 0.6 `'NONE'` on text inside Hug-height body cells still reads as a bug (~9px rails)
+
+If `textAutoResize` is still `'NONE'` when the parent body cell correctly uses Hug height (**§ 0.1**), Figma often leaves the text bounding box at **~1–9px** tall. Rows can look “open” because `minHeight` / swatch cells hold the row height, but **TOKEN / HEX / WEB** columns look crushed. Apply **§ 0.2** to **every** table `TEXT` (header **and** body) before moving on.
+
+**Section title + caption:** **`TEXT` nodes that are direct children of `doc/table-group/{slug}`** (before the inner `doc/table/{slug}` frame) are **not** inside `.../cell/` — scripts that only walk **`/cell/`** paths will **miss** them. They still default to **`textAutoResize: 'NONE'`** and **1px** height, so the **Doc/Section** title and **Doc/Caption** line **stack on top of each other** and over the table header. Apply **§ 0.2** to those two texts explicitly.
+
+**Layer paths:** Prefer **lowercase** slug segments in names (`.../cell/token`, `.../cell/ios`) to match the golden reference tree — avoid `.../cell/TOKEN` / `.../cell/iOS` drift that makes grep-based audits miss cells.
+
+### 0.7 Primitives color **swatch** rectangles must bind fill → the row’s **COLOR** variable
+
+**Observed failure (MCP, same v44 file):** every `RECTANGLE` under `doc/table/primitives/color/.../cell/swatch` (or `.../cell/SWATCH`) had a plain **`SOLID`** fill with **no** `boundVariables.color`. The golden file binds **`figma.variables.setBoundVariableForPaint`** on that fill to the **`Primitives`** variable whose **`name`** equals the row token path (the segment after `/row/` in the row frame name, e.g. `color/primary/500`). Leaving resolved hex on the chip is a **hard fail** for a variables-first style guide — swatches will not track token edits.
+
+**Required:** after creating the swatch `RECTANGLE`, resolve the row’s COLOR variable from the cached `path → Variable` map, clone `fills[0]`, call `setBoundVariableForPaint(paint, 'color', variable)`, assign `rect.fills = [newPaint]` (see figma-use: return value **must** be reassigned). Stroke on the chip still binds per §12 in [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md) (`color/border/subtle`, Theme · Light).
+
+**Do not** mark Step 15a “done” until a read-only probe shows `boundVariables.color` on swatch rects (see optional gate in [`conventions/14-audit.md`](./conventions/14-audit.md)).
 
 ---
 
@@ -187,6 +225,8 @@ If the snapshot is **ambiguous** (partial collections, legacy naming), call **As
 
 **Also load when applying Theme `codeSyntax`:** [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) (supplements Step 6 tables in phase 02).
 
-**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **inline** for each `use_figma` call; follow [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and the **phase 07** convention shard list in **Conventions load map**. **Do not** add canvas `.js` files, helper bundles, or scratch scripts to the workspace as part of this skill.
+**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **only** as the **`code` string** on each **`use_figma` MCP** invocation (load the **`figma-use`** skill first whenever the Figma / `use_figma` tool docs require it). Follow [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and the **phase 07** convention shard list in **Conventions load map**. If you hit the ~50k `code` limit, run **multiple sequential `use_figma` calls** (e.g. one logical page or table batch per call), each with a **fresh self-contained** script — **not** by writing partial scripts to disk.
+
+**Do not** use the repo or this skill folder as a clipboard for Figma work: no canvas helper `.js`, no `.mcp-*` / `_mcp-*` files, no `*-once.js`, no `*-payload.json`, no `_tmp*`, and no folders **under this skill** used only to stage plugin code for MCP or to JSON-escape payloads. Those are throwaways — delete them immediately if created by mistake; the deliverable is the **Figma file state**, not staged source files.
 
 **Foundations page list (shared with `/new-project`):** [`../shared/pages.json`](../shared/pages.json).

@@ -38,6 +38,7 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
 
 Each skill is an instruction file (`SKILL.md`) that tells the Claude Code agent exactly how to perform a design ops task. When you invoke a skill, Claude reads the instructions and executes the steps using:
 
+- **Agent policy (all skills)** — MCP payloads (e.g. Figma `use_figma` `code`) go **inline in each tool call**; do **not** add throwaway `.mcp-*`, `*-payload.json`, or scratch scripts to the repo to stage them. See **[`AGENTS.md`](AGENTS.md)** and **[`.cursor/rules/mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc)** (Cursor).
 - **Figma MCP connector** — all Figma file creation, canvas writes (pages, frames, variables, components), Code Connect, and read operations
 - **Figma REST API** — variable write-back for `/create-design-system` and `/sync-design-system`
 - **Filesystem access** — reading and writing local token files (`tokens.css`, `tokens.json`, `tailwind.config.js`) for sync and component wiring

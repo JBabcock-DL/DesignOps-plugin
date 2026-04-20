@@ -12,6 +12,8 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 3. The agent follows the SKILL.md instructions, calling Figma MCP tools (`mcp__claude_ai_Figma__*`), the Figma Variables REST API, and reading/writing the local filesystem as needed.
 4. The agent reports results (created file links, diff summaries, audit reports) back to the designer inline.
 
+**MCP payloads (repo-wide):** Put inline tool arguments (e.g. `use_figma` `code`) **directly in each MCP call**. Do **not** write ad hoc `.mcp-*`, `*-payload.json`, or scratch `.js` files under the repo to stage or escape those payloads; split across multiple calls if needed. Committed paths named by a skill (phase `.md` fenced blocks, `templates/*.figma.js`) are the exception — read them, but do not duplicate them into throwaway copies. Canonical: [`AGENTS.md`](../AGENTS.md), [`.cursor/rules/mcp-inline-payloads.mdc`](../.cursor/rules/mcp-inline-payloads.mdc).
+
 ---
 
 ## 2. Prerequisites

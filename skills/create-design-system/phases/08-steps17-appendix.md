@@ -1,6 +1,8 @@
 
 ## Step 17 — Populate Token Overview
 
+> **Repo policy:** Implement with **`use_figma`** using **inline MCP `code`** only — no `.mcp-*`, `*-payload.json`, or other scratch staging files ([`AGENTS.md`](../../../AGENTS.md)).
+
 Follow **Canvas documentation visual spec § A–H** for any new or updated frames/text on this page. The `↳ Token Overview` scaffold already uses the § H table hierarchy and per-box variable bindings — this step's job is to (a) upgrade every doc text node to assign `textStyleId` now that Doc/* styles exist, (b) refresh cell text with **live** `codeSyntax` values, and (c) delete scaffold placeholders.
 
 Navigate to the `↳ Token Overview` page using `figma.setCurrentPageAsync`. The `/new-project` skill's Step 5d drew this page (Figma script: [`../../new-project/phases/05d-token-overview.md`](../../new-project/phases/05d-token-overview.md)) with auto-layout section shells, a proper `doc/table/token-overview/platform-mapping` table per § H, and amber `placeholder/*` notes for each section.

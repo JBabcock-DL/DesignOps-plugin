@@ -6,12 +6,16 @@
 - [ ] Do Theme `codeSyntax` values come from the Step 6 table (not derived from the path)?
 
 ## Canvas geometry
-- [ ] Is every style-guide `_PageContent` exactly 1800 wide, padding 80, fill literal white?
+- [ ] Is every style-guide `_PageContent` exactly **1800** wide, padding **80**, fill literal white?
+- [ ] **§0.1 (shell)** — Is `_PageContent` **Hug height** (`primaryAxisSizingMode: 'AUTO'`, `layoutSizingVertical: 'HUG'`, `resizeWithoutConstraints(1800, 1)`) — **not** a fixed placeholder height that clips tables (e.g. 400px)?
+- [ ] **§0.1 (groups)** — Is every **`doc/table-group/*`** **Hug height** with **`clipsContent: false`** — **not** `resize(1640, 80)` + **`clipsContent: true`** (clips the full `doc/table/*`)?
 - [ ] Is every `_Header` instance 1800 wide with `cornerRadius: 0` and `layoutMode: VERTICAL`?
 - [ ] Do TOC + Token Overview use 1800 wide with 40 padding (not 80)?
 
 ## Tables
 - [ ] Does every table render at 1640 wide with columns summing to exactly 1640?
+- [ ] **§ 0.5** — Is every `doc/table/.../header/cell/*` frame **`layoutMode: 'HORIZONTAL'`** with **FIXED / FIXED** sizing and **explicit** `resize(colWidth, 56)` (not VERTICAL + AUTO height)?
+- [ ] **§ 0.6** — Does **every** table `TEXT` (header labels included) use `textAutoResize: 'HEIGHT'` — never `'NONE'` on shipped tables?
 - [ ] Does every row have `minHeight: 64`, `paddingV: 16`, `counterAxisAlignItems: CENTER`?
 - [ ] Does every body cell have `paddingH: 20` (not 16)?
 - [ ] **§ 0.1** — Did I set `counterAxisSizingMode: 'AUTO'` (Hug) on every body row **before** `resize(1640, 1)`? (Symptom when missed: 1px-tall rows.)
@@ -46,3 +50,17 @@
 - [ ] Do all section cards / panels / platform-mapping table / summary bar carry `effectStyleId: Effect/shadow-sm` once § G Depth is published?
 
 If any box is unchecked, fix before reporting "done."
+
+---
+
+## Optional machine gate (read-only `use_figma`)
+
+After the first full table exists on a style-guide page, run **one** small script that `return`s **violations** (empty arrays = pass):
+
+- **`badHeaderCells`** — any `FRAME` whose `name` matches `/header\\/cell\\//` and (`layoutMode !== 'HORIZONTAL'` **or** `counterAxisSizingMode !== 'FIXED'` **or** `height < 8`).
+- **`badTableText`** — any `TEXT` whose `name` or `parent.name` includes `/cell/` and `textAutoResize === 'NONE'`.
+- **`badSwatchFills`** — any `RECTANGLE` under a `.../cell/swatch` frame (case-insensitive `swatch`) on a **`doc/table/primitives/color/...`** row where `fills[0]` is `SOLID` and **not** bound (`!fills[0].boundVariables || !fills[0].boundVariables.color`).
+- **`badPageContent`** — any `_PageContent` on a style-guide page where `primaryAxisSizingMode !== 'AUTO'` or `layoutSizingVertical === 'FIXED'` with height **under ~2000px** while it has **`doc/table-group`** descendants (likely clipped).
+- **`badTableGroups`** — any `FRAME` named `doc/table-group/*` with `clipsContent === true` **or** `primaryAxisSizingMode === 'FIXED'` **or** height **under ~200px** while a child `doc/table/*` is **over ~300px** tall (group is clipping the table).
+
+Do **not** treat “the header row frame is 56px tall” as success if `badHeaderCells` is non-empty — child frames can still be 1px slivers. Do **not** treat “the swatch shows color” as success if `badSwatchFills` is non-empty — that is only resolved paint, not token-linked.

@@ -4,6 +4,8 @@ Figma API fact: `codeSyntax` is **not** applied via raw variable creation in the
 
 Every variable carries three strings: **WEB**, **ANDROID**, **iOS**.
 
+**Plugin API shape:** on each `Variable`, `codeSyntax` is a record whose keys are the literals **`"WEB"`**, **`"ANDROID"`**, and **`"iOS"`** (that is **`i` + `OS`**, not all-caps **`IOS`**). Canvas scripts that read `codeSyntax.IOS` or `codeSyntax['IOS']` will get **`undefined`** and cells will show **`—`** even when iOS syntax exists.
+
 ## WEB — Tailwind-friendly CSS custom property
 
 ```

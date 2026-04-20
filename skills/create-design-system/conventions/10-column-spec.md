@@ -35,9 +35,9 @@ Structured widths also live in [`column-widths.json`](./column-widths.json) for 
 | Col | Header | Width | Cell pattern |
 |---|---|---|---|
 | 1 | `TOKEN` | 320 | Doc/Code — Figma path |
-| 2 | `LIGHT` | 140 | See §12 in [`11-cells-12-bindings-13-build-order.md`](./11-cells-12-bindings-13-build-order.md) (Theme swatch pattern — mode-scoped wrapper + hex sibling) |
-| 3 | `DARK` | 140 | Same structure with Dark modeId. **Hex text MUST stay outside the wrapper.** |
-| 4 | `ALIAS →` | 260 | Doc/Code — resolved alias path(s); separate modes with ` · ` when they differ |
+| 2 | `LIGHT` | 140 | See §12 in [`11-cells-12-bindings-13-build-order.md`](./11-cells-12-bindings-13-build-order.md) (Theme swatch pattern — mode-scoped wrapper + hex sibling). **Cell frame must stay FIXED 140 wide** (chip wrapper 28 + gap + hex); never let the LIGHT/DARK cell Hug wider than 140 or the row misaligns and iOS clips. |
+| 3 | `DARK` | 140 | Same structure with Dark modeId. **Hex text MUST stay outside the wrapper.** Same **FIXED 140** width rule as LIGHT. |
+| 4 | `ALIAS →` | 260 | Doc/Code — when Light and Dark alias targets **differ**, show `primitiveLight - primitiveDark` (plain paths, hyphen). When only one side aliases, prefix with `↳ `. When both match, single `↳ path`. |
 | 5 | `WEB` | 320 | Doc/Code |
 | 6 | `ANDROID` | 220 | Doc/Code |
 | 7 | `iOS` | 240 | Doc/Code — fully dot-separated |
@@ -50,7 +50,7 @@ Structured widths also live in [`column-widths.json`](./column-widths.json) for 
 |---|---|---|
 | 1 | `TOKEN` | 280 |
 | 2 | `VALUE` | 100 |
-| 3 | `ALIAS →` | 280 |
+| 3 | `ALIAS →` | 280 | Header label must use the arrow character **→** (`ALIAS →`), not `ALIAS` alone. |
 | 4 | `PREVIEW` | 240 |
 | 5 | `WEB` | 320 |
 | 6 | `ANDROID` | 220 |
@@ -63,14 +63,14 @@ Structured widths also live in [`column-widths.json`](./column-widths.json) for 
 | Col | Header | Width | Cell pattern |
 |---|---|---|---|
 | 1 | `SLOT` | 220 | Doc/TokenName — slot name (`Headline/LG`, `Body/LG/strikethrough`) |
-| 2 | `SPECIMEN` | 360 | TEXT with `textStyleId` → published slot style; characters = slot name prose; resize(320, 1) → `textAutoResize = 'HEIGHT'` |
-| 3 | `SIZE / LINE` | 140 | VERTICAL stack — two Doc/Code lines: `{size}px` / `{lineHeight}px` |
-| 4 | `WEIGHT / FAMILY` | 180 | VERTICAL stack — two Doc/Code lines: `{weight}` / `{family}` |
+| 2 | `SPECIMEN` | 360 | TEXT with `textStyleId` → published slot style. **Copy (gold):** Display / Headline / Title → `Aa Gg 12`. Body (all variants) and Label → `The quick brown fox jumps over the lazy dog.` (not the slot path as specimen). `resize(colW-40, 1)` → `textAutoResize = 'HEIGHT'`. |
+| 3 | `SIZE / LINE` | 140 | **Single** Doc/Code line: `{fontSize} / {lineHeight}px` (e.g. `57 / 64px`) — gold standard is one line, not a two-line stack. |
+| 4 | `WEIGHT / FAMILY` | 180 | **Single** Doc/Code line: `{weight} / {family}` (e.g. `400 / Inter`). |
 | 5 | `WEB` | 280 | Doc/Code |
 | 6 | `ANDROID` | 200 | Doc/Code |
 | 7 | `iOS` | 260 | Doc/Code — 5- to 6-segment dot path |
 
-**Sum: 1640.** Row order: 3 Display + 3 Headline + 3 Title + 15 Body + 3 Label, with **5 category sub-header rows** (full-width 1640 × 40, fill `color/background/variant`) preceding each category.
+**Sum: 1640.** **Page group title (gold):** `Type Styles` (not “Typography styles”). Row order: 3 Display + 3 Headline + 3 Title + 15 Body + 3 Label, with **5 category sub-header rows** (full-width 1640 × 40, fill `color/background/variant`) preceding each category — **sentence-case** category label on `Doc/Caption` (e.g. `Display`, `Body`), not all-caps unless the brand template says otherwise.
 
 **Body block order per size (fixed):** `regular → emphasis → italic → link → strikethrough`. Regular is always first so the reader sees the default before decorated variants.
 
@@ -81,11 +81,11 @@ Structured widths also live in [`column-widths.json`](./column-widths.json) for 
 
 ### ↳ Effects
 
-**`effects/shadows` (5 rows — `sm`, `md`, `lg`, `xl`, `2xl`):**
+**`effects/shadows` (5 rows — token paths `shadow/{tier}/blur`):**
 
 | Col | Header | Width |
 |---|---|---|
-| 1 | `TIER` | 140 |
+| 1 | `TOKEN` | 140 |
 | 2 | `LIGHT` | 180 |
 | 3 | `DARK` | 180 |
 | 4 | `BLUR` | 120 |
@@ -94,6 +94,6 @@ Structured widths also live in [`column-widths.json`](./column-widths.json) for 
 | 7 | `ANDROID` | 260 |
 | 8 | `iOS` | 260 |
 
-**Sum: 1640.** LIGHT/DARK cells: `doc/effect-preview/{mode}/{tier}` wrapper with explicit Effects mode → 88×88 card `cornerRadius 12` fill `color/background/default` `effectStyleId Effect/shadow-{tier}` + small Doc/Code label inside.
+**Sum: 1640.** Row **TOKEN** cells show the full variable path (e.g. `shadow/sm/blur`). **BLUR** column: resolved numeric blur from the row variable (Effects · Light), formatted with `px`. LIGHT/DARK cells: `doc/effect-preview/{mode}/{tier}` wrapper calls `setExplicitVariableModeForCollection` for **Effects** · Light/Dark. The **`doc/effect-preview/{mode}/{tier}`** wrapper itself (e.g. **`doc/effect-preview/light/sm`**) must **not** stay `fills = []` — bind the same surface as the mat (**Theme ·** `color/background/default` for **light/***, **Primitives ·** `color/neutral/950` for **dark/***) so the full **180×96** preview chrome reads as white vs black, `cornerRadius` **12**, and **center** the mat child on both axes. **Gold contrast:** insert **`doc/effect-preview-mat/{light|dark}`** (96×96 · `cornerRadius` 12 · `clipsContent`) inside the wrapper — mat repeats the same surface fill — then parent the **88×88** card inside the mat (centered). Card fill: **Light** → `color/background/default`; **Dark** → `color/neutral/900` (slightly above the mat) so the drop shadow reads against a clearly **white vs near-black** field. Card keeps `effectStyleId Effect/shadow-{tier}`. Table caption should mention that previews resolve in Light and Dark Effects modes.
 
-**`effects/color` (1 row — `shadow/color`):** TOKEN 320 · LIGHT 180 · DARK 180 · VALUE 220 · WEB 320 · ANDROID 220 · iOS 200 (**sum 1640**). Swatch chip + hex pattern, 32×32 chip bound to `shadow/color` in each mode's wrapper.
+**`effects/color` (1 row — `shadow/color`) — 6 columns (gold, sum 1640):** TOKEN 320 · LIGHT 220 · DARK 220 · WEB 340 · ANDROID 280 · iOS 260. **No separate VALUE column** — LIGHT/DARK each use mode-scoped wrapper + **32×32** chip bound to `shadow/color` + **rgba(...)** text sibling (resolved alpha differs Light vs Dark). Use the **same mat treatment** behind the chip (40×40 mat · `neutral/950` vs `background/default`) so Light/Dark columns do not both read as white-on-white. Platform columns from `codeSyntax`.

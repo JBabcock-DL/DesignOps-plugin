@@ -20,6 +20,8 @@ requires_figma_tier: Organization
 
 This skill audits every design-system surface in a single pass: tokens (**Axis A**), components (**Axis B**), and Code Connect mappings (**Axis C**). It presents every drift together, collects all directions in **one bundled decision prompt**, and executes in strict dependency order (A → B → C). A **pre-execution validation pass** runs between axes so that upstream writes (tokens changing Figma, components changing mapping targets) never silently decide on drift the user never saw — new or altered items always trigger a targeted re-prompt.
 
+**MCP repo policy:** [`../../AGENTS.md`](../../AGENTS.md) — inline tool payloads only (no `.mcp-*` / scratch staging files under the repo).
+
 > **First time in a session?** Post a liveness line, then `Read` these **only** (not the full old monolith): [`../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) (geometry + pages + body variants + naming), [`../create-design-system/conventions/02-codesyntax.md`](../create-design-system/conventions/02-codesyntax.md) (iOS dot-path / WEB / ANDROID rules), and **§0** in [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md). Index: [`../create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md). Axis A's canvas redraws (Steps 6 / 9b / 9d / 9e below) **must** match those conventions.
 
 > **Tokens-only projects** — if only Axis A is enabled, the experience is byte-identical to prior versions of this skill: one diff, one direction prompt, one push + canvas chain. Axes B and C turn on only when their source files are present (see Step 1).
@@ -456,7 +458,7 @@ Build a deduplicated list of affected pages. Then for each page:
 
 2. Before any `use_figma` call, **`Read`** [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§§ **A–G**). Token-bound doc chrome (**§ C**), token-demo bindings (**§ D**), auto-layout hug rules (**§ E**), row hierarchy (**§ F**), and premium visual language (**§ G**) must match that spec.
 
-3. **Reliability:** run **one `use_figma` call per affected page** (same split as create-design-system Steps 15a–15c), not one mega-call across all pages — each call: navigate → delete `y > 360` → redraw that page only.
+3. **Reliability:** run **one `use_figma` call per affected page** (same split as create-design-system Steps 15a–15c), not one mega-call across all pages — each call: navigate → delete `y > 360` → redraw that page only. Compose each call’s Plugin API script **inline** in the MCP `code` field; do **not** write throwaway `.mcp-*`, `*-payload.json`, or scratch `.js` files to the workspace to stage payloads (same rule as [`../create-design-system/phases/07-steps15a-15c.md`](../create-design-system/phases/07-steps15a-15c.md) § *Agent-driven only*). After every redraw, apply **create-design-system §0.1** end-of-script hygiene: **`_PageContent`** and **`doc/table-group/*`** must **Hug** vertically (no fixed placeholder heights, no `clipsContent` on groups); **`codeSyntax.iOS`** (not `IOS`) for iOS cells; run the optional machine gates in [`../create-design-system/conventions/14-audit.md`](../create-design-system/conventions/14-audit.md) when validating.
 
 | Affected page(s) | `use_figma` batch |
 |---|---|

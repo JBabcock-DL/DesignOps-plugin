@@ -12,7 +12,7 @@ The five style-guide pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Te
 | ----------------- | ----------- | ------------------------------------------------------------------------------------------------------- |
 | Page canvas       | **1800px**  | `_Header` and `_PageContent` both span this column.                                                     |
 | `_Header` instance | **1800px**  | `layoutMode: VERTICAL`, **FIXED height 320**, **`cornerRadius: 0`** (square bottom seam).              |
-| `_PageContent`     | **1800px**  | `x: 0, y: 320`, padding **80 on all 4 sides**, `itemSpacing: 48`, fill `#FFFFFF` literal (not tokened). |
+| `_PageContent`     | **1800px**  | `x: 0, y: 320`, padding **80 on all 4 sides**, `itemSpacing: 48`, fill `#FFFFFF` literal (not tokened). **Height must Hug the page:** `layoutMode: 'VERTICAL'`, **`primaryAxisSizingMode: 'AUTO'`** (not `FIXED`), **`layoutSizingVertical: 'HUG'`**, **`resizeWithoutConstraints(1800, 1)`** after children exist — **never** a placeholder **`resize(1800, 400)`** (clips every table). Re-assert Hug after bulk `appendChild` if Figma flips sizing (see **§0.1** note in [`00-gotchas.md`](./00-gotchas.md)). Same class of bug as `doc/table-group` — paired rule there. |
 | Inner content      | **1640px**  | `1800 − 80 − 80`. Every table / doc group renders at 1640 wide.                                         |
 | Table header row   | **1640px**  | `FIXED width 1640`, height 56.                                                                          |
 | Table body row     | **1640px**  | `FIXED width 1640`, `AUTO` height, `minHeight: 64`, `counterAxisAlignItems: CENTER`.                    |

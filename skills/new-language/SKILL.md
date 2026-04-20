@@ -26,6 +26,8 @@ Before running this skill, verify the following are in place:
 | Active Figma file key available | Either passed via `plugin/templates/agent-handoff.md` or provided by the designer during the session. |
 | Designer has the target frame open or can provide its node ID | The frame to duplicate must already exist in the Figma file. |
 
+**MCP payloads:** Any Figma write tool that accepts inline script or payload must receive it **in the tool call** — not via new `.mcp-*`, `*-payload.json`, or scratch files in the repo. See [`AGENTS.md`](../../AGENTS.md).
+
 ---
 
 ## Supported Locales

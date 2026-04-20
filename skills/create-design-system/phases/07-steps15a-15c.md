@@ -16,7 +16,13 @@ Use **Heavy read liveness** from [`../SKILL.md`](../SKILL.md) before the first l
 
 ### Agent-driven only — no workspace scripts
 
-Canvas steps are entirely agent-driven. The agent composes JavaScript inline for each `use_figma` call. Do **not** write, commit, or point designers at standalone `.js` files, helper bundles, `_tmp*` scaffolds, or a `scripts/` folder under this skill.
+Canvas steps are entirely **MCP-driven**: the agent composes Figma Plugin API JavaScript **only** as the **`code` argument** to the **`use_figma` tool** (never as a file the agent then “runs from disk”). Do **not** write, commit, or leave behind:
+
+- Standalone `.js` / `.ts` “payload”, “once”, or “bundle” files under this skill or the repo root (including names like `.mcp-*.js`, `*-once.js`, `*-payload.js`).
+- JSON or other artifacts whose sole job is to wrap or escape that script for MCP (e.g. `.mcp-*.json`, `_mcp-args*.json`, `*-payload.json`).
+- Helper bundles, `_tmp*`, or a `scripts/` folder used only to stage Figma plugin code for copy-paste.
+
+Shell one-liners whose only outcome is writing those files are the **same anti-pattern** — skip them. If the script is long, split **across multiple `use_figma` calls** (self-contained `code` per call), not across files on disk.
 
 When this run skipped phases 02–04 because variables were already in the file (see [`SKILL.md`](../SKILL.md) *After Step 4 — variables present vs missing*), these steps still draw/update the canvas against live variables — same structure and bindings as a full run.
 
@@ -29,9 +35,9 @@ Every page follows the same 4-step shape. Execute in order:
 1. `figma.setCurrentPageAsync` → target page.
 2. Delete every node on the page **other than `_Header`**.
 3. Assert `_Header` (VERTICAL, `cornerRadius: 0`, width 1800). If the instance width differs, `resize(1800, 320)`. See [`../conventions/03-through-07-geometry-and-doc-styles.md`](../conventions/03-through-07-geometry-and-doc-styles.md) §3 and [`../conventions/08-hierarchy-and-09-autolayout.md`](../conventions/08-hierarchy-and-09-autolayout.md) §8 (do not detach — edit the main component on `Documentation components`).
-4. Build **`_PageContent`** per [`../conventions/03-through-07-geometry-and-doc-styles.md`](../conventions/03-through-07-geometry-and-doc-styles.md) §3 (1800 wide at `x: 0, y: 320`, 80 padding all sides, white literal fill, inner content width 1640).
+4. Build **`_PageContent`** per [`../conventions/03-through-07-geometry-and-doc-styles.md`](../conventions/03-through-07-geometry-and-doc-styles.md) §3 (1800 wide at `x: 0, y: 320`, 80 padding all sides, white literal fill, inner content width 1640, **Hug height** — see **§0.1** in [`../SKILL.md`](../SKILL.md) / [`../conventions/00-gotchas.md`](../conventions/00-gotchas.md) for **`resizeWithoutConstraints(1800, 1)`** and post-append **`layoutSizingVertical: 'HUG'`**). **Direct `TEXT` children** of **`doc/table-group/*`** (title + caption) must receive **§0.2** the same as cell text — they are **not** inside `.../cell/` and will otherwise stay **`textAutoResize: 'NONE'`** at **1px** tall.
 5. Resolve variable IDs once and cache `{ path → variableId }` (Primitives live `getLocalVariablesAsync('COLOR' | 'FLOAT' | 'STRING')`; Theme/Effects mode IDs via `getVariableCollectionByIdAsync`).
-6. For each table in the page's table list below, build per **§§8–13** across [`../conventions/08-hierarchy-and-09-autolayout.md`](../conventions/08-hierarchy-and-09-autolayout.md), [`../conventions/10-column-spec.md`](../conventions/10-column-spec.md), [`../conventions/11-cells-12-bindings-13-build-order.md`](../conventions/11-cells-12-bindings-13-build-order.md) (structure, columns, cells, bindings, build order — including the Hug-before-resize rule in §0.1 / [`../SKILL.md`](../SKILL.md)).
+6. For each table in the page's table list below, build per **§§8–13** across [`../conventions/08-hierarchy-and-09-autolayout.md`](../conventions/08-hierarchy-and-09-autolayout.md), [`../conventions/10-column-spec.md`](../conventions/10-column-spec.md), [`../conventions/11-cells-12-bindings-13-build-order.md`](../conventions/11-cells-12-bindings-13-build-order.md) (structure, columns, cells, bindings, build order — including **§0.1** Hug-before-resize on **body** rows/cells, **§0.5** **HORIZONTAL + FIXED/FIXED** header cells — never the body VERTICAL recipe — **§0.2 / §0.6** on **all** table text, and **§0.7** **`setBoundVariableForPaint`** on every **Primitives** color **swatch** rect). After the first table on a page, optionally run the read-only gate in [`../conventions/14-audit.md`](../conventions/14-audit.md) *Optional machine gate*.
 
 **Rebuild rule:** each step is a full redraw under `_PageContent`, not a diff. Every row's token, bindings, value, and `codeSyntax` text must come from the current variable snapshot. As long as the script completes and variables exist locally, tables cannot stay "missing" unless a path is absent from its collection.
 
@@ -152,6 +158,6 @@ Follow the per-page shape above. Resolve Effects `light` / `dark` `modeId` as in
 | 1 | `effects/shadows` | Shadows | Drop shadow tiers — each alias points to an Elevation primitive. | 5 (`sm`, `md`, `lg`, `xl`, `2xl`) |
 | 2 | `effects/color` | Shadow Color | Shared shadow color referenced by every tier. | 1 (`shadow/color`) |
 
-Cell patterns (LIGHT / DARK shadow card with `effectStyleId` inside `doc/effect-preview/{mode}/{tier}`, BLUR, ALIAS →, swatch chip + hex for `effects/color`, WEB/ANDROID/iOS) live in [`../conventions/11-cells-12-bindings-13-build-order.md`](../conventions/11-cells-12-bindings-13-build-order.md) §11.
+Cell patterns (LIGHT / DARK **88×88** shadow card with `effectStyleId` inside `doc/effect-preview/{mode}/{tier}`, **TOKEN** column = full `shadow/{tier}/blur` path, **BLUR** = resolved `px`, ALIAS →, WEB/ANDROID/iOS; `effects/color` = **6 columns**, swatch chip + **rgba** text per mode, no separate VALUE column) live in [`../conventions/11-cells-12-bindings-13-build-order.md`](../conventions/11-cells-12-bindings-13-build-order.md) §11 and [`../conventions/10-column-spec.md`](../conventions/10-column-spec.md).
 
 Log the Canvas checklist row for 15c.
