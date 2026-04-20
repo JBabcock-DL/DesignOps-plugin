@@ -9,9 +9,81 @@ agent: general-purpose
 
 You are the Create Design System agent for the Detroit Labs DesignOps plugin. Your job is to collect brand tokens from the designer, build five variable collections with proper Light/Dark and typography scale modes, and push the result to the target Figma file.
 
-> **[`CONVENTIONS.md`](./CONVENTIONS.md) is the authoritative canvas / table spec.** Read it **in full** on the first run of every session. It owns: canvas geometry (1800/1640), the five-collection architecture, codeSyntax casing for all three platforms, § 0 known-gotcha rules (row / cell Hug-before-resize, textAutoResize HEIGHT, Theme hex-sibling, Doc/\* + Effect publish order), table hierarchy, column widths per page, cell patterns, chrome→variable binding map, build-order checklist, and the pre-commit audit checklist.
->
-> **Phase files under [`phases/`](./phases/) orchestrate** — which step, which page, which slug, which row set, which AskUserQuestion to fire, which codeSyntax table to apply. They do **not** own geometry, columns, cells, or auto-layout rules. **When a phase file disagrees with CONVENTIONS.md, CONVENTIONS wins.**
+**Authoritative table/canvas rules** live in [`conventions/`](./conventions/) **shards** plus this file’s **§0** below — **not** in a single giant read. Index and §→file map: [`CONVENTIONS.md`](./CONVENTIONS.md) (router only, ~90 lines). **Do not** `Read` every shard at session start; follow **Conventions load map** for your current phase only.
+
+**Phase files under [`phases/`](./phases/) orchestrate** — which step, which page, which slug, which row set, which AskUserQuestion to fire, which codeSyntax table to apply. They do **not** own geometry, columns, cells, or auto-layout rules. **When a phase file disagrees with the conventions shards or this §0, the conventions win.**
+
+---
+
+## Known gotchas (§0 — paired with `conventions/00-gotchas.md`)
+
+> **Paired copy:** The same text is in [`conventions/00-gotchas.md`](./conventions/00-gotchas.md). **Edit both together.**
+
+These four rules produce every table-collapse / invisible-text / wrong-padding bug observed in real runs. Every phase file cross-references this section by anchor — do not paraphrase; do not re-state with different numbers.
+
+### 0.1 Row AND cell height stays **Fixed at 1** unless you set the height axis to **Hug** first
+
+Applies at BOTH levels — `doc/table/{slug}/row/{tokenPath}` (row frame) AND `doc/table/{slug}/row/{tokenPath}/cell/{col}` (body cell). The `1` in `resize(1640, 1)` / `resize(colWidth, 1)` is a **width-setting placeholder** — if the height axis isn't already **Hug** before the resize call, the `1` sticks as a permanent **Fixed** height and the row/cell draws as a 1px sliver.
+
+**Required order — rows (`doc/table/{slug}/row/{tokenPath}`):**
+
+```js
+row.layoutMode              = 'HORIZONTAL';
+row.counterAxisSizingMode   = 'AUTO';    // height: Hug tallest cell
+row.primaryAxisSizingMode   = 'FIXED';   // width: Fixed 1640
+row.resize(1640, 1);                     // safe now — height axis is Hug
+row.minHeight               = 64;
+row.paddingTop              = 16;
+row.paddingBottom           = 16;
+row.counterAxisAlignItems   = 'CENTER';
+```
+
+**Required order — body cells (`.../row/*/cell/{col}`):**
+
+```js
+cell.layoutMode             = 'VERTICAL'; // or 'HORIZONTAL' for Theme LIGHT/DARK
+cell.primaryAxisSizingMode  = 'AUTO';     // height: Hug content
+cell.counterAxisSizingMode  = 'FIXED';    // width: Fixed colWidth
+cell.resize(colWidth, 1);                 // safe now — height axis is Hug
+cell.paddingLeft            = 20;
+cell.paddingRight           = 20;
+cell.paddingTop             = 4;
+cell.paddingBottom          = 4;
+cell.itemSpacing            = 4;
+```
+
+Equivalent: call `resizeWithoutConstraints(w, 1)` — the same trick already used on `doc/table/{slug}`. Either approach works; pick one and use it everywhere.
+
+### 0.2 Text nodes collapse rows at ~10px unless `textAutoResize = 'HEIGHT'` is set
+
+Immediately after `text.characters = "…"`, call `text.resize(colWidth - 40, 1)` (where `40` = left padding `20` + right padding `20`), then `text.textAutoResize = 'HEIGHT'`. Never leave `'NONE'` — that is the **root cause** of the 10px collapse. Mono-line cells use `colWidth - 40` everywhere. If you see `- 32` in any phase file, it is wrong.
+
+### 0.3 Theme hex text must be a **sibling** of the mode-scoped wrapper, not a child
+
+Theme LIGHT/DARK cells are HORIZONTAL with **two siblings**: [1] `doc/theme-preview/{mode}` holding **only** the chip (bound fill; `setExplicitVariableModeForCollection(themeCollection, modeId)` applied), [2] `Doc/Code` hex text **outside** that wrapper. If the hex text is parented inside the Dark wrapper, its `color/background/content` fill resolves to white on a white cell and vanishes.
+
+### 0.4 `Doc/*` text styles and `Effect/shadow-*` must exist before 15a/15b bind to them
+
+Step 15c § 0 publishes `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`. On a **first** run, execute 15c § 0 **before** 15a/15b so the first pass binds `textStyleId` / `effectStyleId` cleanly. Falling back to raw `fontName`/`fontSize` and then re-running 15a/15b to upgrade wastes a full pass.
+
+---
+
+## Conventions load map (lazy — required)
+
+`Read` **only** the convention files for the phase you are executing. **§0** is already in this SKILL (and [`conventions/00-gotchas.md`](./conventions/00-gotchas.md)); re-read the file if you need the verbatim anchor in isolation.
+
+| Phase | When | Convention files to open |
+|------|------|----------------------------|
+| 01 | Steps 1–4 | **None** |
+| 02 | Steps 5–9 | [`conventions/01-collections.md`](./conventions/01-collections.md), [`conventions/02-codesyntax.md`](./conventions/02-codesyntax.md) |
+| 03 | Step 10 | **None** |
+| 04 | Step 11 | **None** |
+| 05 | Steps 12–14 | **None** |
+| 06 | Canvas documentation spec | [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md), [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) |
+| 07 | Steps 15a–c / any `use_figma` on style-guide tables | **Ordered:** [`conventions/column-widths.json`](./conventions/column-widths.json) → [`conventions/10-column-spec.md`](./conventions/10-column-spec.md) → [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md) → [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) → [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md) — plus phase file [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) |
+| 08 | Steps 17–19; canvas verification | [`conventions/14-audit.md`](./conventions/14-audit.md) when verifying or editing canvas |
+
+**Heavy read liveness (required):** Before the first `Read` of any single file expected to be **~200 lines or more** (notably [`phases/02-steps5-9.md`](./phases/02-steps5-9.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), or [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md)), send **one** short user-visible line first, e.g. `Loading skills/create-design-system/phases/07-steps15a-15c.md (~190 lines)…`
 
 ---
 
@@ -70,7 +142,7 @@ Current: Building Primitives…
 - [ ] Verifying variables wrote correctly
 - [ ] Optional: write `tokens.css` (your choice — Step 12.5, then Step 13 if yes)
 - [ ] Summarizing results (counts & file links)
-- [ ] Publishing Doc/\* text styles + Effect/shadow-\* (Step 15c § 0 — run **before** 15a/15b on first runs; see CONVENTIONS § 0.4)
+- [ ] Publishing Doc/\* text styles + Effect/shadow-\* (Step 15c § 0 — run **before** 15a/15b on first runs; see §0.4 above)
 - [ ] Drawing ↳ Primitives style guide (Step 15a)
 - [ ] Drawing ↳ Theme style guide (Step 15b)
 - [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (rest of Step 15c)
@@ -86,7 +158,7 @@ Current: Building Primitives…
 
 ## Phase execution (required)
 
-Work through the phases **in order**, except when **After Step 4 — variables present vs missing** (subsection below) says to **skip 02–04** and go straight to **06 → 07 → 08** (documentation draw/update). For each phase you execute, **`Read` the linked file in full** — phase files are authoritative; this orchestrator only routes.
+Work through the phases **in order**, except when **After Step 4 — variables present vs missing** (subsection below) says to **skip 02–04** and go straight to **06 → 07 → 08** (documentation draw/update). For each phase you execute, **`Read` the linked phase file in full** — phase files are authoritative; this orchestrator only routes. Apply **Conventions load map** for that phase **before** `use_figma` canvas work; use **Heavy read liveness** before large `Read` calls.
 
 | Phase | Scope | Read path |
 |------|--------|-----------|
@@ -99,7 +171,7 @@ Work through the phases **in order**, except when **After Step 4 — variables p
 | 07 | Steps 15a–15c — style-guide pages | [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) |
 | 08 | Steps 17–19 + appendix | [`phases/08-steps17-appendix.md`](./phases/08-steps17-appendix.md) |
 
-**First-run ordering (important):** On the first invocation of a session, execute phase 07's **Step 15c § 0** (publish `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`) **before** 15a/15b so the first pass can bind `textStyleId` / `effectStyleId` directly instead of emitting fallback `fontName`/`fontSize` literals that a second pass would need to upgrade. See [`CONVENTIONS.md`](./CONVENTIONS.md) § 0.4.
+**First-run ordering (important):** On the first invocation of a session, execute phase 07's **Step 15c § 0** (publish `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`) **before** 15a/15b so the first pass can bind `textStyleId` / `effectStyleId` directly instead of emitting fallback `fontName`/`fontSize` literals that a second pass would need to upgrade. See **§0.4** above.
 
 ### After Step 4 — variables present vs missing
 
@@ -115,7 +187,6 @@ If the snapshot is **ambiguous** (partial collections, legacy naming), call **As
 
 **Also load when applying Theme `codeSyntax`:** [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) (supplements Step 6 tables in phase 02).
 
-**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **inline** for each `use_figma` call; follow [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and [`CONVENTIONS.md`](./CONVENTIONS.md). **Do not** add canvas `.js` files, helper bundles, or scratch scripts to the workspace as part of this skill.
+**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **inline** for each `use_figma` call; follow [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and the **phase 07** convention shard list in **Conventions load map**. **Do not** add canvas `.js` files, helper bundles, or scratch scripts to the workspace as part of this skill.
 
 **Foundations page list (shared with `/new-project`):** [`../shared/pages.json`](../shared/pages.json).
-

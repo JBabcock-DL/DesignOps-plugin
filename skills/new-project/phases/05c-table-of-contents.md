@@ -21,7 +21,7 @@ None.
 ## Instructions
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
-Before editing this script, **`Read`** [`skills/create-design-system/CONVENTIONS.md`](../../create-design-system/CONVENTIONS.md) § 3 (canvas geometry) and the `skills/create-design-system/SKILL.md` section **Canvas documentation visual spec** (§ A–G). The TOC renders at the same 1720 inner width as `↳ Token Overview`, uses a **literal `#FFFFFF`** `_PageContent` fill (not the `color/background/default` token — it may resolve to an off-white tint), and follows the same `Doc/*` text-style + shadow-sm rhythm as style-guide pages. Layout is a **single-column stacked list**: the four system "bands" each get a 64-tall strip (`color/background/variant`) followed by a `band-list/{slug}` VERTICAL stack of full-width `toc-card/{title}` section cards (each card spans the full **1720** inner width). Cards use `color/background/default` + `color/border/subtle` + `Effect/shadow-sm`, and every text node either carries `textStyleId` (when Doc/* styles exist) or a raw-font fallback that `/create-design-system` Step 15c § 0 can upgrade.
+Before editing this script, **`Read`** [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) § 3 (canvas geometry) and the `skills/create-design-system/SKILL.md` section **Canvas documentation visual spec** (§ A–G). The TOC renders at the same 1720 inner width as `↳ Token Overview`, uses a **literal `#FFFFFF`** `_PageContent` fill (not the `color/background/default` token — it may resolve to an off-white tint), and follows the same `Doc/*` text-style + shadow-sm rhythm as style-guide pages. Layout is a **single-column stacked list**: the four system "bands" each get a 64-tall strip (`color/background/variant`) followed by a `band-list/{slug}` VERTICAL stack of full-width `toc-card/{title}` section cards (each card spans the full **1720** inner width). Cards use `color/background/default` + `color/border/subtle` + `Effect/shadow-sm`, and every text node either carries `textStyleId` (when Doc/* styles exist) or a raw-font fallback that `/create-design-system` Step 15c § 0 can upgrade.
 
 ## Re-running on a non-empty file (idempotency)
 This script **appends** a new `_PageContent` frame to `📝 Table of Contents` — it does **not** clean up prior runs. Before re-running on a file that already has TOC content (e.g. testing layout changes, or re-invoking after a plugin/skill update), first run a small wipe script with `use_figma` that targets the page and removes any existing `_PageContent` child:
@@ -50,7 +50,7 @@ Four band strips (`band-strip/{slug}`) separating Foundations / Atoms / Componen
 
 ## Step 5c — Draw Table of Contents
 
-Call `use_figma` with the `fileKey` from Step 4. Navigate to the `📝 Table of Contents` page. Wrap all TOC body content in a `_PageContent` vertical auto-layout frame at `y = 320` (directly beneath `_Header` once Step 5b runs — zero gap seam, per CONVENTIONS.md § 3). Each system band emits **one** `band-strip/{slug}` followed by **one** `band-list/{slug}` VERTICAL stack of full-width `toc-card/{title}` section cards — no 2-column grid. Section cards, rows, and strips are all auto-layout so heights hug content — do not precompute `cardHeight` or a running `currentY`. **Do not** set hyperlinks here; Step **5c-links** (phase 05f) runs after Steps 5b, 5d, and 5e.
+Call `use_figma` with the `fileKey` from Step 4. Navigate to the `📝 Table of Contents` page. Wrap all TOC body content in a `_PageContent` vertical auto-layout frame at `y = 320` (directly beneath `_Header` once Step 5b runs — zero gap seam, per `create-design-system/conventions/03-through-07-geometry-and-doc-styles.md` § 3). Each system band emits **one** `band-strip/{slug}` followed by **one** `band-list/{slug}` VERTICAL stack of full-width `toc-card/{title}` section cards — no 2-column grid. Section cards, rows, and strips are all auto-layout so heights hug content — do not precompute `cardHeight` or a running `currentY`. **Do not** set hyperlinks here; Step **5c-links** (phase 05f) runs after Steps 5b, 5d, and 5e.
 
 ```javascript
 // Navigate to the Table of Contents page
@@ -150,7 +150,7 @@ async function tryApplyEffectStyle(node, styleName) {
   } catch (_) {}
 }
 
-// ── Page geometry (CONVENTIONS.md § 3 — TOC shares 1800 wide, 40 padding all sides, inner 1720 with Token Overview) ──
+// ── Page geometry (conventions/03-through-07 § 3 — TOC shares 1800 wide, 40 padding all sides, inner 1720 with Token Overview) ──
 const PAGE_WIDTH     = 1800;
 const PAGE_PADDING   = 40;
 const SECTION_WIDTH  = PAGE_WIDTH - PAGE_PADDING * 2; // 1720
@@ -212,7 +212,7 @@ bands.forEach(b => {
 });
 
 // ── _PageContent ──
-// CONVENTIONS.md § 3: y=320 (zero-gap seam below _Header), padding 40 all sides,
+// conventions/03-through-07 § 3: y=320 (zero-gap seam below _Header), padding 40 all sides,
 // fill LITERAL #FFFFFF (not token-bound — the color/background/default variable
 // may resolve to an off-white in Theme · Light and break the match with other doc pages).
 // resize() MUST come before sizing-mode assignments (figma-use gotcha).

@@ -1,0 +1,139 @@
+{
+  "sumTarget": 1640,
+  "tables": {
+    "primitives/color-ramp": {
+      "columns": [
+        { "id": "TOKEN", "width": 320 },
+        { "id": "SWATCH", "width": 96 },
+        { "id": "HEX", "width": 120 },
+        { "id": "WEB", "width": 360 },
+        { "id": "ANDROID", "width": 340 },
+        { "id": "iOS", "width": 404 }
+      ]
+    },
+    "primitives/space": {
+      "columns": [
+        { "id": "TOKEN", "width": 260 },
+        { "id": "VALUE", "width": 100 },
+        { "id": "PREVIEW", "width": 260 },
+        { "id": "WEB", "width": 340 },
+        { "id": "ANDROID", "width": 320 },
+        { "id": "iOS", "width": 360 }
+      ]
+    },
+    "primitives/radius": {
+      "columns": [
+        { "id": "TOKEN", "width": 260 },
+        { "id": "VALUE", "width": 100 },
+        { "id": "PREVIEW", "width": 260 },
+        { "id": "WEB", "width": 340 },
+        { "id": "ANDROID", "width": 320 },
+        { "id": "iOS", "width": 360 }
+      ]
+    },
+    "primitives/elevation": {
+      "columns": [
+        { "id": "TOKEN", "width": 260 },
+        { "id": "VALUE", "width": 100 },
+        { "id": "WEB", "width": 400 },
+        { "id": "ANDROID", "width": 380 },
+        { "id": "iOS", "width": 500 }
+      ]
+    },
+    "primitives/typeface": {
+      "columns": [
+        { "id": "TOKEN", "width": 320 },
+        { "id": "SPECIMEN", "width": 460 },
+        { "id": "VALUE", "width": 200 },
+        { "id": "WEB", "width": 320 },
+        { "id": "ANDROID", "width": 160 },
+        { "id": "iOS", "width": 180 }
+      ]
+    },
+    "primitives/font-weight": {
+      "columns": [
+        { "id": "TOKEN", "width": 260 },
+        { "id": "VALUE", "width": 100 },
+        { "id": "WEB", "width": 400 },
+        { "id": "ANDROID", "width": 380 },
+        { "id": "iOS", "width": 500 }
+      ]
+    },
+    "theme/semantic-group": {
+      "note": "One table per group: background, border, primary, secondary, tertiary, error, component",
+      "columns": [
+        { "id": "TOKEN", "width": 320 },
+        { "id": "LIGHT", "width": 140 },
+        { "id": "DARK", "width": 140 },
+        { "id": "ALIAS", "width": 260 },
+        { "id": "WEB", "width": 320 },
+        { "id": "ANDROID", "width": 220 },
+        { "id": "iOS", "width": 240 }
+      ]
+    },
+    "layout/spacing": {
+      "columns": [
+        { "id": "TOKEN", "width": 280 },
+        { "id": "VALUE", "width": 100 },
+        { "id": "ALIAS", "width": 280 },
+        { "id": "PREVIEW", "width": 240 },
+        { "id": "WEB", "width": 320 },
+        { "id": "ANDROID", "width": 220 },
+        { "id": "iOS", "width": 200 }
+      ]
+    },
+    "layout/radius": {
+      "columns": [
+        { "id": "TOKEN", "width": 280 },
+        { "id": "VALUE", "width": 100 },
+        { "id": "ALIAS", "width": 280 },
+        { "id": "PREVIEW", "width": 240 },
+        { "id": "WEB", "width": 320 },
+        { "id": "ANDROID", "width": 220 },
+        { "id": "iOS", "width": 200 }
+      ]
+    },
+    "typography/styles": {
+      "columns": [
+        { "id": "SLOT", "width": 220 },
+        { "id": "SPECIMEN", "width": 360 },
+        { "id": "SIZE_LINE", "width": 140 },
+        { "id": "WEIGHT_FAMILY", "width": 180 },
+        { "id": "WEB", "width": 280 },
+        { "id": "ANDROID", "width": 200 },
+        { "id": "iOS", "width": 260 }
+      ]
+    },
+    "effects/shadows": {
+      "columns": [
+        { "id": "TIER", "width": 140 },
+        { "id": "LIGHT", "width": 180 },
+        { "id": "DARK", "width": 180 },
+        { "id": "BLUR", "width": 120 },
+        { "id": "ALIAS", "width": 200 },
+        { "id": "WEB", "width": 300 },
+        { "id": "ANDROID", "width": 260 },
+        { "id": "iOS", "width": 260 }
+      ]
+    },
+    "effects/color": {
+      "columns": [
+        { "id": "TOKEN", "width": 320 },
+        { "id": "LIGHT", "width": 180 },
+        { "id": "DARK", "width": 180 },
+        { "id": "VALUE", "width": 220 },
+        { "id": "WEB", "width": 320 },
+        { "id": "ANDROID", "width": 220 },
+        { "id": "iOS", "width": 200 }
+      ]
+    },
+    "token-overview/platform-mapping": {
+      "columns": [
+        { "id": "TOKEN", "width": 400 },
+        { "id": "WEB", "width": 420 },
+        { "id": "ANDROID", "width": 340 },
+        { "id": "iOS", "width": 480 }
+      ]
+    }
+  }
+}

@@ -4,7 +4,7 @@
 >
 > **Authoritative source:** [`skills/create-component/SKILL.md`](./SKILL.md). When this summary disagrees with the skill, the skill wins. The skill's §0 Quickstart is the single canonical recipe; §9 Self-check is the pass/fail gate for reporting a component "drawn".
 >
-> **Related:** [`skills/create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md) — the style-guide canvas geometry this file reuses.
+> **Related:** [`skills/create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md) (router) and [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) — the style-guide canvas geometry this file reuses. **§0 gotchas:** [`skills/create-design-system/SKILL.md`](../create-design-system/SKILL.md).
 
 ---
 
@@ -457,7 +457,7 @@ Above the matrix, render a Properties table that documents the component's publi
 
 **Sum: 240 + 380 + 160 + 120 + 740 = 1640.**
 
-Follow the same hierarchy and auto-layout rules as design-system tables (see [`create-design-system/CONVENTIONS.md` §8–9](../create-design-system/CONVENTIONS.md)): `doc/table-group/{component-name}/properties` wrapper; `doc/table/{component-name}/properties` with header + body rows; `minHeight: 64` per row; `counterAxisAlignItems: CENTER`; `textAutoResize: 'HEIGHT'` on every text node.
+Follow the same hierarchy and auto-layout rules as design-system tables (see [`create-design-system/conventions/08-hierarchy-and-09-autolayout.md` §§8–9](../create-design-system/conventions/08-hierarchy-and-09-autolayout.md)): `doc/table-group/{component-name}/properties` wrapper; `doc/table/{component-name}/properties` with header + body rows; `minHeight: 64` per row; `counterAxisAlignItems: CENTER`; `textAutoResize: 'HEIGHT'` on every text node.
 
 Property row ordering (canonical):
 
@@ -615,7 +615,7 @@ Label text = shadcn value verbatim (`sm`, `default`, `lg`, `icon`). If you want 
 
 ## 10. Auto-layout rules (same 10px-collapse guardrails as the style-guide tables)
 
-Every frame you create for the matrix must follow these rules. Reuse them directly from [`create-design-system/CONVENTIONS.md` §9](../create-design-system/CONVENTIONS.md) — the same helper can produce both tables and matrices.
+Every frame you create for the matrix must follow these rules. Reuse them directly from [`create-design-system/conventions/08-hierarchy-and-09-autolayout.md` §9](../create-design-system/conventions/08-hierarchy-and-09-autolayout.md) — the same helper can produce both tables and matrices.
 
 | Frame | `layoutMode` | `primaryAxisSizingMode` | `counterAxisSizingMode` | Notes |
 |-------|--------------|-------------------------|-------------------------|-------|
@@ -647,7 +647,7 @@ The same rule applies to `resizeWithoutConstraints` — resize first, then sizin
 
 ## 11. Token bindings for matrix chrome
 
-All matrix chrome must use variable-bound paints (same rule as the style-guide tables — see [`create-design-system/CONVENTIONS.md` §12](../create-design-system/CONVENTIONS.md)).
+All matrix chrome must use variable-bound paints (same rule as the style-guide tables — see [`create-design-system/conventions/11-cells-12-bindings-13-build-order.md` §12](../create-design-system/conventions/11-cells-12-bindings-13-build-order.md)).
 
 | Matrix element | Variable | Collection |
 |---------------|----------|------------|
@@ -839,10 +839,10 @@ If any `S9.*` row fails, fix before reporting the component `drawn`. `V` rows re
 | Properties table spec                      | This file, §4                                                                              |
 | State axis per component category          | This file, §7                                                                              |
 | Variant rows per component                 | This file, §8 + shadcn source at `components/ui/{component}.tsx`                          |
-| Auto-layout rules (10px-collapse prevention)| [`create-design-system/CONVENTIONS.md` §9](../create-design-system/CONVENTIONS.md)         |
-| Token binding map (chrome → variable)      | [`create-design-system/CONVENTIONS.md` §12](../create-design-system/CONVENTIONS.md) + §11 |
-| `Doc/*` text style definitions             | [`create-design-system/CONVENTIONS.md` §7](../create-design-system/CONVENTIONS.md)         |
-| Canvas geometry (1800 / 1640 / 80 padding) | [`create-design-system/CONVENTIONS.md` §3](../create-design-system/CONVENTIONS.md)         |
+| Auto-layout rules (10px-collapse prevention)| [`create-design-system/conventions/08-hierarchy-and-09-autolayout.md` §9](../create-design-system/conventions/08-hierarchy-and-09-autolayout.md)         |
+| Token binding map (chrome → variable)      | [`create-design-system/conventions/11-cells-12-bindings-13-build-order.md` §12](../create-design-system/conventions/11-cells-12-bindings-13-build-order.md) + §11 |
+| `Doc/*` text style definitions             | [`create-design-system/conventions/03-through-07-geometry-and-doc-styles.md` §7](../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md)         |
+| Canvas geometry (1800 / 1640 / 80 padding) | [`create-design-system/conventions/03-through-07-geometry-and-doc-styles.md` §3](../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md)         |
 | Page routing (component → page)            | [`skills/create-component/SKILL.md`](./SKILL.md) Step 6 routing table                     |
 
 When you are unsure, **`Read` the relevant file** rather than guessing. Every file referenced above is designed to be read in full by the agent before executing its step.

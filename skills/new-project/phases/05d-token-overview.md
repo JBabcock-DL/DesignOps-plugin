@@ -50,7 +50,7 @@ Leave `_Header` in place — Phase 05b owns it.
 
 ## Step 5d — Draw Token Overview Skeleton
 
-Call `use_figma` with the `fileKey` from Step 4. Navigate to the `↳ Token Overview` page. Wrap all Token Overview body sections in a `_PageContent` vertical auto-layout frame at `y = 320` (directly beneath `_Header` — zero-gap seam, per CONVENTIONS.md § 3). `_PageContent.fills` must be **literal `#FFFFFF`**, not token-bound. Every section, table, row, and cell is auto-layout — no absolute positioning. Mark every placeholder element with an amber annotation text node named `placeholder/{section}` so that **Step 17** in `/create-design-system` knows which elements to replace with real token values.
+Call `use_figma` with the `fileKey` from Step 4. Navigate to the `↳ Token Overview` page. Wrap all Token Overview body sections in a `_PageContent` vertical auto-layout frame at `y = 320` (directly beneath `_Header` — zero-gap seam, per `create-design-system/conventions/03-through-07-geometry-and-doc-styles.md` § 3). `_PageContent.fills` must be **literal `#FFFFFF`**, not token-bound. Every section, table, row, and cell is auto-layout — no absolute positioning. Mark every placeholder element with an amber annotation text node named `placeholder/{section}` so that **Step 17** in `/create-design-system` knows which elements to replace with real token values.
 
 ```javascript
 // Navigate to the Token Overview page
@@ -158,7 +158,7 @@ const SECTION_WIDTH  = PAGE_WIDTH - PAGE_PADDING * 2; // 1720
 const SECTION_PAD    = 40;
 const TABLE_WIDTH    = SECTION_WIDTH - SECTION_PAD * 2; // 1640 — matches style-guide table width
 
-// CONVENTIONS.md § 3: y=320 (zero-gap seam below _Header), padding 40 all sides,
+// conventions/03-through-07-geometry-and-doc-styles.md § 3: y=320 (zero-gap seam below _Header), padding 40 all sides,
 // fill LITERAL #FFFFFF (not token-bound — the color/background/default variable
 // may resolve to an off-white in Theme · Light and break the match with other doc pages).
 // resize() MUST come before sizing-mode assignments (figma-use gotcha).

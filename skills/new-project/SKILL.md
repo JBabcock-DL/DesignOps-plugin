@@ -9,7 +9,7 @@ agent: general-purpose
 
 You are scaffolding a new Detroit Labs Foundations design system file in Figma.
 
-> **Before drawing anything on canvas, `Read` [`../create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md)** — it defines the canvas geometry (1800px-wide `_Header` + `_PageContent`, 40px padding on TOC/Token Overview, 80px padding on style-guide pages), the page list (**no `↳ MCP Tokens`**), and naming conventions. `/new-project` scaffolds the chrome so `/create-design-system` can later redraw matching widths.
+> **Before drawing anything on canvas**, post one liveness line then `Read` **[`../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md)** (~200 lines) — geometry (1800px-wide `_Header` + `_PageContent`, 40px padding on TOC/Token Overview, 80px on style-guide pages), the page list (**no `↳ MCP Tokens`**), and naming conventions (§§3–6). **§0 gotchas** are in [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md). Router: [`../create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md). `/new-project` scaffolds the chrome so `/create-design-system` can later redraw matching widths.
 
 Your first action is to collect the required inputs using AskUserQuestion — do not output any text before the first AskUserQuestion call.
 

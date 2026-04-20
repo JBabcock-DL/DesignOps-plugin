@@ -21,7 +21,7 @@ None.
 ## Instructions
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
-Before editing this script, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** § A and [`skills/create-design-system/CONVENTIONS.md`](../../create-design-system/CONVENTIONS.md) § 3 — both specify the current `_Header` geometry (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout, fill `color/neutral/950` bound with `#000000` fallback) and the zero-gap seam with `_PageContent` at `y = 320`.
+Before editing this script, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** § A and [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) § 3 — both specify the current `_Header` geometry (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout, fill `color/neutral/950` bound with `#000000` fallback) and the zero-gap seam with `_PageContent` at `y = 320`.
 
 ## Re-running on a non-empty file (idempotency)
 This script assumes the master `_Header` does not yet exist and that no page has an `_Header` instance. Before re-running on a file that already has headers (e.g. fixing the spec after an older run, or re-invoking after a plugin/skill update), first run a small wipe script with `use_figma` that removes every `_Header` component + instance and every obsolete `_Content` placeholder from older versions:
@@ -210,7 +210,7 @@ function bindPrimColor(node, path, fallbackHex, target = 'fills') {
 }
 
 // ── Phase A: master _Header component on Documentation components ──
-// Geometry (SKILL.md § A + CONVENTIONS.md § 3):
+// Geometry (SKILL.md § A + create-design-system/conventions/03-through-07 § 3):
 //   1800 wide, 320 tall, cornerRadius 0, layoutMode VERTICAL,
 //   padding top 40 / bottom 61 / left 40 / right 40, itemSpacing 60, clipsContent true.
 //   Structure:

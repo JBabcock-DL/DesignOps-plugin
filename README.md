@@ -6,7 +6,7 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
 
 > **Ramping up a new agent (Claude Sonnet, Opus, future models)?** Read these two quick-reference guides before running any skill:
 >
-> - [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) — canvas geometry (**1800**/**1640** widths, 80px padding on style-guide pages), iOS `codeSyntax` dot-path rules (**never** camelCase), body text variants, the removed `↳ MCP Tokens` page, full table format spec (hierarchy, column widths, cell patterns, chrome bindings, build order), and a pre-commit audit checklist.
+> - [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) — **router** to convention shards; **§0 gotchas** live in [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md). For geometry + pages + naming, read [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md); for `codeSyntax` rules, [`skills/create-design-system/conventions/02-codesyntax.md`](skills/create-design-system/conventions/02-codesyntax.md). **Do not** load every shard at session start — follow each skill’s lazy-load instructions.
 > - [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) — the **matrix-default** 5-section layout every component uses: header + properties table + **live Component Set section (inline, editable)** + variant × state specimen matrix + Do/Don't usage notes. Covers per-category state axes, per-component variant rows, instance-vs-component handling, the `CONFIG` schema (including `labelStyle` bindings to published `Label/*` text styles), and a Button reference `CONFIG`.
 
 ---
@@ -516,7 +516,7 @@ If you opt in after the Figma push, `/create-design-system` writes `tokens.css` 
 
 ## Design System Conventions (Quick Reference)
 
-Full details live in [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md). The highlights every agent needs:
+Full details are split across [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) (index) and [`skills/create-design-system/conventions/`](skills/create-design-system/conventions/) (shards). The highlights every agent needs:
 
 **Canvas geometry (style guide + sync redraws):**
 
