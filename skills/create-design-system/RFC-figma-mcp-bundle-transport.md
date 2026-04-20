@@ -127,3 +127,4 @@ https://github.com/JBabcock-DL/DesignOps-plugin/blob/main/skills/create-design-s
 
 - [`MCP-PAYLOAD-RESEARCH.md`](./MCP-PAYLOAD-RESEARCH.md) §8–§12  
 - [`canvas-templates/bundles/README.md`](./canvas-templates/bundles/README.md)
+- **Upstream pack (MRE, acceptance criteria, validation, filing checklist):** [`upstream/README.md`](./upstream/README.md)
