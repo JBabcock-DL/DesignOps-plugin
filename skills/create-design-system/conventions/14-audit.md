@@ -48,7 +48,8 @@
 - [ ] Is the Token Overview platform-mapping table built with § H hierarchy (`doc/table/token-overview/platform-mapping/{header|body|row/*|cell/*}`) — no absolute `x`/`y` positioning?
 - [ ] Do platform-mapping columns sum to exactly **1640** (TOKEN 400 · WEB 420 · ANDROID 340 · iOS 480)?
 - [ ] Does the TOC have **4 band strips** (`band-strip/foundations`, `…/atoms`, `…/components`, `…/platform`) above 2-column card grids?
-- [ ] Do all section cards / panels / platform-mapping table / summary bar carry `effectStyleId: Effect/shadow-sm` once § G Depth is published?
+- [ ] Do **TOC section cards**, **Token Overview section shells** (`token-overview/*` from `/new-project` 05d), **Dark Mode / Font Scale panels**, and the **TOC summary bar** carry `effectStyleId: Effect/shadow-sm` on their **outer** frames once § G Depth is published?
+- [ ] Does **`doc/table/token-overview/platform-mapping`** (table root, `header`, `body`, every `row/*`, `cell/*`) have **no** shadow — `effects` empty and **`effectStyleId` cleared** — with depth coming **only** from the parent **`token-overview/platform-mapping`** shell (no double elevation)?
 
 If any box is unchecked, fix before reporting "done."
 

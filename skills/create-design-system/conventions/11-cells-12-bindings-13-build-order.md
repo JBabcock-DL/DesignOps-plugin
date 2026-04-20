@@ -25,7 +25,7 @@ Every chrome element below **must** use `setBoundVariable` / variable-bound pain
 |---|---|---|
 | Table outer fill | `color/background/default` | Theme · Light |
 | Table outer stroke | `color/border/subtle` | Theme · Light |
-| Table shadow (guide tables only) | `Effect/shadow-sm` (effectStyleId) | Effects · Light |
+| Table shadow (style-guide `doc/table/{slug}` roots **only**) | `Effect/shadow-sm` (effectStyleId) | Effects · Light — **exclude** `doc/table/token-overview/platform-mapping` and all descendants; that block is nested in `token-overview/platform-mapping`, which already carries one shadow |
 | Header row fill | `color/background/variant` | Theme · Light |
 | Header row bottom stroke | `color/border/subtle` | Theme · Light |
 | Header text | `color/background/content-muted` | Theme · Light |
@@ -51,6 +51,6 @@ Every chrome element below **must** use `setBoundVariable` / variable-bound pain
 5. For each text node: set `characters` → `resize(textWidth, 1)` → `textAutoResize = 'HEIGHT'` → assign `textStyleId` (or fallback literals) → bind fill.
 5b. **Primitives color ramps only:** for each row’s **SWATCH** `RECTANGLE`, bind **fill** to that row’s **`Primitives` COLOR variable** (`setBoundVariableForPaint` on a cloned solid — see **§ 0.7** in [`00-gotchas.md`](./00-gotchas.md)). A correct swatch is **not** a baked hex patch copied from `valuesByMode`.
 6. After all rows are appended, remove the bottom stroke from the last row (`row.strokes = []` or `strokeBottomWeight = 0`) so the outer `clipsContent` radius reads clean.
-7. Apply `effectStyleId` to the outer `doc/table/{slug}` frame **only** if `Effect/shadow-sm` already exists in the file (Step 15c §0 publishes it; 15a/15b may skip on first run).
+7. Apply `effectStyleId` to the outer `doc/table/{slug}` frame **only** if `Effect/shadow-sm` already exists in the file (Step 15c §0 publishes it; 15a/15b may skip on first run). **Skip** this step for **`doc/table/token-overview/platform-mapping`** — `/new-project` 05d never shadows that subtree; Step 17 must not add it either (**§0.9** in [`../SKILL.md`](../SKILL.md)).
 
 Step 15a draws **10 tables** on ↳ Primitives (5 color ramps + Space + Radius + Elevation + Typeface + Font weight). Step 15b draws **7 tables** on ↳ Theme (one per semantic group). Step 15c draws **2 + 1 + 2 = 5 tables** across ↳ Layout, ↳ Text Styles, ↳ Effects.

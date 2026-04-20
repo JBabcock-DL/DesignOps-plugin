@@ -112,6 +112,12 @@ If `textAutoResize` is still `'NONE'` when the parent body cell correctly uses H
 
 **When auditing** ([`conventions/14-audit.md`](./conventions/14-audit.md) § TOC + Token Overview): strip **`TEXT`** `width` must stay **well below** **~1600** — if you see **1672**, this bug has fired.
 
+### 0.9 Token Overview **`platform-mapping`** — one shadow on the **section shell** only
+
+**`/new-project`** Phase **05d** wraps the platform-mapping block in **`token-overview/platform-mapping`**, which applies **`Effect/shadow-sm`** once via **`sectionShell`**. The inner table **`doc/table/token-overview/platform-mapping`** and every **`header`**, **`body`**, **`row/*`**, and **`cell/*`** must remain **flat**: **`effects = []`** and **`effectStyleId` cleared** — no duplicate elevation on the “wrapping” **`body`** frame.
+
+**`/create-design-system` Step 17** pre-pass must **not** assign **`shadow-sm`** to any frame whose path is **`doc/table/token-overview/platform-mapping`** or under it (prefix matching **`doc/table/token-overview/`** was the original failure mode). See [`phases/08-steps17-appendix.md`](./phases/08-steps17-appendix.md). Style-guide tables on **↳ Primitives / Theme / …** still use **one** shadow on the **`doc/table/{slug}`** root per [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) / [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md).
+
 ---
 
 ## Conventions load map (lazy — required)
@@ -127,7 +133,7 @@ If `textAutoResize` is still `'NONE'` when the parent body cell correctly uses H
 | 05 | Steps 12–14 | **None** |
 | 06 | Canvas documentation spec | [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md), [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) |
 | 07 | Steps 15a–c / any `use_figma` on style-guide tables | **Ordered:** [`conventions/column-widths.json`](./conventions/column-widths.json) → [`conventions/10-column-spec.md`](./conventions/10-column-spec.md) → [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md) → [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) → [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md) — plus phase file [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) |
-| 08 | Steps 17–19; canvas verification | [`conventions/14-audit.md`](./conventions/14-audit.md) when verifying or editing canvas |
+| 08 | Steps 17–19; canvas verification | [`conventions/14-audit.md`](./conventions/14-audit.md) when verifying or editing canvas; re-read **§0.9** above before Step 17 shadow passes on **↳ Token Overview** |
 
 **Heavy read liveness (required):** Before the first `Read` of any single file expected to be **~200 lines or more** (notably [`phases/02-steps5-9.md`](./phases/02-steps5-9.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), or [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md)), send **one** short user-visible line first, e.g. `Loading skills/create-design-system/phases/07-steps15a-15c.md (~190 lines)…`
 
