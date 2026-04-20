@@ -15,7 +15,19 @@ You are the Create Design System agent for the Detroit Labs DesignOps plugin. Yo
 
 **Source root (Claude Code desktop + local plugin):** When the designer uses **Claude Code with this skill from the installed DesignOps plugin** (not necessarily an open git checkout of this repo), resolve paths from **this skill’s directory** inside the plugin tree — the same paths as in this repository: [`canvas-templates/`](./canvas-templates/), [`bundles/`](./canvas-templates/bundles/), [`data/`](./data/), [`phases/`](./phases/). Do **not** assume the current workspace root is the skill root.
 
-**MCP canvas runs:** **Preferred for Step 15a:** `Read` [`canvas-templates/bundles/step-15a-primitives.mcp.js`](./canvas-templates/bundles/step-15a-primitives.mcp.js) and pass its **entire** contents as `use_figma` → `code` (plus `fileKey`, `description`, `skillNames: "figma-use"`). Otherwise read [`canvas-templates/`](./canvas-templates/) (+ [`data/`](./data/) when the phase says so) and compose **plain** Plugin API `code` per [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md). Split into **multiple self-contained calls** if you approach the ~50k `code` limit. **`ctx.variableMap` may be omitted** when using the standard `_lib` + template bundle — [`canvas-templates/_lib.js`](./canvas-templates/_lib.js) **`ensureLocalVariableMapOnCtx`** hydrates inside `build(ctx)` (see [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md)).
+**MCP canvas runs (happy path — Steps 15a, 15b, 15c):** For each step, `Read` the matching committed **`.min.mcp.js`** bundle and pass its contents **verbatim** as `use_figma` → `code` (plus `fileKey`, `description`, `skillNames: "figma-use"`). Bundles resolve rows + IDs in-plugin; **you never assemble `ctx` in the tool call**, and **never write a staging file** to JSON-escape the payload. Bundle map:
+
+| Step | Bundle (happy path) |
+|------|---------------------|
+| 15a — Primitives       | [`canvas-templates/bundles/step-15a-primitives.min.mcp.js`](./canvas-templates/bundles/step-15a-primitives.min.mcp.js) |
+| 15b — Theme            | [`canvas-templates/bundles/step-15b-theme.min.mcp.js`](./canvas-templates/bundles/step-15b-theme.min.mcp.js) |
+| 15c — Layout           | [`canvas-templates/bundles/step-15c-layout.min.mcp.js`](./canvas-templates/bundles/step-15c-layout.min.mcp.js) |
+| 15c — Text Styles      | [`canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](./canvas-templates/bundles/step-15c-text-styles.min.mcp.js) |
+| 15c — Effects          | [`canvas-templates/bundles/step-15c-effects.min.mcp.js`](./canvas-templates/bundles/step-15c-effects.min.mcp.js) |
+
+Every bundle is self-contained (`_lib.js` + page template + runner fragment concatenated; top-level `await` + `return` — no IIFE required). Regen with [`scripts/bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs). See [`canvas-templates/bundles/README.md`](./canvas-templates/bundles/README.md).
+
+**Debug / fallback only:** if a bundle run returns an error you can't explain from the returned payload, open [`canvas-templates/_lib.js`](./canvas-templates/_lib.js), the relevant page template in [`canvas-templates/`](./canvas-templates/), and [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md). Composing `_lib + template + JSON.stringify(ctx)` at run time is a **fallback**, not the happy path — use it only when a bundle is unavailable or a row-resolution bug must be bypassed. `ensureLocalVariableMapOnCtx` in `_lib.js` will hydrate `variableMap` in-plugin; never put it in an inline `ctx`.
 
 **Phase files under [`phases/`](./phases/) orchestrate** — which step, which page, which slug, which row set, which AskUserQuestion to fire. They do **not** own geometry, columns, cells, or auto-layout rules. **When a phase file disagrees with the conventions shards or §0, the conventions win.**
 
@@ -152,11 +164,17 @@ Work through the phases **in order**, except when **After Step 4 — variables p
 | **Variables already in the file** — the registry shows the expected collections (at minimum **`Primitives`** and **`Theme`**) populated with variables suitable for bindings, and the designer has **not** asked to regenerate or replace tokens | **Skip 02–04** (no new generation, no Step 10 plan for a fresh build). **Read 06**, then run **07** and **08** to **draw or refresh** style-guide canvas work (Steps 15a–c, 17–19). Optionally run **05** Step 12 (verify) after canvas if useful. |
 | Designer **explicitly** wants new ramps, Theme changes, or a full token rebuild | Run **02 → 03 → 04** even when variables already exist. |
 
-If the snapshot is **ambiguous** (partial collections, legacy naming), call **AskUserQuestion** once: **regenerate tokens** vs **documentation-only refresh** — then follow the matching row above.
+If the snapshot is **ambiguous** (partial collections, legacy naming, missing `codeSyntax` on some variables), fire **one** `AskUserQuestion` with three options and commit to the answer — do **not** re-probe variables after the user answers, and do **not** second-guess by asking again later:
+
+- **Regenerate** — run phases 02 → 03 → 04 → 05, then 06 → 07 → 08 (full pipeline). Existing variables are overwritten per the plan shown at Step 10.
+- **Docs-only** — skip 02–04. Run the Step 11 close block (Doc/* + Effect styles) if those aren't already in the file, then 06 → 07 → 08 against current variables.
+- **Abort** — stop, print what's ambiguous, exit with no file writes.
+
+Whichever the designer picks is load-bearing for the rest of the run.
 
 **Also load when applying Theme `codeSyntax`:** [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) (supplements Step 6 tables in phase 02).
 
-**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **only** as the **`code` string** on each **`use_figma` MCP** invocation (load the **`figma-use`** skill first whenever the Figma / `use_figma` tool docs require it). Follow [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and the **phase 07** convention shard list in **Conventions load map**. If you hit the ~50k `code` limit, run **multiple sequential `use_figma` calls** (e.g. one logical page or table batch per call), each with a **fresh self-contained** script — **not** by writing partial scripts to disk or relying on `clientStorage` unless verified in the MCP host.
+**Canvas (Steps 15a–17):** **agent-driven only** — the agent passes committed `.min.mcp.js` bundle contents (above) as the **`code` string** on each **`use_figma` MCP** invocation (load the **`figma-use`** skill first whenever the Figma / `use_figma` tool docs require it). Follow [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and the **phase 07** convention shard list in **Conventions load map**. If an inline `code` arg ever feels too big, the correct move is to `Read` the **`.min.mcp.js`** variant and retry the tool call — **not** to write a `.mcp-*` / `*-payload.json` staging file.
 
 **Do not** use the repo or this skill folder as a clipboard for Figma work: no canvas helper `.js`, no `.mcp-*` / `_mcp-*` files, no `*-once.js`, no `*-payload.json`, no `_tmp*`, and no folders **under this skill** used only to stage plugin code for MCP or to JSON-escape payloads. Those are throwaways — delete them immediately if created by mistake; the deliverable is the **Figma file state**, not staged source files.
 

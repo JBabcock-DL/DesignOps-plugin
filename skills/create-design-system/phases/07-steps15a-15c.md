@@ -2,62 +2,48 @@
 
 This file owns: which page, which slug, which row set. Canvas rules (geometry, hierarchy, columns, cells, auto-layout, bindings, build order) are baked into [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js) and the per-page templates. §0 rules apply — see index in [`../SKILL.md`](../SKILL.md); full rules in [`../conventions/00-gotchas.md`](../conventions/00-gotchas.md).
 
-### Canvas is template-driven
+### Canvas is bundle-driven (happy path)
 
-Each Step 15 page uses a pre-written template from [`../canvas-templates/`](../canvas-templates/). The agent's job per page:
+Each Step 15 page has a committed self-contained bundle under [`../canvas-templates/bundles/`](../canvas-templates/bundles/). The agent's job per page is **one `Read` → one `use_figma`**:
 
-1. Resolve live data: mode IDs, per-row `{ tokenPath, resolvedHex, codeSyntax }` manifest (and related shapes per template), Doc/\* style IDs. The **`{ path → variableId }` map** may be **omitted** from `ctx`: each template calls **`ensureLocalVariableMapOnCtx`** from [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js) at the start of `build(ctx)` and fills `ctx.variableMap` from `figma.variables.getLocalVariablesAsync()` when it is missing or `{}`. Embedding the map in `ctx` remains valid (backward-compatible).
-2. **Preferred — Step 15a:** `Read` the committed bundle [`../canvas-templates/bundles/step-15a-primitives.mcp.js`](../canvas-templates/bundles/step-15a-primitives.mcp.js) and pass its **full text** as `use_figma` → `code` (see [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md)). Regenerate that file with [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs) after editing `_lib.js`, `primitives.js`, or `_step15a-runner.fragment.js`.
-3. **Alternate / Steps 15b–15c:** Read `_lib.js` and the page template (and [`../data/`](../data/) when required). Compose: `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; await build(ctx);"` → pass as `code` to `use_figma`. When self-contained bundles exist for 15b/15c, prefer the same one-file pattern as 15a.
+1. `Read` the matching **`.min.mcp.js`** file in [`../canvas-templates/bundles/`](../canvas-templates/bundles/).
+2. Pass its contents **verbatim** as the `code` argument to `use_figma` (plus `fileKey`, `description`, `skillNames: "figma-use"`).
+3. Inspect the returned payload (`{ ok, step, tableGroups, pageName, … }`) and the page on canvas. Apply the read-only audit in [`../conventions/14-audit.md`](../conventions/14-audit.md).
 
-No cold script generation. Column widths, cell factories, §0 rules, chrome bindings are in the templates.
+| Step | Bundle |
+|------|--------|
+| 15a — Primitives       | [`../canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) |
+| 15b — Theme            | [`../canvas-templates/bundles/step-15b-theme.min.mcp.js`](../canvas-templates/bundles/step-15b-theme.min.mcp.js) |
+| 15c — Layout           | [`../canvas-templates/bundles/step-15c-layout.min.mcp.js`](../canvas-templates/bundles/step-15c-layout.min.mcp.js) |
+| 15c — Text Styles      | [`../canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../canvas-templates/bundles/step-15c-text-styles.min.mcp.js) |
+| 15c — Effects          | [`../canvas-templates/bundles/step-15c-effects.min.mcp.js`](../canvas-templates/bundles/step-15c-effects.min.mcp.js) |
+
+Each bundle concatenates `_lib.js` + page template + a per-step runner fragment. The runner resolves the live variable registry, data aliases, Doc/* style IDs, and target page inside the plugin and calls `await build(ctx)`. **Never assemble `ctx` in the tool call**, **never pass `ctx.variableMap` inline**, and **never stage the bundle as a `.mcp-*` / `*-payload.json`** — the `.min.mcp.js` contents go directly in the `code` argument.
+
+Regenerate after editing `_lib.js`, any `canvas-templates/*.js`, or any `bundles/_*-runner.fragment.js`:
+
+```
+node skills/create-design-system/scripts/bundle-canvas-mcp.mjs
+```
+
+See [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md).
+
+### Debug / fallback path (only when the happy path fails)
+
+If a bundle run returns a real error and the fix needs source-level edits, open [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js), the relevant page template in [`../canvas-templates/`](../canvas-templates/), and the runner fragment in [`../canvas-templates/bundles/`](../canvas-templates/bundles/). The fallback composition is `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; await build(ctx);"` — but prefer fixing the bundle source and regenerating over hand-composing one-off payloads. [`ensureLocalVariableMapOnCtx`](../canvas-templates/_lib.js) hydrates `variableMap` inside `build(ctx)`; keep it out of inline `ctx`.
+
+**Template `ctx` shapes** (what each runner constructs inside the plugin — reference only):
+
+- **15a — [`primitives.js`](../canvas-templates/primitives.js):** `primitivesModeId`, `rows: { colorRamps: { primary|… }, space, radius, elevation, typeface, fontWeight }`.
+- **15b — [`theme.js`](../canvas-templates/theme.js):** `themeCollectionId`, `themeLightModeId`, `themeDarkModeId`, `rows: { background, border, primary, secondary, tertiary, error, component }`. `rawLiterals` (scrim/shadow) appended to `background`.
+- **15c — Layout — [`layout.js`](../canvas-templates/layout.js):** `rows: { spacing, radius }` (`resolvedPx` 9999 marks `radius/full`).
+- **15c — Text Styles — [`text-styles.js`](../canvas-templates/text-styles.js):** ordered mix of `{ type: 'category', label }` and `{ type: 'slot', tokenPath, styleId, specimenChars, sizeLine1, sizeLine2, weightLine1, weightLine2, codeSyntax, variant? }` (27 slot rows + 5 categories).
+- **15c — Effects — [`effects.js`](../canvas-templates/effects.js):** `effectsCollectionId`, `effectsLightModeId`, `effectsDarkModeId`, `rows: { shadows, shadowColor }`.
 
 ### Distribution § (MCP — bundles and source root)
 
-- **Step 15a — preferred:** one committed file, full `use_figma` → `code`: [`../canvas-templates/bundles/step-15a-primitives.mcp.js`](../canvas-templates/bundles/step-15a-primitives.mcp.js) (regenerate with [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs); details in [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md)). Rows and `ctx` (without `variableMap`) are resolved **inside** that script before `build(ctx)`.
-- **Claude Code + local plugin:** read paths from **this skill’s install directory**, not an unrelated project workspace — see [`../SKILL.md`](../SKILL.md) and [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) **Source root**.
+- **Claude Code + local plugin:** read paths from **this skill's install directory**, not an unrelated project workspace — see [`../SKILL.md`](../SKILL.md) and [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) **Source root**.
 - **Research / verification:** payload math, bundle size, and Tier notes live in [`../MCP-PAYLOAD-RESEARCH.md`](../MCP-PAYLOAD-RESEARCH.md) **Distribution §** ([§12](../MCP-PAYLOAD-RESEARCH.md#12-distribution-and-bundled-code-stable-workflow)) and [`../VERIFICATION.md`](../VERIFICATION.md).
-
-### `ctx` resolution (agent's job before each call)
-
-**Optional — `variableMap`:** Skip block **1** below when you want a smaller MCP payload; committed templates hydrate it in-plugin. Keep block **1** when debugging bindings or when not using the standard `_lib` + template bundle.
-
-```js
-// 1. variableMap — ALL local variables, path → id (optional if omitted from ctx — see _lib ensureLocalVariableMapOnCtx)
-const allVars = await figma.variables.getLocalVariablesAsync();
-const variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
-
-// 2. collection mode IDs
-const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const primColl   = collections.find(c => c.name === 'Primitives');
-const themeColl  = collections.find(c => c.name === 'Theme');
-const effectsColl= collections.find(c => c.name === 'Effects');
-const primitivesModeId = primColl?.modes[0]?.modeId;
-const themeLight  = themeColl?.modes.find(m => m.name === 'Light')?.modeId;
-const themeDark   = themeColl?.modes.find(m => m.name === 'Dark')?.modeId;
-const effectsLight= effectsColl?.modes.find(m => m.name === 'Light')?.modeId;
-const effectsDark = effectsColl?.modes.find(m => m.name === 'Dark')?.modeId;
-
-// 3. Doc/* style IDs
-const textStyles = await figma.getLocalTextStylesAsync();
-const docStyles  = {
-  Section:   textStyles.find(s => s.name === 'Doc/Section')?.id   || null,
-  TokenName: textStyles.find(s => s.name === 'Doc/TokenName')?.id || null,
-  Code:      textStyles.find(s => s.name === 'Doc/Code')?.id      || null,
-  Caption:   textStyles.find(s => s.name === 'Doc/Caption')?.id   || null,
-};
-
-// 4. rows — per-row { tokenPath, resolvedHex/resolvedPx/resolvedValue, codeSyntax: {WEB, ANDROID, iOS} }
-//    Resolved live from variableMap + valuesByMode[primitivesModeId] + variable.codeSyntax
-```
-
-**Per-template `ctx` (in addition to `pageId`, `docStyles`; `variableMap` optional — see above):**
-
-- **15a — [`primitives.js`](../canvas-templates/primitives.js):** `primitivesModeId`, `rows: { colorRamps: { primary|… }, space, radius, elevation, typeface, fontWeight }` — same shapes as the template header comment.
-- **15b — [`theme.js`](../canvas-templates/theme.js):** `themeCollectionId`, `themeLightModeId`, `themeDarkModeId`, `rows: { background, border, primary, secondary, tertiary, error, component }`. Each row: `{ tokenPath, resolvedHexLight, resolvedHexDark, aliasLight, aliasDark, codeSyntax }` (from live Theme variables + [`theme-aliases.json`](../data/theme-aliases.json) for alias targets). Include `rawLiterals` rows (e.g. scrim/shadow) in `background` when present.
-- **15c — Layout — [`layout.js`](../canvas-templates/layout.js):** `rows: { spacing: [...], radius: [...] }` with `{ tokenPath, resolvedPx, aliasPath, codeSyntax }` per [`layout-effects.json`](../data/layout-effects.json).
-- **15c — Text Styles — [`text-styles.js`](../canvas-templates/text-styles.js):** `rows` = ordered mix of `{ type: 'category', label }` and `{ type: 'slot', tokenPath, styleId, specimenChars, sizeLine1, sizeLine2, weightLine1, weightLine2, codeSyntax, variant? }` (27 slot rows + 5 categories). Resolve `styleId` from published local text-style names; `codeSyntax` from Step 7/7b.
-- **15c — Effects — [`effects.js`](../canvas-templates/effects.js):** `effectsCollectionId`, `effectsLightModeId`, `effectsDarkModeId`, `rows: { shadows: [{ tokenPath, tier, blurPx, aliasPath, codeSyntax }], shadowColor: [{ tokenPath, resolvedHexLight, resolvedHexDark, codeSyntax }] }` per [`layout-effects.json`](../data/layout-effects.json).
 
 ### No workspace scripts
 
@@ -82,7 +68,7 @@ Every page:
 
 ## Step 15a — ↳ Primitives
 
-Typically **one** `use_figma` call; use **multiple self-contained calls** if the concatenated `code` approaches the ~50k limit — [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md). Template: [`../canvas-templates/primitives.js`](../canvas-templates/primitives.js).
+**Happy path:** `Read` [`../canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) → pass contents as `use_figma` → `code`. Template source: [`../canvas-templates/primitives.js`](../canvas-templates/primitives.js).
 
 | Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
@@ -105,7 +91,7 @@ Log Canvas checklist row for 15a (10 tables).
 
 ## Step 15b — ↳ Theme
 
-Typically **one** `use_figma` call; split if needed per [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md). Template: [`../canvas-templates/theme.js`](../canvas-templates/theme.js). Resolve Theme `light`/`dark` modeId once and cache.
+**Happy path:** `Read` [`../canvas-templates/bundles/step-15b-theme.min.mcp.js`](../canvas-templates/bundles/step-15b-theme.min.mcp.js) → pass contents as `use_figma` → `code`. The runner resolves Theme Light/Dark mode IDs, walks each row's alias chain to its resolved hex per mode, and inlines scrim/shadow rawLiterals into the background group. Template source: [`../canvas-templates/theme.js`](../canvas-templates/theme.js).
 
 | Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
@@ -125,7 +111,13 @@ Log Canvas checklist row for 15b.
 
 ## Step 15c — ↳ Layout, ↳ Text Styles, ↳ Effects
 
-**Three sequential `use_figma` calls** (one self-contained script each — `_lib.js` + template + `ctx` — so payloads stay under the ~50k limit): (1) page **`↳ Layout`** + [`layout.js`](../canvas-templates/layout.js), (2) **`↳ Text Styles`** + [`text-styles.js`](../canvas-templates/text-styles.js), (3) **`↳ Effects`** + [`effects.js`](../canvas-templates/effects.js). Each template calls `setCurrentPageAsync` for its target page.
+**Happy path — three sequential `use_figma` calls**, one bundle each:
+
+1. [`../canvas-templates/bundles/step-15c-layout.min.mcp.js`](../canvas-templates/bundles/step-15c-layout.min.mcp.js) → page **`↳ Layout`** (template: [`layout.js`](../canvas-templates/layout.js))
+2. [`../canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../canvas-templates/bundles/step-15c-text-styles.min.mcp.js) → page **`↳ Text Styles`** (template: [`text-styles.js`](../canvas-templates/text-styles.js))
+3. [`../canvas-templates/bundles/step-15c-effects.min.mcp.js`](../canvas-templates/bundles/step-15c-effects.min.mcp.js) → page **`↳ Effects`** (template: [`effects.js`](../canvas-templates/effects.js))
+
+Each bundle calls `setCurrentPageAsync` for its target page in-plugin; no ctx assembly in the tool call.
 
 **Doc/* ordering (§0.4):** These styles are published at the close of Step 11. If you are here and they are absent (e.g. phases 02–04 were skipped without running the Step 11 close block), run the § 0 block below now — it is idempotent.
 

@@ -6,7 +6,7 @@
 
 **Related:** [`AGENTS.md`](../../AGENTS.md), [`.cursor/rules/mcp-inline-payloads.mdc`](../../.cursor/rules/mcp-inline-payloads.mdc), [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`VERIFICATION.md`](./VERIFICATION.md).
 
-**Distribution §** (bundled `use_figma` payloads, Claude Code / plugin **source root**, upstream RFC): **[§12 — Distribution and bundled `code`](#12-distribution-and-bundled-code-stable-workflow)**.
+**Distribution §** (bundled `use_figma` payloads, Claude Code / plugin **source root**, upstream RFC): **[§12 — Distribution and bundled `code`](#12-distribution-and-bundled-code-stable-workflow)**. **Cursor agent gotchas** (server id, staging, payload lift): **[§12.1](#121-research--automation-still-fails-while-the-bundle-is-correct)**.
 
 ---
 
@@ -149,9 +149,23 @@ Concatenating **all** page templates into **one** script is **~55k** source alon
 
 **Out of scope:** No hosted-URL / CDN tier for bundles — distribution is **plugin-shipped** artifacts plus optional **upstream MCP** enhancements.
 
-**Esbuild note:** Do not run esbuild on the combined MCP bundle as ESM when it contains top-level `await` + `return`; use **plain concat** (bundle script) or document a bundle-only minify exception — see [`canvas-templates/bundles/README.md`](./canvas-templates/bundles/README.md).
+**Esbuild note:** Do not run esbuild on the combined MCP bundle as ESM when it contains top-level `await` + `return`; use **plain concat** + the in-house strip-only minifier — see [`canvas-templates/bundles/README.md`](./canvas-templates/bundles/README.md).
 
-**15b / 15c:** Same one-file pattern when runner fragments + script support land; until then phase 07 alternate path (`_lib` + template + `JSON.stringify(ctx)`).
+**15b / 15c:** **Landed 2026-04-20.** Runner fragments shipped (`_step15b-runner.fragment.js`, `_step15c-layout-runner.fragment.js`, `_step15c-text-styles-runner.fragment.js`, `_step15c-effects-runner.fragment.js`); each Step 15 call now has a committed `.mcp.js` (readable) + `.min.mcp.js` (wire) bundle under [`canvas-templates/bundles/`](./canvas-templates/bundles/). The `.min.mcp.js` variant is the happy-path `use_figma` → `code` payload.
+
+### 12.1 Research — automation still fails while the bundle is “correct”
+
+Failures seen in **Cursor agent + Figma MCP** sessions were mostly **transport and policy**, not proof that the Plugin API script is wrong once it reaches Figma.
+
+| Failure mode | What goes wrong | Mitigation |
+|----------------|-----------------|------------|
+| **Wrong MCP server id** | Calling `use_figma` on server slug `figma` → *“MCP server does not exist”* in this project. | Use **`plugin-figma-figma`** (see project `mcps/plugin-figma-figma/SERVER_METADATA.json` or connection error text). |
+| **Repo staging policy** | Writing `skills/**/.mcp-15a-once.json` or any **`.mcp-*` / `*-payload.json`** under the repo to JSON-escape `code` for a shell → violates [`AGENTS.md`](../../AGENTS.md) (forbidden clipboard pattern), may trigger review/sandbox rejection. | **Do not** stage payloads under `skills/`. In **Claude Code**, `Read` the committed [`bundles/step-15a-primitives.mcp.js`](./canvas-templates/bundles/step-15a-primitives.mcp.js) and paste **only** into the tool argument (no parallel scratch copy). |
+| **Temp / sandbox** | Writing the same JSON to **`%TEMP%`** or similar from a shell step → *“Review cancelled or failed”* in some environments. | Same as above: rely on skill `Read` → inline `code`, or split into multiple smaller **self-contained** `use_figma` calls (phase 07), not temp files. |
+| **Agent cannot “lift” 36k chars** | Cursor `Read` of source adds **line-number prefixes**; reconstructing one giant string for `call_mcp_tool` from chat is brittle; base64 chunk reassembly across tool outputs is error-prone. | **Human or Claude Code** with file-backed `Read` of the committed bundle; or **Tier 1** server-side `bundleId` / `codePaths[]` ([RFC](./RFC-figma-mcp-bundle-transport.md)). |
+| **Mixed CRLF/LF in committed bundle** | Concat bundle had **mixed line endings** (`file` reported CRLF + LF) after Windows edits + concat — rare JS parse issues, noisy for hashing/diff. | [`bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs) now **LF-normalizes** before write; regen and commit. |
+
+**Unverified (watch for):** A stricter cap on **total MCP / chat message size** than the JSON Schema `code.maxLength` alone — if you see truncation with no explicit `maxLength` error, log payload length and host.
 
 ---
 
@@ -163,3 +177,5 @@ Concatenating **all** page templates into **one** script is **~55k** source alon
 | 2026-04-20 | Live MCP on file `uCpQaRsW4oiXW3DsC6cLZm`: variable count, `variableMap` JSON length, 15a size estimates, server id `plugin-figma-figma`; §8–§11 filled; full 15a draw not completed in-session. |
 | 2026-04-20 | **Implemented:** `ensureLocalVariableMapOnCtx` in [`canvas-templates/_lib.js`](./canvas-templates/_lib.js); all Step 15 templates await it at `build` start; phase 07, convention 16, SKILL, VERIFICATION, AGENTS, sync-design-system docs updated. MCP smoke on same file key: empty `ctx` → **268** keys after hydrate. |
 | 2026-04-20 | **Distribution:** Committed [`canvas-templates/bundles/step-15a-primitives.mcp.js`](./canvas-templates/bundles/step-15a-primitives.mcp.js), [`scripts/bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs), [`RFC-figma-mcp-bundle-transport.md`](./RFC-figma-mcp-bundle-transport.md); SKILL/16/07/AGENTS/sync-design-system §12 + bundle path; no CDN tier. |
+| 2026-04-20 | **§12.1 — Agent failures:** Documented Cursor/Figma MCP **transport** failures (wrong server id, `.mcp-*` under `skills/`, temp write sandbox, 36k inline lift). **Bundles:** `bundle-canvas-mcp.mjs` now **LF-normalizes** output; regen removes mixed CRLF/LF in `step-15a-primitives.mcp.js`. |
+| 2026-04-20 | **Min pipeline + 15b/15c bundles:** Extended [`bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs) with a strip-only minifier (state machine; preserves string/template/regex literals; never reparses as ESM). Added runner fragments for 15b Theme, 15c Layout, 15c Text Styles, 15c Effects and committed both `.mcp.js` and `.min.mcp.js` bundles for every Step 15 call. Wire sizes: 15a 25,351 / 15b 30,303 / 15c-layout 19,359 / 15c-text-styles 17,941 / 15c-effects 20,188 bytes — all well under the 50k `code` cap. Phase 07 and SKILL.md switched to single-`Read`-then-`use_figma` happy path; ambiguity branch collapsed to one `AskUserQuestion` (regenerate / docs-only / abort). Deleted loop artifact `_figma_use_payload.json` at repo root. |

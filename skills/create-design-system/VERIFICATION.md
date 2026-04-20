@@ -1,27 +1,43 @@
 # Canvas template verification notes
 
-**Distribution §:** Bundled MCP payloads, regen script, and upstream RFC context — [`MCP-PAYLOAD-RESEARCH.md`](./MCP-PAYLOAD-RESEARCH.md) **§12** ([anchor link](./MCP-PAYLOAD-RESEARCH.md#12-distribution-and-bundled-code-stable-workflow)). Phase orchestration for when to use bundles vs concat — [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) **§ Distribution § (MCP — bundles and source root)**.
+**Distribution §:** Bundled MCP payloads, regen script, and upstream RFC context — [`MCP-PAYLOAD-RESEARCH.md`](./MCP-PAYLOAD-RESEARCH.md) **§12** ([anchor link](./MCP-PAYLOAD-RESEARCH.md#12-distribution-and-bundled-code-stable-workflow)). If **Cursor** never completes a draw despite a good file, read **§12.1** (MCP server id, no `.mcp-*` staging, inline payload size). Phase orchestration — [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) **§ Distribution § (MCP — bundles and source root)**.
 
-## Payload size (source bytes, 2026)
+## Payload size — committed bundles (2026-04-20)
 
-Measured with `wc -c` on committed templates. The Figma `use_figma` `code` string is `[_lib.js] + [template] + ctx`; add a margin for `JSON.stringify(ctx)`.
+Every Step 15 canvas `use_figma` call now reads a committed bundle from [`canvas-templates/bundles/`](./canvas-templates/bundles/) and passes its contents verbatim as `code`. `ctx` is assembled **in the plugin** by the runner fragment — nothing is JSON-stringified on the wire.
 
-**`variableMap` in `ctx`:** Size is **file-dependent** (every local variable `name` → `id`). One measured Foundations file had **~11.2k characters** for `JSON.stringify(variableMap)` at **268** variables ([`MCP-PAYLOAD-RESEARCH.md`](./MCP-PAYLOAD-RESEARCH.md)). If you are near the **50k** `code` cap, measure your map or **omit `variableMap` from `ctx`** — templates call **`ensureLocalVariableMapOnCtx`** in [`canvas-templates/_lib.js`](./canvas-templates/_lib.js) and hydrate in Figma. The **static** `_lib.js` + template pair remains the largest slice for Step 15a (~30.5k source bytes before `ctx`).
+`wc -c` after `node skills/create-design-system/scripts/bundle-canvas-mcp.mjs`:
 
-| Call | `_lib.js` + template (bytes) | Under ~50k? |
-|------|------------------------------|-------------|
-| Step 15a — `primitives.js` | ~30,485 | Yes |
-| Step 15a — **bundle** `bundles/step-15a-primitives.mcp.js` (regen via [`scripts/bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs)) | **~36,079** bytes (Apr 2026; under ~50k `code` cap) | Yes |
-| Step 15b — `theme.js` | ~20,653 | Yes |
-| Step 15c — `layout.js` | ~21,156 | Yes |
-| Step 15c — `text-styles.js` | ~19,897 | Yes |
-| Step 15c — `effects.js` | ~22,807 | Yes |
+| Bundle | Readable `.mcp.js` | Minified `.min.mcp.js` (wire) | Under 50k cap? |
+|--------|--------------------:|-------------------------------:|----------------|
+| `step-15a-primitives`      | 33,290 | **25,351** | Yes |
+| `step-15b-theme`           | 36,220 | **30,303** | Yes |
+| `step-15c-layout`          | 24,895 | **19,359** | Yes |
+| `step-15c-text-styles`     | 23,545 | **17,941** | Yes |
+| `step-15c-effects`         | 26,267 | **20,188** | Yes |
 
-Re-measure after any template or fragment edit (from repo root): `wc -c skills/create-design-system/canvas-templates/bundles/step-15a-primitives.mcp.js` (or run `node skills/create-design-system/scripts/bundle-canvas-mcp.mjs` then `wc -c` on the output file).
+Bundles stay well under the ~50k `code` cap with headroom; the wire variant is what agents pass in each `use_figma` call. **`ctx.variableMap`** is never passed inline — [`ensureLocalVariableMapOnCtx`](./canvas-templates/_lib.js) hydrates inside `build(ctx)`.
 
-Concatenating **all** page templates into one script (single `use_figma`, C4-style) would approach **~55k** bytes of source alone before `ctx`, so **multi-page single sweep is not recommended** — keep **separate calls** per the phase file (15a, 15b, three for 15c).
+Re-measure after any template, runner fragment, or `_lib.js` edit:
 
-The committed **Step 15a** bundle (`bundles/step-15a-primitives.mcp.js`) is **under** a ~45k-character precautionary line in current measurements; **no minify pipeline or `ctx.batch` split** is required for 15a until that file grows materially or real files fail MCP validation — see [`MCP-PAYLOAD-RESEARCH.md`](./MCP-PAYLOAD-RESEARCH.md) §12.
+```bash
+node skills/create-design-system/scripts/bundle-canvas-mcp.mjs
+wc -c skills/create-design-system/canvas-templates/bundles/*.min.mcp.js
+```
+
+If any `.min.mcp.js` approaches **45k** bytes, audit the corresponding runner fragment for inlined data that could be trimmed. Do **not** add cross-step concatenation (single-sweep all pages in one call) — the step-per-call split is intentional.
+
+## Parse check
+
+Every minified bundle must parse under an `async () => { … }` wrapper (the Figma MCP host wraps similarly before execution). From repo root:
+
+```bash
+for f in skills/create-design-system/canvas-templates/bundles/*.min.mcp.js; do
+  node -e "const fs=require('fs');new Function('figma','return (async()=>{'+fs.readFileSync('$f','utf8')+'})();');" && echo "OK $f" || echo "FAIL $f"
+done
+```
+
+All five must print `OK`.
 
 ## Human QA
 
