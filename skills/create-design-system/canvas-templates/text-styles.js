@@ -4,7 +4,7 @@
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },
+//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
 //   docStyles: { Section, TokenName, Code, Caption },
 //   rows: Array<
 //   | { type: 'category', label: string }
@@ -30,6 +30,7 @@ const TYPO_COLUMNS = [
 ];
 
 async function build(ctx) {
+  await ensureLocalVariableMapOnCtx(ctx);
   const { pageId, variableMap, docStyles, rows } = ctx;
 
   await figma.setCurrentPageAsync(figma.root.children.find(p => p.id === pageId) || figma.currentPage);

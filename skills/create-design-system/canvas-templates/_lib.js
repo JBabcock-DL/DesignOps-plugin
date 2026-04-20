@@ -1,6 +1,8 @@
 // canvas-templates/_lib.js — shared helpers for all Step 15 canvas templates
 // §0 rules from conventions/00-gotchas.md are enforced in every helper below.
 // Agent call shape: [_lib.js source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"
+// Optional: omit ctx.variableMap to shrink MCP `code` — each page template calls
+// ensureLocalVariableMapOnCtx(ctx) first; it fills path → id from getLocalVariablesAsync() when missing or {}.
 
 // ─── Font loading ────────────────────────────────────────────────────────────
 
@@ -16,6 +18,15 @@ async function loadFonts(families) {
 }
 
 // ─── Variable helpers ────────────────────────────────────────────────────────
+
+// Hydrate ctx.variableMap inside Figma when the agent omits it (smaller JSON.stringify(ctx) for MCP).
+// No-op if variableMap is already a non-empty object (backward-compatible with full ctx).
+async function ensureLocalVariableMapOnCtx(ctx) {
+  const m = ctx.variableMap;
+  if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
+  const allVars = await figma.variables.getLocalVariablesAsync();
+  ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
+}
 
 function resolvePath(variableMap, path) {
   const id = variableMap[path];

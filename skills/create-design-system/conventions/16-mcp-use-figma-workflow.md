@@ -19,6 +19,7 @@ Do **not** improvise a parallel “generator” that ignores the templates — t
 ## `code` size and splitting
 
 - The `use_figma` schema caps **`code` at 50 000 characters**. Stay under that limit.
+- **Smaller `ctx`:** You may **omit `variableMap`** from `JSON.stringify(ctx)` when using the committed [`canvas-templates/_lib.js`](../canvas-templates/_lib.js) + page templates — `ensureLocalVariableMapOnCtx` hydrates it inside Figma before tables run. Still pass **`rows`**, collection/mode IDs, **`docStyles`**, and **`pageId`** as today.
 - **Prefer one call** when the concatenated script (plus `JSON.stringify(ctx)` if used) is safely under the cap.
 - **If too large**, use **multiple sequential `use_figma` calls**. Each call must be **self-contained**: switch to the right page, perform a **logical batch** (e.g. one table group, one color ramp set, or one page’s tables), finish with a clear return value. Do **not** depend on chaining through **repo** staging files.
 - **15c** already splits Layout / Text Styles / Effects across **three** calls in [`phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md) — follow that pattern when adding more splits.

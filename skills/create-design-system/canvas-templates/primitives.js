@@ -5,7 +5,7 @@
 // ctx shape:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },
+//   variableMap: { [tokenPath]: variableId }   // optional — _lib ensureLocalVariableMapOnCtx fills when omitted
 //   primitivesModeId: string,                    // Default mode id for Primitives collection
 //   docStyles: { Section: id, TokenName: id, Code: id, Caption: id },
 //   rows: {
@@ -19,6 +19,7 @@
 // }
 
 async function build(ctx) {
+  await ensureLocalVariableMapOnCtx(ctx);
   const { pageId, variableMap, primitivesModeId, docStyles, rows } = ctx;
 
   await figma.setCurrentPageAsync(figma.root.children.find(p => p.id === pageId) || figma.currentPage);

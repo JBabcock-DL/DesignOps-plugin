@@ -28,3 +28,7 @@ MCP comparison of a **golden** style-guide table vs a regressed one showed: **he
 ### IDE rule (Cursor)
 
 Project rule file (always on in Cursor): [`.cursor/rules/mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc)
+
+### Cursor — Figma MCP `server` identifier
+
+Cursor registers each MCP connector under a **workspace-specific** server id (see the project’s `mcps/` tree — for example `SERVER_METADATA.json` with `serverIdentifier`). The slug `figma` may **not** resolve when invoking tools; read the descriptor or follow the connection error text instead of hardcoding a name across machines or Cursor versions.

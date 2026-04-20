@@ -5,7 +5,7 @@
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },
+//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
 //   docStyles: { Section, TokenName, Code, Caption },
 //   themeCollectionId: string,
 //   themeLightModeId: string,
@@ -44,6 +44,7 @@ const THEME_GROUPS = [
 ];
 
 async function build(ctx) {
+  await ensureLocalVariableMapOnCtx(ctx);
   const {
     pageId, variableMap, docStyles,
     themeCollectionId, themeLightModeId, themeDarkModeId,

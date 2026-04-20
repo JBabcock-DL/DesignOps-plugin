@@ -6,7 +6,7 @@ This file owns: which page, which slug, which row set. Canvas rules (geometry, h
 
 Each Step 15 page uses a pre-written template from [`../canvas-templates/`](../canvas-templates/). The agent's job per page:
 
-1. Resolve live data: `{ path → variableId }` map, mode IDs, per-row `{ tokenPath, resolvedHex, codeSyntax }` manifest, Doc/\* style IDs.
+1. Resolve live data: mode IDs, per-row `{ tokenPath, resolvedHex, codeSyntax }` manifest (and related shapes per template), Doc/\* style IDs. The **`{ path → variableId }` map** may be **omitted** from `ctx`: each template calls **`ensureLocalVariableMapOnCtx`** from [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js) at the start of `build(ctx)` and fills `ctx.variableMap` from `figma.variables.getLocalVariablesAsync()` when it is missing or `{}`. Embedding the map in `ctx` remains valid (backward-compatible).
 2. Read `_lib.js` and the page template.
 3. Compose: `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"` → pass as `code` to `use_figma`.
 
@@ -14,8 +14,10 @@ No cold script generation. Column widths, cell factories, §0 rules, chrome bind
 
 ### `ctx` resolution (agent's job before each call)
 
+**Optional — `variableMap`:** Skip block **1** below when you want a smaller MCP payload; committed templates hydrate it in-plugin. Keep block **1** when debugging bindings or when not using the standard `_lib` + template bundle.
+
 ```js
-// 1. variableMap — ALL local variables, path → id
+// 1. variableMap — ALL local variables, path → id (optional if omitted from ctx — see _lib ensureLocalVariableMapOnCtx)
 const allVars = await figma.variables.getLocalVariablesAsync();
 const variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 
@@ -43,7 +45,7 @@ const docStyles  = {
 //    Resolved live from variableMap + valuesByMode[primitivesModeId] + variable.codeSyntax
 ```
 
-**Per-template `ctx` (in addition to `pageId`, `variableMap`, `docStyles`):**
+**Per-template `ctx` (in addition to `pageId`, `docStyles`; `variableMap` optional — see above):**
 
 - **15a — [`primitives.js`](../canvas-templates/primitives.js):** `primitivesModeId`, `rows: { colorRamps: { primary|… }, space, radius, elevation, typeface, fontWeight }` — same shapes as the template header comment.
 - **15b — [`theme.js`](../canvas-templates/theme.js):** `themeCollectionId`, `themeLightModeId`, `themeDarkModeId`, `rows: { background, border, primary, secondary, tertiary, error, component }`. Each row: `{ tokenPath, resolvedHexLight, resolvedHexDark, aliasLight, aliasDark, codeSyntax }` (from live Theme variables + [`theme-aliases.json`](../data/theme-aliases.json) for alias targets). Include `rawLiterals` rows (e.g. scrim/shadow) in `background` when present.

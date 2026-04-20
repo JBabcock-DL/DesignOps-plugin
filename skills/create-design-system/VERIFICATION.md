@@ -4,6 +4,8 @@
 
 Measured with `wc -c` on committed templates. The Figma `use_figma` `code` string is `[_lib.js] + [template] + ctx`; add a margin for `JSON.stringify(ctx)`.
 
+**`variableMap` in `ctx`:** Size is **file-dependent** (every local variable `name` → `id`). One measured Foundations file had **~11.2k characters** for `JSON.stringify(variableMap)` at **268** variables ([`MCP-PAYLOAD-RESEARCH.md`](./MCP-PAYLOAD-RESEARCH.md)). If you are near the **50k** `code` cap, measure your map or **omit `variableMap` from `ctx`** — templates call **`ensureLocalVariableMapOnCtx`** in [`canvas-templates/_lib.js`](./canvas-templates/_lib.js) and hydrate in Figma. The **static** `_lib.js` + template pair remains the largest slice for Step 15a (~30.5k source bytes before `ctx`).
+
 | Call | `_lib.js` + template (bytes) | Under ~50k? |
 |------|------------------------------|-------------|
 | Step 15a — `primitives.js` | ~30,485 | Yes |

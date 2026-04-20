@@ -4,7 +4,7 @@
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },
+//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
 //   docStyles: { Section, TokenName, Code, Caption },
 //   effectsCollectionId: string,
 //   effectsLightModeId: string,
@@ -49,6 +49,7 @@ const SHADOW_COLOR_COLUMNS = [
 ];
 
 async function build(ctx) {
+  await ensureLocalVariableMapOnCtx(ctx);
   const {
     pageId, variableMap, docStyles,
     effectsCollectionId, effectsLightModeId, effectsDarkModeId,

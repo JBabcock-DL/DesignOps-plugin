@@ -4,7 +4,7 @@
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },
+//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
 //   docStyles: { Section, TokenName, Code, Caption },
 //   rows: {
 //     spacing: [{ tokenPath, resolvedPx, aliasPath, codeSyntax: {WEB,ANDROID,iOS} }],
@@ -25,6 +25,7 @@ const SPACING_COLUMNS = [
 const RADIUS_COLUMNS = SPACING_COLUMNS;
 
 async function build(ctx) {
+  await ensureLocalVariableMapOnCtx(ctx);
   const { pageId, variableMap, docStyles, rows } = ctx;
 
   await figma.setCurrentPageAsync(figma.root.children.find(p => p.id === pageId) || figma.currentPage);
