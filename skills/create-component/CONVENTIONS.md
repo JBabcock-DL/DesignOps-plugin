@@ -83,6 +83,16 @@ Component pages live inside the same 1800px canvas as the style-guide pages (`�
 
 **Delete before drawing.** When redrawing, delete every node on the page **other than `_Header`** (same rule as Step 15a in `/create-design-system`). Do not leave stale specimens under the new matrix.
 
+### 2.1 — Same failure modes as the style guide (what Sonnet / Cursor must not “fix”)
+
+The **§6 `use_figma` template in [`SKILL.md`](./SKILL.md)** already bakes in the critical discipline from **create-design-system** [`SKILL.md` §0.1–§0.2](../create-design-system/SKILL.md): **`resize` before `primaryAxisSizingMode` / `counterAxisSizingMode`**, **Hug height on rows/cells before `resize(..., 1)`**, and **`text.resize(w, 1)` → `textAutoResize = 'HEIGHT'`** on every doc table cell. Agents re-implementing the page from prose (instead of copying the template) are what reproduce **1px-tall bodies** and **~10px text rails**.
+
+**Depth / effects — intentional difference from style-guide data tables:** Style-guide **`doc/table/{slug}`** roots often carry **`Effect/shadow-sm`** (one elevation on the table chrome). The **shipped component doc** does **not** assign **`effectStyleId`** to the properties table, matrix, or `doc/component/{name}` root. **Do not** “align to § G Depth” by adding **`shadow-sm`** to those frames or to **`doc/table-group/{component}/properties`** *and* the inner table — that repeats the **Token Overview** mistake (stacked shadows + shadow on the wrapping **`body`**). If product later wants a single card shadow, add it **once** on a dedicated outer wrapper only, then document the change in this file and the template.
+
+**Clearing shadows:** If you ever attach or inherit an effect style on doc chrome, clearing **`effectStyleId` alone is not enough** — also set **`node.effects = []`** on that node (Figma keeps local `DROP_SHADOW` entries otherwise). Same rule as **`/sync-design-system` 6.Canvas.9d** and **create-design-system `SKILL.md` §0.9**.
+
+**After the full tree is built**, if **`_PageContent`** or **`doc/component/{name}`** reads as clipped or too short, re-assert vertical Hug per **create-design-system `SKILL.md` §0.1** (Figma sometimes pins **`layoutSizingVertical: 'FIXED'`** after **`appendChild`**).
+
 ---
 
 ## 2.5 — Source extraction (Mode A)
@@ -457,7 +467,7 @@ Above the matrix, render a Properties table that documents the component's publi
 
 **Sum: 240 + 380 + 160 + 120 + 740 = 1640.**
 
-Follow the same hierarchy and auto-layout rules as design-system tables (see [`create-design-system/conventions/08-hierarchy-and-09-autolayout.md` §§8–9](../create-design-system/conventions/08-hierarchy-and-09-autolayout.md)): `doc/table-group/{component-name}/properties` wrapper; `doc/table/{component-name}/properties` with header + body rows; `minHeight: 64` per row; `counterAxisAlignItems: CENTER`; `textAutoResize: 'HEIGHT'` on every text node.
+Follow the same hierarchy and auto-layout rules as design-system tables (see [`create-design-system/conventions/08-hierarchy-and-09-autolayout.md` §§8–9](../create-design-system/conventions/08-hierarchy-and-09-autolayout.md)): `doc/table-group/{component-name}/properties` wrapper; `doc/table/{component-name}/properties` with header + body rows; `minHeight: 64` per row; `counterAxisAlignItems: CENTER`; `textAutoResize: 'HEIGHT'` on every text node. **Do not** copy the style-guide **`effectStyleId: Effect/shadow-sm`** treatment onto this doc table unless you deliberately change the §6 template — see **§2.1** above.
 
 Property row ordering (canonical):
 
@@ -799,6 +809,7 @@ If a design system author has already published `color/primary/hover`, `color/pr
 - [ ] **V** 5 columns (PROPERTY · TYPE · DEFAULT · REQUIRED · DESCRIPTION) summing to 1640
 - [ ] **V** Property row order: variant props → state props → content props → a11y props → escape hatches
 - [ ] **V** Every cell's text uses `Doc/Code` or `Doc/Caption`; `textAutoResize = 'HEIGHT'`
+- [ ] **V** Properties table subtree has **no** stacked doc elevation: **`effects` empty** and **no `effectStyleId`** on the table root, `body`, and row frames (unless the §6 template was intentionally updated — default is shadowless; **§2.1**)
 
 ### Doc frame — component set section (§3.2)
 - [ ] **S9.4** Section frame named `doc/component/{name}/component-set-group`, VERTICAL auto-layout, 1640 wide
