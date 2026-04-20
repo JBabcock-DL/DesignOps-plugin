@@ -12,13 +12,13 @@ Use the workspace **`serverIdentifier`** from `mcps/**/SERVER_METADATA.json` (Cu
 
 ---
 
-## 2. Transport priority
+## 2. Transport
 
 | Priority | Action |
 |----------|--------|
-| 1 | If the host supports **`codeWorkspacePath`** (or equivalent), pass the **relative path** below — see [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
-| 2 | Else: **editor `Read`** the `.min.mcp.js` file → pass the returned string **verbatim** as `use_figma` → `code`. |
+| 1 | **Editor `Read`** the `.min.mcp.js` file → pass the returned string **verbatim** as `use_figma` → `code` (only supported path in the shipping tool schema). |
 | Forbidden | Shell `cat` / `type` as the source of truth for full bundles (stdout may truncate). Repo scratch `*-payload.json` / `.mcp-*` (see [`AGENTS.md`](../../../AGENTS.md)). |
+| Do not assume | `codeWorkspacePath` or other file indirection — not in the connector schema; see withdrawn [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
 
 ---
 
@@ -50,14 +50,14 @@ Regenerate all bundles after editing templates: `node skills/create-design-syste
 ## 5. Do not use in MCP `use_figma` scripts
 
 - **`figma.clientStorage`** multi-part stitching ([`AGENT-HANDOFF-ISSUES.md`](../upstream/AGENT-HANDOFF-ISSUES.md) §1).
-- **`fetch`** to load bundle source from a URL ([`../upstream/MCP-USE-FIGMA-BUNDLE-MRE.md`](../upstream/MCP-USE-FIGMA-BUNDLE-MRE.md)).
+- **`fetch`** to load bundle source from a URL (bundles must be committed and read from disk — see [`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md)).
 - Base64 / `atob` wrappers unless the host is verified to support them ([`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md) § MCP host constraints).
 
 ---
 
 ## 6. `fileKey`
 
-Always from the designer at runtime (URL, `--file-key`, handoff). Never commit customer file keys into docs or issues ([`../upstream/MCP-USE-FIGMA-BUNDLE-MRE.md`](../upstream/MCP-USE-FIGMA-BUNDLE-MRE.md)).
+Always from the designer at runtime (URL, `--file-key`, handoff). Never commit customer file keys into docs or issues (see [`upstream/AGENT-HANDOFF-ISSUES.md`](../upstream/AGENT-HANDOFF-ISSUES.md) §6).
 
 ---
 

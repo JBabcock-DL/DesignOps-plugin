@@ -1,7 +1,7 @@
 
 ## Step 17 — Populate Token Overview
 
-**Happy path (MCP):** `Read` [`../canvas-templates/bundles/step-17-token-overview.min.mcp.js`](../canvas-templates/bundles/step-17-token-overview.min.mcp.js) → pass **verbatim** as `use_figma` → `code` (plus runtime `fileKey`, `description`, `skillNames: "figma-use"`), or use **`codeWorkspacePath`** when the host supports it ([`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md)). Regenerate bundles after editing [`../canvas-templates/token-overview.js`](../canvas-templates/token-overview.js): `node skills/create-design-system/scripts/bundle-canvas-mcp.mjs`. Transport + bundle index: [`../conventions/17-table-redraw-runbook.md`](../conventions/17-table-redraw-runbook.md).
+**Happy path (MCP):** `Read` [`../canvas-templates/bundles/step-17-token-overview.min.mcp.js`](../canvas-templates/bundles/step-17-token-overview.min.mcp.js) → pass **verbatim** as `use_figma` → `code` (plus runtime `fileKey`, `description`, `skillNames: "figma-use"`). Regenerate bundles after editing [`../canvas-templates/token-overview.js`](../canvas-templates/token-overview.js): `node skills/create-design-system/scripts/bundle-canvas-mcp.mjs`. Transport + bundle index: [`../conventions/17-table-redraw-runbook.md`](../conventions/17-table-redraw-runbook.md).
 
 Data reference: [`../data/platform-mapping-rows.json`](../data/platform-mapping-rows.json) (minimum row set + column widths; mirrored as `STEP17_MIN_PLATFORM_ROWS` in `token-overview.js`). §0 rules apply — see [`../conventions/00-gotchas.md`](../conventions/00-gotchas.md).
 

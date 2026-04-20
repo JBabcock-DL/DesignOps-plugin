@@ -32,15 +32,15 @@ Do **not** improvise a parallel “generator” that ignores the templates — t
 
 | Priority | Mechanism | Notes |
 |----------|-----------|--------|
-| **1 — Preferred when supported** | MCP host reads an **allow-listed file path** and supplies bytes as `code` (see [`RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) Option D). | Avoids giant inline strings and shell truncation; same bytes as committed `.min.mcp.js`. |
-| **2 — Today** | Editor **`Read`** the committed bundle → pass **verbatim** as inline `code`. | Do **not** pipe the full bundle through shell `cat` / `type` and copy from terminal output — some UIs **truncate** long stdout, corrupting `code`. |
-| **3 — Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
+| **1 — Supported** | Editor **`Read`** the committed `.min.mcp.js` → pass **verbatim** as inline `code`. | This is how the shipping `use_figma` schema works (~50k cap). Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
+| **2 — Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
+| **3 — Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema; see withdrawn note in [`RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
 
 ## Troubleshooting: truncated or invalid `code`
 
 | Symptom | Likely cause | Fix |
 |---------|----------------|-----|
-| Figma parse error or bizarre early failure right after a “successful” shell dump | **Truncated** bundle copied from capped terminal output | `Read` the `.min.mcp.js` (or use host file path when shipped); never use full-file `cat` as source of truth. |
+| Figma parse error or bizarre early failure right after a “successful” shell dump | **Truncated** bundle copied from capped terminal output | `Read` the `.min.mcp.js`; never use full-file `cat` as source of truth. |
 | `MCP server does not exist` | Wrong server id in Cursor | Use workspace `mcps/**/SERVER_METADATA.json` `serverIdentifier` (often `plugin-figma-figma`), not the slug `figma`. |
 | Payload over ~50k | Bundle + extras over schema cap | Regen min bundle; split per phase 07; omit inline `variableMap` when using `_lib` + `ensureLocalVariableMapOnCtx`. |
 
@@ -79,5 +79,5 @@ Each `use_figma` invocation should be able to run **alone**: imports from the sa
 | §0 table/text/swatch rules | [`00-gotchas.md`](./00-gotchas.md), [`SKILL.md`](../SKILL.md) §0 |
 | Repo-wide inline MCP payloads | [`AGENTS.md`](../../../AGENTS.md), [`mcp-inline-payloads.mdc`](../../../.cursor/rules/mcp-inline-payloads.mdc) |
 | Bundle regen + esbuild caveat | [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md), [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs) |
-| Upstream bundle transport RFC (draft) | [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) |
+| Withdrawn file-backed transport stub (historical) | [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) |
 | Table redraw bundle paths + transport checklist | [`17-table-redraw-runbook.md`](./17-table-redraw-runbook.md) |

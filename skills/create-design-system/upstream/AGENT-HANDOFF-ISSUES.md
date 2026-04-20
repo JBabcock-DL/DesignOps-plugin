@@ -2,7 +2,7 @@
 
 Use this list to spin up another agent on **create-design-system** canvas steps (especially **15a–15c**), **bundle transport**, and **`use_figma`** reliability.
 
-**Related docs:** [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) · [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) · [`../phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md) · [DesignOps-plugin#4](https://github.com/JBabcock-DL/DesignOps-plugin/issues/4) · [`MCP-USE-FIGMA-BUNDLE-MRE.md`](./MCP-USE-FIGMA-BUNDLE-MRE.md)
+**Related docs:** [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) (withdrawn stub) · [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) · [`../phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md) · [`README.md`](./README.md)
 
 ---
 
@@ -10,7 +10,7 @@ Use this list to spin up another agent on **create-design-system** canvas steps 
 
 | Issue | Symptom | Notes / fix |
 |--------|---------|-------------|
-| **`figma.clientStorage.setAsync` / `getAsync` unsupported** | Error like `clientStorage.setAsync is not yet supported` (or similar) when chunking large scripts via storage. | Do **not** use multi-part uploads through `clientStorage` for `use_figma` in this environment. Prefer one self-contained `code` string or file-backed transport (RFC Option D). See [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) § MCP host constraints. |
+| **`figma.clientStorage.setAsync` / `getAsync` unsupported** | Error like `clientStorage.setAsync is not yet supported` (or similar) when chunking large scripts via storage. | Do **not** use multi-part uploads through `clientStorage` for `use_figma` in this environment. Prefer one self-contained `code` string (from **`Read`** of the committed `.min.mcp.js`). See [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) § MCP host constraints. |
 | **`loadAllPagesAsync` not available** | Runtime error: `loadAllPagesAsync` is not a supported API. | Not part of the Plugin API surface used here; use `figma.root.children` / `setCurrentPageAsync` per docs. |
 | **`figma.notify` unsupported** | Throws "not implemented" | Per **figma-use** skill — use `return` for output, not `notify`. |
 | **`getPluginData` / `setPluginData` unsupported** | Documented as unsupported in `use_figma` | Use `getSharedPluginData` / `setSharedPluginData` or return IDs from the script. |
@@ -22,7 +22,7 @@ Use this list to spin up another agent on **create-design-system** canvas steps 
 | Issue | Symptom | Notes / fix |
 |--------|---------|-------------|
 | **`use_figma` `code` max length** | Rejection or truncation if over schema cap (~50 000 chars). | Regenerate min bundles; split steps (15c = three calls: layout, text styles, effects). See phase 07. |
-| **Large inline `code` in `call_mcp_tool`** | Agent struggles to pass ~18–25k characters in one tool invocation; oscillation between temp JSON, base64, etc. | **Intended happy path:** `Read` committed `.min.mcp.js` → pass **verbatim** as `code` (no shell `cat`). **Upstream fix:** RFC Option D (`codeWorkspacePath` / allow-listed file). |
+| **Large inline `code` in `call_mcp_tool`** | Agent struggles to pass ~18–25k characters in one tool invocation; oscillation between temp JSON, base64, etc. | **Happy path:** `Read` committed `.min.mcp.js` → pass **verbatim** as `code` (no shell `cat`). Do **not** assume a file-path MCP parameter — it is not in the shipping schema. |
 | **Shell stdout truncation** | Bundle corrupted when copied from `cat` / `type` / long `node -e` output. | Never use terminal dump as source of truth for full bundle; use editor **`Read`** on the file. |
 | **Base64-wrapped bundles + `atob` / `TextDecoder` / `AsyncFunction`** | Extra complexity; possible host incompatibilities. | Conventions prefer **plain UTF-8 source** from repo; avoid decode wrappers unless host is verified. |
 
@@ -69,10 +69,10 @@ Use this list to spin up another agent on **create-design-system** canvas steps 
 
 ## 7. Success criteria for the next agent
 
-1. **One `Read`** per bundle (or **file-backed `code`** once Option D exists) — **no** shell-sourced bundle bytes.
+1. **One `Read`** per bundle — **no** shell-sourced bundle bytes.
 2. **One `use_figma` per bundle** for happy path; **no** `clientStorage` stitching.
 3. Return payload includes **`ok`**, **`step`**, **`tableGroups`** / **`rowCount`** as defined in bundle; verify on canvas + [`../conventions/14-audit.md`](../conventions/14-audit.md) where applicable.
-4. If inline transport remains impossible in the host, **document** failure mode and pursue **Option D** or **plugin-side runner** (see conversation redesign), rather than new encodings.
+4. If the host cannot pass the full string into `call_mcp_tool`, **document** the failure mode (host/tool limit) rather than inventing new encodings; a **plugin-side runner** remains a product direction outside this doc.
 
 ---
 

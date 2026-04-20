@@ -18,11 +18,9 @@ If you accidentally create a staging file, **delete it** before finishing; the d
 
 ### Host vs agent transport (Figma `use_figma`)
 
-**Preferred (when supported):** If the MCP host or Figma connector adds **file-backed `code`** (e.g. an allow-listed workspace or skill-root path resolved to UTF-8 bytes server-side), use that so the full bundle never transits through truncated chat or shell output.
+**Supported path:** Put the committed **`.min.mcp.js`** bytes in the tool’s inline **`code`** argument. Use editor **`Read`** on the bundle file (or any host path that returns the **full** file without truncation), then pass that string to `use_figma`. Do **not** use shell `cat` / `type` of the full bundle as the source of truth when output may be **length-capped** (silent truncation → broken script). The shipping Figma MCP schema has **no** `codeWorkspacePath` / file indirection — do not assume one exists.
 
-**Today (fallback):** Put the committed **`.min.mcp.js`** bytes in the tool’s inline **`code`** argument using a **non-truncated** path — typically editor **`Read`** of the bundle file, then pass the result to `use_figma`. Do **not** use shell `cat` / `type` of the full bundle as the source of truth when tool output may be **length-capped** in the UI (silent truncation → broken script).
-
-**Do not loosen** the no-staging-files rule for ad-hoc repo scratch files; committed bundles under [`skills/create-design-system/canvas-templates/bundles/`](skills/create-design-system/canvas-templates/bundles/) remain the canonical artifact. Upstream request and copy-paste issue text: [`skills/create-design-system/RFC-figma-mcp-bundle-transport.md`](skills/create-design-system/RFC-figma-mcp-bundle-transport.md).
+**Do not loosen** the no-staging-files rule for ad-hoc repo scratch files; committed bundles under [`skills/create-design-system/canvas-templates/bundles/`](skills/create-design-system/canvas-templates/bundles/) remain the canonical artifact. Historical note on withdrawn file-backed proposals: [`skills/create-design-system/RFC-figma-mcp-bundle-transport.md`](skills/create-design-system/RFC-figma-mcp-bundle-transport.md).
 
 ### Where this is spelled out for canvas
 
