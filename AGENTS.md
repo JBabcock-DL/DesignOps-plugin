@@ -16,6 +16,14 @@ If you accidentally create a staging file, **delete it** before finishing; the d
 
 **If you are tempted to stage a payload because the inline `code` arg feels too big:** stop and `Read` the committed **`.min.mcp.js`** variant of the bundle (e.g. [`skills/create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js`](skills/create-design-system/canvas-templates/bundles/step-15a-primitives.min.mcp.js)) — that is the wire-sized payload the tool expects. Do **not** create a smaller clipboard file as a workaround; retry the MCP call with the minified bundle instead.
 
+### Host vs agent transport (Figma `use_figma`)
+
+**Preferred (when supported):** If the MCP host or Figma connector adds **file-backed `code`** (e.g. an allow-listed workspace or skill-root path resolved to UTF-8 bytes server-side), use that so the full bundle never transits through truncated chat or shell output.
+
+**Today (fallback):** Put the committed **`.min.mcp.js`** bytes in the tool’s inline **`code`** argument using a **non-truncated** path — typically editor **`Read`** of the bundle file, then pass the result to `use_figma`. Do **not** use shell `cat` / `type` of the full bundle as the source of truth when tool output may be **length-capped** in the UI (silent truncation → broken script).
+
+**Do not loosen** the no-staging-files rule for ad-hoc repo scratch files; committed bundles under [`skills/create-design-system/canvas-templates/bundles/`](skills/create-design-system/canvas-templates/bundles/) remain the canonical artifact. Upstream request and copy-paste issue text: [`skills/create-design-system/RFC-figma-mcp-bundle-transport.md`](skills/create-design-system/RFC-figma-mcp-bundle-transport.md).
+
 ### Where this is spelled out for canvas
 
 - [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md) — read templates/data, plain `code`, ~50k cap, split calls, MCP host limits

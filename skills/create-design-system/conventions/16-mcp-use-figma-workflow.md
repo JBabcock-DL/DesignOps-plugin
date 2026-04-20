@@ -22,6 +22,24 @@ Do **not** improvise a parallel “generator” that ignores the templates — t
 
 ---
 
+## Host vs agent transport
+
+| Priority | Mechanism | Notes |
+|----------|-----------|--------|
+| **1 — Preferred when supported** | MCP host reads an **allow-listed file path** and supplies bytes as `code` (see [`RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) Option D). | Avoids giant inline strings and shell truncation; same bytes as committed `.min.mcp.js`. |
+| **2 — Today** | Editor **`Read`** the committed bundle → pass **verbatim** as inline `code`. | Do **not** pipe the full bundle through shell `cat` / `type` and copy from terminal output — some UIs **truncate** long stdout, corrupting `code`. |
+| **3 — Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
+
+## Troubleshooting: truncated or invalid `code`
+
+| Symptom | Likely cause | Fix |
+|---------|----------------|-----|
+| Figma parse error or bizarre early failure right after a “successful” shell dump | **Truncated** bundle copied from capped terminal output | `Read` the `.min.mcp.js` (or use host file path when shipped); never use full-file `cat` as source of truth. |
+| `MCP server does not exist` | Wrong server id in Cursor | Use workspace `mcps/**/SERVER_METADATA.json` `serverIdentifier` (often `plugin-figma-figma`), not the slug `figma`. |
+| Payload over ~50k | Bundle + extras over schema cap | Regen min bundle; split per phase 07; omit inline `variableMap` when using `_lib` + `ensureLocalVariableMapOnCtx`. |
+
+---
+
 ## `code` size and splitting
 
 - The `use_figma` schema caps **`code` at 50 000 characters**. Stay under that limit.
