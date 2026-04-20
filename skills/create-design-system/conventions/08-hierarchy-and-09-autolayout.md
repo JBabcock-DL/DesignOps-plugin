@@ -1,3 +1,5 @@
+> **Edit-time reference for `canvas-templates/*.js` — not a runtime read for `/create-design-system`.** Rules from this file are baked into `_lib.js` helpers and `buildTable()`. Read this when editing templates.
+
 # 8. Table component hierarchy (every table, every page)
 
 Every table on every style-guide page uses the **same** parent chain. No orphan cells, no direct-child rows on `_PageContent`.

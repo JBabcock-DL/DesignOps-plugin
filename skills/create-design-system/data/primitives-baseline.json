@@ -1,0 +1,78 @@
+{
+  "$schema": "Primitives collection — Step 5. Raw platform-agnostic values. Ramps use 5 hues × 11 stops (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950) interpolated from the 500 anchor via Tailwind lightness curve.",
+  "collection": "Primitives",
+  "baselineAnchors": {
+    "$note": "Material 3 static baseline seed hues. Use when THEME_SOURCE = baseline.",
+    "primary":   "#6750A4",
+    "secondary": "#625B71",
+    "tertiary":  "#7D5260",
+    "error":     "#B3261E",
+    "neutral":   "#49454F"
+  },
+  "rampStops": [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950],
+  "rampNames": ["primary", "secondary", "tertiary", "error", "neutral"],
+  "spacing": {
+    "basePxDefault": 4,
+    "scale": [
+      { "path": "Space/100",  "multiplier": 1  },
+      { "path": "Space/200",  "multiplier": 2  },
+      { "path": "Space/300",  "multiplier": 3  },
+      { "path": "Space/400",  "multiplier": 4  },
+      { "path": "Space/500",  "multiplier": 5  },
+      { "path": "Space/600",  "multiplier": 6  },
+      { "path": "Space/700",  "multiplier": 7  },
+      { "path": "Space/800",  "multiplier": 8  },
+      { "path": "Space/900",  "multiplier": 9  },
+      { "path": "Space/1000", "multiplier": 10 },
+      { "path": "Space/1100", "multiplier": 11 },
+      { "path": "Space/1200", "multiplier": 12 },
+      { "path": "Space/1600", "multiplier": 16 },
+      { "path": "Space/2000", "multiplier": 20 },
+      { "path": "Space/2400", "multiplier": 24 }
+    ]
+  },
+  "radius": [
+    { "path": "Corner/None",        "value": 0,    "fromBase": null },
+    { "path": "Corner/Extra-small", "value": null, "fromBase": 1 },
+    { "path": "Corner/Small",       "value": null, "fromBase": 2 },
+    { "path": "Corner/Medium",      "value": null, "fromBase": 3 },
+    { "path": "Corner/Large",       "value": null, "fromBase": 4 },
+    { "path": "Corner/Extra-large", "value": 28,   "fromBase": null },
+    { "path": "Corner/Full",        "value": 9999, "fromBase": null }
+  ],
+  "elevation": [
+    { "path": "elevation/100",  "type": "FLOAT", "value": 1  },
+    { "path": "elevation/200",  "type": "FLOAT", "value": 2  },
+    { "path": "elevation/400",  "type": "FLOAT", "value": 4  },
+    { "path": "elevation/800",  "type": "FLOAT", "value": 8  },
+    { "path": "elevation/1600", "type": "FLOAT", "value": 16 }
+  ],
+  "typeface": [
+    { "path": "typeface/display", "type": "STRING", "sourceField": "displayFamily" },
+    { "path": "typeface/body",    "type": "STRING", "sourceField": "bodyFamily" }
+  ],
+  "fontWeight": [
+    { "path": "font/weight/medium", "type": "FLOAT", "value": 500, "usedBy": "Body/*/emphasis/font-weight alias target (§7b)" }
+  ],
+  "codeSyntaxRules": {
+    "derivation": "Strip the collection name, join path segments with -, lowercase → WEB var(--result).",
+    "WEB":     "var(--{kebab-path})",
+    "ANDROID": "same as WEB without var(--/) wrapper — kebab-case throughout",
+    "iOS":     "leading dot + PascalCase domain segment (Palette / Space / Corner / Elevation / Typeface / Font.weight) + lowercase path. iOS splits hyphens into dots (never camelCase): e.g. Extra-small → extra.small.",
+    "examples": [
+      { "path": "color/primary/500", "WEB": "var(--color-primary-500)", "ANDROID": "color-primary-500", "iOS": ".Palette.primary.500" },
+      { "path": "Space/400",         "WEB": "var(--space-400)",         "ANDROID": "space-400",         "iOS": ".Space.400" },
+      { "path": "Corner/Medium",     "WEB": "var(--corner-medium)",     "ANDROID": "corner-medium",     "iOS": ".Corner.medium" },
+      { "path": "Corner/Extra-small","WEB": "var(--corner-extra-small)","ANDROID": "corner-extra-small","iOS": ".Corner.extra.small" },
+      { "path": "elevation/400",     "WEB": "var(--elevation-400)",     "ANDROID": "elevation-400",     "iOS": ".Elevation.400" },
+      { "path": "typeface/display",  "WEB": "var(--typeface-display)",  "ANDROID": "typeface-display", "iOS": ".Typeface.display" },
+      { "path": "typeface/body",     "WEB": "var(--typeface-body)",     "ANDROID": "typeface-body",    "iOS": ".Typeface.body" },
+      { "path": "font/weight/medium","WEB": "var(--font-weight-medium)","ANDROID": "font-weight-medium","iOS": ".Font.weight.medium" }
+    ],
+    "notes": [
+      "iOS paths put a period between every word — kebab hyphens become dots, never camelCase.",
+      "font/weight/medium iOS is .Font.weight.medium (not .FontWeight.medium).",
+      "In Baseline mode always emit full color/tertiary/* ramps; do not alias tertiary to secondary."
+    ]
+  }
+}

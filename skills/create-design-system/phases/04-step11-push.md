@@ -152,6 +152,31 @@ Stop before the next collection. **AskUserQuestion**: retry / abort / skip with 
 
 ---
 
+## Step 11 close — publish Doc/* text styles + Effect/shadow-* (§0.4)
+
+After all five collection passes succeed, run this once via `use_figma` so 15a/15b can bind `textStyleId`/`effectStyleId` on their first pass.
+
+```
+figma.getLocalTextStylesAsync() / figma.getLocalEffectStylesAsync(); loadFontAsync for every fontName.
+
+1. Doc/Section, Doc/TokenName, Doc/Code, Doc/Caption — find or createTextStyle(); bind to Typography mode 100
+   variables (Headline/LG/*, Label/LG/*, Label/SM/*, Body/SM/* or Label/MD/*) via setBoundVariable;
+   fall back to resolved literals from mode 100.
+
+2. Slot text styles (15 base + 12 body variants = 27) — find or create per slot; bind font-size, font-family,
+   font-weight, line-height (Typography · mode 100). Body variant naming: Body/LG/regular etc.
+   Body variant bindings: emphasis → fontName.style='Medium'; italic → 'Italic' (warn if missing);
+   link → textDecoration='UNDERLINE'; strikethrough → textDecoration='STRIKETHROUGH'.
+   Text styles do not carry fill.
+
+3. Effect styles — for sm, md, lg, xl, 2xl: find or create Effect/shadow-{tier} with one DROP_SHADOW from
+   resolved shadow/color + shadow/{tier}/blur (Effects · Light). Remove legacy duplicates.
+```
+
+Log: `Doc/* published · N text styles · Effect/shadow-* published · M styles`
+
+---
+
 ## Step 12 handoff
 
-When all five passes succeed (checklist complete), continue to **Step 12** in the main skill — verification logic is unchanged; confirm `codeSyntax` spot-checks against live file state.
+When all five passes succeed and Doc/* + Effect styles are published, continue to **Step 12** — verification logic is unchanged; confirm `codeSyntax` spot-checks against live file state.

@@ -1,0 +1,76 @@
+{
+  "$schema": "Typography collection — Step 7 / 7b. 15 base slots + 12 body variants = 27 text styles total. Each slot has 4 variables (font-family, font-size, font-weight, line-height). 8 modes: 85, 100, 110, 120, 130, 150, 175, 200.",
+  "collection": "Typography",
+  "modes": ["85", "100", "110", "120", "130", "150", "175", "200"],
+  "baseMode": "100",
+  "properties": ["font-family", "font-size", "font-weight", "line-height"],
+  "fontFamilyAliases": {
+    "Display": "typeface/display",
+    "Headline": "typeface/display",
+    "Title": "typeface/display",
+    "Body": "typeface/body",
+    "Label": "typeface/body"
+  },
+  "baseSlots": [
+    { "slot": "Display/LG",  "fontSize": 57, "fontWeight": 400, "lineHeight": 64 },
+    { "slot": "Display/MD",  "fontSize": 45, "fontWeight": 400, "lineHeight": 52 },
+    { "slot": "Display/SM",  "fontSize": 36, "fontWeight": 400, "lineHeight": 44 },
+    { "slot": "Headline/LG", "fontSize": 32, "fontWeight": 400, "lineHeight": 40 },
+    { "slot": "Headline/MD", "fontSize": 28, "fontWeight": 400, "lineHeight": 36 },
+    { "slot": "Headline/SM", "fontSize": 24, "fontWeight": 400, "lineHeight": 32 },
+    { "slot": "Title/LG",    "fontSize": 22, "fontWeight": 400, "lineHeight": 28 },
+    { "slot": "Title/MD",    "fontSize": 16, "fontWeight": 500, "lineHeight": 24 },
+    { "slot": "Title/SM",    "fontSize": 14, "fontWeight": 500, "lineHeight": 20 },
+    { "slot": "Body/LG",     "fontSize": 16, "fontWeight": 400, "lineHeight": 24 },
+    { "slot": "Body/MD",     "fontSize": 14, "fontWeight": 400, "lineHeight": 20 },
+    { "slot": "Body/SM",     "fontSize": 12, "fontWeight": 400, "lineHeight": 16 },
+    { "slot": "Label/LG",    "fontSize": 14, "fontWeight": 500, "lineHeight": 20 },
+    { "slot": "Label/MD",    "fontSize": 12, "fontWeight": 500, "lineHeight": 16 },
+    { "slot": "Label/SM",    "fontSize": 11, "fontWeight": 500, "lineHeight": 16 }
+  ],
+  "scaleRules": {
+    "fontFamilyAndWeight": "identical across all 8 modes — do not scale",
+    "fontSizeAndLineHeight": "scaleFactor = mode / 100. if baseSize < 24 OR scaleFactor <= 1.3: scaledSize = round(baseSize * scaleFactor); else: scaledSize = round(baseSize * sqrt(scaleFactor)) (Android 14 nonlinear behavior for large display text at high scale). Round to nearest integer."
+  },
+  "bodyVariants": {
+    "textStyleNamingRule": "Base body text styles are Body/LG/regular, Body/MD/regular, Body/SM/regular (nested inside the size folder with the 4 variants). Variable paths stay Body/LG/font-size etc.",
+    "variants": [
+      { "variant": "emphasis",      "fontNameStyle": "Medium",  "textDecoration": "NONE",          "weightAlias": "font/weight/medium",    "textFillBinding": null,                             "italicFallback": null },
+      { "variant": "italic",        "fontNameStyle": "Italic",  "textDecoration": "NONE",          "weightAlias": "Body/{size}/font-weight","textFillBinding": null,                             "italicFallback": "fall back to Regular + warn when Italic face missing" },
+      { "variant": "link",          "fontNameStyle": "Regular", "textDecoration": "UNDERLINE",     "weightAlias": "Body/{size}/font-weight","textFillBinding": "color/primary/default",         "italicFallback": null },
+      { "variant": "strikethrough", "fontNameStyle": "Regular", "textDecoration": "STRIKETHROUGH", "weightAlias": "Body/{size}/font-weight","textFillBinding": "color/background/content-muted", "italicFallback": null }
+    ],
+    "sizes": ["LG", "MD", "SM"],
+    "variableAliasRules": {
+      "font-family": "typeface/body (same Primitive every variant)",
+      "font-size":   "aliases Body/{size}/font-size (base), so size scales in lock-step across all 8 modes",
+      "line-height": "aliases Body/{size}/line-height (same lock-step cascade)",
+      "font-weight": "emphasis → font/weight/medium (500); italic/link/strikethrough → Body/{size}/font-weight (base)"
+    }
+  },
+  "codeSyntaxRules": {
+    "WEB":     "var(--{slot-path-kebab}-{property-kebab}) — e.g. var(--display-lg-font-size), var(--body-lg-emphasis-font-size)",
+    "ANDROID": "same as WEB without var(--/) wrapper — kebab-case throughout",
+    "iOS":     ".Typography.{category}.{size}.{property-dot-split} — category = first segment lowercased, size = second segment lowercased, property splits hyphens to dots (font-size → font.size). Example: Display/LG/font-size → .Typography.display.lg.font.size. Never camelCase."
+  },
+  "tokensCssSemanticAliases": {
+    "$note": "Step 13b emits per-property semantic aliases in tokens.css. Maps M3 Typography slots to HTML-oriented names.",
+    "mappings": [
+      { "semantic": "--text-display-lg-*", "from": "Display/LG/*", "use": "Largest marketing / hero display" },
+      { "semantic": "--text-display-md-*", "from": "Display/MD/*", "use": "Large display" },
+      { "semantic": "--text-display-sm-*", "from": "Display/SM/*", "use": "Compact display" },
+      { "semantic": "--text-h1-*",         "from": "Headline/LG/*", "use": "Page title — H1" },
+      { "semantic": "--text-h2-*",         "from": "Headline/MD/*", "use": "Major section — H2" },
+      { "semantic": "--text-h3-*",         "from": "Headline/SM/*", "use": "Subsection — H3" },
+      { "semantic": "--text-h4-*",         "from": "Title/LG/*",    "use": "Component / card titles — H4" },
+      { "semantic": "--text-h5-*",         "from": "Title/MD/*",    "use": "List group headers — H5" },
+      { "semantic": "--text-h6-*",         "from": "Title/SM/*",    "use": "Dense UI titles — H6" },
+      { "semantic": "--text-body-lg-*",    "from": "Body/LG/*",     "use": "Lead / intro paragraph" },
+      { "semantic": "--text-body-*",       "from": "Body/MD/*",     "use": "Default long-form body" },
+      { "semantic": "--text-body-sm-*",    "from": "Body/SM/*",     "use": "Secondary dense body" },
+      { "semantic": "--text-label-*",      "from": "Label/LG/*",    "use": "Prominent UI label" },
+      { "semantic": "--text-caption-*",    "from": "Label/MD/*",    "use": "Helper text, caption, metadata" },
+      { "semantic": "--text-small-*",      "from": "Label/SM/*",    "use": "Fine print, legal, smallest UI" }
+    ]
+  }
+}

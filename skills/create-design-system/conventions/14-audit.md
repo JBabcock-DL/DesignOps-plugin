@@ -1,3 +1,5 @@
+> **Edit-time reference for verifying canvas output — not a runtime read for `/create-design-system` on every turn.** Use when auditing after `use_figma` or editing [`canvas-templates/`](../canvas-templates/).
+
 # 14. Audit checklist before committing canvas work
 
 ## Variables & codeSyntax

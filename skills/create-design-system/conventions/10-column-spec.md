@@ -1,3 +1,5 @@
+> **Edit-time reference for `canvas-templates/*.js` — not a runtime read for `/create-design-system`.** Column widths live in [`column-widths.json`](./column-widths.json) and are baked into each template. Read this when editing templates.
+
 # 10. Column specs per page (every set sums to 1640)
 
 Structured widths also live in [`column-widths.json`](./column-widths.json) for quick lookup — read JSON first when you only need numbers; keep this file for cell-pattern notes.

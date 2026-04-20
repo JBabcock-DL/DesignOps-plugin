@@ -10,12 +10,13 @@ When a tool accepts an **inline** argument (e.g. Figma **`use_figma`** → `code
 2. If the payload is too large for one call, split work across **multiple sequential invocations**, each with a **fresh, self-contained** payload.
 3. **Do not** create files in this repo **only** to hold, minify, bundle, or JSON-escape that payload before calling MCP. Examples of disallowed throwaways: `.mcp-*`, `_mcp-*`, `*-once.js`, `*-payload.json`, `_mcp-args*.json`, `_tmp*`, or scratch folders under `skills/` used purely as a clipboard for tool input. Shell snippets whose only job is writing those files are the same anti-pattern.
 
-**Exception:** When a skill document **explicitly** names a **committed** path to read (e.g. `skills/new-project/phases/*.md` fenced blocks, `skills/create-component/templates/*.figma.js`), follow it. Those files are maintained skill artifacts — do **not** mirror them into a parallel `.mcp-*` copy “for convenience.”
+**Exception:** When a skill document **explicitly** names a **committed** path to read (e.g. `skills/new-project/phases/*.md` fenced blocks, `skills/create-component/templates/*.figma.js`, `skills/create-design-system/canvas-templates/*.js`), follow it. Those files are maintained skill artifacts — do **not** mirror them into a parallel `.mcp-*` copy “for convenience.”
 
 If you accidentally create a staging file, **delete it** before finishing; the deliverable is tool/Figma state, not extra repo noise.
 
 ### Where this is spelled out for canvas
 
+- [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md) — read templates/data, plain `code`, ~50k cap, split calls, MCP host limits
 - [`skills/create-design-system/phases/07-steps15a-15c.md`](skills/create-design-system/phases/07-steps15a-15c.md) — § *Agent-driven only — no workspace scripts*
 - [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md) — Canvas (Steps 15a–17)
 - [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) — canvas redraw reliability bullet

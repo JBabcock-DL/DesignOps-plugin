@@ -19,7 +19,7 @@ When a tool accepts an **inline** argument (body, `code`, JSON blob, etc.):
 
 ## Exception (committed skill artifacts)
 
-When **`SKILL.md` or a phase file explicitly points** at a **committed** path in this repo (e.g. `skills/new-project/phases/*.md` fenced `javascript` blocks, `skills/create-component/templates/*.figma.js`), **read that file** and use its contents in the tool call. Do **not** duplicate that content into a parallel `.mcp-*` “staging” copy.
+When **`SKILL.md` or a phase file explicitly points** at a **committed** path in this repo (e.g. `skills/new-project/phases/*.md` fenced `javascript` blocks, `skills/create-component/templates/*.figma.js`, `skills/create-design-system/canvas-templates/*.js`), **read that file** and use its contents in the tool call. Do **not** duplicate that content into a parallel `.mcp-*` “staging” copy.
 
 ## Rationale
 
@@ -27,4 +27,8 @@ The deliverable is **remote/tool state** (Figma file, published mappings, etc.),
 
 ## Canonical detail (canvas)
 
-For Figma **`use_figma`** style-guide and canvas work, see [`skills/create-design-system/phases/07-steps15a-15c.md`](../../skills/create-design-system/phases/07-steps15a-15c.md) § *Agent-driven only — no workspace scripts* and [`skills/create-design-system/SKILL.md`](../../skills/create-design-system/SKILL.md) (Canvas / Steps 15a–17).
+For Figma **`use_figma`** style-guide and canvas work:
+
+- Read committed templates + data, compose **plain** `code`, split into **multiple self-contained** `use_figma` calls when needed (~50k cap) — [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](../../skills/create-design-system/conventions/16-mcp-use-figma-workflow.md).
+- Phase orchestration and `ctx` shapes — [`skills/create-design-system/phases/07-steps15a-15c.md`](../../skills/create-design-system/phases/07-steps15a-15c.md) § *Agent-driven only — no workspace scripts*.
+- Skill summary — [`skills/create-design-system/SKILL.md`](../../skills/create-design-system/SKILL.md) (Canvas / Steps 15a–17).

@@ -1,3 +1,5 @@
+> **Edit-time reference for `canvas-templates/*.js` — not a runtime read for `/create-design-system`.** Rules from this file are baked into `_lib.js` helpers. Read this when editing templates; agents running the skill do not need to load it.
+
 # Geometry, pages, naming, and Doc styles (former §3–§7)
 
 > **Figma auto-layout vocabulary used throughout the conventions shards:** **Hug** (frame fits its children) = Plugin API `primaryAxisSizingMode`/`counterAxisSizingMode = 'AUTO'`. **Fixed** (pinned dimension) = `= 'FIXED'`. **Fill** (frame expands to fill its parent) = `layoutGrow = 1` on the primary axis, or `layoutAlign = 'STRETCH'` on the counter axis (`STRETCH` is the legacy API name — the Figma UI calls this "Fill container"). Every rule below uses Hug / Fixed / Fill in prose and the API literal in code blocks and tables.

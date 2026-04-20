@@ -1,3 +1,5 @@
+> **Edit-time reference for `canvas-templates/*.js` — not a runtime read for `/create-design-system`.** Cell factories (`makeBodyCell`, `makeHeaderCell`, `buildTable`) in `_lib.js` encode these patterns. Read this when editing templates.
+
 # 11. Cell content patterns
 
 Use these exactly. Cells default to **VERTICAL AUTO** so multi-line stacks (Theme LIGHT/DARK, Typography SIZE/LINE) grow without collapsing the row.

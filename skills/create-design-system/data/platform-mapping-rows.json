@@ -1,0 +1,34 @@
+{
+  "$schema": "Step 17 minimum row set for doc/table/token-overview/platform-mapping. If any of these are absent from the scaffolded table, insert them as new rows (§ H pattern) before the Step 17 pre-pass deletes placeholders. After insertion, re-apply the 'last row has no bottom stroke' rule.",
+  "rows": [
+    { "tokenPath": "color/background/default",        "collection": "Theme" },
+    { "tokenPath": "color/background/content",        "collection": "Theme" },
+    { "tokenPath": "color/background/content-muted",  "collection": "Theme" },
+    { "tokenPath": "color/background/variant",        "collection": "Theme" },
+    { "tokenPath": "color/border/default",            "collection": "Theme" },
+    { "tokenPath": "color/border/subtle",             "collection": "Theme" },
+    { "tokenPath": "color/primary/default",           "collection": "Theme" },
+    { "tokenPath": "color/primary/content",           "collection": "Theme" },
+    { "tokenPath": "color/primary/subtle",            "collection": "Theme" },
+    { "tokenPath": "color/secondary/default",         "collection": "Theme" },
+    { "tokenPath": "color/tertiary/default",          "collection": "Theme" },
+    { "tokenPath": "color/error/default",             "collection": "Theme" },
+    { "tokenPath": "color/component/ring",            "collection": "Theme" },
+    { "tokenPath": "Headline/LG/font-size",           "collection": "Typography" },
+    { "tokenPath": "Title/LG/font-size",              "collection": "Typography" },
+    { "tokenPath": "Body/MD/font-size",               "collection": "Typography" },
+    { "tokenPath": "typeface/display",                "collection": "Primitives" },
+    { "tokenPath": "space/md",                        "collection": "Layout" },
+    { "tokenPath": "space/lg",                        "collection": "Layout" },
+    { "tokenPath": "radius/md",                       "collection": "Layout" },
+    { "tokenPath": "radius/lg",                       "collection": "Layout" },
+    { "tokenPath": "shadow/color",                    "collection": "Effects" }
+  ],
+  "columnWidths": {
+    "$note": "Columns sum to 1640 (matches inner content width).",
+    "TOKEN": 400,
+    "WEB": 420,
+    "ANDROID": 340,
+    "iOS": 480
+  }
+}

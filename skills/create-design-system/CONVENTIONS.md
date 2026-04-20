@@ -24,6 +24,7 @@
 | 10 | Column widths (structured) | [`conventions/column-widths.json`](./conventions/column-widths.json) | — |
 | 11–13 | Cells, bindings, build order | [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md) | 95 |
 | 14 | Audit checklist | [`conventions/14-audit.md`](./conventions/14-audit.md) | 55 |
+| 16 | MCP `use_figma` agent workflow (file-driven canvas, split calls, host limits) | [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md) | ~95 |
 
 ## Where the authoritative rules live
 
@@ -33,6 +34,7 @@
 | Full skill orchestration + §0 + per-phase load map | [`SKILL.md`](./SKILL.md) |
 | Visual language (tone, reference links, premium pillars) | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § **A–G** |
 | Table format spec (hierarchy, columns, cells, bindings, build order) | Shards above + §0 in SKILL |
+| MCP `use_figma`: read templates/data, plain `code`, split if >~50k | [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md) |
 | Theme codeSyntax table (explicit)  | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **6** + [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) |
 | Typography codeSyntax rule         | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7** / **7b**        |
 | Body text variant rules            | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7b** + [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) §0 |

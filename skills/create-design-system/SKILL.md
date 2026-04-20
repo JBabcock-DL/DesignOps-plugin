@@ -11,118 +11,35 @@ You are the Create Design System agent for the Detroit Labs DesignOps plugin. Yo
 
 **Repo-wide agent policy (MCP):** Inline payloads in each tool call — no `.mcp-*` / scratch staging files in the repo. See [`AGENTS.md`](../../AGENTS.md).
 
-**Authoritative table/canvas rules** live in [`conventions/`](./conventions/) **shards** plus this file’s **§0** below — **not** in a single giant read. Index and §→file map: [`CONVENTIONS.md`](./CONVENTIONS.md) (router only, ~90 lines). **Do not** `Read` every shard at session start; follow **Conventions load map** for your current phase only.
+**Authoritative table/canvas rules** live in [`conventions/`](./conventions/) **shards** (edit-time reference) and in the **canvas templates** under [`canvas-templates/`](./canvas-templates/) (runtime: the §0 rules are baked into helper functions there). Index and §→file map: [`CONVENTIONS.md`](./CONVENTIONS.md). **Do not** `Read` every shard at session start; follow the **Conventions load map** below for your current phase only.
 
-**Phase files under [`phases/`](./phases/) orchestrate** — which step, which page, which slug, which row set, which AskUserQuestion to fire, which codeSyntax table to apply. They do **not** own geometry, columns, cells, or auto-layout rules. **When a phase file disagrees with the conventions shards or this §0, the conventions win.**
+**MCP canvas runs:** Read committed [`canvas-templates/`](./canvas-templates/) (+ [`data/`](./data/) when the phase says so), compose **plain** Plugin API `code` for each **`use_figma`** call, split into **multiple self-contained calls** if you approach the ~50k `code` limit — see [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md).
+
+**Phase files under [`phases/`](./phases/) orchestrate** — which step, which page, which slug, which row set, which AskUserQuestion to fire. They do **not** own geometry, columns, cells, or auto-layout rules. **When a phase file disagrees with the conventions shards or §0, the conventions win.**
 
 ---
 
-## Known gotchas (§0 — paired with `conventions/00-gotchas.md`)
+## §0 — Known gotchas (rule index)
 
-> **Paired copy:** The same text is in [`conventions/00-gotchas.md`](./conventions/00-gotchas.md). **Edit both together.**
+Full rules + code live in [`conventions/00-gotchas.md`](./conventions/00-gotchas.md). Cite by anchor; do not paraphrase.
 
-These rules produce every table-collapse / invisible-text / wrong-padding bug observed in real runs (including runs where **§0.1** was applied to body rows but **header cells** or **textAutoResize** were still wrong). Every phase file cross-references this section by anchor — do not paraphrase; do not re-state with different numbers.
+- **§0.1** Rows & body cells: set height axis to **Hug** *before* `resize(w, 1)`; re-assert after `appendChild` into a STRETCH parent. `doc/table-group/*` is Hug + `clipsContent: false`. → [`00-gotchas.md#§01-hug-before-resize-on-rows-and-body-cells`](./conventions/00-gotchas.md)
+- **§0.2** Every TEXT: `characters` → `resize(colWidth - 40, 1)` → `textAutoResize = 'HEIGHT'`. Never leave `'NONE'`.
+- **§0.3** Theme hex TEXT is a **sibling** of `doc/theme-preview/{mode}`, not a child.
+- **§0.4** `Doc/*` text styles + `Effect/shadow-*` must exist before 15a/15b bind. Under `/create-design-system` these publish at end of Step 11.
+- **§0.5** Header cells are **HORIZONTAL + FIXED/FIXED** with explicit header height — never the §0.1 body recipe.
+- **§0.6** Apply §0.2 to **all** table TEXT (header + body) *and* to TEXT children of `doc/table-group/*` (title, caption). Lowercase slug segments in layer names.
+- **§0.7** Primitives swatch `RECTANGLE`s bind `fills[0]` to the row's `Primitives` COLOR variable via `setBoundVariableForPaint` — reassigning the return value.
+- **§0.8** TOC `band-strip/*` TEXT: do **not** apply blanket §0.2 full-width resize. Keep `textAutoResize: 'WIDTH_AND_HEIGHT'` so the count chip hugs.
+- **§0.9** `doc/table/token-overview/platform-mapping` and descendants carry **no** `effectStyleId` — one `shadow-sm` lives on the enclosing section shell only.
 
-### 0.1 Row AND cell height stays **Fixed at 1** unless you set the height axis to **Hug** first
-
-Applies at BOTH levels — `doc/table/{slug}/row/{tokenPath}` (row frame) AND `doc/table/{slug}/row/{tokenPath}/cell/{col}` (body cell). The `1` in `resize(1640, 1)` / `resize(colWidth, 1)` is a **width-setting placeholder** — if the height axis isn't already **Hug** before the resize call, the `1` sticks as a permanent **Fixed** height and the row/cell draws as a 1px sliver.
-
-**Required order — rows (`doc/table/{slug}/row/{tokenPath}`):**
-
-```js
-row.layoutMode              = 'HORIZONTAL';
-row.counterAxisSizingMode   = 'AUTO';    // height: Hug tallest cell
-row.primaryAxisSizingMode   = 'FIXED';   // width: Fixed 1640
-row.resize(1640, 1);                     // safe now — height axis is Hug
-row.minHeight               = 64;
-row.paddingTop              = 16;
-row.paddingBottom           = 16;
-row.counterAxisAlignItems   = 'CENTER';
-```
-
-**Required order — body cells (`.../row/*/cell/{col}`):**
-
-```js
-cell.layoutMode             = 'VERTICAL'; // or 'HORIZONTAL' for Theme LIGHT/DARK
-cell.primaryAxisSizingMode  = 'AUTO';     // height: Hug content
-cell.counterAxisSizingMode  = 'FIXED';    // width: Fixed colWidth
-cell.resize(colWidth, 1);                 // safe now — height axis is Hug
-cell.paddingLeft            = 20;
-cell.paddingRight           = 20;
-cell.paddingTop             = 4;
-cell.paddingBottom          = 4;
-cell.itemSpacing            = 4;
-```
-
-Equivalent: call `resizeWithoutConstraints(w, 1)` — the same trick already used on `doc/table/{slug}`. Either approach works; pick one and use it everywhere.
-
-**After `appendChild` into a STRETCH parent,** Figma may assign **`layoutSizingVertical: 'FIXED'`** (and **`counterAxisSizingMode: 'FIXED'`** on `HORIZONTAL` rows) even when you intended Hug height — rows and body cells **lock to ~1px or minHeight-only** and code reads as “fixed height collapse.” **Re-assert** `counterAxisSizingMode = 'AUTO'` on body rows, `primaryAxisSizingMode = 'AUTO'` on **VERTICAL** body cells, and set **`layoutSizingVertical = 'HUG'`** (and `layoutSizingHorizontal = 'FIXED'` on cells / `'FILL'` on rows) **after** the node is in the tree, then `resizeWithoutConstraints(1640, 1)` / `resize(colWidth, 1)` again.
-
-**`doc/table-group/{slug}` must never use a placeholder `resize(1640, 80)` (or any fixed height) with `primaryAxisSizingMode: 'FIXED'`** — that frame **clips** the full `doc/table/{slug}` (often `clipsContent: true`), so the UI shows a **~80px band** with overlapped titles and **invisible** rows. Table groups are **`VERTICAL` · primary `AUTO` (Hug)** · counter **`FIXED` 1640** · `layoutSizingVertical: 'HUG'` · `resizeWithoutConstraints(1640, 1)` · `clipsContent: false`** (clipping belongs on the inner **`doc/table/{slug}`** chrome only, per §8).
-
-### 0.2 Text nodes collapse rows at ~10px unless `textAutoResize = 'HEIGHT'` is set
-
-Immediately after `text.characters = "…"`, call `text.resize(colWidth - 40, 1)` (where `40` = left padding `20` + right padding `20`), then `text.textAutoResize = 'HEIGHT'`. Never leave `'NONE'` — that is the **root cause** of the 10px collapse. Mono-line cells use `colWidth - 40` everywhere. If you see `- 32` in any phase file, it is wrong.
-
-### 0.3 Theme hex text must be a **sibling** of the mode-scoped wrapper, not a child
-
-Theme LIGHT/DARK cells are HORIZONTAL with **two siblings**: [1] `doc/theme-preview/{mode}` holding **only** the chip (bound fill; `setExplicitVariableModeForCollection(themeCollection, modeId)` applied), [2] `Doc/Code` hex text **outside** that wrapper. If the hex text is parented inside the Dark wrapper, its `color/background/content` fill resolves to white on a white cell and vanishes.
-
-### 0.4 `Doc/*` text styles and `Effect/shadow-*` must exist before 15a/15b bind to them
-
-Step 15c § 0 publishes `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`. On a **first** run, execute 15c § 0 **before** 15a/15b so the first pass binds `textStyleId` / `effectStyleId` cleanly. Falling back to raw `fontName`/`fontSize` and then re-running 15a/15b to upgrade wastes a full pass.
-
-### 0.5 Header cells must **not** reuse the body-cell factory (VERTICAL + Hug is wrong here)
-
-**Observed failure mode (MCP diff, 2026):** A “good” table ([`testingUpdates — Foundations`](https://www.figma.com/design/BLcvn6UptGIgtNzNfLU4TU/testingUpdates-%E2%80%94-Foundations?node-id=204-7)) uses **`doc/table/.../header/cell/*` as `layoutMode: 'HORIZONTAL'`** with **`primaryAxisSizingMode: 'FIXED'`** and **`counterAxisSizingMode: 'FIXED'`**, explicit `resize(colWidth, headerHeight)` **before** text, and header text with **`textAutoResize: 'HEIGHT'`**. A broken run ([`v44-updates — Foundations`](https://www.figma.com/design/uCpQaRsW4oiXW3DsC6cLZm/v44-updates-%E2%80%94-Foundations?node-id=106-10)) reused **body** rules (`VERTICAL` + primary `AUTO` + `resize(colWidth, 1)` while text was still `'NONE'`) for header cells → **every header cell height stuck at 1px** while the header **row** stayed ~56px tall — unreadable chrome.
-
-**Required pattern — each `doc/table/{slug}/header/cell/{col}` (Primitives / Theme / Layout / Effects / Token Overview):**
-
-```js
-cell.layoutMode              = 'HORIZONTAL';
-cell.primaryAxisSizingMode   = 'FIXED';   // width: colWidth
-cell.counterAxisSizingMode   = 'FIXED';   // height: header band (56 per §8 / build-order; do not leave Hug here)
-cell.resize(colWidth, 56);               // before appendChild(labelText)
-// then mono-line text: characters → resize(colWidth - 40, 1) → textAutoResize = 'HEIGHT' → textStyleId → fill
-```
-
-Body cells stay **§ 0.1** (`VERTICAL`, Hug-then-resize). **Never** call the same “create body cell” helper for header cells without swapping to the block above.
-
-### 0.6 `'NONE'` on text inside Hug-height body cells still reads as a bug (~9px rails)
-
-If `textAutoResize` is still `'NONE'` when the parent body cell correctly uses Hug height (**§ 0.1**), Figma often leaves the text bounding box at **~1–9px** tall. Rows can look “open” because `minHeight` / swatch cells hold the row height, but **TOKEN / HEX / WEB** columns look crushed. Apply **§ 0.2** to **every** table `TEXT` (header **and** body) before moving on.
-
-**Section title + caption:** **`TEXT` nodes that are direct children of `doc/table-group/{slug}`** (before the inner `doc/table/{slug}` frame) are **not** inside `.../cell/` — scripts that only walk **`/cell/`** paths will **miss** them. They still default to **`textAutoResize: 'NONE'`** and **1px** height, so the **Doc/Section** title and **Doc/Caption** line **stack on top of each other** and over the table header. Apply **§ 0.2** to those two texts explicitly.
-
-**Layer paths:** Prefer **lowercase** slug segments in names (`.../cell/token`, `.../cell/ios`) to match the golden reference tree — avoid `.../cell/TOKEN` / `.../cell/iOS` drift that makes grep-based audits miss cells.
-
-### 0.7 Primitives color **swatch** rectangles must bind fill → the row’s **COLOR** variable
-
-**Observed failure (MCP, same v44 file):** every `RECTANGLE` under `doc/table/primitives/color/.../cell/swatch` (or `.../cell/SWATCH`) had a plain **`SOLID`** fill with **no** `boundVariables.color`. The golden file binds **`figma.variables.setBoundVariableForPaint`** on that fill to the **`Primitives`** variable whose **`name`** equals the row token path (the segment after `/row/` in the row frame name, e.g. `color/primary/500`). Leaving resolved hex on the chip is a **hard fail** for a variables-first style guide — swatches will not track token edits.
-
-**Required:** after creating the swatch `RECTANGLE`, resolve the row’s COLOR variable from the cached `path → Variable` map, clone `fills[0]`, call `setBoundVariableForPaint(paint, 'color', variable)`, assign `rect.fills = [newPaint]` (see figma-use: return value **must** be reassigned). Stroke on the chip still binds per §12 in [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md) (`color/border/subtle`, Theme · Light).
-
-**Do not** mark Step 15a “done” until a read-only probe shows `boundVariables.color` on swatch rects (see optional gate in [`conventions/14-audit.md`](./conventions/14-audit.md)).
-
-### 0.8 TOC `band-strip/*` — do **not** run blanket **§0.2** `resize(parentWidth − padding, 1)` on strip chrome `TEXT`
-
-**Observed failure (MCP / audit-style pass, 2026):** a script walked every `TEXT` under **`📝 Table of Contents` → `_PageContent`** and applied **§0.2** using **`text.resize(parent.width - parent.paddingLeft - parent.paddingRight, 1)`**. For **`TEXT` nodes whose `parent.name` matches `^band-strip/`** (but **not** `…/title-stack`), the parent is the **64px-tall `HORIZONTAL`** strip (**`SPACE_BETWEEN`**, width **1720**, horizontal padding **24**). That formula yields **1720 − 48 = 1672** — the same number as **`CARD_INNER`** in [`new-project/phases/05c-table-of-contents.md`](./new-project/phases/05c-table-of-contents.md), but here it is **wrong**: it forces the right-aligned **`Doc/Code`** line (**`N sections · M pages`**) to a **1672px-wide** text rail, **collapsing** the band strip layout.
-
-**Required:** **§0.2** full-width resize applies to **table cells**, **long captions**, and similar **full-bleed** text — **not** to **`TEXT` that is a direct child of `band-strip/{slug}`**. For those nodes, keep **`textAutoResize: 'WIDTH_AND_HEIGHT'`** (or hug **`HEIGHT`** after a **minimal** `resize` only if still `'NONE'`) so the count chip **hugs** its string width inside the auto-layout row.
-
-**When auditing** ([`conventions/14-audit.md`](./conventions/14-audit.md) § TOC + Token Overview): strip **`TEXT`** `width` must stay **well below** **~1600** — if you see **1672**, this bug has fired.
-
-### 0.9 Token Overview **`platform-mapping`** — one shadow on the **section shell** only
-
-**`/new-project`** Phase **05d** wraps the platform-mapping block in **`token-overview/platform-mapping`**, which applies **`Effect/shadow-sm`** once via **`sectionShell`**. The inner table **`doc/table/token-overview/platform-mapping`** and every **`header`**, **`body`**, **`row/*`**, and **`cell/*`** must remain **flat**: **`effects = []`** and **`effectStyleId` cleared** — no duplicate elevation on the “wrapping” **`body`** frame.
-
-**`/create-design-system` Step 17** pre-pass must **not** assign **`shadow-sm`** to any frame whose path is **`doc/table/token-overview/platform-mapping`** or under it (prefix matching **`doc/table/token-overview/`** was the original failure mode). See [`phases/08-steps17-appendix.md`](./phases/08-steps17-appendix.md). Style-guide tables on **↳ Primitives / Theme / …** still use **one** shadow on the **`doc/table/{slug}`** root per [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) / [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md).
+Incident history (which Figma files failed and why) is in [`CHANGELOG.md`](./CHANGELOG.md) — not a runtime read.
 
 ---
 
 ## Conventions load map (lazy — required)
 
-`Read` **only** the convention files for the phase you are executing. **§0** is already in this SKILL (and [`conventions/00-gotchas.md`](./conventions/00-gotchas.md)); re-read the file if you need the verbatim anchor in isolation.
+`Read` **only** the convention files for the phase you are executing. The §0 index above is enough for most reads; open [`conventions/00-gotchas.md`](./conventions/00-gotchas.md) only when you need the full rule + code for a specific anchor.
 
 | Phase | When | Convention files to open |
 |------|------|----------------------------|
@@ -132,10 +49,8 @@ If `textAutoResize` is still `'NONE'` when the parent body cell correctly uses H
 | 04 | Step 11 | **None** |
 | 05 | Steps 12–14 | **None** |
 | 06 | Canvas documentation spec | [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md), [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) |
-| 07 | Steps 15a–c / any `use_figma` on style-guide tables | **Ordered:** [`conventions/column-widths.json`](./conventions/column-widths.json) → [`conventions/10-column-spec.md`](./conventions/10-column-spec.md) → [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md) → [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) → [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md) — plus phase file [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) |
+| 07 | Steps 15a–c / any `use_figma` on style-guide tables | [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md) (required for agents) · [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) · [`canvas-templates/_lib.js`](./canvas-templates/_lib.js) + the page template. Open [`conventions/column-widths.json`](./conventions/column-widths.json) when verifying column math. For debugging bindings only: [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md), [`conventions/00-gotchas.md`](./conventions/00-gotchas.md). |
 | 08 | Steps 17–19; canvas verification | [`conventions/14-audit.md`](./conventions/14-audit.md) when verifying or editing canvas; re-read **§0.9** above before Step 17 shadow passes on **↳ Token Overview** |
-
-**Heavy read liveness (required):** Before the first `Read` of any single file expected to be **~200 lines or more** (notably [`phases/02-steps5-9.md`](./phases/02-steps5-9.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), or [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md)), send **one** short user-visible line first, e.g. `Loading skills/create-design-system/phases/07-steps15a-15c.md (~190 lines)…`
 
 ---
 
@@ -194,7 +109,7 @@ Current: Building Primitives…
 - [ ] Verifying variables wrote correctly
 - [ ] Optional: write `tokens.css` (your choice — Step 12.5, then Step 13 if yes)
 - [ ] Summarizing results (counts & file links)
-- [ ] Publishing Doc/\* text styles + Effect/shadow-\* (Step 15c § 0 — run **before** 15a/15b on first runs; see §0.4 above)
+- [ ] Publishing Doc/\* text styles + Effect/shadow-\* (at **Step 11 close** — see §0.4; if phases 02–04 were skipped, run the Step 11 close / 15c §0 idempotent block **before** canvas so 15a/15b bind on first pass)
 - [ ] Drawing ↳ Primitives style guide (Step 15a)
 - [ ] Drawing ↳ Theme style guide (Step 15b)
 - [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (rest of Step 15c)
@@ -202,15 +117,15 @@ Current: Building Primitives…
 - [ ] Updating Thumbnail cover (brand gradient) (Step 18)
 - [ ] Offering next step (`/create-component`)
 
-**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · row 11 → Step 15c § 0 (pre-pass on first runs) · rows 12–14 → Steps 15a–15c bodies · rows 15–16 → Steps 17–18 · row 17 → Step 19.
+**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · row 11 → **Step 11 close** (Doc/\* + Effect styles; 15c §0 only when running that idempotent block because styles were missing) · rows 12–14 → Steps 15a–15c canvas bodies · rows 15–16 → Steps 17–18 · row 17 → Step 19.
 
-**Docs-only path** (variables already present — see "After Step 4" below): start the checklist at **row 11** (publish Doc/\* + Effect styles) and continue through row 17. Rows 1–10 are marked `[x] (skipped — variables present)` up front.
+**Docs-only path** (variables already present — see "After Step 4" below): mark rows 1–10 `[x] (skipped — variables present)`, run **Step 11 close** (row 11 — publish Doc/\* + Effect styles if not already in the file), then continue with rows 12–17.
 
 ---
 
 ## Phase execution (required)
 
-Work through the phases **in order**, except when **After Step 4 — variables present vs missing** (subsection below) says to **skip 02–04** and go straight to **06 → 07 → 08** (documentation draw/update). For each phase you execute, **`Read` the linked phase file in full** — phase files are authoritative; this orchestrator only routes. Apply **Conventions load map** for that phase **before** `use_figma` canvas work; use **Heavy read liveness** before large `Read` calls.
+Work through the phases **in order**, except when **After Step 4 — variables present vs missing** (subsection below) says to **skip 02–04** and go straight to **06 → 07 → 08** (documentation draw/update). For each phase you execute, **`Read` the linked phase file in full** — phase files are authoritative; this orchestrator only routes. Apply **Conventions load map** for that phase **before** `use_figma` canvas work.
 
 | Phase | Scope | Read path |
 |------|--------|-----------|
@@ -223,7 +138,7 @@ Work through the phases **in order**, except when **After Step 4 — variables p
 | 07 | Steps 15a–15c — style-guide pages | [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) |
 | 08 | Steps 17–19 + appendix | [`phases/08-steps17-appendix.md`](./phases/08-steps17-appendix.md) |
 
-**First-run ordering (important):** On the first invocation of a session, execute phase 07's **Step 15c § 0** (publish `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}`) **before** 15a/15b so the first pass can bind `textStyleId` / `effectStyleId` directly instead of emitting fallback `fontName`/`fontSize` literals that a second pass would need to upgrade. See **§0.4** above.
+**Doc/* ordering:** `Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`, and `Effect/shadow-{sm,md,lg,xl,2xl}` publish at the **close of Step 11** (see `phases/04-step11-push.md` § "Step 11 close"). When variables are already present and phases 02–04 are skipped, run the Step 11 close block first so 15a/15b can bind on their first pass. See **§0.4**.
 
 ### After Step 4 — variables present vs missing
 
@@ -239,7 +154,7 @@ If the snapshot is **ambiguous** (partial collections, legacy naming), call **As
 
 **Also load when applying Theme `codeSyntax`:** [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) (supplements Step 6 tables in phase 02).
 
-**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **only** as the **`code` string** on each **`use_figma` MCP** invocation (load the **`figma-use`** skill first whenever the Figma / `use_figma` tool docs require it). Follow [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and the **phase 07** convention shard list in **Conventions load map**. If you hit the ~50k `code` limit, run **multiple sequential `use_figma` calls** (e.g. one logical page or table batch per call), each with a **fresh self-contained** script — **not** by writing partial scripts to disk.
+**Canvas (Steps 15a–17):** **agent-driven only** — the agent composes plain Figma Plugin API JavaScript **only** as the **`code` string** on each **`use_figma` MCP** invocation (load the **`figma-use`** skill first whenever the Figma / `use_figma` tool docs require it). Follow [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § A–H, and the **phase 07** convention shard list in **Conventions load map**. If you hit the ~50k `code` limit, run **multiple sequential `use_figma` calls** (e.g. one logical page or table batch per call), each with a **fresh self-contained** script — **not** by writing partial scripts to disk or relying on `clientStorage` unless verified in the MCP host.
 
 **Do not** use the repo or this skill folder as a clipboard for Figma work: no canvas helper `.js`, no `.mcp-*` / `_mcp-*` files, no `*-once.js`, no `*-payload.json`, no `_tmp*`, and no folders **under this skill** used only to stage plugin code for MCP or to JSON-escape payloads. Those are throwaways — delete them immediately if created by mistake; the deliverable is the **Figma file state**, not staged source files.
 
