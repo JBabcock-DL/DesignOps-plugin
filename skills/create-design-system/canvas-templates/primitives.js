@@ -197,12 +197,11 @@ async function buildColorRow(row, rowData, columns, deps) {
       }
       case 'SWATCH': {
         // §0.7: bound fill on the rectangle
-        cell.layoutMode = 'HORIZONTAL';
         cell.counterAxisAlignItems = 'CENTER';
         const rect = figma.createRectangle();
         rect.name = 'swatch';
-        rect.resize(28, 28);
-        rect.cornerRadius = 8;
+        rect.resize(48, 48);
+        rect.cornerRadius = 10;
         rect.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
         rect.strokeWeight = 1;
         if (variables['color/border/subtle']) bindStrokeToVar(rect, variables['color/border/subtle']);
@@ -368,12 +367,12 @@ async function buildTypefaceRow(row, rowData, columns, deps) {
       case 'SPECIMEN': {
         // Specimen text in the resolved font family
         const specimenT = figma.createText();
-        specimenT.characters = rowData.tokenPath.includes('display') ? 'Aa Display' : 'Aa Body';
+        specimenT.characters = 'The quick brown fox 01234';
         try {
           await figma.loadFontAsync({ family: rowData.resolvedValue || 'Inter', style: 'Regular' });
           specimenT.fontName = { family: rowData.resolvedValue || 'Inter', style: 'Regular' };
         } catch (_) {}
-        specimenT.fontSize = 20;
+        specimenT.fontSize = 22;
         specimenT.resize(col.width - 40, 1);
         specimenT.textAutoResize = 'HEIGHT';
         if (contentVar) bindPaintToVar(specimenT, contentVar);

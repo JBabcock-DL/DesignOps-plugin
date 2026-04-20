@@ -15,28 +15,35 @@ const docStyles = {
   Caption: textStyles.find((s) => s.name === 'Doc/Caption')?.id || null,
 };
 function colorToHex(val) {
-  if (!val || val.type !== 'COLOR') return '#000000';
+  if (!val || typeof val !== 'object' || typeof val.r !== 'number') return '#000000';
   const r = Math.round(val.r * 255);
   const g = Math.round(val.g * 255);
   const b = Math.round(val.b * 255);
   return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function resolveRaw(vid, m) {
+  let v = await figma.variables.getVariableByIdAsync(vid);
+  for (let d = 0; d < 10; d++) {
+    const val = v.valuesByMode[m];
+    if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
+      v = await figma.variables.getVariableByIdAsync(val.id);
+      continue;
+    }
+    return val;
+  }
+  return null;
 }
 function readCS(v) {
   const cs = v.codeSyntax || {};
   return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
 async function floatAlias(vid, m) {
-  let v = await figma.variables.getVariableByIdAsync(vid);
-  for (let d = 0; d < 10; d++) {
-    const val = v.valuesByMode[m];
-    if (!val || val.type !== 'VARIABLE_ALIAS') return val && val.type === 'FLOAT' ? val.value : 0;
-    v = await figma.variables.getVariableByIdAsync(val.id);
-  }
-  return 0;
+  const raw = await resolveRaw(vid, m);
+  return typeof raw === 'number' ? raw : 0;
 }
 async function crow(tp) {
   const v = await figma.variables.getVariableByIdAsync(p[tp]);
-  const raw = v.valuesByMode[primitivesModeId];
+  const raw = await resolveRaw(v.id, primitivesModeId);
   return { tokenPath: tp, resolvedHex: colorToHex(raw), codeSyntax: readCS(v) };
 }
 const colorRamps = {};
@@ -71,9 +78,8 @@ for (const n of allVars.map((v) => v.name).filter((n) => n.startsWith('elevation
 }
 async function srow(tp) {
   const v = await figma.variables.getVariableByIdAsync(p[tp]);
-  const raw = v.valuesByMode[primitivesModeId];
-  let rv = '\u2014';
-  if (raw && raw.type === 'STRING') rv = raw.value;
+  const raw = await resolveRaw(v.id, primitivesModeId);
+  const rv = typeof raw === 'string' ? raw : '\u2014';
   return { tokenPath: tp, resolvedValue: rv, codeSyntax: readCS(v) };
 }
 const typeface = [];

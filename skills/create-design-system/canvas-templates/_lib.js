@@ -34,13 +34,16 @@ function resolvePath(variableMap, path) {
   return figma.variables.getVariableByIdAsync(id);
 }
 
-// Walk VARIABLE_ALIAS chain until we reach a numeric or string literal.
+// Walk VARIABLE_ALIAS chain until we reach a raw value (number, string, or color object).
 async function resolveNumericAlias(variableId, modeId) {
   let variable = await figma.variables.getVariableByIdAsync(variableId);
   for (let depth = 0; depth < 10; depth++) {
     const value = variable.valuesByMode[modeId];
-    if (!value || value.type !== 'VARIABLE_ALIAS') return value;
-    variable = await figma.variables.getVariableByIdAsync(value.id);
+    if (value && typeof value === 'object' && value.type === 'VARIABLE_ALIAS') {
+      variable = await figma.variables.getVariableByIdAsync(value.id);
+      continue;
+    }
+    return value;
   }
   return null;
 }
@@ -79,16 +82,18 @@ async function makeText(characters, colWidth, styleId, fillVariable) {
 
 // ─── Header cell (§0.5) ──────────────────────────────────────────────────────
 
-// §0.5: HORIZONTAL + FIXED/FIXED + resize(colWidth, 56) BEFORE appending text.
+// §0.5: HORIZONTAL + FIXED/FIXED + resize(colWidth, 48) BEFORE appending text.
+// Vertical center the label cell contents.
 async function makeHeaderCell(colWidth, label, docStyles, variables) {
   const cell = figma.createFrame();
   cell.name = `cell/${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   cell.layoutMode = 'HORIZONTAL';
   cell.primaryAxisSizingMode = 'FIXED';
   cell.counterAxisSizingMode = 'FIXED';
-  cell.resize(colWidth, 56);
-  cell.paddingLeft = 20;
-  cell.paddingRight = 20;
+  cell.resize(colWidth, 48);
+  cell.paddingLeft = 16;
+  cell.paddingRight = 16;
+  cell.counterAxisAlignItems = 'CENTER';
   cell.fills = [];
 
   const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
@@ -105,11 +110,13 @@ function makeBodyCell(colWidth, layoutMode) {
   cell.primaryAxisSizingMode = 'AUTO';   // Hug height
   cell.counterAxisSizingMode = 'FIXED';  // Fixed colWidth
   cell.resize(colWidth, 1);
-  cell.paddingLeft = 20;
-  cell.paddingRight = 20;
-  cell.paddingTop = 4;
-  cell.paddingBottom = 4;
-  cell.itemSpacing = 4;
+  cell.paddingLeft = 16;
+  cell.paddingRight = 16;
+  cell.paddingTop = 0;
+  cell.paddingBottom = 0;
+  cell.itemSpacing = 2;
+  cell.primaryAxisAlignItems = 'CENTER';
+  cell.counterAxisAlignItems = 'MIN';
   cell.fills = [];
   return cell;
 }
@@ -129,9 +136,9 @@ function makeBodyRow(tokenPath, borderVariable) {
   row.counterAxisSizingMode = 'AUTO';   // Hug height
   row.primaryAxisSizingMode = 'FIXED';  // Fixed 1640
   row.resize(1640, 1);
-  row.minHeight = 64;
-  row.paddingTop = 16;
-  row.paddingBottom = 16;
+  row.minHeight = 56;
+  row.paddingTop = 14;
+  row.paddingBottom = 14;
   row.counterAxisAlignItems = 'CENTER';
   row.fills = [];
   if (borderVariable) {
@@ -231,12 +238,12 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   // title + caption (§0.6: textAutoResize='HEIGHT' on direct TEXT children)
   if (title) {
     const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
-    titleText.name = 'title';
+    titleText.name = `doc/table-group/${slug}/title`;
     group.appendChild(titleText);
   }
   if (caption) {
     const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
-    capText.name = 'caption';
+    capText.name = `doc/table-group/${slug}/caption`;
     group.appendChild(capText);
   }
 
@@ -247,7 +254,7 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   table.primaryAxisSizingMode = 'AUTO';
   table.counterAxisSizingMode = 'FIXED';
   table.resizeWithoutConstraints(1640, 1);
-  table.cornerRadius = 12;
+  table.cornerRadius = 16;
   table.clipsContent = true;
   table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
   table.strokeWeight = 1;
@@ -261,7 +268,8 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   header.layoutMode = 'HORIZONTAL';
   header.primaryAxisSizingMode = 'FIXED';
   header.counterAxisSizingMode = 'FIXED';
-  header.resize(1640, 56);
+  header.resize(1640, 48);
+  header.counterAxisAlignItems = 'CENTER';
   header.fills = [];
   if (bgVariant) bindPaintToVar(header, bgVariant);
   header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];

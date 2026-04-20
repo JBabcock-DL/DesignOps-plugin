@@ -34,13 +34,16 @@ function resolvePath(variableMap, path) {
   return figma.variables.getVariableByIdAsync(id);
 }
 
-// Walk VARIABLE_ALIAS chain until we reach a numeric or string literal.
+// Walk VARIABLE_ALIAS chain until we reach a raw value (number, string, or color object).
 async function resolveNumericAlias(variableId, modeId) {
   let variable = await figma.variables.getVariableByIdAsync(variableId);
   for (let depth = 0; depth < 10; depth++) {
     const value = variable.valuesByMode[modeId];
-    if (!value || value.type !== 'VARIABLE_ALIAS') return value;
-    variable = await figma.variables.getVariableByIdAsync(value.id);
+    if (value && typeof value === 'object' && value.type === 'VARIABLE_ALIAS') {
+      variable = await figma.variables.getVariableByIdAsync(value.id);
+      continue;
+    }
+    return value;
   }
   return null;
 }
@@ -79,16 +82,18 @@ async function makeText(characters, colWidth, styleId, fillVariable) {
 
 // ─── Header cell (§0.5) ──────────────────────────────────────────────────────
 
-// §0.5: HORIZONTAL + FIXED/FIXED + resize(colWidth, 56) BEFORE appending text.
+// §0.5: HORIZONTAL + FIXED/FIXED + resize(colWidth, 48) BEFORE appending text.
+// Vertical center the label cell contents.
 async function makeHeaderCell(colWidth, label, docStyles, variables) {
   const cell = figma.createFrame();
   cell.name = `cell/${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   cell.layoutMode = 'HORIZONTAL';
   cell.primaryAxisSizingMode = 'FIXED';
   cell.counterAxisSizingMode = 'FIXED';
-  cell.resize(colWidth, 56);
-  cell.paddingLeft = 20;
-  cell.paddingRight = 20;
+  cell.resize(colWidth, 48);
+  cell.paddingLeft = 16;
+  cell.paddingRight = 16;
+  cell.counterAxisAlignItems = 'CENTER';
   cell.fills = [];
 
   const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
@@ -105,11 +110,13 @@ function makeBodyCell(colWidth, layoutMode) {
   cell.primaryAxisSizingMode = 'AUTO';   // Hug height
   cell.counterAxisSizingMode = 'FIXED';  // Fixed colWidth
   cell.resize(colWidth, 1);
-  cell.paddingLeft = 20;
-  cell.paddingRight = 20;
-  cell.paddingTop = 4;
-  cell.paddingBottom = 4;
-  cell.itemSpacing = 4;
+  cell.paddingLeft = 16;
+  cell.paddingRight = 16;
+  cell.paddingTop = 0;
+  cell.paddingBottom = 0;
+  cell.itemSpacing = 2;
+  cell.primaryAxisAlignItems = 'CENTER';
+  cell.counterAxisAlignItems = 'MIN';
   cell.fills = [];
   return cell;
 }
@@ -129,9 +136,9 @@ function makeBodyRow(tokenPath, borderVariable) {
   row.counterAxisSizingMode = 'AUTO';   // Hug height
   row.primaryAxisSizingMode = 'FIXED';  // Fixed 1640
   row.resize(1640, 1);
-  row.minHeight = 64;
-  row.paddingTop = 16;
-  row.paddingBottom = 16;
+  row.minHeight = 56;
+  row.paddingTop = 14;
+  row.paddingBottom = 14;
   row.counterAxisAlignItems = 'CENTER';
   row.fills = [];
   if (borderVariable) {
@@ -231,12 +238,12 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   // title + caption (§0.6: textAutoResize='HEIGHT' on direct TEXT children)
   if (title) {
     const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
-    titleText.name = 'title';
+    titleText.name = `doc/table-group/${slug}/title`;
     group.appendChild(titleText);
   }
   if (caption) {
     const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
-    capText.name = 'caption';
+    capText.name = `doc/table-group/${slug}/caption`;
     group.appendChild(capText);
   }
 
@@ -247,7 +254,7 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   table.primaryAxisSizingMode = 'AUTO';
   table.counterAxisSizingMode = 'FIXED';
   table.resizeWithoutConstraints(1640, 1);
-  table.cornerRadius = 12;
+  table.cornerRadius = 16;
   table.clipsContent = true;
   table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
   table.strokeWeight = 1;
@@ -261,7 +268,8 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   header.layoutMode = 'HORIZONTAL';
   header.primaryAxisSizingMode = 'FIXED';
   header.counterAxisSizingMode = 'FIXED';
-  header.resize(1640, 56);
+  header.resize(1640, 48);
+  header.counterAxisAlignItems = 'CENTER';
   header.fills = [];
   if (bgVariant) bindPaintToVar(header, bgVariant);
   header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
@@ -575,12 +583,11 @@ async function buildColorRow(row, rowData, columns, deps) {
       }
       case 'SWATCH': {
         // §0.7: bound fill on the rectangle
-        cell.layoutMode = 'HORIZONTAL';
         cell.counterAxisAlignItems = 'CENTER';
         const rect = figma.createRectangle();
         rect.name = 'swatch';
-        rect.resize(28, 28);
-        rect.cornerRadius = 8;
+        rect.resize(48, 48);
+        rect.cornerRadius = 10;
         rect.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
         rect.strokeWeight = 1;
         if (variables['color/border/subtle']) bindStrokeToVar(rect, variables['color/border/subtle']);
@@ -746,12 +753,12 @@ async function buildTypefaceRow(row, rowData, columns, deps) {
       case 'SPECIMEN': {
         // Specimen text in the resolved font family
         const specimenT = figma.createText();
-        specimenT.characters = rowData.tokenPath.includes('display') ? 'Aa Display' : 'Aa Body';
+        specimenT.characters = 'The quick brown fox 01234';
         try {
           await figma.loadFontAsync({ family: rowData.resolvedValue || 'Inter', style: 'Regular' });
           specimenT.fontName = { family: rowData.resolvedValue || 'Inter', style: 'Regular' };
         } catch (_) {}
-        specimenT.fontSize = 20;
+        specimenT.fontSize = 22;
         specimenT.resize(col.width - 40, 1);
         specimenT.textAutoResize = 'HEIGHT';
         if (contentVar) bindPaintToVar(specimenT, contentVar);
@@ -793,28 +800,35 @@ const docStyles = {
   Caption: textStyles.find((s) => s.name === 'Doc/Caption')?.id || null,
 };
 function colorToHex(val) {
-  if (!val || val.type !== 'COLOR') return '#000000';
+  if (!val || typeof val !== 'object' || typeof val.r !== 'number') return '#000000';
   const r = Math.round(val.r * 255);
   const g = Math.round(val.g * 255);
   const b = Math.round(val.b * 255);
   return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function resolveRaw(vid, m) {
+  let v = await figma.variables.getVariableByIdAsync(vid);
+  for (let d = 0; d < 10; d++) {
+    const val = v.valuesByMode[m];
+    if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
+      v = await figma.variables.getVariableByIdAsync(val.id);
+      continue;
+    }
+    return val;
+  }
+  return null;
 }
 function readCS(v) {
   const cs = v.codeSyntax || {};
   return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
 async function floatAlias(vid, m) {
-  let v = await figma.variables.getVariableByIdAsync(vid);
-  for (let d = 0; d < 10; d++) {
-    const val = v.valuesByMode[m];
-    if (!val || val.type !== 'VARIABLE_ALIAS') return val && val.type === 'FLOAT' ? val.value : 0;
-    v = await figma.variables.getVariableByIdAsync(val.id);
-  }
-  return 0;
+  const raw = await resolveRaw(vid, m);
+  return typeof raw === 'number' ? raw : 0;
 }
 async function crow(tp) {
   const v = await figma.variables.getVariableByIdAsync(p[tp]);
-  const raw = v.valuesByMode[primitivesModeId];
+  const raw = await resolveRaw(v.id, primitivesModeId);
   return { tokenPath: tp, resolvedHex: colorToHex(raw), codeSyntax: readCS(v) };
 }
 const colorRamps = {};
@@ -849,9 +863,8 @@ for (const n of allVars.map((v) => v.name).filter((n) => n.startsWith('elevation
 }
 async function srow(tp) {
   const v = await figma.variables.getVariableByIdAsync(p[tp]);
-  const raw = v.valuesByMode[primitivesModeId];
-  let rv = '\u2014';
-  if (raw && raw.type === 'STRING') rv = raw.value;
+  const raw = await resolveRaw(v.id, primitivesModeId);
+  const rv = typeof raw === 'string' ? raw : '\u2014';
   return { tokenPath: tp, resolvedValue: rv, codeSyntax: readCS(v) };
 }
 const typeface = [];
