@@ -6,6 +6,8 @@
 
 **Related:** [`AGENTS.md`](../../AGENTS.md), [`.cursor/rules/mcp-inline-payloads.mdc`](../../.cursor/rules/mcp-inline-payloads.mdc), [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md), [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md), [`VERIFICATION.md`](./VERIFICATION.md).
 
+**Distribution §** (bundled `use_figma` payloads, Claude Code / plugin **source root**, upstream RFC): **[§12 — Distribution and bundled `code`](#12-distribution-and-bundled-code-stable-workflow)**.
+
 ---
 
 ## 1. Problem
@@ -113,8 +115,8 @@ Concatenating **all** page templates into **one** script is **~55k** source alon
 
 - [x] Research **partially validated** — **Summary:** On this real file, **50k was not the blocker**; **`variableMap` JSON was ~11k**, not dominant vs ~30.5k static 15a JS. **Pain was orchestration:** getting tens of kB of `code` reliably into `use_figma` from the agent (tool args, no repo staging), plus **wrong MCP server slug** on first try.
 - [x] **In-plugin `variableMap` + row build:** Still valuable (smaller `code`, fewer escape bugs, one source of truth in Figma) but for **this** file it is **optimization**, not required to get under 50k if templates are **minified** for MCP transport.
-- [ ] **Document MCP server id** for Cursor (`plugin-figma-figma`) in skill or AGENTS pointer if not already obvious to Claude Code users.
-- [ ] **Optional:** Phase or VERIFICATION note — “measure `variableMap` JSON for your file” before assuming cap risk; cite **~11k @ 268 vars** as one data point.
+- [x] **Document MCP server id** for Cursor (`plugin-figma-figma`) — see [`AGENTS.md`](../../AGENTS.md) and convention 16 cross-links.
+- [x] **VERIFICATION / bundle note** — measure `variableMap` JSON for your file before assuming cap risk; committed **Step 15a** bundle size in [`VERIFICATION.md`](./VERIFICATION.md); cite **~11k @ 268 vars** as one data point ([§4](#4-hypothesis--dominant-ctx-cost)).
 - [ ] **Splits / batch contract** for 15a/15b — still relevant for **single-page multi-call** semantics; **not** validated or invalidated by this attempt (not needed once under cap).
 
 ---
@@ -133,6 +135,26 @@ Concatenating **all** page templates into **one** script is **~55k** source alon
 
 ---
 
+## 12. Distribution and bundled `code` (stable workflow)
+
+**Problem:** `use_figma` only accepts an inline **`code`** string (~50k). Agents assembling `_lib.js` + template + runner **in chat** hit escaping, truncation, and policy friction (no temp staging).
+
+**Stable fix (this repo):**
+
+| Layer | What | Where |
+|--------|------|--------|
+| **Tier 2 — Plugin package** | Committed **one-file** MCP payloads for Step **15a** | [`canvas-templates/bundles/step-15a-primitives.mcp.js`](./canvas-templates/bundles/step-15a-primitives.mcp.js) (= `_lib.js` + `primitives.js` + [`bundles/_step15a-runner.fragment.js`](./canvas-templates/bundles/_step15a-runner.fragment.js)). Regenerate via [`scripts/bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs). |
+| **Source root** | Claude Code desktop + **local plugin install** — paths are relative to the **skill directory** inside the plugin tree, not an arbitrary workspace `cwd` | [`SKILL.md`](./SKILL.md), [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md), [`AGENTS.md`](../../AGENTS.md) exception for `bundles/*.mcp.js` |
+| **Tier 1 — Upstream (RFC)** | Server-side assembly (`bundleId`, `codePaths[]`, …) so tool args stay small | [`RFC-figma-mcp-bundle-transport.md`](./RFC-figma-mcp-bundle-transport.md) (draft for Figma/Cursor issue trackers) |
+
+**Out of scope:** No hosted-URL / CDN tier for bundles — distribution is **plugin-shipped** artifacts plus optional **upstream MCP** enhancements.
+
+**Esbuild note:** Do not run esbuild on the combined MCP bundle as ESM when it contains top-level `await` + `return`; use **plain concat** (bundle script) or document a bundle-only minify exception — see [`canvas-templates/bundles/README.md`](./canvas-templates/bundles/README.md).
+
+**15b / 15c:** Same one-file pattern when runner fragments + script support land; until then phase 07 alternate path (`_lib` + template + `JSON.stringify(ctx)`).
+
+---
+
 ## 10. Changelog
 
 | Date | Note |
@@ -140,3 +162,4 @@ Concatenating **all** page templates into **one** script is **~55k** source alon
 | 2026-04-20 | Initial research log from codebase review (no live MCP measurement). |
 | 2026-04-20 | Live MCP on file `uCpQaRsW4oiXW3DsC6cLZm`: variable count, `variableMap` JSON length, 15a size estimates, server id `plugin-figma-figma`; §8–§11 filled; full 15a draw not completed in-session. |
 | 2026-04-20 | **Implemented:** `ensureLocalVariableMapOnCtx` in [`canvas-templates/_lib.js`](./canvas-templates/_lib.js); all Step 15 templates await it at `build` start; phase 07, convention 16, SKILL, VERIFICATION, AGENTS, sync-design-system docs updated. MCP smoke on same file key: empty `ctx` → **268** keys after hydrate. |
+| 2026-04-20 | **Distribution:** Committed [`canvas-templates/bundles/step-15a-primitives.mcp.js`](./canvas-templates/bundles/step-15a-primitives.mcp.js), [`scripts/bundle-canvas-mcp.mjs`](./scripts/bundle-canvas-mcp.mjs), [`RFC-figma-mcp-bundle-transport.md`](./RFC-figma-mcp-bundle-transport.md); SKILL/16/07/AGENTS/sync-design-system §12 + bundle path; no CDN tier. |

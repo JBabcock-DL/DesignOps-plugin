@@ -7,10 +7,16 @@ This file owns: which page, which slug, which row set. Canvas rules (geometry, h
 Each Step 15 page uses a pre-written template from [`../canvas-templates/`](../canvas-templates/). The agent's job per page:
 
 1. Resolve live data: mode IDs, per-row `{ tokenPath, resolvedHex, codeSyntax }` manifest (and related shapes per template), Doc/\* style IDs. The **`{ path → variableId }` map** may be **omitted** from `ctx`: each template calls **`ensureLocalVariableMapOnCtx`** from [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js) at the start of `build(ctx)` and fills `ctx.variableMap` from `figma.variables.getLocalVariablesAsync()` when it is missing or `{}`. Embedding the map in `ctx` remains valid (backward-compatible).
-2. Read `_lib.js` and the page template.
-3. Compose: `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"` → pass as `code` to `use_figma`.
+2. **Preferred — Step 15a:** `Read` the committed bundle [`../canvas-templates/bundles/step-15a-primitives.mcp.js`](../canvas-templates/bundles/step-15a-primitives.mcp.js) and pass its **full text** as `use_figma` → `code` (see [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md)). Regenerate that file with [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs) after editing `_lib.js`, `primitives.js`, or `_step15a-runner.fragment.js`.
+3. **Alternate / Steps 15b–15c:** Read `_lib.js` and the page template (and [`../data/`](../data/) when required). Compose: `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; await build(ctx);"` → pass as `code` to `use_figma`. When self-contained bundles exist for 15b/15c, prefer the same one-file pattern as 15a.
 
 No cold script generation. Column widths, cell factories, §0 rules, chrome bindings are in the templates.
+
+### Distribution § (MCP — bundles and source root)
+
+- **Step 15a — preferred:** one committed file, full `use_figma` → `code`: [`../canvas-templates/bundles/step-15a-primitives.mcp.js`](../canvas-templates/bundles/step-15a-primitives.mcp.js) (regenerate with [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs); details in [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md)). Rows and `ctx` (without `variableMap`) are resolved **inside** that script before `build(ctx)`.
+- **Claude Code + local plugin:** read paths from **this skill’s install directory**, not an unrelated project workspace — see [`../SKILL.md`](../SKILL.md) and [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) **Source root**.
+- **Research / verification:** payload math, bundle size, and Tier notes live in [`../MCP-PAYLOAD-RESEARCH.md`](../MCP-PAYLOAD-RESEARCH.md) **Distribution §** ([§12](../MCP-PAYLOAD-RESEARCH.md#12-distribution-and-bundled-code-stable-workflow)) and [`../VERIFICATION.md`](../VERIFICATION.md).
 
 ### `ctx` resolution (agent's job before each call)
 
