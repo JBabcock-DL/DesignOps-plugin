@@ -17,7 +17,7 @@ Doc/* text styles and `Effect/shadow-sm` are published in Step 15c § 0. The sca
    - Token-path labels on cards, `TOKEN` cells, command-card titles → `Doc/TokenName`.
    - Header row cells, body cells, tags, small code strings → `Doc/Code`.
    - Captions, helper lines, mode labels, footer notes → `Doc/Caption`.
-3. Load `figma.getLocalEffectStylesAsync()`. For every frame whose name starts with `token-overview/` (section shells), `doc/table/token-overview/`, `dark-mode-panel`, or `font-scale-panel` and which does **not** already carry an `effectStyleId`, assign `Effect/shadow-sm`.
+3. Load `figma.getLocalEffectStylesAsync()`. For every frame whose name starts with `token-overview/` (section shells), `dark-mode-panel`, or `font-scale-panel` and which does **not** already carry an `effectStyleId`, assign `Effect/shadow-sm`. **Do not** apply shadow-sm to `doc/table/token-overview/platform-mapping` or **any** descendant (`header`, `body`, `row/*`, `cell/*`) — depth for that block comes only from the parent `token-overview/platform-mapping` section shell; inner table chrome is fill + stroke only.
 
 Skip a node silently if assignment throws (e.g. a style name differs from the scaffold's fallback). Log one summary line: `Doc/* upgraded · N nodes · shadow-sm applied · M frames`.
 

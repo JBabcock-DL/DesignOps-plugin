@@ -84,3 +84,11 @@ If `textAutoResize` is still `'NONE'` when the parent body cell correctly uses H
 **Required:** after creating the swatch `RECTANGLE`, resolve the row’s COLOR variable from the cached `path → Variable` map, clone `fills[0]`, call `setBoundVariableForPaint(paint, 'color', variable)`, assign `rect.fills = [newPaint]` (see figma-use: return value **must** be reassigned). Stroke on the chip still binds per §12 in [`11-cells-12-bindings-13-build-order.md`](./11-cells-12-bindings-13-build-order.md) (`color/border/subtle`, Theme · Light).
 
 **Do not** mark Step 15a “done” until a read-only probe shows `boundVariables.color` on swatch rects (see optional gate in [`14-audit.md`](./14-audit.md)).
+
+### 0.8 TOC `band-strip/*` — do **not** run blanket **§0.2** `resize(parentWidth − padding, 1)` on strip chrome `TEXT`
+
+**Observed failure (MCP / audit-style pass, 2026):** a script walked every `TEXT` under **`📝 Table of Contents` → `_PageContent`** and applied **§0.2** using **`text.resize(parent.width - parent.paddingLeft - parent.paddingRight, 1)`**. For **`TEXT` nodes whose `parent.name` matches `^band-strip/`** (but **not** `…/title-stack`), the parent is the **64px-tall `HORIZONTAL`** strip (**`SPACE_BETWEEN`**, width **1720**, horizontal padding **24**). That formula yields **1720 − 48 = 1672** — the same number as **`CARD_INNER`** in [`../../new-project/phases/05c-table-of-contents.md`](../../new-project/phases/05c-table-of-contents.md), but here it is **wrong**: it forces the right-aligned **`Doc/Code`** line (**`N sections · M pages`**) to a **1672px-wide** text rail, **collapsing** the band strip layout (metadata no longer sits on the right; the strip looks “broken”).
+
+**Required:** **§0.2** full-width resize applies to **table cells**, **long captions**, and similar **full-bleed** text — **not** to **`TEXT` that is a direct child of `band-strip/{slug}`** (the strip’s horizontal row). For those nodes, keep **`textAutoResize: 'WIDTH_AND_HEIGHT'`** (or hug **`HEIGHT`** after a **minimal** `resize` only if still `'NONE'`) so the count chip **hugs** its string width inside the auto-layout row.
+
+**When auditing** ([`14-audit.md`](./14-audit.md) § TOC + Token Overview): verify strip **`TEXT`** `width` is **orders of magnitude below** **~1600** — if you see **1672**, this bug has fired.

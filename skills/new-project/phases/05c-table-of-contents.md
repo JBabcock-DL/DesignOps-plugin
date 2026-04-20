@@ -280,6 +280,12 @@ async function bandStrip(band) {
   await applyDocStyle(count, 'Doc/Code', DOC_CODE);
   bindThemeColor(count, 'color/background/content-muted', '#525252');
   strip.appendChild(count);
+  // After appendChild: hug the chip so §0.2-style full-width resize never sticks (~1672px rail). See create-design-system §0.8.
+  count.textAutoResize = 'WIDTH_AND_HEIGHT';
+  if ('layoutSizingHorizontal' in count) {
+    count.layoutSizingHorizontal = 'HUG';
+    count.layoutSizingVertical = 'HUG';
+  }
 
   pageContent.appendChild(strip);
 }

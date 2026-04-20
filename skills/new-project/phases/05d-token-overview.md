@@ -19,7 +19,7 @@ Draw the Token Overview documentation skeleton on `↳ Token Overview` with `pla
 None in the script.
 
 ## Instructions
-Before editing this script or running `use_figma`, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ A–H). Geometry must match § A; section surfaces, strokes, and doc text fills must follow the **token binding map** (§ C) and the **table hierarchy** (§ H): bind Theme **Light** and Primitives variables where those paths exist, with the script's hex values only as **resolved fallbacks** when a variable is missing. The platform-mapping table inside this page follows the **same § H hierarchy** as style-guide tables — no absolute `x`/`y` positioning.
+Before editing this script or running `use_figma`, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** (§ A–H). Geometry must match § A; section surfaces, strokes, and doc text fills must follow the **token binding map** (§ C) and the **table hierarchy** (§ H): bind Theme **Light** and Primitives variables where those paths exist, with the script's hex values only as **resolved fallbacks** when a variable is missing. The platform-mapping table inside this page follows the **same § H hierarchy** as style-guide tables — no absolute `x`/`y` positioning. **Do not** apply `Effect/shadow-sm` to `doc/table/token-overview/platform-mapping` or any of its children; the parent `token-overview/platform-mapping` section shell already provides depth.
 
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
@@ -355,7 +355,9 @@ async function buildPlatformTable(parent, slug, cols, rows) {
   table.clipsContent = true;
   bindThemeColor(table, 'color/background/default', '#ffffff');
   bindThemeStroke(table, 'color/border/subtle', '#ededed', 1);
-  await tryApplyEffectStyle(table, 'Effect/shadow-sm');
+  // No Effect/shadow-sm on the table or its inner frames — `token-overview/{slug}` sectionShell
+  // already applies shadow-sm once; inner `body`/`header`/`row` must stay flat (Step 17 used to
+  // match `doc/table/token-overview/*` and incorrectly shadowed every descendant).
   parent.appendChild(table);
 
   // Header row

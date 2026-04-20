@@ -104,6 +104,14 @@ If `textAutoResize` is still `'NONE'` when the parent body cell correctly uses H
 
 **Do not** mark Step 15a “done” until a read-only probe shows `boundVariables.color` on swatch rects (see optional gate in [`conventions/14-audit.md`](./conventions/14-audit.md)).
 
+### 0.8 TOC `band-strip/*` — do **not** run blanket **§0.2** `resize(parentWidth − padding, 1)` on strip chrome `TEXT`
+
+**Observed failure (MCP / audit-style pass, 2026):** a script walked every `TEXT` under **`📝 Table of Contents` → `_PageContent`** and applied **§0.2** using **`text.resize(parent.width - parent.paddingLeft - parent.paddingRight, 1)`**. For **`TEXT` nodes whose `parent.name` matches `^band-strip/`** (but **not** `…/title-stack`), the parent is the **64px-tall `HORIZONTAL`** strip (**`SPACE_BETWEEN`**, width **1720**, horizontal padding **24**). That formula yields **1720 − 48 = 1672** — the same number as **`CARD_INNER`** in [`new-project/phases/05c-table-of-contents.md`](./new-project/phases/05c-table-of-contents.md), but here it is **wrong**: it forces the right-aligned **`Doc/Code`** line (**`N sections · M pages`**) to a **1672px-wide** text rail, **collapsing** the band strip layout.
+
+**Required:** **§0.2** full-width resize applies to **table cells**, **long captions**, and similar **full-bleed** text — **not** to **`TEXT` that is a direct child of `band-strip/{slug}`**. For those nodes, keep **`textAutoResize: 'WIDTH_AND_HEIGHT'`** (or hug **`HEIGHT`** after a **minimal** `resize` only if still `'NONE'`) so the count chip **hugs** its string width inside the auto-layout row.
+
+**When auditing** ([`conventions/14-audit.md`](./conventions/14-audit.md) § TOC + Token Overview): strip **`TEXT`** `width` must stay **well below** **~1600** — if you see **1672**, this bug has fired.
+
 ---
 
 ## Conventions load map (lazy — required)

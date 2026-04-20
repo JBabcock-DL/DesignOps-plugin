@@ -9,7 +9,7 @@ _PageContent                                       VERTICAL · AUTO · FIXED · 
     ├── doc/table-group/{slug}/caption             TEXT · Doc/Caption · fill color/background/content-muted  (optional, 1 line)
     └── doc/table/{slug}                           VERTICAL · AUTO · STRETCH · cornerRadius 16 · clipsContent · **`{slug}` may contain slashes** (e.g. `primitives/color/primary`) — automation must detect table roots by **direct children** named `…/header` and `…/body`, not by a `^doc/table/[^/]+$` pattern.
         │                                          stroke 1 color/border/subtle · fill color/background/default
-        │                                          effectStyleId Effect/shadow-sm (when published — § G Depth)
+        │                                          effectStyleId Effect/shadow-sm (when published — § G Depth) **except** `doc/table/token-overview/platform-mapping` and all inner frames — that table is nested inside `token-overview/platform-mapping`, which already applies `shadow-sm` once.
         ├── doc/table/{slug}/header                HORIZONTAL · FIXED height 56 · width 1640 · fill color/background/variant
         │                                          bottom 1px stroke color/border/subtle
         │   └── doc/table/{slug}/header/cell/{col} FIXED width per §10 (`10-column-spec.md` + `column-widths.json`) · paddingH 20 · counterAxisAlignItems CENTER

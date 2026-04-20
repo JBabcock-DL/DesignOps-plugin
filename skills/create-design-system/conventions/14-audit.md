@@ -43,6 +43,7 @@
 ## TOC + Token Overview
 - [ ] Do both pages render at `1800` wide with `40` padding (not `80`)?
 - [ ] Does every text node on both pages carry `textStyleId` (`Doc/Section` / `Doc/TokenName` / `Doc/Code` / `Doc/Caption`) — not raw `fontName`/`fontSize`?
+- [ ] **§0.8 guard — TOC band strips:** `TEXT` **direct children of `band-strip/{slug}`** (the horizontal strip row, e.g. the **`Doc/Code`** “`N sections · M pages`” line) must **not** use **§0.2**’s **`resize(parent.width − horizontalPadding, 1)`** — that yields **~1672px** width on a **1720** strip with **24** side padding and **destroys** `SPACE_BETWEEN` layout. If any such `TEXT` has **`width ≈ 1672`**, revert to **`textAutoResize: 'WIDTH_AND_HEIGHT'`** (hug). See [`00-gotchas.md`](./00-gotchas.md) **§0.8**.
 - [ ] Does every fill/stroke bind to a Theme or Primitives variable (hex literals only as scaffold-time fallbacks)?
 - [ ] Is the Token Overview platform-mapping table built with § H hierarchy (`doc/table/token-overview/platform-mapping/{header|body|row/*|cell/*}`) — no absolute `x`/`y` positioning?
 - [ ] Do platform-mapping columns sum to exactly **1640** (TOKEN 400 · WEB 420 · ANDROID 340 · iOS 480)?
