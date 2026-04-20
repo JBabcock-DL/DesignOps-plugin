@@ -21,10 +21,14 @@ When a tool accepts an **inline** argument (body, `code`, JSON blob, etc.):
 
 When **`SKILL.md` or a phase file explicitly points** at a **committed** path in this repo (e.g. `skills/new-project/phases/*.md` fenced `javascript` blocks, `skills/create-component/templates/*.figma.js`, `skills/create-design-system/canvas-templates/*.js`), **read that file** and use its contents in the tool call. Do **not** duplicate that content into a parallel `.mcp-*` “staging” copy.
 
-## Figma `use_figma` — Read bundle → inline `code` (never full-bundle `cat`)
+## Figma `use_figma` — canvas bundles (Step 15 / 17) → **delegate to subagent**, do NOT `Read` in parent
 
-1. Use editor **`Read`** on the committed **`.min.mcp.js`** bundle and pass its contents as inline `code` — not shell `cat` / `type` of multi‑10k files (stdout may truncate in the agent UI). The shipping tool has **only** inline `code`; there is no file-path parameter in the schema.
-2. **Still forbidden:** throwaway repo files whose only job is staging MCP payloads (see Rule above). Canonical bundles live under [`skills/create-design-system/canvas-templates/bundles/`](../../skills/create-design-system/canvas-templates/bundles/). Withdrawn historical note: [`skills/create-design-system/RFC-figma-mcp-bundle-transport.md`](../../skills/create-design-system/RFC-figma-mcp-bundle-transport.md).
+**Rule:** In this repo, canvas bundle delivery for `/create-design-system` Steps 15a–15c + 17 and `/sync-design-system` 6.Canvas.9b / 9d goes through the [`canvas-bundle-runner`](../../skills/canvas-bundle-runner/SKILL.md) subagent, invoked via `Task(subagent_type: "generalPurpose")`. The subagent runs in an isolated context and performs the **one `Read` + one `use_figma`** itself, returning a compact JSON summary. The parent thread **must not** `Read` `.min.mcp.js` bundles, and **must not** call `use_figma` for canvas redraws. This is what prevents 150k-char bundle text from piling up in the parent context, what avoids Cursor-UI truncation of large `Read` output, and what keeps models from "helpfully" rewriting bundles mid-thread.
+
+1. For canvas redraws: emit `Task(subagent_type: "generalPurpose", prompt: "Load skill canvas-bundle-runner. Run step=<slug>, fileKey=<key>, description=\"<short>\". Return the compact JSON summary only — no prose.")`. 15c is three sequential Tasks.
+2. For **non-canvas** `use_figma` calls (small one-off scripts from `/create-component` etc.): continue to build inline `code` in the parent per the existing inline-payload rule above. The 50k schema cap and the no-staging-files rule still apply.
+3. **Fallback (debug only):** If the runner subagent cannot reach the MCP and the parent must escalate, use editor **`Read`** on the committed **`.min.mcp.js`** bundle and pass contents as inline `code` — never shell `cat` / `type` of multi-10k files (stdout may truncate in the agent UI).
+4. **Still forbidden:** throwaway repo files whose only job is staging MCP payloads (see Rule above). Canonical bundles live under [`skills/create-design-system/canvas-templates/bundles/`](../../skills/create-design-system/canvas-templates/bundles/). Withdrawn historical note: [`skills/create-design-system/RFC-figma-mcp-bundle-transport.md`](../../skills/create-design-system/RFC-figma-mcp-bundle-transport.md). Full delegation contract: [`skills/canvas-bundle-runner/SKILL.md`](../../skills/canvas-bundle-runner/SKILL.md).
 
 ## Rationale
 

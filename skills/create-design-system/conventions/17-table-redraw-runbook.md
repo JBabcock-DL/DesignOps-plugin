@@ -16,7 +16,8 @@ Use the workspace **`serverIdentifier`** from `mcps/**/SERVER_METADATA.json` (Cu
 
 | Priority | Action |
 |----------|--------|
-| 1 | **Editor `Read`** the `.min.mcp.js` file → pass the returned string **verbatim** as `use_figma` → `code` (only supported path in the shipping tool schema). |
+| **1 — Primary** | **Delegate each page to the [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent** via `Task(subagent_type: "generalPurpose")`. Parent passes `step`, `fileKey`, `description`; subagent `Read`s the bundle and calls `use_figma` with it verbatim; parent receives a compact `{ ok, step, pageName, tableGroups, … }` summary. This is the only path that keeps the 18–30k-char bundle out of the parent's context. Full delegation pattern: [`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md) § *Canvas runner subagent*. |
+| 2 — Debug fallback | Parent-side editor **`Read`** the `.min.mcp.js` file → pass the returned string **verbatim** as `use_figma` → `code`. Use only when the runner subagent cannot reach the MCP and the parent must escalate. |
 | Forbidden | Shell `cat` / `type` as the source of truth for full bundles (stdout may truncate). Repo scratch `*-payload.json` / `.mcp-*` (see [`AGENTS.md`](../../../AGENTS.md)). |
 | Do not assume | `codeWorkspacePath` or other file indirection — not in the connector schema; see withdrawn [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
 
@@ -41,9 +42,10 @@ Regenerate all bundles after editing templates: `node skills/create-design-syste
 
 ## 4. Call count (parity)
 
-- **15c** is always **three** separate `use_figma` invocations (Layout, Text Styles, Effects) — not one combined script unless a **new** combined bundle is added to the repo.
-- **15a** and **15b** are one call each when those pages are redrawn.
-- **Step 17** is one call when **↳ Token Overview** is refreshed.
+- **15c** is always **three sequential `Task` subagent invocations** (Layout → Text Styles → Effects) — one bundle each, one Task each. Not parallel; not combined.
+- **15a** and **15b** are one subagent Task each when those pages are redrawn.
+- **Step 17** is one subagent Task when **↳ Token Overview** is refreshed.
+- In every case, the subagent internally makes **one `use_figma` call** with the bundle verbatim; the parent never calls `use_figma` for canvas redraws itself.
 
 ---
 

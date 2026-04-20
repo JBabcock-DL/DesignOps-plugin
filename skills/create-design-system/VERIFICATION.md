@@ -4,7 +4,7 @@
 
 ## Payload size — committed bundles (re-measure after regen)
 
-Every style-guide + Token Overview canvas `use_figma` call reads a committed bundle from [`canvas-templates/bundles/`](./canvas-templates/bundles/) and passes its contents verbatim as `code`. `ctx` is assembled **in the plugin** by the runner fragment where applicable — nothing is JSON-stringified on the wire for Step 15 / 17.
+Every style-guide + Token Overview canvas `use_figma` call is issued from inside the [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md) subagent (parents delegate via `Task(subagent_type: "generalPurpose")` — see [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md) § *Canvas runner subagent*). The subagent `Read`s the committed bundle from [`canvas-templates/bundles/`](./canvas-templates/bundles/) and passes its contents verbatim as `code`. `ctx` is assembled **in the plugin** by the runner fragment where applicable — nothing is JSON-stringified on the wire for Step 15 / 17, and the bundle text never enters the parent thread's context.
 
 `wc -c` after `node skills/create-design-system/scripts/bundle-canvas-mcp.mjs` (2026-04-20 regen):
 

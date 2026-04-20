@@ -2,23 +2,25 @@
 
 This file owns: which page, which slug, which row set. Canvas rules (geometry, hierarchy, columns, cells, auto-layout, bindings, build order) are baked into [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js) and the per-page templates. §0 rules apply — see index in [`../SKILL.md`](../SKILL.md); full rules in [`../conventions/00-gotchas.md`](../conventions/00-gotchas.md).
 
-### Canvas is bundle-driven (happy path)
+### Canvas is bundle-driven, subagent-delivered (happy path)
 
-Each Step 15 page has a committed self-contained bundle under [`../canvas-templates/bundles/`](../canvas-templates/bundles/). The agent's job per page is **one `Read` → one `use_figma`**:
+Each Step 15 / 17 page has a committed self-contained bundle under [`../canvas-templates/bundles/`](../canvas-templates/bundles/). **The parent thread never `Read`s a bundle and never calls `use_figma` for a canvas draw.** For each page, the parent emits one `Task(subagent_type: "generalPurpose")` that loads the [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) skill. The subagent performs exactly **one `Read` + one `use_figma`** in an isolated context and returns a compact JSON summary. This keeps the 18–30k-char bundle text out of the parent's working memory and makes delivery deterministic.
 
-1. `Read` the matching **`.min.mcp.js`** file in [`../canvas-templates/bundles/`](../canvas-templates/bundles/).
-2. Pass its contents **verbatim** as the `code` argument to `use_figma` (plus `fileKey`, `description`, `skillNames: "figma-use"`).
-3. Inspect the returned payload (`{ ok, step, tableGroups, pageName, … }`) and the page on canvas. Apply the read-only audit in [`../conventions/14-audit.md`](../conventions/14-audit.md).
+**Per-page parent pattern:**
 
-| Step | Bundle |
-|------|--------|
-| 15a — Primitives       | [`../canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) |
-| 15b — Theme            | [`../canvas-templates/bundles/step-15b-theme.min.mcp.js`](../canvas-templates/bundles/step-15b-theme.min.mcp.js) |
-| 15c — Layout           | [`../canvas-templates/bundles/step-15c-layout.min.mcp.js`](../canvas-templates/bundles/step-15c-layout.min.mcp.js) |
-| 15c — Text Styles      | [`../canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../canvas-templates/bundles/step-15c-text-styles.min.mcp.js) |
-| 15c — Effects          | [`../canvas-templates/bundles/step-15c-effects.min.mcp.js`](../canvas-templates/bundles/step-15c-effects.min.mcp.js) |
+1. Emit `Task(subagent_type: "generalPurpose", description: "<short>", prompt: "Load skill canvas-bundle-runner. Run step=<slug>, fileKey=<key>, description=\"<short>\". Return the compact JSON summary only — no prose.")` with the `step` slug from the table below.
+2. Parse the returned JSON (`{ ok, step, pageName, tableGroups, … }`). On `ok: true` — log the canvas checklist row, run the read-only audit gate from [`../conventions/14-audit.md`](../conventions/14-audit.md) with **only the summary in context** (never re-`Read` the bundle), advance. On `ok: false` — see *Debug / fallback* below.
+3. Never chain pages inside one Task. 15c is always **three sequential Task invocations** (Layout → Text Styles → Effects) per [`../conventions/17-table-redraw-runbook.md`](../conventions/17-table-redraw-runbook.md) § 4.
 
-Each bundle concatenates `_lib.js` + page template + a per-step runner fragment. The runner resolves the live variable registry, data aliases, Doc/* style IDs, and target page inside the plugin and calls `await build(ctx)`. **Never assemble `ctx` in the tool call**, **never pass `ctx.variableMap` inline**, and **never stage the bundle as a `.mcp-*` / `*-payload.json`** — the `.min.mcp.js` contents go directly in the `code` argument.
+| Step | `step` slug | Bundle (the subagent `Read`s this — parent does not) |
+|------|-------------|------------------------------------------------------|
+| 15a — Primitives       | `15a-primitives`    | [`../canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) |
+| 15b — Theme            | `15b-theme`         | [`../canvas-templates/bundles/step-15b-theme.min.mcp.js`](../canvas-templates/bundles/step-15b-theme.min.mcp.js) |
+| 15c — Layout           | `15c-layout`        | [`../canvas-templates/bundles/step-15c-layout.min.mcp.js`](../canvas-templates/bundles/step-15c-layout.min.mcp.js) |
+| 15c — Text Styles      | `15c-text-styles`   | [`../canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../canvas-templates/bundles/step-15c-text-styles.min.mcp.js) |
+| 15c — Effects          | `15c-effects`       | [`../canvas-templates/bundles/step-15c-effects.min.mcp.js`](../canvas-templates/bundles/step-15c-effects.min.mcp.js) |
+
+Each bundle concatenates `_lib.js` + page template + a per-step runner fragment. The runner resolves the live variable registry, data aliases, Doc/* style IDs, and target page inside the plugin and calls `await build(ctx)`. **Never assemble `ctx` in the Task prompt**, **never pass `ctx.variableMap`**, and **never stage the bundle as a `.mcp-*` / `*-payload.json`** — the subagent reads the `.min.mcp.js` directly and passes its contents to `use_figma` verbatim.
 
 Regenerate after editing `_lib.js`, any `canvas-templates/*.js`, or any `bundles/_*-runner.fragment.js`:
 
@@ -28,9 +30,9 @@ node skills/create-design-system/scripts/bundle-canvas-mcp.mjs
 
 See [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md).
 
-### Debug / fallback path (only when the happy path fails)
+### Debug / fallback path (only when a runner subagent returns `ok: false`)
 
-If a bundle run returns a real error and the fix needs source-level edits, open [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js), the relevant page template in [`../canvas-templates/`](../canvas-templates/), and the runner fragment in [`../canvas-templates/bundles/`](../canvas-templates/bundles/). The fallback composition is `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; await build(ctx);"` — but prefer fixing the bundle source and regenerating over hand-composing one-off payloads. [`ensureLocalVariableMapOnCtx`](../canvas-templates/_lib.js) hydrates `variableMap` inside `build(ctx)`; keep it out of inline `ctx`.
+If a runner subagent returns a real error and the fix needs source-level edits, **then** (and only then) the parent may open [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js), the relevant page template in [`../canvas-templates/`](../canvas-templates/), and the runner fragment in [`../canvas-templates/bundles/`](../canvas-templates/bundles/) to diagnose. Fix the source, regenerate bundles (`node skills/create-design-system/scripts/bundle-canvas-mcp.mjs`), and re-delegate to the runner subagent — do **not** hand-compose a payload in the parent thread. The last-resort escape hatch (inline `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; await build(ctx);"` as `code` from the parent) exists only when the runner subagent cannot reach the MCP at all. [`ensureLocalVariableMapOnCtx`](../canvas-templates/_lib.js) hydrates `variableMap` inside `build(ctx)`; keep it out of any inline `ctx`.
 
 **Template `ctx` shapes** (what each runner constructs inside the plugin — reference only):
 
@@ -68,7 +70,7 @@ Every page:
 
 ## Step 15a — ↳ Primitives
 
-**Happy path:** `Read` [`../canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) → pass contents as `use_figma` → `code`. Template source: [`../canvas-templates/primitives.js`](../canvas-templates/primitives.js).
+**Happy path:** Delegate to the [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent with `step=15a-primitives` (the subagent `Read`s [`../canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) and calls `use_figma`; parent never touches the bundle). Collect the summary, log the checklist row, run §14 audit. Template source (for debug only): [`../canvas-templates/primitives.js`](../canvas-templates/primitives.js).
 
 | Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
@@ -91,7 +93,7 @@ Log Canvas checklist row for 15a (10 tables).
 
 ## Step 15b — ↳ Theme
 
-**Happy path:** `Read` [`../canvas-templates/bundles/step-15b-theme.min.mcp.js`](../canvas-templates/bundles/step-15b-theme.min.mcp.js) → pass contents as `use_figma` → `code`. The runner resolves Theme Light/Dark mode IDs, walks each row's alias chain to its resolved hex per mode, and inlines scrim/shadow rawLiterals into the background group. Template source: [`../canvas-templates/theme.js`](../canvas-templates/theme.js).
+**Happy path:** Delegate to the [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent with `step=15b-theme` (subagent bundle: [`../canvas-templates/bundles/step-15b-theme.min.mcp.js`](../canvas-templates/bundles/step-15b-theme.min.mcp.js)). The runner resolves Theme Light/Dark mode IDs, walks each row's alias chain to its resolved hex per mode, and inlines scrim/shadow rawLiterals into the background group — all inside the plugin. Template source (for debug only): [`../canvas-templates/theme.js`](../canvas-templates/theme.js).
 
 | Order | `{slug}` | Group title | Caption | Rows |
 |---|---|---|---|---|
@@ -111,13 +113,13 @@ Log Canvas checklist row for 15b.
 
 ## Step 15c — ↳ Layout, ↳ Text Styles, ↳ Effects
 
-**Happy path — three sequential `use_figma` calls**, one bundle each:
+**Happy path — three sequential [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent invocations**, one bundle each, one Task per page. Run strictly in order; await each summary, log the checklist row, run §14 audit, then fire the next:
 
-1. [`../canvas-templates/bundles/step-15c-layout.min.mcp.js`](../canvas-templates/bundles/step-15c-layout.min.mcp.js) → page **`↳ Layout`** (template: [`layout.js`](../canvas-templates/layout.js))
-2. [`../canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../canvas-templates/bundles/step-15c-text-styles.min.mcp.js) → page **`↳ Text Styles`** (template: [`text-styles.js`](../canvas-templates/text-styles.js))
-3. [`../canvas-templates/bundles/step-15c-effects.min.mcp.js`](../canvas-templates/bundles/step-15c-effects.min.mcp.js) → page **`↳ Effects`** (template: [`effects.js`](../canvas-templates/effects.js))
+1. `step=15c-layout` → subagent bundle [`../canvas-templates/bundles/step-15c-layout.min.mcp.js`](../canvas-templates/bundles/step-15c-layout.min.mcp.js) → page **`↳ Layout`** (template, debug only: [`layout.js`](../canvas-templates/layout.js))
+2. `step=15c-text-styles` → [`../canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../canvas-templates/bundles/step-15c-text-styles.min.mcp.js) → page **`↳ Text Styles`** (template, debug only: [`text-styles.js`](../canvas-templates/text-styles.js))
+3. `step=15c-effects` → [`../canvas-templates/bundles/step-15c-effects.min.mcp.js`](../canvas-templates/bundles/step-15c-effects.min.mcp.js) → page **`↳ Effects`** (template, debug only: [`effects.js`](../canvas-templates/effects.js))
 
-Each bundle calls `setCurrentPageAsync` for its target page in-plugin; no ctx assembly in the tool call.
+Each bundle calls `setCurrentPageAsync` for its target page in-plugin; no ctx assembly in the Task prompt. The parent never `Read`s any of these `.min.mcp.js` files.
 
 **Doc/* ordering (§0.4):** These styles are published at the close of Step 11. If you are here and they are absent (e.g. phases 02–04 were skipped without running the Step 11 close block), run the § 0 block below now — it is idempotent.
 

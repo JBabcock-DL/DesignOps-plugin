@@ -18,23 +18,61 @@ Cursor agents can only read files under **workspace folders**. The plugin tree i
 
 ---
 
-## Default workflow (keep it simple)
+## Canvas runner subagent (primary transport for Step 15 / Step 17)
 
-1. **Read canonical sources** — **Happy path:** the committed **minified** bundle [`canvas-templates/bundles/step-15a-primitives.min.mcp.js`](../canvas-templates/bundles/step-15a-primitives.min.mcp.js) (and the other `.min.mcp.js` files per [`17-table-redraw-runbook.md`](./17-table-redraw-runbook.md)) — one `Read` → full `code`. Use readable `.mcp.js` only for debugging/diffing. **Fallback:** [`canvas-templates/_lib.js`](../canvas-templates/_lib.js) plus the page template (`primitives.js`, `theme.js`, etc.) and manifests under [`data/`](../data/). Resolve **live** `{ path → variableId }` and row payloads **inside** the plugin context where possible (or build `ctx` in the script per [`phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md)).
-2. **Compose plain Figma Plugin API JavaScript** — either use the bundle file verbatim as `code`, or concatenate helpers + template + entry (`build(ctx)` or equivalent). Pass the result as the **`code`** argument to **`use_figma`**. Load the **`figma-use`** skill when tool docs require it.
-3. **Deliverable is Figma file state** — not scratch files in the repo (see [`AGENTS.md`](../../../AGENTS.md) and [`.cursor/rules/mcp-inline-payloads.mdc`](../../../.cursor/rules/mcp-inline-payloads.mdc)).
+**Rule:** Parent threads in `/create-design-system` and `/sync-design-system` **must not** `Read` `.min.mcp.js` bundles or call `use_figma` directly for canvas redraws. Instead, for each page, delegate to the [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent via the **`Task`** tool (`subagent_type: "generalPurpose"`):
 
-Do **not** improvise a parallel “generator” that ignores the templates — the templates encode §0 layout and binding rules.
+```
+Task(
+  subagent_type: "generalPurpose",
+  description: "Draw ↳ <Page> canvas (Step <N>)",
+  prompt: "Load skill canvas-bundle-runner. Run step=<slug>, fileKey=<key>, description=\"<short>\". Return the compact JSON summary only — no prose."
+)
+```
+
+The subagent `Read`s the matching bundle, calls `use_figma` with the contents verbatim, and returns `{ ok, step, pageName, tableGroups, … }`. The parent logs the summary, runs the §14 audit with only the summary in context, and advances.
+
+**Why this is the primary path:**
+
+| Cost center | Parent-read pattern (old) | Subagent-delegated (new) |
+|---|---|---|
+| Parent context — per canvas run (6 pages) | ~60 000 tokens bundle text + ~20 000 tokens MCP responses | ~1 200 tokens of JSON summaries |
+| Bundle truncation risk in Cursor `Read` UI | Real — silent payload corruption | Contained to subagent; parent never sees bundle text |
+| "Helpful" bundle rewrites by the model | Frequent — bundle is in the thinking window | Impossible — subagent's locked contract prohibits it |
+| Bundle regeneration / edit workflow | Unchanged | Unchanged |
+
+**15c call count:** still **three sequential Task invocations** (Layout → Text Styles → Effects) — see [`17-table-redraw-runbook.md`](./17-table-redraw-runbook.md) § 4 and [`../phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md). Don't fan out in parallel; sequential ordering keeps audit + failure recovery simple.
+
+**Slug → bundle mapping** lives in the subagent skill ([`../../canvas-bundle-runner/SKILL.md`](../../canvas-bundle-runner/SKILL.md) § 2). Parents refer to steps by slug: `15a-primitives`, `15b-theme`, `15c-layout`, `15c-text-styles`, `15c-effects`, `17-token-overview`.
 
 ---
 
-## Host vs agent transport
+## Default workflow (parent-side)
+
+1. **Read phase + relevant conventions** — [`../phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md) (Step 15 orchestration), [`../phases/08-steps17-appendix.md`](../phases/08-steps17-appendix.md) (Step 17), this shard. Do **not** `Read` `canvas-templates/`, `_lib.js`, or any `.mcp.js` bundle in the parent thread — those are the runner subagent's concern.
+2. **Resolve `fileKey`** from the designer (URL / prior step / `--file-key`).
+3. **For each page, emit one `Task`** per the delegation pattern above. Collect the returned JSON summary, log the canvas checklist row, run the read-only §14 audit, advance.
+4. **Deliverable is Figma file state** — not scratch files in the repo (see [`AGENTS.md`](../../../AGENTS.md) and [`.cursor/rules/mcp-inline-payloads.mdc`](../../../.cursor/rules/mcp-inline-payloads.mdc)).
+
+Do **not** improvise a parallel "generator" that ignores the templates — the templates encode §0 layout and binding rules, and the runner subagent is the single source of truth for how bundles reach Figma.
+
+---
+
+## Non-canvas `use_figma` calls
+
+Other skills (`/create-component`, ad-hoc Figma edits) still call `use_figma` directly from the parent thread with inline `code` built per the transport table below. The subagent-delegation rule applies **only** to the committed canvas bundles under [`../canvas-templates/bundles/`](../canvas-templates/bundles/) — those are the large, redundant payloads that were bloating context. A one-off 2k-char script for a single node edit stays inline in the parent.
+
+---
+
+## Host vs agent transport (for non-canvas `use_figma` only)
 
 | Priority | Mechanism | Notes |
 |----------|-----------|--------|
-| **1 — Supported** | Editor **`Read`** the committed `.min.mcp.js` → pass **verbatim** as inline `code`. | This is how the shipping `use_figma` schema works (~50k cap). Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
-| **2 — Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
-| **3 — Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema; see withdrawn note in [`RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
+| **1 — Canvas bundles (Step 15 / 17)** | **Delegate to [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent.** | Parent never `Read`s the bundle. |
+| **2 — Non-canvas inline** | Build plain Figma Plugin API JS in the parent thread and pass as inline `code`. | Bounded by the shipping schema cap (~50k chars). Follow the `figma-use` skill when tool docs require. |
+| **Fallback (debug only)** | Editor **`Read`** the committed `.min.mcp.js` and pass **verbatim** as inline `code` from the parent. | Use only when the runner subagent can't reach the MCP and the parent must escalate. Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
+| **Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
+| **Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema; see withdrawn note in [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
 
 ## Troubleshooting: truncated or invalid `code`
 
