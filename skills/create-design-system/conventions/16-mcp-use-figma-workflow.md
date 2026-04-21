@@ -72,7 +72,7 @@ Other skills (`/create-component`, ad-hoc Figma edits) still call `use_figma` di
 | **2 — Non-canvas inline** | Build plain Figma Plugin API JS in the parent thread and pass as inline `code`. | Bounded by the shipping schema cap (~50k chars). Follow the `figma-use` skill when tool docs require. |
 | **Fallback (debug only)** | Editor **`Read`** the committed `.min.mcp.js` and pass **verbatim** as inline `code` from the parent. | Use only when the runner subagent can't reach the MCP and the parent must escalate. Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
 | **Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
-| **Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema; see withdrawn note in [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
+| **Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema — only inline `code` exists. |
 
 ## Troubleshooting: truncated or invalid `code`
 
@@ -117,5 +117,4 @@ Each `use_figma` invocation should be able to run **alone**: imports from the sa
 | §0 table/text/swatch rules | [`00-gotchas.md`](./00-gotchas.md), [`SKILL.md`](../SKILL.md) §0 |
 | Repo-wide inline MCP payloads | [`AGENTS.md`](../../../AGENTS.md), [`mcp-inline-payloads.mdc`](../../../.cursor/rules/mcp-inline-payloads.mdc) |
 | Bundle regen + esbuild caveat | [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md), [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs) |
-| Withdrawn file-backed transport stub (historical) | [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md) |
 | Table redraw bundle paths + transport checklist | [`17-table-redraw-runbook.md`](./17-table-redraw-runbook.md) |

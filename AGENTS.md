@@ -24,7 +24,7 @@ If you accidentally create a staging file, **delete it** before finishing; the d
 
 **Supported path:** Put the committed **`.min.mcp.js`** bytes in the tool’s inline **`code`** argument. Use editor **`Read`** on the bundle file (or any host path that returns the **full** file without truncation), then pass that string to `use_figma`. Do **not** use shell `cat` / `type` of the full bundle as the source of truth when output may be **length-capped** (silent truncation → broken script). The shipping Figma MCP schema has **no** `codeWorkspacePath` / file indirection — do not assume one exists.
 
-**Do not loosen** the no-staging-files rule for ad-hoc repo scratch files; committed bundles under [`skills/create-design-system/canvas-templates/bundles/`](skills/create-design-system/canvas-templates/bundles/) remain the canonical artifact. Historical note on withdrawn file-backed proposals: [`skills/create-design-system/RFC-figma-mcp-bundle-transport.md`](skills/create-design-system/RFC-figma-mcp-bundle-transport.md).
+**Do not loosen** the no-staging-files rule for ad-hoc repo scratch files; committed bundles under [`skills/create-design-system/canvas-templates/bundles/`](skills/create-design-system/canvas-templates/bundles/) remain the canonical artifact. The shipping Figma MCP `use_figma` tool has **no** `codeWorkspacePath` / file-indirection parameter — assume only inline `code` exists.
 
 ### Where this is spelled out for canvas
 

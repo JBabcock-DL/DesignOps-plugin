@@ -56,7 +56,7 @@ After regen, from repo root:
 wc -c skills/create-design-system/canvas-templates/bundles/*.min.mcp.js
 ```
 
-Every `.min.mcp.js` must stay well under **50k**. If any approaches **45k**, re-measure and consider the conditional paths in [`../../VERIFICATION.md`](../../VERIFICATION.md) and [`../../MCP-PAYLOAD-RESEARCH.md`](../../MCP-PAYLOAD-RESEARCH.md).
+Every `.min.mcp.js` must stay well under **50k**. If any approaches **45k**, re-measure and audit the corresponding runner fragment for inlined data that could be trimmed — see [`../../VERIFICATION.md`](../../VERIFICATION.md).
 
 ## Anti-pattern reminder
 

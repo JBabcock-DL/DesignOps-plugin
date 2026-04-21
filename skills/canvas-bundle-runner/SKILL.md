@@ -133,4 +133,3 @@ You must end your Task output with the JSON object on the final line so the pare
 | §0 table/swatch rules (NOT your concern — baked into the bundles) | [`../create-design-system/conventions/00-gotchas.md`](../create-design-system/conventions/00-gotchas.md) |
 | §14 canvas audit — **parent-owned** | [`../create-design-system/conventions/14-audit.md`](../create-design-system/conventions/14-audit.md) |
 | Repo-wide inline-payload rule | [`../../AGENTS.md`](../../AGENTS.md), [`../../.cursor/rules/mcp-inline-payloads.mdc`](../../.cursor/rules/mcp-inline-payloads.mdc) |
-| Withdrawn file-backed transport RFC (historical) | [`../create-design-system/RFC-figma-mcp-bundle-transport.md`](../create-design-system/RFC-figma-mcp-bundle-transport.md) |

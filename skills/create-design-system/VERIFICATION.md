@@ -1,6 +1,6 @@
 # Canvas template verification notes
 
-**Distribution §:** Bundled MCP payloads, regen script, and upstream RFC context — [`MCP-PAYLOAD-RESEARCH.md`](./MCP-PAYLOAD-RESEARCH.md) **§12** ([anchor link](./MCP-PAYLOAD-RESEARCH.md#12-distribution-and-bundled-code-stable-workflow)). If **Cursor** never completes a draw despite a good file, read **§12.1** (MCP server id, no `.mcp-*` staging, inline payload size). Phase orchestration — [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) **§ Distribution § (MCP — bundles and source root)**.
+**Scope:** Bundle sizes, parse checks, and post-regen QA for the committed MCP payloads under [`canvas-templates/bundles/`](./canvas-templates/bundles/). Transport contract + delegation pattern: [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md) § *Canvas runner subagent*. Phase orchestration: [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md).
 
 ## Payload size — committed bundles (re-measure after regen)
 

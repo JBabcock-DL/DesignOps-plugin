@@ -28,7 +28,7 @@ When **`SKILL.md` or a phase file explicitly points** at a **committed** path in
 1. For canvas redraws: emit `Task(subagent_type: "generalPurpose", prompt: "Load skill canvas-bundle-runner. Run step=<slug>, fileKey=<key>, description=\"<short>\". Return the compact JSON summary only — no prose.")`. 15c is three sequential Tasks.
 2. For **non-canvas** `use_figma` calls (small one-off scripts from `/create-component` etc.): continue to build inline `code` in the parent per the existing inline-payload rule above. The 50k schema cap and the no-staging-files rule still apply.
 3. **Fallback (debug only):** If the runner subagent cannot reach the MCP and the parent must escalate, use editor **`Read`** on the committed **`.min.mcp.js`** bundle and pass contents as inline `code` — never shell `cat` / `type` of multi-10k files (stdout may truncate in the agent UI).
-4. **Still forbidden:** throwaway repo files whose only job is staging MCP payloads (see Rule above). Canonical bundles live under [`skills/create-design-system/canvas-templates/bundles/`](../../skills/create-design-system/canvas-templates/bundles/). Withdrawn historical note: [`skills/create-design-system/RFC-figma-mcp-bundle-transport.md`](../../skills/create-design-system/RFC-figma-mcp-bundle-transport.md). Full delegation contract: [`skills/canvas-bundle-runner/SKILL.md`](../../skills/canvas-bundle-runner/SKILL.md).
+4. **Still forbidden:** throwaway repo files whose only job is staging MCP payloads (see Rule above). Canonical bundles live under [`skills/create-design-system/canvas-templates/bundles/`](../../skills/create-design-system/canvas-templates/bundles/). Full delegation contract: [`skills/canvas-bundle-runner/SKILL.md`](../../skills/canvas-bundle-runner/SKILL.md).
 
 ## Rationale
 

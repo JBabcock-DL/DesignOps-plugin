@@ -45,7 +45,7 @@ If a runner subagent returns a real error and the fix needs source-level edits, 
 ### Distribution § (MCP — bundles and source root)
 
 - **Claude Code + local plugin:** read paths from **this skill's install directory**, not an unrelated project workspace — see [`../SKILL.md`](../SKILL.md) and [`../conventions/16-mcp-use-figma-workflow.md`](../conventions/16-mcp-use-figma-workflow.md) **Source root**.
-- **Research / verification:** payload math, bundle size, and Tier notes live in [`../MCP-PAYLOAD-RESEARCH.md`](../MCP-PAYLOAD-RESEARCH.md) **Distribution §** ([§12](../MCP-PAYLOAD-RESEARCH.md#12-distribution-and-bundled-code-stable-workflow)) and [`../VERIFICATION.md`](../VERIFICATION.md).
+- **Bundle sizes + parse check:** [`../VERIFICATION.md`](../VERIFICATION.md).
 
 ### No workspace scripts
 

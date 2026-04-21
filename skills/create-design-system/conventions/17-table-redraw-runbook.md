@@ -2,7 +2,7 @@
 
 **Audience:** Agents running `/create-design-system` style-guide steps, `/sync-design-system` **6.Canvas.9b** / **9d**, or any replay of the committed MCP bundles.
 
-**Goal:** Redraw or refresh documentation **tables** without transport failures. Full context: [`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md), [`upstream/AGENT-HANDOFF-ISSUES.md`](../upstream/AGENT-HANDOFF-ISSUES.md), [`AGENTS.md`](../../../AGENTS.md).
+**Goal:** Redraw or refresh documentation **tables** without transport failures. Full context: [`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md), [`AGENTS.md`](../../../AGENTS.md).
 
 ---
 
@@ -19,7 +19,7 @@ Use the workspace **`serverIdentifier`** from `mcps/**/SERVER_METADATA.json` (Cu
 | **1 — Primary** | **Delegate each page to the [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent** via `Task(subagent_type: "generalPurpose")`. Parent passes `step`, `fileKey`, `description`; subagent `Read`s the bundle and calls `use_figma` with it verbatim; parent receives a compact `{ ok, step, pageName, tableGroups, … }` summary. This is the only path that keeps the 18–30k-char bundle out of the parent's context. Full delegation pattern: [`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md) § *Canvas runner subagent*. |
 | 2 — Debug fallback | Parent-side editor **`Read`** the `.min.mcp.js` file → pass the returned string **verbatim** as `use_figma` → `code`. Use only when the runner subagent cannot reach the MCP and the parent must escalate. |
 | Forbidden | Shell `cat` / `type` as the source of truth for full bundles (stdout may truncate). Repo scratch `*-payload.json` / `.mcp-*` (see [`AGENTS.md`](../../../AGENTS.md)). |
-| Do not assume | `codeWorkspacePath` or other file indirection — not in the connector schema; see withdrawn [`../RFC-figma-mcp-bundle-transport.md`](../RFC-figma-mcp-bundle-transport.md). |
+| Do not assume | `codeWorkspacePath` or other file indirection — not in the connector schema. Only inline `code` exists. |
 
 ---
 
@@ -51,7 +51,7 @@ Regenerate all bundles after editing templates: `node skills/create-design-syste
 
 ## 5. Do not use in MCP `use_figma` scripts
 
-- **`figma.clientStorage`** multi-part stitching ([`AGENT-HANDOFF-ISSUES.md`](../upstream/AGENT-HANDOFF-ISSUES.md) §1).
+- **`figma.clientStorage`** multi-part stitching — not reliably supported in the MCP host; pass one self-contained bundle per `use_figma` call.
 - **`fetch`** to load bundle source from a URL (bundles must be committed and read from disk — see [`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md)).
 - Base64 / `atob` wrappers unless the host is verified to support them ([`16-mcp-use-figma-workflow.md`](./16-mcp-use-figma-workflow.md) § MCP host constraints).
 
@@ -59,7 +59,7 @@ Regenerate all bundles after editing templates: `node skills/create-design-syste
 
 ## 6. `fileKey`
 
-Always from the designer at runtime (URL, `--file-key`, handoff). Never commit customer file keys into docs or issues (see [`upstream/AGENT-HANDOFF-ISSUES.md`](../upstream/AGENT-HANDOFF-ISSUES.md) §6).
+Always from the designer at runtime (URL, `--file-key`, handoff). Never commit customer file keys into docs or issues.
 
 ---
 
