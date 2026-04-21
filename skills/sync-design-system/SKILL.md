@@ -30,7 +30,7 @@ This skill audits every design-system surface in a single pass: tokens (**Axis A
 
 ## Interactive input contract
 
-Whenever this skill needs interactive input — **scope selection** (Step 0), **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
+Whenever this skill needs interactive input — **scope selection** (Step 0), **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, **continuation choice** (Step 11.5), **Figma → code write confirmation** (Step 11.5b), or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
 
 Bundled decisions are one **tool call** with multiple sub-questions (e.g. Step 5: one sub-question per axis with drift). That is still one decision moment, one `AskUserQuestion`.
 
@@ -45,13 +45,17 @@ Do not dump multiple decision prompts as plain markdown without calling **AskUse
 
  ─── scope = figma-only (short-circuit) ───────────────────────────
   1.5  Figma-only preflight — resolve Figma file key only (no code probes)
-  2A.figma  Read Figma vars — GET /v1/files/:key/variables/local
+  2A.figma  Read Figma vars — GET /v1/files/:key/variables/local (ONE time)
+                              → stored on plan.A.figmaVarsInMemory
   4.figma   Summary         — variable counts per collection
   5.figma   Page picker     — all | select | cancel
   6.figma   Canvas refresh  — 9b/9d/9e on selected pages
   11.figma  Report          — scope, file key, pages refreshed
-  11.5      Continuation    — continue-full | continue-code-to-figma | done
-            (if continue-*, set plan.scope and jump to Step 1 below)
+  11.5      Continuation    — continue-figma-to-code | continue-full
+                              | continue-code-to-figma | done
+  11.5b     Direct push     — (continue-figma-to-code only)
+            Figma → tokens.css write. Reuses plan.A.figmaVarsInMemory.
+            NO second Figma fetch, NO diff, NO canvas chain.
 
  ─── scope = full | code-to-figma ─────────────────────────────────
   1. Preflight              — detect enabledAxes ∈ {A, B, C}
@@ -67,7 +71,7 @@ Do not dump multiple decision prompts as plain markdown without calling **AskUse
  11. Unified report         — scope, upstream-resolved + validation-pause counts
 ```
 
-In a clean `figma-only` run the user answers **two** `AskUserQuestion` calls (scope at Step 0, page picker at Step 5.figma) plus one continuation prompt at Step 11.5. In a clean `full` / `code-to-figma` run the user answers **two** (scope at Step 0, direction at Step 5). Validation pauses (Steps 7, 9) are exception-driven and fire only when an upstream write has introduced or altered drift items the user never decided on.
+In a clean `figma-only` run the user answers **two** `AskUserQuestion` calls (scope at Step 0, page picker at Step 5.figma) plus one continuation prompt at Step 11.5. The `continue-figma-to-code` branch adds **one** more confirmation (Step 11.5b) and finishes — no second Figma fetch, no diff. In a clean `full` / `code-to-figma` run the user answers **two** (scope at Step 0, direction at Step 5); if entered via continuation from figma-only, the Figma variable read is reused from `plan.A.figmaVarsInMemory` rather than re-fetched. Validation pauses (Steps 7, 9) are exception-driven and fire only when an upstream write has introduced or altered drift items the user never decided on.
 
 ### Plan state object
 
@@ -76,7 +80,14 @@ From Step 0 onward, the skill holds a `plan` object:
 ```
 plan = {
   scope: 'figma-only' | 'full' | 'code-to-figma',
-  A: { direction: 'F'|'C'|'R'|'S'|null, items: [...] },
+  continuation: 'continue-figma-to-code' | 'continue-full' | 'continue-code-to-figma' | 'done' | null,
+  A: {
+    direction: 'F'|'C'|'R'|'S'|null,
+    items: [...],
+    figmaVarsInMemory: null,   // populated by Step 2A.figma (or Step 2A when scope !== 'figma-only');
+                               // reused by Steps 6.figma, 11.5b, and any post-11.5 continuation
+                               // path. NEVER refetched within a single session.
+  },
   B: { direction: ..., items: [...] },
   C: { direction: ..., items: [...] },
   upstreamResolvedDropped: [],
@@ -105,7 +116,7 @@ Record the answer as `plan.scope`.
 
 | `plan.scope` | What runs | Interaction |
 |---|---|---|
-| **figma-only** | **Short-circuit path — Figma only.** Resolve the Figma file key, read `GET /v1/files/:key/variables/local`, present a variable summary, ask which style-guide doc pages to refresh, run the canvas chain (6.Canvas.9b/9d/9e) on the chosen pages. **No** tokens file read, no Axis A / B / C diff, no direction prompt. Steps 2A token parse, 3A–3C diff, 5 bundled direction, 7/8/9/10 axis execution are all **skipped**. After the canvas chain completes, Step 11.5 asks whether to continue into a code-side reconcile (`full` or `code-to-figma`). | Step 0 (scope) → Step 1.5 (figma file key only) → Step 2A.figma (read vars) → Step 4.figma (variable summary) → Step 5.figma (page picker) → Step 6.figma (canvas refresh) → Step 11 (report) → Step 11.5 (continuation prompt) |
+| **figma-only** | **Short-circuit path — Figma only.** Resolve the Figma file key, read `GET /v1/files/:key/variables/local` **once** (stored on `plan.A.figmaVarsInMemory`), present a variable summary, ask which style-guide doc pages to refresh, run the canvas chain (6.Canvas.9b/9d/9e) on the chosen pages. **No** tokens file read, no Axis A / B / C diff, no direction prompt. Steps 2A token parse, 3A–3C diff, 5 bundled direction, 7/8/9/10 axis execution are all **skipped**. After the canvas chain completes, Step 11.5 offers four continuation options: `continue-figma-to-code` (direct Figma → tokens.css write via Step 11.5b, reusing the in-memory read — no second Figma fetch), `continue-full`, `continue-code-to-figma`, or `done`. | Step 0 (scope) → Step 1.5 (figma file key only) → Step 2A.figma (read vars once, store on plan) → Step 4.figma (variable summary) → Step 5.figma (page picker) → Step 6.figma (canvas refresh) → Step 11 (report) → Step 11.5 (continuation prompt) → *optional* Step 11.5b (Figma → code write) |
 | **full** | All axes preflight detects (today's default). | One sub-question per drifted axis at Step 5, four options each (F / C / R / S). |
 | **code-to-figma** | All axes preflight detects. | Single confirmation sub-question per drifted axis (**Apply C** / **Review per item** / **Skip this axis**). Direction is pre-locked to **C** for every axis with drift. Axis A → push + canvas redraws. Axis B → `/create-component --components=<list>`. Axis C → `/code-connect` publish. No drift-report PR, no code-side file writes. |
 
@@ -164,7 +175,8 @@ Run each enabled axis's read pass. Reads may run in parallel where tooling allow
 1. **Locate token source file.** Read `plugin/.claude/settings.local.json` for `token_schema_path`; if missing or file not found, call **AskUserQuestion**: "I couldn't find the token file at the path in settings.local.json. Paste the path to your token file (e.g. `src/tokens.json`, `tailwind.config.js`, or `src/styles/tokens.css`)." Repeat until you have a readable file.
 2. **Parse into a flat map.** Produce `{ "collection/token/name": value }` per the **Supported Token File Formats** section below. Token names use forward-slash notation; values are resolved primitives (not aliases).
 3. **Resolve Figma file key.** Check `$ARGUMENTS` first, then `plugin/templates/agent-handoff.md:active_file_key`, then call **AskUserQuestion**: "Paste the Figma file URL or file key for the design system file you want to sync against." Extract the key from a full URL if one is provided.
-4. **Read Figma variables.** Call `GET /v1/files/:key/variables/local`. Build a flat map of `{ "collection/token/name": value }` across all collections (`Primitives`, `Theme`, `Typography`, `Layout`, `Effects`). Resolve alias tokens to final primitive values.
+4. **Read Figma variables.** **If `plan.A.figmaVarsInMemory` is already populated** (i.e. this scope was entered via a continuation from `figma-only` at Step 11.5), **skip the REST call entirely and reuse that flat map verbatim**. The canvas chain in Step 6.figma does not mutate variables, so the in-memory snapshot is still authoritative.
+   **Otherwise** (fresh entry with `scope=full` or `scope=code-to-figma`) call `GET /v1/files/:key/variables/local` and build the same flat map as 2A.figma step 1 — all collections (`Primitives`, `Theme`, `Typography`, `Layout`, `Effects`), mode-aware flattening, alias resolver from 2A.figma (run in the parent thread against the REST JSON — not via a `use_figma` round-trip). Store the result on `plan.A.figmaVarsInMemory` so later steps can reuse it.
 
    **Mode-aware flattening.** For multi-mode collections, flatten per mode using `collection/mode/token-name`:
    - Theme (2 modes): `theme/light/color/background/default`, `theme/dark/…`
@@ -180,9 +192,43 @@ Run each enabled axis's read pass. Reads may run in parallel where tooling allow
 
 This is the **only** read that runs in the Figma-only short-circuit. It's a subset of 2A.
 
-1. **Read Figma variables.** Call `GET /v1/files/:key/variables/local` with the key resolved in Step 1.5. Build the same flat map `{ "collection/token/name": value }` across `Primitives`, `Theme`, `Typography`, `Layout`, `Effects`, with the same mode-aware flattening rules as 2A step 4 (Theme light/dark, Typography 8 modes, Effects light/dark, Primitives + Layout 1 mode). Resolve aliases to final primitive values.
-2. Tally per collection (e.g. `{ primitives: 124, theme: 72, typography: 60, layout: 18, effects: 14 }`) and keep the flat map in memory for the canvas chain in Step 6.figma.
+1. **Read Figma variables.** Call `GET /v1/files/:key/variables/local` with the key resolved in Step 1.5. Build the same flat map `{ "collection/token/name": value }` across `Primitives`, `Theme`, `Typography`, `Layout`, `Effects`, with the same mode-aware flattening rules as 2A step 4 (Theme light/dark, Typography 8 modes, Effects light/dark, Primitives + Layout 1 mode). Resolve aliases to **final primitive values** (see resolver below).
+2. Tally per collection (e.g. `{ primitives: 124, theme: 72, typography: 60, layout: 18, effects: 14 }`) and **store the flat map on `plan.A.figmaVarsInMemory`**. This map is the authoritative Figma-side read for the rest of the session — Steps 6.figma (canvas chain), 11.5 (continuation), and any follow-on code-side write path **must** reuse it. **Do not** call `GET /v1/files/:key/variables/local` again. **Do not** script a separate alias resolver via `use_figma` to "fill in missing values" — that round-trip is what was dropping light/dark hexes on the floor.
 3. Do **not** read `tokens.css`, `tokens.json`, or `tailwind.config.*`. Do **not** call the extractor. Do **not** probe `components.json` or `.figma.tsx`.
+
+**Alias resolver (run once here, entirely in the parent thread against the REST response — no `use_figma` trip).** The REST response shape is:
+
+```
+{
+  variables: { <variableId>: { name, valuesByMode, resolvedType, variableCollectionId, codeSyntax } },
+  variableCollections: { <collectionId>: { name, modes: [{ modeId, name }], defaultModeId } }
+}
+```
+
+Each `valuesByMode[modeId]` is either (a) a raw value — `{ r, g, b, a? }` for color, `number` for float, `string` for string, `boolean` — or (b) an alias `{ type: 'VARIABLE_ALIAS', id: '<targetVariableId>' }`. To resolve:
+
+```
+function resolve(varId, modeId, depth = 0) {
+  if (depth > 10) return null;                          // cycle guard
+  const v = variables[varId];
+  if (!v) return null;
+  const val = v.valuesByMode[modeId];
+  if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
+    const target = variables[val.id];
+    if (!target) return null;
+    // Cross-collection alias: pick the target collection's matching-name mode
+    // if one exists, otherwise its default mode. (Theme → Primitives: Primitives
+    // is single-mode, always use that mode.)
+    const targetColl = variableCollections[target.variableCollectionId];
+    const sameName = targetColl.modes.find(m => m.name === modeName(modeId));
+    const nextMode = sameName ? sameName.modeId : targetColl.defaultModeId;
+    return resolve(val.id, nextMode, depth + 1);
+  }
+  return val;                                            // raw value, done
+}
+```
+
+The flat-map entry for each mode/variable pair stores both the **resolved primitive value** (the raw `{r,g,b,a}` / number / string returned above, formatted as a hex string `#RRGGBB` or `#RRGGBBAA` for colors, `px` / unitless for floats) **and** the **first-hop alias path** (target variable's `name`, or `null` if the Theme variable holds a raw value). Both are needed downstream: the resolved value for `tokens.css` writes (Step 11.5b), the alias path for canvas L/D labels (now handled live by the canvas bundle since the 15b fix — skill doesn't pass this through anymore, but keep it on the map for reporting).
 
 If the API call fails, report the error (see **Error Guidance**) and stop.
 
@@ -417,19 +463,87 @@ This step runs **only** when `plan.scope === 'figma-only'`. For `full` and `code
 Call **AskUserQuestion** once:
 
 > "Figma-only sync finished. Do you want to continue with a code-side reconcile now?
-> - **continue-full** — Re-enter the skill with `scope = full`. Reads `tokens.css` / `tokens.json` / components / Code Connect, diffs against the current Figma state, and asks per-axis direction at Step 5.
-> - **continue-code-to-figma** — Re-enter the skill with `scope = code-to-figma`. Pushes code as source of truth back into Figma with a single confirmation per axis.
+> - **continue-figma-to-code** — **Fastest path.** Push the Figma variables already in memory (from 2A.figma) directly into the code-side token file (e.g. `tokens.css`). **No** second Figma fetch, **no** diff, **no** per-axis prompt — just overwrite the token file with the current Figma values and show the write summary. Pick this when you know Figma is right and you only want to update code.
+> - **continue-full** — Re-enter the skill with `scope = full`. Reads `tokens.css` / `tokens.json` / components / Code Connect, diffs against the in-memory Figma state, and asks per-axis direction at Step 5. The Figma read is reused — no second REST call.
+> - **continue-code-to-figma** — Re-enter the skill with `scope = code-to-figma`. Pushes code as source of truth back into Figma with a single confirmation per axis. The Figma read is reused for the diff.
 > - **done** — Stop here. Re-run `/sync-design-system` later if you want a code reconcile."
 
 Record the answer:
 
-- **continue-full** → set `plan.scope = 'full'` and jump to **Step 1** (the normal preflight axis-detection table). The Figma variables already in memory from 2A.figma are re-used — do not re-fetch unless the canvas chain may have indirectly modified variables, which it should not.
-- **continue-code-to-figma** → set `plan.scope = 'code-to-figma'` and jump to **Step 1**.
+- **continue-figma-to-code** → keep `plan.scope = 'figma-only'` (this is a Figma-only variant, not a scope flip) and jump to **Step 11.5b** below. Do **not** re-enter Step 1.
+- **continue-full** → set `plan.scope = 'full'` and jump to **Step 1** (the normal preflight axis-detection table). `plan.A.figmaVarsInMemory` from 2A.figma is reused by Step 2A step 4 — do not re-fetch.
+- **continue-code-to-figma** → set `plan.scope = 'code-to-figma'` and jump to **Step 1**. Same reuse rule.
 - **done** → finish the skill. Print: `Figma-only sync closed without code reconcile.`
 
-The recursive entry at Step 1 runs the full axis-detect, read (Step 2A/2B/2C), diff (Step 3), present (Step 4), bundled decision (Step 5), and executes the rest of the flow normally — this time with the chosen scope. Do **not** re-prompt Step 0; `plan.scope` is already pinned. When the second pass reaches Step 11, its report block supersedes the Figma-only summary printed earlier.
+For **continue-full** / **continue-code-to-figma**, the recursive entry at Step 1 runs axis-detect, read (Step 2A/2B/2C — Axis A reuses `plan.A.figmaVarsInMemory`), diff (Step 3), present (Step 4), bundled decision (Step 5), and executes the rest of the flow normally with the chosen scope. Do **not** re-prompt Step 0; `plan.scope` is already pinned. When the second pass reaches Step 11, its report block supersedes the Figma-only summary printed earlier.
 
 If the user picks a continuation path and the code-side preflight finds zero axes active (e.g. no `tokens.css` and no `components.json`), stop with a clear message and do not loop back to Step 11.5.
+
+---
+
+## Step 11.5b — Direct Figma → code write (continue-figma-to-code only)
+
+This step runs **only** when the user picked `continue-figma-to-code` at Step 11.5. It is the fastest path from "figma-only sync finished" to "code stylesheet updated" — one token-file locate, one write, one report. No Figma round-trip. No diff. No per-axis prompt.
+
+**Preconditions.** `plan.A.figmaVarsInMemory` must be populated from Step 2A.figma (it always is if you reached Step 11.5). If it isn't, this step is a bug — fail fast with `Step 11.5b: no in-memory Figma variables (plan.A.figmaVarsInMemory missing). Refusing to write.`
+
+### 1. Locate the token source file
+
+Same locator as Step 2A step 1:
+
+1. Read `plugin/.claude/settings.local.json` for `token_schema_path`.
+2. If missing or file not found, call **AskUserQuestion**: "Paste the path to the token file you want me to write the Figma variables into (e.g. `src/tokens.json`, `tailwind.config.js`, or `src/styles/tokens.css`)."
+3. Detect the format (CSS custom properties, JSON, Tailwind config) via the **Supported Token File Formats** section. If the format can't be determined, ask: "I can't tell what format this file uses. Is it (1) CSS custom properties, (2) JSON, (3) Tailwind config, or (4) something else — I should stop?"
+
+### 2. Render the new file content
+
+Build the new token-file body **locally** from `plan.A.figmaVarsInMemory`. Do **not** call `use_figma`. Do **not** re-fetch variables.
+
+- **CSS custom properties** (`tokens.css`): one `--token-name: value;` per resolved entry, grouped by collection as `/* === Primitives === */`, etc. Theme variables in multi-mode collections emit one selector per mode (`:root { --color-… }` for Light, `.dark { --color-… }` or `@media (prefers-color-scheme: dark) { :root { --color-… } }` for Dark — match the existing file's convention; if the file is empty / new, use `:root` + `.dark` class-based scoping).
+- **JSON** (`tokens.json`): nested object following the existing file's shape, or flat `{ "collection/token/name": value }` if the existing file is flat.
+- **Tailwind config** (`tailwind.config.js` / `.ts`): emit into the `theme.extend.colors` / `theme.extend.spacing` / etc. namespaces per existing conventions. If the file mixes code and data in a way the agent can't round-trip safely, **stop** and recommend `continue-full` instead.
+
+Preserve any non-token content the existing file contained outside the collection regions (header comments, `@import`s, custom utilities). Only overwrite the variable section — never rewrite the whole file verbatim if other content is present.
+
+### 3. Confirm before writing
+
+Call **AskUserQuestion** once with a **single** sub-question:
+
+> "Ready to write `N` tokens from Figma into `<token-file-path>`. Diff summary:
+> - Unchanged: `U` tokens (already match Figma)
+> - Updated: `M` tokens (values differ)
+> - Added: `A` tokens (not in code yet)
+> - Removed: `R` tokens (in code, not in Figma) — `keep` | `delete`
+>
+> Proceed?"
+
+Options: `yes` | `yes + delete removed` | `preview full diff` | `cancel`.
+
+- `preview full diff` → print a unified diff (code file → new file), then re-prompt with the same three remaining options.
+- `cancel` → stop. Print `Step 11.5b: write cancelled. Figma state unchanged, code file unchanged.`
+
+### 4. Write the file
+
+On `yes` or `yes + delete removed`, write the rendered content to the token-file path atomically (write to a temp, rename, or use the host writer's atomic mode). If the repo is a git worktree, leave the write uncommitted — the user stages / commits / PRs it themselves per repo conventions.
+
+### 5. Report
+
+Print:
+
+```
+── Step 11.5b report ─────────────────────────────────────────────
+scope:                 figma-only → continue-figma-to-code
+file written:          <token-file-path>
+updated:               M tokens
+added:                 A tokens
+removed:               R tokens (deleted: yes/no)
+unchanged:             U tokens
+figma re-fetches:      0   ← in-memory reuse only
+canvas redraws:        0   ← code-side write only
+elapsed:               <s>
+```
+
+Then finish the skill. Do **not** run the 6.Canvas chain (nothing changed in Figma).
 
 ---
 
