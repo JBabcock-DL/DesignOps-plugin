@@ -108,7 +108,7 @@ The file lands in Drafts. At the end of the run Claude provides a one-step move 
 | 5c | **Table of Contents** on `📝 Table of Contents` — single-column stacked list of full-width section cards grouped by system band; link rows named `toc-link/{exact Figma page name}` (no hyperlinks yet) |
 | 5b | Doc `_Header` component (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout, black fill) on `Documentation components` + instances on **every page except `Thumbnail`** (cover is the meta surface for that page). No `_Content` placeholder — each downstream phase owns its own `_PageContent` at `y: 320`. |
 | 5d | **Token Overview** skeleton on `↳ Token Overview` — architecture, mapping table, mode panels, binding tips, Claude commands; `placeholder/*` nodes cleared when `/create-design-system` runs |
-| 5e | **Thumbnail** — full-bleed `Cover` (gradient, project title, chips, DL mark) |
+| 5e | **Thumbnail** — full-bleed `Cover` (near-black canvas, soft violet + blue glows, project title, hairline accent, meta line, minimal brand mark + footer) |
 | 5c-links | URL hyperlinks on TOC page-name text (after `Cover` and `_Header` exist) |
 | 6–7 | Move instructions; optional chain to `/create-design-system` (local **`templates/agent-handoff.md`**, or **`--file-key`** if not writable) |
 
