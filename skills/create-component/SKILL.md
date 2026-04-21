@@ -30,11 +30,11 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 | 1 | Resolve component list | `AskUserQuestion` (if missing) | argument-hint list or designer reply | `components: string[]` of kebab-case shadcn names (`button`, `input`, …) |
 | 2 | Locate `tokens.css` | `Read` / `Glob` | repo path | `TOKEN_CSS_PATH: string \| null` — absolute path or `null` if designer skipped |
 | 3 | Initialize shadcn + wire tokens | `Shell` + `AskUserQuestion` | `components.json` presence check | `components.json` exists, `tokens.css` imported at top of `globals.css`, variable-declaration blocks removed |
-| 3b | Icon-pack bootstrap (first-time-only) | `Read` (probe) → `AskUserQuestion` (only if missing) | `designops.config.json` presence check | `ICON_PACK: { npm, import, figmaIconLibraryKey, defaultIconKey } \| null` — persisted to `designops.config.json`; skipped silently on subsequent runs |
+| 3b | Icon-pack bootstrap (first-time-only) | `Read` (probe) → `AskUserQuestion` (only if missing) | `designops.config.json` presence check | `ICON_PACK: { npm, import, figmaIconLibraryKey, defaultIconRef } \| null` — persisted to `designops.config.json`; skipped silently on subsequent runs. Prompts accept Figma URLs, node-ids, or component keys — parser classifies the paste, §5.6 resolves at draw time. |
 | 4 | Install each component | `Shell` | `npx shadcn@latest add {component}` + `npm install {ICON_PACK.npm}` (when set, first run only) | Files written under `components/ui/`, per-component status `installed \| already_exists \| failed`; icon-pack dependency present in `package.json` |
 | 4.4 | Icon-pack import rewrite (global) | `Read` / `StrReplace` (AST preferred) | `ICON_PACK.choice` + installed source files | `from 'lucide-react'` imports + JSX identifiers rewritten to match Step 3b choice (material-symbols mapped, custom specifier-swapped, lucide-react / none = no-op); pinned comment added for idempotence |
 | 5 | Resolve Figma file key | handoff lookup → `AskUserQuestion` fallback | `templates/agent-handoff.md` frontmatter | `fileKey: string` |
-| 6 | Draw component → Figma | `use_figma` (one call per component) | `fileKey`, `CONFIG` block per §6, optional `ICON_PACK.figmaIconLibraryKey` + `ICON_PACK.defaultIconKey` | Return payload with `{ compSetId, compSetVariants, compSetPropertyDefinitions, firstVariantChildren, iconVariantChildren, propErrorsCount, iconSlotMode: "placeholder" \| "instance-swap", … }` |
+| 6 | Draw component → Figma | `use_figma` (one call per component) | `fileKey`, `CONFIG` block per §6, optional `ICON_PACK.figmaIconLibraryKey` + `ICON_PACK.defaultIconRef` | Return payload with `{ compSetId, compSetVariants, compSetPropertyDefinitions, firstVariantChildren, iconVariantChildren, propErrorsCount, iconSlotMode: "placeholder" \| "instance-swap", iconPackResolution: "by-key" \| "by-node-id" \| "failed:*", … }` |
 | 7 | Self-check the return payload | agent-side assertions per §9 | step 6's return JSON | Zero drift; if any assertion fails, stop and report — do not mark the component done |
 
 ### §0.1 — Decision tree for edge cases
@@ -47,7 +47,8 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 - **Designer chose `none` for icon pack** → step 3b writes `{ "iconPack": { "choice": "none" } }` and subsequent runs treat it as done. Figma keeps empty 24×24 placeholder slots; no npm install. Step 4.4 **keeps** lucide-react imports but emits a build-time warning per installed file — shadcn components will fail to resolve icons until designer re-runs `/create-component --re-ask-icon-pack`.
 - **Icon-pack choice ≠ lucide-react / none** → step 4.4 rewrites `from 'lucide-react'` imports + JSX usage sites per the dispatch table (material-symbols mapped, custom specifier-swapped). Unmapped specifiers stay on lucide-react with a warning; pinned comment makes the rewrite idempotent.
 - **Designer re-ran with `--re-ask-icon-pack` and picked a different pack** → step 4.4 detects the mismatch via the pinned comment and prompts before re-rewriting; `keep-current` leaves existing imports alone for this component.
-- **`iconPack.figmaIconLibraryKey` set but `iconPack.defaultIconKey` missing (or vice versa)** → step 6 skips INSTANCE_SWAP wiring and uses empty 24×24 dashed placeholders. Run report flags it so the designer can complete the config.
+- **`iconPack.defaultIconRef` missing OR `kind === 'unknown'` OR resolution fails at §5.6** → step 6 skips INSTANCE_SWAP wiring and uses empty 24×24 dashed placeholders. Run report includes `iconPackResolution: "failed:<reason>"` (e.g. `failed:cross-file-needs-key`, `failed:node-not-found:417:9815`, `failed:url-missing-node-id`) so the designer knows exactly how to fix the config.
+- **Designer pasted a URL for the default icon** → §5.6 extracts the node-id and calls `getNodeByIdAsync` IF the URL's fileKey matches the active file; falls back to `failed:cross-file-needs-key` if it's a published-library URL from a different file. Recovery is to re-run with `--re-ask-icon-pack` and paste a component key (40-hex hash) instead of a URL — the parser accepts either.
 - **Component install fails** → log, mark `failed`, **continue** to the next component.
 - **`use_figma` throws** → **stop**, do not retry. Read the error, fix the CONFIG or the template, then resubmit one component at a time.
 
@@ -250,39 +251,92 @@ Store the reply verbatim as `ICON_PACK.npm` (and mirror to `ICON_PACK.import`). 
 
 #### 3b.d — Figma icon library follow-up (only when choice ≠ `none`)
 
-Call **AskUserQuestion** (single-select, yes/no):
+**Designer-friendly wording — do NOT ask for "component keys" or "file keys" directly.** Designers don't routinely touch those concepts; they know how to copy a Figma link. The prompts below accept whatever the designer actually has in hand (a Figma URL, via right-click → **Copy link to selection**) and the skill parses it. Keys are only mentioned as a fallback for advanced users.
 
-> "Do you already have a published Figma icon library — either on an `↳ Icons` page inside this file, or as a separately published team library linked to this file — that you want component `icon-slot/*` default-swap targets to reference? If **no**, slots stay as empty 24×24 dashed placeholders (current behavior) and the designer wires icons manually per instance."
+**Prompt 1 (single-select, yes/no):**
 
-- **no** → set `ICON_PACK.figmaIconLibraryKey = null` and `ICON_PACK.defaultIconKey = null`. Done with 3b.
-- **yes** → call **AskUserQuestion** for the file key / library id:
+> "Do you have a Figma icon library you'd like components to use as default icons? This can live **in this same file** (e.g. on an `↳ Icons` page) OR in a separately published team library that's linked here. If **no**, new components get empty 24×24 dashed placeholder slots that you fill in manually per instance."
 
-   > "Paste the Figma file key (or team library id) for the published icon library. Format: the 22-character segment from `figma.com/design/:fileKey/…`, or the full URL — the skill will parse the key. If the library is a component set inside the **current** file, paste this file's key."
+- **no** → set `ICON_PACK.figmaIconLibraryKey = null` and `ICON_PACK.defaultIconRef = null`. Done with 3b.
+- **yes** → continue with Prompt 2.
 
-   Store as `ICON_PACK.figmaIconLibraryKey`. **Do not** try to validate the key here — Step 6's draw engine will surface a non-fatal warning if the key is unreachable at draw time, and the designer can edit `designops.config.json` by hand.
+**Prompt 2 (free-form text — the library location):**
 
-   Then call **AskUserQuestion** one more time for the default-icon component key:
+> "Paste a Figma link to **any page or any icon** inside that library. Right-click anything in the library on canvas → **Copy link to selection**, or grab the URL from your browser. Paste it here. (Advanced: if you already know the 22-char file key, paste that.)"
 
-   > "Paste the component **key** (not node-id) of one icon from that library to use as the default-swap target for every new `icon-slot/*` placeholder. This is the icon that shows up by default when a designer drops a new component on the canvas; any instance can be swapped to a different icon from the same library via the right-panel INSTANCE_SWAP dropdown. A component key is the hash returned by `getComponentByKeyAsync` / shown in the library inspector — not a node-id like `12:34`. If you don't have one handy, reply `skip` and the skill will fall back to empty 24×24 dashed placeholders until you edit `designops.config.json.iconPack.defaultIconKey` by hand."
+Parse the reply per the **Input parser** contract below. Store the parsed file key as `ICON_PACK.figmaIconLibraryKey`. If parsing fails, surface the failure verbatim, default to `null`, and emit a warning — do not block the run.
 
-   Store as `ICON_PACK.defaultIconKey` (or `null` if the designer replied `skip`). INSTANCE_SWAP wiring in Step 6 is gated on **both** `figmaIconLibraryKey` **and** `defaultIconKey` being non-null — if either is missing, slots stay as empty 24×24 dashed placeholders (current behavior).
+**Prompt 3 (free-form text — the default icon):**
+
+> "Now pick **one specific icon** to be the default on every new component placeholder. Select that icon in Figma → right-click → **Copy link to selection** → paste here. Designers can swap to any other icon in the library per-instance later via the Figma right-panel dropdown — this is just the initial default that shows up when a fresh component is dropped on canvas. Reply `skip` to keep empty 24×24 dashed placeholders instead."
+
+Parse the reply per the **Input parser** contract below. Store the result as a structured `ICON_PACK.defaultIconRef` object (schema below). If the designer replies `skip` or the parse fails, set `ICON_PACK.defaultIconRef = null` and slots stay as empty placeholders in Step 6.
+
+**Input parser — paste classification.** Apply these rules in order; first match wins. The classification is intentionally coarse: Step 3b runs BEFORE `ACTIVE_FILE_KEY` is resolved (that happens at Step 5), so this step can't decide same-file vs cross-file yet. That comparison is deferred to Step 6's §5.6 resolver, which has both keys in hand.
+
+| Pattern | `kind` | Extract |
+|---|---|---|
+| `^skip$` (case-insensitive, default-icon prompt only) | `skip` | — (sets `defaultIconRef = null`) |
+| `^https?://(www\.)?figma\.com/(design\|file\|board)/([A-Za-z0-9]{15,30})/[^?]*(\?.*node-id=([0-9A-Za-z:\-]+))?` | `url` | `fileKey` (group 3); `nodeId` if `node-id=` present — normalize `417-9815` → `417:9815` |
+| `^[a-f0-9]{40}$` | `component-key` | 40-hex SHA-1 hash; set `componentKey` directly |
+| `^[0-9]+:[0-9]+$` | `node-id` | `nodeId` verbatim |
+| `^[A-Za-z0-9]{15,30}$` (Prompt 2 only — library location) | `file-key` | use as `fileKey` |
+| Anything else | `unknown` | — (reject and re-ask once) |
+
+Resulting `ICON_PACK.defaultIconRef` shape (written to config, consumed by Step 6):
+
+```jsonc
+{
+  "rawInput": "<verbatim paste>",              // always stored for debug / manual edit
+  "kind": "url" | "node-id" | "component-key" | "unknown",
+  "fileKey": "<parsed fileKey>" | null,        // set for kind='url'; null otherwise. §5.6 compares against ACTIVE_FILE_KEY to decide resolution path.
+  "nodeId": "417:9815" | null,                 // set for kind='url' (when URL has node-id) and kind='node-id'
+  "componentKey": "<40-hex hash>" | null       // set for kind='component-key'; §5.6 prefers this over nodeId when present
+}
+```
+
+**Library-location prompt (Prompt 2) notes.** If Prompt 2's paste is `url` or `file-key`, extract and store its `fileKey` as `ICON_PACK.figmaIconLibraryKey` (flat string, no wrapper). If Prompt 2's paste is `unknown`, reject and re-ask once; on second failure, persist `null` and warn. `node-id` and `component-key` classifications are invalid for Prompt 2 — reject with a wording hint ("That looks like a specific icon's link — this prompt needs a link to any page in the library file.") and re-ask.
+
+**How Step 6's §5.6 resolver uses each kind** (forward reference — see §5.6 for the actual code):
+
+| `defaultIconRef.kind` | Resolution attempt |
+|---|---|
+| `component-key` | `figma.importComponentByKeyAsync(componentKey)` — works for local AND cross-file published library components. Preferred path. |
+| `url` with `fileKey === ACTIVE_FILE_KEY` | `figma.getNodeByIdAsync(nodeId)` in the current file. If the node is a COMPONENT_SET, use its first variant. |
+| `url` with `fileKey !== ACTIVE_FILE_KEY` | **Cross-file** — `getNodeByIdAsync` can't see other files, and there's no componentKey. §5.6 emits `'failed:cross-file-needs-key'`, slots fall back to empty placeholders, and the run report surfaces a recovery instruction (see below). |
+| `node-id` | `figma.getNodeByIdAsync(nodeId)` — assumes current file. Identical behavior to same-file `url` path. |
+| `unknown` / `null` | Skipped silently; empty placeholders (current behavior). |
+
+**Cross-file recovery message** (emitted by §5.6 when resolution returns `'failed:cross-file-needs-key'`):
+
+> "Icon ref points to a different Figma file than the active one. To wire INSTANCE_SWAP the skill needs the component's 40-char hash key. Open the icon in Figma → right-click → **Inspect component** (Dev Mode required) → copy the **Component key** → re-run `/create-component --re-ask-icon-pack` and paste the hash at Prompt 3 instead of a URL. For now slots fall back to empty placeholders; the URL is still stored in `designops.config.json.iconPack.defaultIconRef.rawInput` so you can see what was intended."
+
+**INSTANCE_SWAP wiring is gated** on §5.6 producing a real `ComponentNode`. Any failure path → empty 24×24 dashed placeholders (current behavior) and the run report flags the exact failure code from §5.6's `DEFAULT_ICON_RESOLUTION` field (e.g. `'failed:node-not-found:417:9815'`, `'failed:cross-file-needs-key'`).
 
 #### 3b.e — Persist to `designops.config.json`
 
 Write (or merge) the following shape at the project root:
 
-```json
+```jsonc
 {
   "iconPack": {
     "choice": "lucide-react" | "material-symbols" | "custom" | "none",
     "npm": "lucide-react" | "@material-symbols/svg-400" | "<free-form>" | null,
     "import": "lucide-react" | "@material-symbols/svg-400" | "<free-form>" | null,
     "figmaIconLibraryKey": "<fileKey>" | null,
-    "defaultIconKey": "<componentKey>" | null,
+    "defaultIconRef": {
+      "rawInput": "<designer's verbatim paste>",
+      "kind": "url" | "node-id" | "component-key" | "unknown",
+      "fileKey": "<parsed fileKey>" | null,
+      "nodeId": "417:9815" | null,
+      "componentKey": "<40-hex hash>" | null
+    } | null,
     "chosenAt": "<ISO-8601 timestamp>"
   }
 }
 ```
+
+**Backwards compatibility:** if a previous run wrote the flat `defaultIconKey: "<hash>"` field (old schema), Step 3b at probe time reads it and promotes it to `defaultIconRef: { rawInput: key, kind: 'component-key', fileKey: null, nodeId: null, componentKey: key }` in memory. The on-disk migration happens the next time `designops.config.json` is written (so a passive run leaves the old file untouched; an active run upgrades it).
 
 Rules:
 - If `designops.config.json` already exists with other top-level keys, preserve them — merge `iconPack` in, don't overwrite the file.
@@ -294,8 +348,19 @@ Rules:
 After persistence, emit one line in the run report before Step 4 starts:
 
 ```text
-Icon pack: <ICON_PACK.choice> (npm: <ICON_PACK.npm ?? "—">, figma library: <ICON_PACK.figmaIconLibraryKey ?? "—">, default icon key: <ICON_PACK.defaultIconKey ?? "—">).
+Icon pack: <ICON_PACK.choice> (npm: <ICON_PACK.npm ?? "—">, figma library: <ICON_PACK.figmaIconLibraryKey ?? "—">, default icon: <default-icon-summary>).
 ```
+
+Render `<default-icon-summary>` from `ICON_PACK.defaultIconRef` like this (pick the first match):
+
+| Condition | Summary text |
+|---|---|
+| `defaultIconRef === null` | `"— (slots stay as empty placeholders)"` |
+| `kind === 'component-key'` | `"key " + componentKey.slice(0, 8) + "…"` |
+| `kind === 'url'` with `nodeId` | `"url → node " + nodeId + " in file " + fileKey.slice(0, 6) + "… (will resolve at draw time)"` |
+| `kind === 'url'` without `nodeId` | `"url → file " + fileKey.slice(0, 6) + "… (no node-id in URL — can't resolve; edit config or re-run)"` |
+| `kind === 'node-id'` | `"node " + nodeId + " (current file — will resolve at draw time)"` |
+| `kind === 'unknown'` | `"unrecognized input '" + rawInput.slice(0, 40) + "…' — stored for reference only"` |
 
 When `ICON_PACK.choice !== 'lucide-react'` and `ICON_PACK.choice !== 'none'`, also append:
 
@@ -856,32 +921,129 @@ const allTextStyles = await figma.getLocalTextStylesAsync();
 
 // ── 5.6. Resolve default icon component (ASYNC, ONCE, OPTIONAL) ──────────
 //
-// When the designer configured both `iconPack.figmaIconLibraryKey` AND
-// `iconPack.defaultIconKey` in `designops.config.json` (Step 3b), every
-// `icon-slot/*` in this component becomes an INSTANCE of that default icon
-// AND gets an INSTANCE_SWAP component property — designers pick any icon
-// from the library via the right-panel dropdown on a per-instance basis.
+// When the designer configured a default icon in `designops.config.json`
+// (Step 3b), every `icon-slot/*` in this component becomes an INSTANCE of
+// that icon AND gets an INSTANCE_SWAP component property — designers pick
+// any icon from the library via the right-panel dropdown on a per-instance
+// basis.
 //
-// When either key is missing, `DEFAULT_ICON_COMPONENT` stays null and
-// `makeIconSlot` falls back to the original empty 24×24 dashed placeholder
-// (current behavior — nothing changes for projects without a library).
+// When no default is configured OR resolution fails, `DEFAULT_ICON_*`
+// stays null and `makeIconSlot` falls back to the original empty 24×24
+// dashed placeholder (current behavior — nothing changes for projects
+// without a library).
 //
-// Same ordering rule as §5.5: `figma.importComponentByKeyAsync` is async,
-// must resolve at the top level BEFORE `buildVariant` is declared, and the
-// resolved component is captured via closure. DO NOT inline the await
-// inside `makeIconSlot` — it's a synchronous helper.
+// Two resolution paths (try in order; first success wins):
+//   1. `defaultIconRef.componentKey` (40-hex hash) → `importComponentByKeyAsync`.
+//      Works for local AND cross-file published library components.
+//   2. `defaultIconRef.nodeId` (e.g. '417:9815') → `getNodeByIdAsync`. Runs
+//      only when the ref is known to be same-file: `kind === 'node-id'`
+//      (no fileKey was ever captured — implicitly current file) OR
+//      `kind === 'url' && ref.fileKey === currentFileKey`. Cross-file
+//      URLs cannot be resolved by node-id — `getNodeByIdAsync` sees only
+//      the current file. Those fall through to 'failed:cross-file-needs-key'
+//      and require the designer to paste a componentKey instead.
+//
+//      If the resolved node is a COMPONENT_SET we pick its first variant
+//      (the first child ComponentNode) so INSTANCE_SWAP targets a leaf.
+//      If it's already a COMPONENT we use it directly.
+//
+// Back-compat: if an old config shape has a flat `defaultIconKey` string,
+// treat it as `defaultIconRef.componentKey`.
+//
+// Same ordering rule as §5.5: all awaits MUST resolve at the top level
+// BEFORE `buildVariant` is declared; the resolved component is captured
+// via closure. DO NOT inline these awaits inside `makeIconSlot` — it's a
+// synchronous helper.
 const ICON_PACK_CFG = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.iconPack) || null;
 let DEFAULT_ICON_COMPONENT = null;
-if (ICON_PACK_CFG && ICON_PACK_CFG.figmaIconLibraryKey && ICON_PACK_CFG.defaultIconKey) {
-  try {
-    DEFAULT_ICON_COMPONENT = await figma.importComponentByKeyAsync(ICON_PACK_CFG.defaultIconKey);
-  } catch (err) {
-    // Non-fatal — fall back to empty placeholders and surface the warning
-    // in the return payload so the designer knows the key was unreachable.
-    console.warn('importComponentByKeyAsync failed for defaultIconKey:', err && err.message ? err.message : err);
-    DEFAULT_ICON_COMPONENT = null;
+let DEFAULT_ICON_RESOLUTION = 'none';  // 'by-key' | 'by-node-id' | 'failed:<reason>' | 'none'
+
+if (ICON_PACK_CFG) {
+  // Normalize: accept new `defaultIconRef` object OR legacy flat `defaultIconKey` string.
+  const ref = ICON_PACK_CFG.defaultIconRef
+    || (ICON_PACK_CFG.defaultIconKey
+      ? { kind: 'component-key', componentKey: ICON_PACK_CFG.defaultIconKey, nodeId: null, fileKey: null, rawInput: ICON_PACK_CFG.defaultIconKey }
+      : null);
+
+  // Decide whether a URL's fileKey points at the CURRENT file so we can
+  // try `getNodeByIdAsync` (only works intra-file). When the URL points
+  // at a different file, `getNodeByIdAsync` would return null and we'd
+  // need a componentKey — which Step 3b.d asks for as the recovery path.
+  const currentFileKey = (typeof figma.fileKey === 'string' && figma.fileKey) || ACTIVE_FILE_KEY || null;
+
+  if (ref) {
+    // --- Path 1: resolve by componentKey (preferred — intra OR cross-file) ---
+    if (ref.componentKey && typeof ref.componentKey === 'string' && /^[a-f0-9]{40}$/.test(ref.componentKey)) {
+      try {
+        DEFAULT_ICON_COMPONENT = await figma.importComponentByKeyAsync(ref.componentKey);
+        DEFAULT_ICON_RESOLUTION = 'by-key';
+      } catch (err) {
+        DEFAULT_ICON_RESOLUTION = 'failed:key-unreachable:' + (err && err.message ? err.message : String(err));
+        console.warn('importComponentByKeyAsync failed for defaultIconRef.componentKey:', err);
+      }
+    }
+
+    // --- Path 2: resolve by nodeId (CURRENT FILE only) ------------------
+    // 'node-id' kind always means current file (no fileKey was ever captured).
+    // 'url' kind needs its fileKey to match this file's key to be resolvable;
+    // cross-file URLs fall through to the 'cross-file-needs-key' branch.
+    const nodeIdIsCurrentFile =
+      ref.nodeId && (
+        ref.kind === 'node-id' ||
+        (ref.kind === 'url' && (!ref.fileKey || (currentFileKey && ref.fileKey === currentFileKey)))
+      );
+    if (!DEFAULT_ICON_COMPONENT && nodeIdIsCurrentFile) {
+      try {
+        const node = await figma.getNodeByIdAsync(ref.nodeId);
+        if (!node) {
+          DEFAULT_ICON_RESOLUTION = 'failed:node-not-found:' + ref.nodeId;
+        } else if (node.type === 'COMPONENT') {
+          DEFAULT_ICON_COMPONENT = node;
+          DEFAULT_ICON_RESOLUTION = 'by-node-id';
+        } else if (node.type === 'COMPONENT_SET') {
+          // Component sets have N variants. Pick the default variant
+          // (first child ComponentNode) so INSTANCE_SWAP targets a leaf.
+          const firstVariant = node.children.find(ch => ch.type === 'COMPONENT');
+          if (firstVariant) {
+            DEFAULT_ICON_COMPONENT = firstVariant;
+            DEFAULT_ICON_RESOLUTION = 'by-node-id-variant';
+          } else {
+            DEFAULT_ICON_RESOLUTION = 'failed:component-set-empty:' + ref.nodeId;
+          }
+        } else {
+          DEFAULT_ICON_RESOLUTION = 'failed:node-wrong-type:' + node.type + ':' + ref.nodeId;
+        }
+      } catch (err) {
+        DEFAULT_ICON_RESOLUTION = 'failed:node-lookup:' + (err && err.message ? err.message : String(err));
+        console.warn('getNodeByIdAsync failed for defaultIconRef.nodeId:', err);
+      }
+    }
+
+    // --- Cross-file URL without componentKey → can't resolve ------------
+    if (
+      !DEFAULT_ICON_COMPONENT
+      && ref.kind === 'url'
+      && ref.fileKey
+      && currentFileKey
+      && ref.fileKey !== currentFileKey
+      && !ref.componentKey
+    ) {
+      DEFAULT_ICON_RESOLUTION = 'failed:cross-file-needs-key';
+    }
+
+    // --- URL without a node-id AND without a componentKey → can't resolve
+    if (
+      !DEFAULT_ICON_COMPONENT
+      && ref.kind === 'url'
+      && !ref.nodeId
+      && !ref.componentKey
+      && DEFAULT_ICON_RESOLUTION === 'none'
+    ) {
+      DEFAULT_ICON_RESOLUTION = 'failed:url-missing-node-id';
+    }
   }
 }
+
 const ICON_SLOT_MODE = DEFAULT_ICON_COMPONENT ? 'instance-swap' : 'placeholder';
 
 // Build one fully complete ComponentNode — layout, spacing, radius, color,
@@ -1934,7 +2096,9 @@ const returnPayload = {
   propErrorsCount: 0,
   propErrorsSample: [],
   iconSlotMode: ICON_SLOT_MODE,                      // 'instance-swap' | 'placeholder'
+  iconPackResolution: DEFAULT_ICON_RESOLUTION,       // 'by-key' | 'by-node-id' | 'by-node-id-variant' | 'none' | 'failed:*'
   iconPackDefaultKey: DEFAULT_ICON_COMPONENT ? (DEFAULT_ICON_COMPONENT.key || null) : null,
+  iconPackDefaultNodeId: DEFAULT_ICON_COMPONENT ? (DEFAULT_ICON_COMPONENT.id || null) : null,
   composedWith: usesComposes ? CONFIG.composes.map(r => r.component) : [],
   registryEntry: (() => {
     const base = {
