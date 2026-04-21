@@ -282,25 +282,46 @@ Runs only when Axis C is enabled.
    - Mapped props object (keys = Figma property names, values = code prop names and translation kind)
    - File modification timestamp (`mtime`)
 
-2. **Published mapping state.** Fetch the currently published Code Connect mappings for the Figma file. Prefer the MCP path:
+2. **Published mapping state (per-node, authoritative).** For **each** local `.figma.tsx` collected in step 1, call the Figma MCP **`get_code_connect_map`** tool with that file's `componentSetId` and the current `fileKey`:
 
    ```
-   mcp__claude_ai_Figma__get_code_connect_suggestions  (published state listing)
+   mcp__claude_ai_Figma__get_code_connect_map({
+     nodeId: "<componentSetId>",
+     fileKey: "<fileKey>",
+   })
    ```
 
-   If unavailable or if a broader listing is needed, shell out to the CLI:
+   Return shape is `{ [nodeId]: { codeConnectSrc, codeConnectName } }` — populated if the node **has** a published mapping, **empty** (no entry for `nodeId`) if it does not. This is the authoritative published-state check; classify `publishedState` for each local mapping as:
+
+   | Result | `publishedState` |
+   |---|---|
+   | Entry present, `codeConnectSrc` + `codeConnectName` match the local `.figma.tsx` | `in-sync` |
+   | Entry present but `codeConnectSrc` / `codeConnectName` disagree with local | `stale` |
+   | No entry returned for `nodeId` | `unpublished` |
+   | Tool call failed / timed out / threw | `indeterminate` — **skip this mapping from the diff entirely** (do not default to `unpublished`); log its name under the info line below so the user knows why it's absent from the drift report |
+
+   > **Do not use `get_code_connect_suggestions` for this check.** That tool returns AI-suggested mappings for **unmapped** components — its response shape cannot be interpreted as a published-state listing. Historical bug: using it here caused every already-published `.figma.tsx` (e.g. `button.figma.tsx`) to be misclassified as `unpublished`, which then triggered a redundant `send_code_connect_mappings` call that the Figma side correctly rejected with *"Component is already mapped to code."* The per-node `get_code_connect_map` avoids this entirely by asking the authoritative question: "is this specific node already mapped?".
+
+   **Batch size & parallelism.** `get_code_connect_map` is per-node, so this is N tool calls where N = local `.figma.tsx` count. Run them in parallel where the MCP transport allows (typical cap ~10 concurrent); otherwise serial is fine since N is small on realistic design-system repos.
+
+   **CLI fallback.** If the MCP tool is unavailable for the entire session (not just one intermittent failure — e.g. the `plugin-figma-figma` MCP is not installed), fall back to bulk CLI listing:
 
    ```bash
    npx figma connect list --published --token=<PAT>
    ```
 
-   (See [`../code-connect/SKILL.md`](../code-connect/SKILL.md) §3b for PAT setup. The PAT is read-only here; scope `Code Connect → Read` is sufficient.)
+   (See [`../code-connect/SKILL.md`](../code-connect/SKILL.md) §3b for PAT setup. The PAT is read-only here; scope `Code Connect → Read` is sufficient.) Build the same `publishedState` classification from the bulk result — but treat entries absent from the CLI listing as `unpublished` only if the CLI returned a **non-empty** listing (a zero-row response means the endpoint is degraded, not that nothing is published; in that case mark everything `indeterminate`).
 
-   For each published mapping, record:
+   For every mapping that resolved to a non-`indeterminate` state, record:
    - `componentSetId`
-   - Source path on record
-   - Published prop mapping shape
-   - Publish timestamp
+   - `publishedState` (one of the four above)
+   - Source path on record (from `codeConnectSrc`)
+   - Published prop mapping shape (from bulk CLI listing if available; the MCP per-node call does not return prop mappings — prop-level drift falls back to name / source-path comparison in that mode)
+   - Publish timestamp (CLI path only; MCP per-node call does not return this)
+
+   If any mappings ended up `indeterminate`, emit one info line before the Step 4 diff presentation:
+
+   > `Axis C: N mapping(s) could not be verified against published state (tool unavailable): <comma-separated component names>. They are omitted from the drift report.`
 
 ---
 
@@ -370,9 +391,11 @@ Using the composite's `registry.components[C].nodeId`, fetch children (`COMPONEN
 | Bucket | Condition | Stable key |
 |---|---|---|
 | **missing** | ComponentSet exists in Figma, no local `.figma.tsx` references its ID | `C.<componentName>.mapping.missing` |
-| **stale** | local `.figma.tsx` references a Figma variant/property that no longer exists | `C.<componentName>.mapping.stale` |
+| **stale** | local `.figma.tsx` exists **AND** Step 2C's per-node `get_code_connect_map` returned `publishedState: 'stale'` (entry present but `codeConnectSrc` / `codeConnectName` disagree) **OR** the mapping references a Figma variant/property that no longer exists in the ComponentSet | `C.<componentName>.mapping.stale` |
 | **orphaned** | local `.figma.tsx` exists, imported source file does not | `C.<componentName>.mapping.orphaned` |
-| **unpublished** | local `.figma.tsx` mtime newer than published timestamp (or not in published set) | `C.<componentName>.mapping.unpublished` |
+| **unpublished** | Step 2C's per-node `get_code_connect_map` returned `publishedState: 'unpublished'` (authoritative: the Figma side has **no** entry for this `nodeId`) **AND** the local `.figma.tsx` mtime is newer than its last-known publish hint (if any). A mere mtime delta without a confirmed-empty per-node lookup is **not** sufficient — that's how the false-positive "Button needs publish" regression happened. | `C.<componentName>.mapping.unpublished` |
+
+**`indeterminate` mappings** (from Step 2C — per-node tool unavailable / threw / timed out) are **omitted from this diff**. Do not fall them through to `unpublished`. Step 2C already logged their names under the info line; repeating them here would re-introduce the same false-positive class.
 
 In-sync mappings are omitted.
 
@@ -1192,8 +1215,18 @@ If `extract-cva.mjs` exits non-zero for a component (custom composition, no cva,
 
 ### Axis C Connect API failure
 
-If both the MCP path and `npx figma connect list --published` fail, fall back to a `local-only` Axis C — diff buckets `missing` / `stale` become unavailable (they require the published side), and only `orphaned` is reported (source file deleted). Emit:
+**Partial failure — per-node tool flakes on some mappings.** If `get_code_connect_map` succeeds for some local mappings and fails for others (timeouts, transient errors, throws), mark only the failing ones as `publishedState: 'indeterminate'` per Step 2C. They're omitted from the 3C diff. Successful lookups still participate normally. This is the graceful degradation path — **never** blanket-mark everything as `unpublished` because a subset failed.
 
-> `Axis C: published-state read unavailable; diff limited to orphaned mappings (source files deleted).`
+**Total failure — per-node tool unavailable for the session.** If `mcp__claude_ai_Figma__get_code_connect_map` is not callable at all (MCP not installed, handshake failure, etc.), fall back to the CLI bulk listing:
 
-The user can still push in the C-wins direction (delegates to `/code-connect`, which has its own auth path); F-wins on an axis without published-state read is disabled for this run.
+```bash
+npx figma connect list --published --token=<PAT>
+```
+
+If the CLI returns a **non-empty** listing, build the per-mapping `publishedState` from its rows. If the CLI returns an **empty** listing, treat every local mapping as `indeterminate` (an empty bulk response from a live endpoint usually means degraded service, not genuinely-nothing-is-published).
+
+**All paths down — MCP per-node AND CLI both fail.** Fall back to a `local-only` Axis C — diff buckets `missing` / `stale` / `unpublished` all become unavailable (they require the published side), and only `orphaned` is reported (source file deleted). Emit:
+
+> `Axis C: published-state read unavailable (MCP + CLI both failed); diff limited to orphaned mappings (source files deleted).`
+
+The user can still push in the C-wins direction (delegates to `/code-connect`, which has its own auth path and will idempotently no-op for already-published mappings — same guarantee that surfaces the *"Component is already mapped to code"* response); F-wins on an axis without published-state read is disabled for this run.
