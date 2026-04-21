@@ -47,6 +47,18 @@
         "pageName": { "type": "string" },
         "labelKey": { "type": "string" },
         "summary": { "type": "string" },
+        "category": {
+          "enum": [
+            "Form & Input",
+            "Layout & Display",
+            "Overlay & Dialog",
+            "Navigation",
+            "Feedback & Status",
+            "Data Display",
+            "Typography & platform"
+          ],
+          "description": "Display group consumed by scripts/build-create-component-docs.mjs when regenerating SKILL.md's Supported Components block. Keep in sync with scripts/build-create-component-docs.mjs CATEGORY_ORDER + CATEGORY_MAP."
+        },
         "docsUrl": {
           "type": "string",
           "format": "uri",

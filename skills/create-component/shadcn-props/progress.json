@@ -1,0 +1,47 @@
+{
+  "pageName": "↳ Progress Bar",
+  "labelKey": "variant",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/progress",
+  "summary": "Determinate horizontal progress indicator.",
+  "tiny": {
+    "shape": "progress",
+    "width": 280,
+    "height": 8,
+    "filled": 0.4
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "value",
+      "number",
+      "—",
+      "no",
+      "Current value 0–100."
+    ],
+    [
+      "max",
+      "number",
+      "100",
+      "no",
+      "Maximum."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Feedback & Status"
+}

@@ -1,0 +1,63 @@
+{
+  "pageName": "↳ Dialogue",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/alert-dialog",
+  "summary": "Confirmation / destructive-action dialog with explicit cancel + confirm.",
+  "surface": {
+    "titleText": "Are you absolutely sure?",
+    "descriptionText": "This action cannot be undone. This will permanently delete your account and remove your data from our servers.",
+    "titleStyleName": "Label/LG",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/2xl",
+    "gap": "space/lg",
+    "innerGap": "space/xs",
+    "width": 480,
+    "actionSlot": {
+      "enabled": false
+    },
+    "contentSlot": {
+      "enabled": false
+    },
+    "footerSlot": {
+      "enabled": true,
+      "slotLabel": "Continue",
+      "align": "end",
+      "minHeight": 44
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "footer": true
+  },
+  "properties": [
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open-change handler."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

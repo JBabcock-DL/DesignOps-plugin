@@ -1,0 +1,66 @@
+{
+  "pageName": "↳ Tabs bar",
+  "labelKey": "variant",
+  "layout": "container",
+  "docsUrl": "https://ui.shadcn.com/docs/components/tabs",
+  "summary": "Tab list + panels (Radix Tabs).",
+  "container": {
+    "kind": "tabs",
+    "width": 400,
+    "tabs": [
+      "Account",
+      "Password",
+      "Notifications"
+    ],
+    "activeIndex": 0,
+    "panelMinHeight": 140
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": true,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled active tab."
+    ],
+    [
+      "defaultValue",
+      "string",
+      "—",
+      "no",
+      "Uncontrolled initial tab."
+    ],
+    [
+      "onValueChange",
+      "(value: string) => void",
+      "—",
+      "no",
+      "Change handler."
+    ],
+    [
+      "orientation",
+      "\"horizontal\" | \"vertical\"",
+      "\"horizontal\"",
+      "no",
+      "Tab list axis."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Navigation"
+}

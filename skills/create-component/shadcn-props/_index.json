@@ -1,0 +1,479 @@
+{
+  "$schema": "../shadcn-props.schema.json",
+  "$comment": "Index of per-component shadcn-props entries. Regenerate the monolithic ../shadcn-props.json with `node scripts/build-shadcn-props.mjs`.",
+  "generatedBy": "scripts/build-shadcn-props.mjs",
+  "components": [
+    {
+      "name": "accordion",
+      "category": "Data Display",
+      "layout": "container",
+      "pageName": "↳ Accordion",
+      "docsUrl": "https://ui.shadcn.com/docs/components/accordion",
+      "file": "./accordion.json"
+    },
+    {
+      "name": "alert-dialog",
+      "category": "Overlay & Dialog",
+      "layout": "surface-stack",
+      "pageName": "↳ Dialogue",
+      "docsUrl": "https://ui.shadcn.com/docs/components/alert-dialog",
+      "file": "./alert-dialog.json"
+    },
+    {
+      "name": "alert",
+      "category": "Feedback & Status",
+      "layout": "surface-stack",
+      "pageName": "↳ Alerts",
+      "docsUrl": "https://ui.shadcn.com/docs/components/alert",
+      "file": "./alert.json"
+    },
+    {
+      "name": "aspect-ratio",
+      "category": "Layout & Display",
+      "layout": "tiny",
+      "pageName": "↳ Aspect Ratio",
+      "docsUrl": "https://ui.shadcn.com/docs/components/aspect-ratio",
+      "file": "./aspect-ratio.json"
+    },
+    {
+      "name": "avatar",
+      "category": "Data Display",
+      "layout": "tiny",
+      "pageName": "↳ Avatar",
+      "docsUrl": "https://ui.shadcn.com/docs/components/avatar",
+      "file": "./avatar.json"
+    },
+    {
+      "name": "badge",
+      "category": "Feedback & Status",
+      "layout": "chip",
+      "pageName": "↳ Badge",
+      "docsUrl": "https://ui.shadcn.com/docs/components/badge",
+      "file": "./badge.json"
+    },
+    {
+      "name": "breadcrumb",
+      "category": "Navigation",
+      "layout": "row-item",
+      "pageName": "↳ Breadcrumb",
+      "docsUrl": "https://ui.shadcn.com/docs/components/breadcrumb",
+      "file": "./breadcrumb.json"
+    },
+    {
+      "name": "button-group",
+      "category": "Form & Input",
+      "layout": "chip",
+      "pageName": "↳ Button Group",
+      "docsUrl": "https://ui.shadcn.com/docs/components/button-group",
+      "file": "./button-group.json"
+    },
+    {
+      "name": "button",
+      "category": "Form & Input",
+      "layout": "chip",
+      "pageName": "↳ Buttons",
+      "docsUrl": "https://ui.shadcn.com/docs/components/button",
+      "file": "./button.json"
+    },
+    {
+      "name": "calendar",
+      "category": "Data Display",
+      "layout": "surface-stack",
+      "pageName": "↳ Calendar",
+      "docsUrl": "https://ui.shadcn.com/docs/components/calendar",
+      "file": "./calendar.json"
+    },
+    {
+      "name": "card",
+      "category": "Layout & Display",
+      "layout": "surface-stack",
+      "pageName": "↳ Cards",
+      "docsUrl": "https://ui.shadcn.com/docs/components/card",
+      "file": "./card.json"
+    },
+    {
+      "name": "carousel",
+      "category": "Layout & Display",
+      "layout": "container",
+      "pageName": "↳ Carousel",
+      "docsUrl": "https://ui.shadcn.com/docs/components/carousel",
+      "file": "./carousel.json"
+    },
+    {
+      "name": "chart",
+      "category": "Data Display",
+      "layout": "surface-stack",
+      "pageName": "↳ Chart",
+      "docsUrl": "https://ui.shadcn.com/docs/components/chart",
+      "file": "./chart.json"
+    },
+    {
+      "name": "checkbox",
+      "category": "Form & Input",
+      "layout": "control",
+      "pageName": "↳ Checkbox",
+      "docsUrl": "https://ui.shadcn.com/docs/components/checkbox",
+      "file": "./checkbox.json"
+    },
+    {
+      "name": "collapsible",
+      "category": "Data Display",
+      "layout": "container",
+      "pageName": "↳ Collapsible",
+      "docsUrl": "https://ui.shadcn.com/docs/components/collapsible",
+      "file": "./collapsible.json"
+    },
+    {
+      "name": "combobox",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Combobox",
+      "docsUrl": "https://ui.shadcn.com/docs/components/combobox",
+      "file": "./combobox.json"
+    },
+    {
+      "name": "command",
+      "category": "Navigation",
+      "layout": "row-item",
+      "pageName": "↳ Command",
+      "docsUrl": "https://ui.shadcn.com/docs/components/command",
+      "file": "./command.json"
+    },
+    {
+      "name": "context-menu",
+      "category": "Overlay & Dialog",
+      "layout": "row-item",
+      "pageName": "↳ Context Menu",
+      "docsUrl": "https://ui.shadcn.com/docs/components/context-menu",
+      "file": "./context-menu.json"
+    },
+    {
+      "name": "date-picker",
+      "category": "Data Display",
+      "layout": "field",
+      "pageName": "↳ Date Picker",
+      "docsUrl": "https://ui.shadcn.com/docs/components/date-picker",
+      "file": "./date-picker.json"
+    },
+    {
+      "name": "dialog",
+      "category": "Overlay & Dialog",
+      "layout": "surface-stack",
+      "pageName": "↳ Dialogue",
+      "docsUrl": "https://ui.shadcn.com/docs/components/dialog",
+      "file": "./dialog.json"
+    },
+    {
+      "name": "direction",
+      "category": "Typography & platform",
+      "layout": "chip",
+      "pageName": "↳ Typography",
+      "docsUrl": "https://ui.shadcn.com/docs/components/direction",
+      "file": "./direction.json"
+    },
+    {
+      "name": "drawer",
+      "category": "Overlay & Dialog",
+      "layout": "surface-stack",
+      "pageName": "↳ Drawer",
+      "docsUrl": "https://ui.shadcn.com/docs/components/drawer",
+      "file": "./drawer.json"
+    },
+    {
+      "name": "dropdown-menu",
+      "category": "Overlay & Dialog",
+      "layout": "row-item",
+      "pageName": "↳ Dropdown Menu",
+      "docsUrl": "https://ui.shadcn.com/docs/components/dropdown-menu",
+      "file": "./dropdown-menu.json"
+    },
+    {
+      "name": "empty",
+      "category": "Feedback & Status",
+      "layout": "surface-stack",
+      "pageName": "↳ Blank states",
+      "docsUrl": "https://ui.shadcn.com/docs/components/empty",
+      "file": "./empty.json"
+    },
+    {
+      "name": "field",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Field",
+      "docsUrl": "https://ui.shadcn.com/docs/components/field",
+      "file": "./field.json"
+    },
+    {
+      "name": "form",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Form Composite Groups",
+      "docsUrl": "https://ui.shadcn.com/docs/components/form",
+      "file": "./form.json"
+    },
+    {
+      "name": "hover-card",
+      "category": "Overlay & Dialog",
+      "layout": "surface-stack",
+      "pageName": "↳ Hover Card",
+      "docsUrl": "https://ui.shadcn.com/docs/components/hover-card",
+      "file": "./hover-card.json"
+    },
+    {
+      "name": "input-group",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Input Group",
+      "docsUrl": "https://ui.shadcn.com/docs/components/input-group",
+      "file": "./input-group.json"
+    },
+    {
+      "name": "input-otp",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Input OTP",
+      "docsUrl": "https://ui.shadcn.com/docs/components/input-otp",
+      "file": "./input-otp.json"
+    },
+    {
+      "name": "input",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Text Field",
+      "docsUrl": "https://ui.shadcn.com/docs/components/input",
+      "file": "./input.json"
+    },
+    {
+      "name": "item",
+      "category": "Data Display",
+      "layout": "row-item",
+      "pageName": "↳ Lists",
+      "docsUrl": "https://ui.shadcn.com/docs/components/item",
+      "file": "./item.json"
+    },
+    {
+      "name": "kbd",
+      "category": "Typography & platform",
+      "layout": "chip",
+      "pageName": "↳ Kbd",
+      "docsUrl": "https://ui.shadcn.com/docs/components/kbd",
+      "file": "./kbd.json"
+    },
+    {
+      "name": "label",
+      "category": "Form & Input",
+      "layout": "chip",
+      "pageName": "↳ Label",
+      "docsUrl": "https://ui.shadcn.com/docs/components/label",
+      "file": "./label.json"
+    },
+    {
+      "name": "menubar",
+      "category": "Overlay & Dialog",
+      "layout": "row-item",
+      "pageName": "↳ Menubar",
+      "docsUrl": "https://ui.shadcn.com/docs/components/menubar",
+      "file": "./menubar.json"
+    },
+    {
+      "name": "native-select",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Native Select",
+      "docsUrl": "https://ui.shadcn.com/docs/components/native-select",
+      "file": "./native-select.json"
+    },
+    {
+      "name": "navigation-menu",
+      "category": "Navigation",
+      "layout": "row-item",
+      "pageName": "↳ Navigation Menu",
+      "docsUrl": "https://ui.shadcn.com/docs/components/navigation-menu",
+      "file": "./navigation-menu.json"
+    },
+    {
+      "name": "pagination",
+      "category": "Navigation",
+      "layout": "chip",
+      "pageName": "↳ Pagination",
+      "docsUrl": "https://ui.shadcn.com/docs/components/pagination",
+      "file": "./pagination.json"
+    },
+    {
+      "name": "popover",
+      "category": "Overlay & Dialog",
+      "layout": "surface-stack",
+      "pageName": "↳ Popover",
+      "docsUrl": "https://ui.shadcn.com/docs/components/popover",
+      "file": "./popover.json"
+    },
+    {
+      "name": "progress",
+      "category": "Feedback & Status",
+      "layout": "tiny",
+      "pageName": "↳ Progress Bar",
+      "docsUrl": "https://ui.shadcn.com/docs/components/progress",
+      "file": "./progress.json"
+    },
+    {
+      "name": "radio-group",
+      "category": "Form & Input",
+      "layout": "control",
+      "pageName": "↳ Radio",
+      "docsUrl": "https://ui.shadcn.com/docs/components/radio-group",
+      "file": "./radio-group.json"
+    },
+    {
+      "name": "resizable",
+      "category": "Layout & Display",
+      "layout": "container",
+      "pageName": "↳ Resizable",
+      "docsUrl": "https://ui.shadcn.com/docs/components/resizable",
+      "file": "./resizable.json"
+    },
+    {
+      "name": "scroll-area",
+      "category": "Layout & Display",
+      "layout": "tiny",
+      "pageName": "↳ Scroll Area",
+      "docsUrl": "https://ui.shadcn.com/docs/components/scroll-area",
+      "file": "./scroll-area.json"
+    },
+    {
+      "name": "select",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Select",
+      "docsUrl": "https://ui.shadcn.com/docs/components/select",
+      "file": "./select.json"
+    },
+    {
+      "name": "separator",
+      "category": "Layout & Display",
+      "layout": "tiny",
+      "pageName": "↳ Dividers",
+      "docsUrl": "https://ui.shadcn.com/docs/components/separator",
+      "file": "./separator.json"
+    },
+    {
+      "name": "sheet",
+      "category": "Overlay & Dialog",
+      "layout": "surface-stack",
+      "pageName": "↳ Sheets",
+      "docsUrl": "https://ui.shadcn.com/docs/components/sheet",
+      "file": "./sheet.json"
+    },
+    {
+      "name": "sidebar",
+      "category": "Layout & Display",
+      "layout": "surface-stack",
+      "pageName": "↳ Sidebar",
+      "docsUrl": "https://ui.shadcn.com/docs/components/sidebar",
+      "file": "./sidebar.json"
+    },
+    {
+      "name": "skeleton",
+      "category": "Feedback & Status",
+      "layout": "tiny",
+      "pageName": "↳ Skeleton",
+      "docsUrl": "https://ui.shadcn.com/docs/components/skeleton",
+      "file": "./skeleton.json"
+    },
+    {
+      "name": "slider",
+      "category": "Form & Input",
+      "layout": "tiny",
+      "pageName": "↳ Slider",
+      "docsUrl": "https://ui.shadcn.com/docs/components/slider",
+      "file": "./slider.json"
+    },
+    {
+      "name": "sonner",
+      "category": "Feedback & Status",
+      "layout": "surface-stack",
+      "pageName": "↳ Sonner",
+      "docsUrl": "https://ui.shadcn.com/docs/components/sonner",
+      "file": "./sonner.json"
+    },
+    {
+      "name": "spinner",
+      "category": "Feedback & Status",
+      "layout": "tiny",
+      "pageName": "↳ Spinner",
+      "docsUrl": "https://ui.shadcn.com/docs/components/spinner",
+      "file": "./spinner.json"
+    },
+    {
+      "name": "switch",
+      "category": "Form & Input",
+      "layout": "control",
+      "pageName": "↳ Switch",
+      "docsUrl": "https://ui.shadcn.com/docs/components/switch",
+      "file": "./switch.json"
+    },
+    {
+      "name": "table",
+      "category": "Data Display",
+      "layout": "surface-stack",
+      "pageName": "↳ Data Table",
+      "docsUrl": "https://ui.shadcn.com/docs/components/table",
+      "file": "./table.json"
+    },
+    {
+      "name": "tabs",
+      "category": "Navigation",
+      "layout": "container",
+      "pageName": "↳ Tabs bar",
+      "docsUrl": "https://ui.shadcn.com/docs/components/tabs",
+      "file": "./tabs.json"
+    },
+    {
+      "name": "textarea",
+      "category": "Form & Input",
+      "layout": "field",
+      "pageName": "↳ Textarea",
+      "docsUrl": "https://ui.shadcn.com/docs/components/textarea",
+      "file": "./textarea.json"
+    },
+    {
+      "name": "toast",
+      "category": "Feedback & Status",
+      "layout": "surface-stack",
+      "pageName": "↳ Toast",
+      "docsUrl": "https://ui.shadcn.com/docs/components/toast",
+      "file": "./toast.json"
+    },
+    {
+      "name": "toggle-group",
+      "category": "Form & Input",
+      "layout": "chip",
+      "pageName": "↳ Toggle Group",
+      "docsUrl": "https://ui.shadcn.com/docs/components/toggle-group",
+      "file": "./toggle-group.json"
+    },
+    {
+      "name": "toggle",
+      "category": "Form & Input",
+      "layout": "chip",
+      "pageName": "↳ Toggle",
+      "docsUrl": "https://ui.shadcn.com/docs/components/toggle",
+      "file": "./toggle.json"
+    },
+    {
+      "name": "tooltip",
+      "category": "Overlay & Dialog",
+      "layout": "surface-stack",
+      "pageName": "↳ Tooltips",
+      "docsUrl": "https://ui.shadcn.com/docs/components/tooltip",
+      "file": "./tooltip.json"
+    },
+    {
+      "name": "typography",
+      "category": "Typography & platform",
+      "layout": "chip",
+      "pageName": "↳ Typography",
+      "docsUrl": "https://ui.shadcn.com/docs/components/typography",
+      "file": "./typography.json"
+    }
+  ]
+}

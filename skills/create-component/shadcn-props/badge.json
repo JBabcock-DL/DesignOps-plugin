@@ -1,0 +1,41 @@
+{
+  "pageName": "↳ Badge",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/badge",
+  "summary": "Compact status / count label.",
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual style."
+    ],
+    [
+      "asChild",
+      "boolean",
+      "false",
+      "no",
+      "Renders styled classes onto the child via Radix Slot."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Feedback & Status"
+}

@@ -1,0 +1,46 @@
+{
+  "pageName": "↳ Typography",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/direction",
+  "summary": "RTL/LTR direction context provider for subtree layout and mirroring.",
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "dir",
+      "\"ltr\" | \"rtl\"",
+      "\"ltr\"",
+      "no",
+      "Document direction for descendants."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Set `dir` at the route shell for locale switches.",
+    "Mirror spacing utilities when flipping to RTL.",
+    "Test focus order in both directions.",
+    "Document direction in handoff for engineers."
+  ],
+  "usageDont": [
+    "Do not toggle `dir` without reflowing breakpoints.",
+    "Do not nest conflicting direction providers.",
+    "Do not rely on CSS `float` for critical layout.",
+    "Do not forget mirrored icons for back navigation."
+  ],
+  "category": "Typography & platform"
+}

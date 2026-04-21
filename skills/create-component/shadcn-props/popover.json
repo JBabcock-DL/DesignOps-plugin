@@ -1,0 +1,58 @@
+{
+  "pageName": "↳ Popover",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/popover",
+  "summary": "Anchored floating panel (Radix Popover).",
+  "surface": {
+    "titleText": "Dimensions",
+    "descriptionText": "Set the dimensions for the layer.",
+    "titleStyleName": "Label/MD",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/lg",
+    "gap": "space/md",
+    "innerGap": "space/xs",
+    "width": 260,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Popover body",
+      "minHeight": 80
+    },
+    "footerSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true
+  },
+  "properties": [
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open-change handler."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

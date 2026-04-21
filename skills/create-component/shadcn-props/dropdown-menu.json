@@ -1,0 +1,51 @@
+{
+  "pageName": "↳ Dropdown Menu",
+  "labelKey": "variant",
+  "layout": "row-item",
+  "docsUrl": "https://ui.shadcn.com/docs/components/dropdown-menu",
+  "summary": "Button-triggered menu row (Radix DropdownMenuItem).",
+  "row": {
+    "titleText": "Profile",
+    "leadingIcon": true,
+    "trailingIcon": false,
+    "shortcut": true,
+    "shortcutText": "⌘P",
+    "titleStyleName": "Label/SM",
+    "width": 240
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "shortcut": true,
+    "leadingIcon": true,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open-change handler."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

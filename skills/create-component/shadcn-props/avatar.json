@@ -1,0 +1,46 @@
+{
+  "pageName": "↳ Avatar",
+  "labelKey": "variant",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/avatar",
+  "summary": "Circular user image with fallback initials (Radix Avatar).",
+  "tiny": {
+    "shape": "avatar",
+    "size": 40,
+    "initials": "CN"
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "src",
+      "string",
+      "—",
+      "no",
+      "Image source URL."
+    ],
+    [
+      "alt",
+      "string",
+      "—",
+      "no",
+      "Alt text."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Data Display"
+}

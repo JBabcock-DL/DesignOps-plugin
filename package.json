@@ -1,0 +1,22 @@
+{
+  "name": "designops-plugin",
+  "version": "0.0.0-dev",
+  "private": true,
+  "description": "Build / dev tooling for the DesignOps-plugin marketplace skills. The skills themselves are the shipped artifact; this package.json exists only to host the repo's Node scripts (docs generator, template minifier, cache verifier, shadcn-props split).",
+  "type": "module",
+  "scripts": {
+    "build:docs": "node scripts/build-create-component-docs.mjs",
+    "build:docs:check": "node scripts/build-create-component-docs.mjs --check",
+    "build:min": "node scripts/build-min-templates.mjs",
+    "build:min:check": "node scripts/build-min-templates.mjs --check",
+    "build:props": "node scripts/build-shadcn-props.mjs",
+    "build:props:check": "node scripts/build-shadcn-props.mjs --check",
+    "sync-cache": "bash scripts/sync-cache.sh",
+    "verify-cache": "bash scripts/verify-cache.sh",
+    "build": "npm run build:props && npm run build:docs && npm run build:min",
+    "verify": "npm run build:props:check && npm run build:docs:check && npm run build:min:check && npm run verify-cache"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

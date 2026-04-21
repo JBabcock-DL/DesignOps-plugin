@@ -1,0 +1,75 @@
+{
+  "pageName": "↳ Calendar",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/calendar",
+  "summary": "Date-picker calendar grid backed by react-day-picker.",
+  "surface": {
+    "titleText": "February 2026",
+    "descriptionText": null,
+    "titleStyleName": "Label/MD",
+    "gap": "space/md",
+    "sectionPadY": "space/md",
+    "width": 320,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Date grid",
+      "minHeight": 260
+    },
+    "footerSlot": {
+      "enabled": false
+    },
+    "actionSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "mode",
+      "\"single\" | \"multiple\" | \"range\"",
+      "\"single\"",
+      "no",
+      "Selection mode."
+    ],
+    [
+      "selected",
+      "Date | Date[]",
+      "—",
+      "no",
+      "Controlled selection."
+    ],
+    [
+      "onSelect",
+      "(date) => void",
+      "—",
+      "no",
+      "Selection handler."
+    ],
+    [
+      "disabled",
+      "Date[] | matcher",
+      "—",
+      "no",
+      "Disabled dates."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Data Display"
+}

@@ -1,0 +1,53 @@
+{
+  "pageName": "↳ Typography",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/typography",
+  "summary": "Typography scale primitives mapping to design-system text styles.",
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Preset text role / size."
+    ],
+    [
+      "as",
+      "React.ElementType",
+      "\"p\"",
+      "no",
+      "Polymorphic root element."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Bind to published `Doc/*` / `Label/*` styles in Figma.",
+    "Keep line length ≤65ch in paragraphs.",
+    "Use responsive type tokens from Typography modes.",
+    "Document locale-specific line height tweaks."
+  ],
+  "usageDont": [
+    "Do not hardcode `fontSize` outside the scale.",
+    "Do not nest heading levels out of order.",
+    "Do not disable user zoom.",
+    "Do not mix more than two families in one view."
+  ],
+  "category": "Typography & platform"
+}

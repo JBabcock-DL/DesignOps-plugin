@@ -1,0 +1,66 @@
+{
+  "pageName": "↳ Form Composite Groups",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/form",
+  "summary": "react-hook-form + zod wrapper pattern — composite of Label + Input + Description + Error slots.",
+  "field": {
+    "fieldType": "input",
+    "showLabel": true,
+    "labelText": "Username",
+    "placeholderText": "shadcn",
+    "showHelper": true,
+    "helperText": "This is your public display name.",
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "helper": true,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "name",
+      "string",
+      "—",
+      "yes",
+      "Field name registered with react-hook-form."
+    ],
+    [
+      "label",
+      "string",
+      "—",
+      "no",
+      "Label text."
+    ],
+    [
+      "description",
+      "string",
+      "—",
+      "no",
+      "Helper text below the input."
+    ],
+    [
+      "required",
+      "boolean",
+      "false",
+      "no",
+      "Required in form submission."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

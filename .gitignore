@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+
+# Scratch payload files agents are forbidden from committing — see AGENTS.md.
+.mcp-*
+*-payload.json

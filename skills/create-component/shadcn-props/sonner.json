@@ -1,0 +1,61 @@
+{
+  "pageName": "↳ Sonner",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/sonner",
+  "summary": "Toast notifications via the sonner library.",
+  "surface": {
+    "titleText": "Event has been created",
+    "descriptionText": "Sunday, December 03, 2023 at 9:00 AM",
+    "titleStyleName": "Label/MD",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/md",
+    "gap": "space/xs",
+    "innerGap": "space/xs",
+    "width": 360,
+    "contentSlot": {
+      "enabled": false
+    },
+    "footerSlot": {
+      "enabled": true,
+      "slotLabel": "Undo",
+      "align": "end",
+      "minHeight": 32
+    }
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "footer": true,
+    "leadingIcon": true
+  },
+  "properties": [
+    [
+      "position",
+      "\"top-left\" | \"top-right\" | \"bottom-left\" | \"bottom-right\" | \"top-center\" | \"bottom-center\"",
+      "\"bottom-right\"",
+      "no",
+      "Anchor corner."
+    ],
+    [
+      "richColors",
+      "boolean",
+      "false",
+      "no",
+      "Use tinted backgrounds per intent."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Feedback & Status"
+}

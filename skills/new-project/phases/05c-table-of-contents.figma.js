@@ -41,92 +41,40 @@ await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
 
-// ── Variable helpers (create-design-system — Canvas documentation visual spec § C) ──
-const variableCollections = figma.variables.getLocalVariableCollections();
-const allColorVars = figma.variables.getLocalVariables('COLOR');
-const themeCol = variableCollections.find(c => c.name === 'Theme');
-const primCol  = variableCollections.find(c => c.name === 'Primitives');
+// ═══════════════════════════════════════════════════════════════════════════
+// ↓↓↓  INLINE _shared-token-helpers.figma.js HERE  ↓↓↓
+// ═══════════════════════════════════════════════════════════════════════════
+// Agent action required: `Read` skills/new-project/phases/_shared-token-helpers.figma.js
+// in full (no `limit`) and paste its contents verbatim between this marker
+// and the matching ↑↑↑ marker below. That template defines the following
+// helpers referenced throughout this script:
+//
+//   variableCollections, allColorVars, themeCol, primCol
+//   getThemeColorVar, getPrimColorVar, hexToRgb
+//   bindThemeColor, bindPrimColor, bindThemeStroke
+//   loadTextStylesOnce, applyDocStyle, tryApplyEffectStyle
+//   DOC_SECTION, DOC_TOKENNAME, DOC_CODE, DOC_CAPTION
+//
+// Do NOT re-declare them here. The assert below throws with an actionable
+// message if the template was not inlined.
+// ═══════════════════════════════════════════════════════════════════════════
 
-function getThemeColorVar(path) {
-  if (!themeCol) return null;
-  return allColorVars.find(v => v.variableCollectionId === themeCol.id && v.name === path) ?? null;
-}
-function getPrimColorVar(path) {
-  if (!primCol) return null;
-  return allColorVars.find(v => v.variableCollectionId === primCol.id && v.name === path) ?? null;
-}
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  return {
-    r: parseInt(h.slice(0, 2), 16) / 255,
-    g: parseInt(h.slice(2, 4), 16) / 255,
-    b: parseInt(h.slice(4, 6), 16) / 255,
-  };
-}
-function bindThemeColor(node, path, fallbackHex, target = 'fills') {
-  const variable = getThemeColorVar(path);
-  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
-  if (variable) {
-    try { paint.boundVariables = { color: figma.variables.createVariableAlias(variable) }; } catch (_) {}
-  }
-  node[target] = [paint];
-}
-function bindPrimColor(node, path, fallbackHex, target = 'fills') {
-  const variable = getPrimColorVar(path);
-  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
-  if (variable) {
-    try { paint.boundVariables = { color: figma.variables.createVariableAlias(variable) }; } catch (_) {}
-  }
-  node[target] = [paint];
-}
-function bindThemeStroke(node, path, fallbackHex, weight = 1) {
-  const variable = getThemeColorVar(path);
-  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
-  if (variable) {
-    try { paint.boundVariables = { color: figma.variables.createVariableAlias(variable) }; } catch (_) {}
-  }
-  node.strokes = [paint];
-  node.strokeWeight = weight;
+// ═══════════════════════════════════════════════════════════════════════════
+// ↑↑↑  END _shared-token-helpers.figma.js insertion point  ↑↑↑
+// ═══════════════════════════════════════════════════════════════════════════
+
+if (typeof bindPrimColor !== 'function' || typeof applyDocStyle !== 'function') {
+  throw new Error(
+    '[05c-table-of-contents.figma.js] _shared-token-helpers.figma.js was not inlined. ' +
+    'Read skills/new-project/phases/_shared-token-helpers.figma.js and paste its contents ' +
+    'between the ↓↓↓ / ↑↑↑ markers above.'
+  );
 }
 
-// ── Doc/* text-style helpers (§ 7) ──
-let _textStylesCache = null;
-async function loadTextStylesOnce() {
-  if (_textStylesCache) return _textStylesCache;
-  try { _textStylesCache = await figma.getLocalTextStylesAsync(); }
-  catch (_) { _textStylesCache = []; }
-  return _textStylesCache;
-}
-async function applyDocStyle(textNode, styleName, fallback) {
-  const styles = await loadTextStylesOnce();
-  const style = styles.find(s => s.name === styleName);
-  if (style) {
-    try { await textNode.setTextStyleIdAsync(style.id); return; } catch (_) {}
-  }
-  textNode.fontName = fallback.fontName;
-  textNode.fontSize = fallback.fontSize;
-  if (fallback.letterSpacing != null) {
-    textNode.letterSpacing = { value: fallback.letterSpacing, unit: 'PERCENT' };
-  }
-  if (fallback.lineHeight != null) {
-    textNode.lineHeight = { value: fallback.lineHeight, unit: 'PIXELS' };
-  }
-}
-const DOC_SECTION   = { fontName: { family: 'Inter', style: 'Bold'      }, fontSize: 20, lineHeight: 28 };
-const DOC_TOKENNAME = { fontName: { family: 'Inter', style: 'Semi Bold' }, fontSize: 16, lineHeight: 22 };
-const DOC_CODE      = { fontName: { family: 'Inter', style: 'Medium'    }, fontSize: 13, lineHeight: 20 };
-const DOC_CAPTION   = { fontName: { family: 'Inter', style: 'Regular'   }, fontSize: 12, lineHeight: 18 };
-const DOC_CAPTION_UC = { fontName: { family: 'Inter', style: 'Medium'   }, fontSize: 12, lineHeight: 18, letterSpacing: 8 };
-
-// ── Effect/shadow helper (§ G Depth — optional, skipped when style not yet published) ──
-let _effectStylesCache = null;
-async function tryApplyEffectStyle(node, styleName) {
-  try {
-    if (!_effectStylesCache) _effectStylesCache = await figma.getLocalEffectStylesAsync();
-    const style = _effectStylesCache.find(s => s.name === styleName);
-    if (style) { try { node.effectStyleId = style.id; } catch (_) {} }
-  } catch (_) {}
-}
+// 05c-specific uppercase caption variant — letterSpacing 8 differs from 05d's
+// DOC_CODE_UC (4), so it stays in this phase file rather than the shared
+// helper file. Defined after the shared helpers so it can extend the palette.
+const DOC_CAPTION_UC = { fontName: { family: 'Inter', style: 'Medium' }, fontSize: 12, lineHeight: 18, letterSpacing: 8 };
 
 // ── Page geometry (conventions/03-through-07 § 3 — TOC shares 1800 wide, 40 padding all sides, inner 1720 with Token Overview) ──
 const PAGE_WIDTH     = 1800;

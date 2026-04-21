@@ -1,0 +1,83 @@
+{
+  "pageName": "↳ Dialogue",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/dialog",
+  "summary": "Modal dialog with overlay, header, footer.",
+  "surface": {
+    "titleText": "Edit profile",
+    "descriptionText": "Make changes to your profile here. Click save when you're done.",
+    "titleStyleName": "Label/LG",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/2xl",
+    "gap": "space/lg",
+    "innerGap": "space/xs",
+    "width": 480,
+    "actionSlot": {
+      "enabled": true,
+      "slotLabel": "Close",
+      "width": 24,
+      "height": 24
+    },
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Dialog body",
+      "minHeight": 120
+    },
+    "footerSlot": {
+      "enabled": true,
+      "slotLabel": "Save changes",
+      "align": "end",
+      "minHeight": 44
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "actionSlot": true,
+    "footer": true
+  },
+  "properties": [
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "defaultOpen",
+      "boolean",
+      "false",
+      "no",
+      "Uncontrolled initial open."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open-change handler."
+    ],
+    [
+      "modal",
+      "boolean",
+      "true",
+      "no",
+      "Blocks interaction with surrounding content."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

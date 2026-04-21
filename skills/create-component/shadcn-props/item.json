@@ -1,0 +1,71 @@
+{
+  "pageName": "↳ Lists",
+  "labelKey": "variant",
+  "layout": "row-item",
+  "docsUrl": "https://ui.shadcn.com/docs/components/item",
+  "summary": "Composable list row / media object primitive (shadcn Item).",
+  "row": {
+    "titleText": "Sarah Johnson",
+    "descriptionText": "Updated 2 hours ago",
+    "leadingIcon": true,
+    "trailingIcon": true,
+    "trailingIsChevron": true,
+    "titleStyleName": "Label/MD",
+    "descriptionStyleName": "Label/SM",
+    "width": 360
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "leadingIcon": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual density / emphasis."
+    ],
+    [
+      "size",
+      "enum",
+      "\"default\"",
+      "no",
+      "Row height preset."
+    ],
+    [
+      "asChild",
+      "boolean",
+      "false",
+      "no",
+      "Radix Slot composition."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Keep tap targets ≥44px tall on mobile.",
+    "Align leading media to a 40px grid.",
+    "Truncate titles with tooltip on hover.",
+    "Use separators between dense rows."
+  ],
+  "usageDont": [
+    "Do not nest interactive controls without spacing.",
+    "Do not use `Item` as a full page layout root.",
+    "Do not omit pressed state on touch rows.",
+    "Do not mix conflicting `size` within one list."
+  ],
+  "category": "Data Display"
+}

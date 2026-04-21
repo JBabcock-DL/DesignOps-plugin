@@ -1,0 +1,34 @@
+{
+  "pageName": "↳ Breadcrumb",
+  "labelKey": "variant",
+  "layout": "row-item",
+  "docsUrl": "https://ui.shadcn.com/docs/components/breadcrumb",
+  "summary": "Breadcrumb item row (nav path segment).",
+  "row": {
+    "titleText": "Components",
+    "leadingIcon": false,
+    "trailingIcon": true,
+    "trailingIsChevron": true,
+    "titleStyleName": "Label/SM",
+    "width": 200
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": true,
+    "size": 16
+  },
+  "componentProps": {
+    "title": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Navigation"
+}

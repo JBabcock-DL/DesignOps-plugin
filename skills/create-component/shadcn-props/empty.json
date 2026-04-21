@@ -1,0 +1,60 @@
+{
+  "pageName": "↳ Blank states",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/empty",
+  "summary": "Empty-state panel with title, description, and optional media + actions.",
+  "surface": {
+    "titleText": "No projects yet",
+    "descriptionText": "Get started by creating a new project.",
+    "titleStyleName": "Label/LG",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/2xl",
+    "gap": "space/lg",
+    "innerGap": "space/xs",
+    "width": 480,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Illustration",
+      "minHeight": 120
+    },
+    "footerSlot": {
+      "enabled": true,
+      "slotLabel": "Create project",
+      "align": "start",
+      "minHeight": 40
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "footer": true
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Offer a single primary recovery action.",
+    "Keep copy concise (≤12 words title).",
+    "Use illustration tokens from brand kit.",
+    "Log empty-state impressions if product requires."
+  ],
+  "usageDont": [
+    "Do not use empty states for loading skeletons.",
+    "Do not stack >2 CTAs.",
+    "Do not hide navigation to escape the state.",
+    "Do not use alarmist copy for benign empties."
+  ],
+  "category": "Feedback & Status"
+}

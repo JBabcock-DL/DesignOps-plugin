@@ -1,0 +1,81 @@
+{
+  "pageName": "↳ Sidebar",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/sidebar",
+  "summary": "Application sidebar shell with collapsible groups and rail mode.",
+  "surface": {
+    "titleText": "Application",
+    "descriptionText": "Workspace navigation",
+    "titleStyleName": "Label/LG",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/lg",
+    "gap": "space/md",
+    "innerGap": "space/xs",
+    "width": 280,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Nav items",
+      "minHeight": 320
+    },
+    "footerSlot": {
+      "enabled": true,
+      "slotLabel": "User account",
+      "align": "start",
+      "minHeight": 56
+    }
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "footer": true
+  },
+  "properties": [
+    [
+      "defaultOpen",
+      "boolean",
+      "true",
+      "no",
+      "Uncontrolled default open."
+    ],
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "collapsible",
+      "\"offcanvas\" | \"icon\" | \"none\"",
+      "\"offcanvas\"",
+      "no",
+      "Collapse behavior."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Persist collapsed state per user.",
+    "Keep active route contrast ≥4.5:1.",
+    "Provide skip link to main content.",
+    "Reserve 280px min width for expanded desktop rail."
+  ],
+  "usageDont": [
+    "Do not trap focus when collapsed offcanvas is closed.",
+    "Do not mix two different sidebar patterns in one product.",
+    "Do not hide global nav without alternative entry.",
+    "Do not animate width below 60fps on low-end devices."
+  ],
+  "category": "Layout & Display"
+}

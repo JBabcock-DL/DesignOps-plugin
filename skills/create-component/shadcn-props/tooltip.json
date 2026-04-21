@@ -1,0 +1,60 @@
+{
+  "pageName": "↳ Tooltips",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/tooltip",
+  "summary": "On-hover / focus info popover (Radix Tooltip).",
+  "surface": {
+    "titleText": "Add to library",
+    "descriptionText": null,
+    "titleStyleName": "Label/SM",
+    "sectionPadY": "space/xs",
+    "gap": "space/none",
+    "width": 140,
+    "contentSlot": {
+      "enabled": false
+    },
+    "footerSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true
+  },
+  "properties": [
+    [
+      "delayDuration",
+      "number",
+      "700",
+      "no",
+      "Open delay in ms."
+    ],
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open-change handler."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

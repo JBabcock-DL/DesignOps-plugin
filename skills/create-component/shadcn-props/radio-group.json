@@ -1,0 +1,60 @@
+{
+  "pageName": "↳ Radio",
+  "labelKey": "variant",
+  "layout": "control",
+  "docsUrl": "https://ui.shadcn.com/docs/components/radio-group",
+  "summary": "Single-selection group of radio buttons.",
+  "control": {
+    "shape": "radio",
+    "size": 16,
+    "indicatorVar": "color/primary/content"
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled selected value."
+    ],
+    [
+      "defaultValue",
+      "string",
+      "—",
+      "no",
+      "Uncontrolled initial value."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables every item."
+    ],
+    [
+      "required",
+      "boolean",
+      "false",
+      "no",
+      "Required in form submission."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

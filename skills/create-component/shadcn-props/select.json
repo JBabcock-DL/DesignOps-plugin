@@ -1,0 +1,67 @@
+{
+  "pageName": "↳ Select",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/select",
+  "summary": "Dropdown selection backed by Radix Select. Trigger + content + items.",
+  "field": {
+    "fieldType": "select",
+    "showLabel": true,
+    "labelText": "Framework",
+    "placeholderText": "Select a framework",
+    "showHelper": false,
+    "leadingIcon": false,
+    "trailingIcon": true,
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "helper": false,
+    "leadingIcon": false,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled selected value."
+    ],
+    [
+      "defaultValue",
+      "string",
+      "—",
+      "no",
+      "Uncontrolled initial value."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "required",
+      "boolean",
+      "false",
+      "no",
+      "Required in form submission."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

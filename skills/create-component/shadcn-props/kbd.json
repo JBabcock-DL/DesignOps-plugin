@@ -1,0 +1,39 @@
+{
+  "pageName": "↳ Kbd",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/kbd",
+  "summary": "Keyboard key cap styling for shortcuts and chord hints.",
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Use sentence case inside caps.",
+    "Pair with visible command labels.",
+    "Keep min width for single-letter keys.",
+    "Use monospace token for key glyphs when available."
+  ],
+  "usageDont": [
+    "Do not encode OS-specific glyphs without detection.",
+    "Do not rely on color alone to imply modifier.",
+    "Do not shrink below 24px height on mobile.",
+    "Do not nest clickable areas inside `Kbd`."
+  ],
+  "category": "Typography & platform"
+}

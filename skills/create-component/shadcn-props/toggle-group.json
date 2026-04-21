@@ -1,0 +1,74 @@
+{
+  "pageName": "↳ Toggle Group",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/toggle-group",
+  "summary": "Set of Toggle buttons wired as a single selection control (single or multiple).",
+  "composes": [
+    {
+      "component": "toggle",
+      "slot": "items",
+      "cardinality": "many",
+      "count": 3,
+      "defaultProps": {
+        "variant": "default",
+        "size": "default"
+      }
+    }
+  ],
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "type",
+      "\"single\" | \"multiple\"",
+      "—",
+      "yes",
+      "Selection mode."
+    ],
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual style inherited by member Toggles."
+    ],
+    [
+      "size",
+      "enum",
+      "\"default\"",
+      "no",
+      "Size inherited by member Toggles."
+    ],
+    [
+      "value",
+      "string | string[]",
+      "—",
+      "no",
+      "Controlled selection."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables every member."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

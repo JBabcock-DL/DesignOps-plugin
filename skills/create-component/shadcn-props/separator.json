@@ -1,0 +1,47 @@
+{
+  "pageName": "↳ Dividers",
+  "labelKey": "orientation",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/separator",
+  "summary": "Horizontal or vertical rule (Radix Separator).",
+  "tiny": {
+    "shape": "separator",
+    "orientation": "horizontal",
+    "width": 240,
+    "height": 1
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "orientation",
+      "\"horizontal\" | \"vertical\"",
+      "\"horizontal\"",
+      "no",
+      "Axis."
+    ],
+    [
+      "decorative",
+      "boolean",
+      "true",
+      "no",
+      "Presentation-only (no aria separator)."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Layout & Display"
+}

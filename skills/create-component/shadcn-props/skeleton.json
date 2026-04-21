@@ -1,0 +1,32 @@
+{
+  "pageName": "↳ Skeleton",
+  "labelKey": "variant",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/skeleton",
+  "summary": "Pulsing placeholder block used while content loads.",
+  "tiny": {
+    "shape": "skeleton",
+    "width": 200,
+    "height": 16
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch (sizing + shape lives here)."
+    ]
+  ],
+  "category": "Feedback & Status"
+}

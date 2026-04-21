@@ -1,0 +1,69 @@
+{
+  "pageName": "↳ Drawer",
+  "labelKey": "direction",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/drawer",
+  "summary": "Edge-anchored sliding panel (vaul).",
+  "surface": {
+    "titleText": "Move Goal",
+    "descriptionText": "Set your daily activity goal.",
+    "titleStyleName": "Label/LG",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/2xl",
+    "gap": "space/lg",
+    "innerGap": "space/xs",
+    "width": 420,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Drawer body",
+      "minHeight": 200
+    },
+    "footerSlot": {
+      "enabled": true,
+      "slotLabel": "Submit",
+      "align": "end",
+      "minHeight": 44
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "footer": true
+  },
+  "properties": [
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open-change handler."
+    ],
+    [
+      "direction",
+      "\"top\" | \"right\" | \"bottom\" | \"left\"",
+      "\"bottom\"",
+      "no",
+      "Anchor edge."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

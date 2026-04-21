@@ -1,0 +1,37 @@
+{
+  "pageName": "↳ Context Menu",
+  "labelKey": "variant",
+  "layout": "row-item",
+  "docsUrl": "https://ui.shadcn.com/docs/components/context-menu",
+  "summary": "Right-click menu (Radix ContextMenu).",
+  "row": {
+    "titleText": "Back",
+    "leadingIcon": true,
+    "trailingIcon": false,
+    "shortcut": true,
+    "shortcutText": "⌘[",
+    "titleStyleName": "Label/SM",
+    "width": 220
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "shortcut": true,
+    "leadingIcon": true,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

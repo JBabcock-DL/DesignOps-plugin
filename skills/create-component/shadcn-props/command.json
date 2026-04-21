@@ -1,0 +1,51 @@
+{
+  "pageName": "↳ Command",
+  "labelKey": "variant",
+  "layout": "row-item",
+  "docsUrl": "https://ui.shadcn.com/docs/components/command",
+  "summary": "cmdk-powered command palette item row — fuzzy-search launcher.",
+  "row": {
+    "titleText": "Calendar",
+    "leadingIcon": true,
+    "trailingIcon": false,
+    "shortcut": true,
+    "shortcutText": "⌘K",
+    "titleStyleName": "Label/SM",
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "shortcut": true,
+    "leadingIcon": true,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled selected item value."
+    ],
+    [
+      "onValueChange",
+      "(value: string) => void",
+      "—",
+      "no",
+      "Value-change handler."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Navigation"
+}

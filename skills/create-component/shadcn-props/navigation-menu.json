@@ -1,0 +1,51 @@
+{
+  "pageName": "↳ Navigation Menu",
+  "labelKey": "variant",
+  "layout": "row-item",
+  "docsUrl": "https://ui.shadcn.com/docs/components/navigation-menu",
+  "summary": "Horizontal navigation bar item row (Radix NavigationMenuItem).",
+  "row": {
+    "titleText": "Getting started",
+    "descriptionText": "Beautifully designed components built with Radix UI and Tailwind.",
+    "leadingIcon": false,
+    "trailingIcon": true,
+    "trailingIsChevron": true,
+    "titleStyleName": "Label/MD",
+    "descriptionStyleName": "Label/SM",
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled active item."
+    ],
+    [
+      "onValueChange",
+      "(value: string) => void",
+      "—",
+      "no",
+      "Active-change handler."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Navigation"
+}

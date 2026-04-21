@@ -1,0 +1,75 @@
+{
+  "pageName": "↳ Slider",
+  "labelKey": "variant",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/slider",
+  "summary": "Horizontal or vertical range selector.",
+  "tiny": {
+    "shape": "progress",
+    "width": 280,
+    "height": 4,
+    "filled": 0.5
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "value",
+      "number[]",
+      "—",
+      "no",
+      "Controlled value array (supports multi-thumb)."
+    ],
+    [
+      "defaultValue",
+      "number[]",
+      "[0]",
+      "no",
+      "Uncontrolled initial value."
+    ],
+    [
+      "min",
+      "number",
+      "0",
+      "no",
+      "Minimum."
+    ],
+    [
+      "max",
+      "number",
+      "100",
+      "no",
+      "Maximum."
+    ],
+    [
+      "step",
+      "number",
+      "1",
+      "no",
+      "Step increment."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

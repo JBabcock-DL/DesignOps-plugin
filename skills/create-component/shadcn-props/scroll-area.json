@@ -1,0 +1,32 @@
+{
+  "pageName": "↳ Scroll Area",
+  "labelKey": "variant",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/scroll-area",
+  "summary": "Styled scroll container with custom scrollbars (Radix ScrollArea).",
+  "tiny": {
+    "shape": "scroll-area",
+    "width": 320,
+    "height": 200
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Layout & Display"
+}

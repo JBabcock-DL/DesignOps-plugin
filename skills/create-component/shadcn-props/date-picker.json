@@ -1,0 +1,65 @@
+{
+  "pageName": "↳ Date Picker",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/date-picker",
+  "summary": "Calendar + Popover + Button composite for date entry.",
+  "field": {
+    "fieldType": "select",
+    "showLabel": true,
+    "labelText": "Date",
+    "placeholderText": "Pick a date",
+    "leadingIcon": true,
+    "trailingIcon": false,
+    "width": 280
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "leadingIcon": true,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "value",
+      "Date | Date[]",
+      "—",
+      "no",
+      "Controlled value."
+    ],
+    [
+      "onChange",
+      "(date) => void",
+      "—",
+      "no",
+      "Change handler."
+    ],
+    [
+      "placeholder",
+      "string",
+      "\"Pick a date\"",
+      "no",
+      "Trigger placeholder."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Data Display"
+}

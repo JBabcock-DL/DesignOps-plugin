@@ -1,0 +1,44 @@
+{
+  "pageName": "↳ Resizable",
+  "labelKey": "direction",
+  "layout": "container",
+  "docsUrl": "https://ui.shadcn.com/docs/components/resizable",
+  "summary": "Resizable panel group with drag handles (react-resizable-panels).",
+  "container": {
+    "kind": "tabs",
+    "width": 420,
+    "tabs": [
+      "Panel A",
+      "Panel B"
+    ],
+    "activeIndex": 0,
+    "panelMinHeight": 160
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "direction",
+      "\"horizontal\" | \"vertical\"",
+      "\"horizontal\"",
+      "yes",
+      "Panel axis."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Layout & Display"
+}

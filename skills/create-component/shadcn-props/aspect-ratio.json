@@ -1,0 +1,39 @@
+{
+  "pageName": "↳ Aspect Ratio",
+  "labelKey": "variant",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/aspect-ratio",
+  "summary": "Content frame that preserves a fixed width:height ratio.",
+  "tiny": {
+    "shape": "aspect-ratio",
+    "width": 320,
+    "height": 180
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "ratio",
+      "number",
+      "1",
+      "no",
+      "Width / height ratio (e.g. 16/9)."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Layout & Display"
+}

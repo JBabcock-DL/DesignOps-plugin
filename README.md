@@ -7,7 +7,7 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
 > **Ramping up a new agent (Claude Sonnet, Opus, future models)?** Read these two quick-reference guides before running any skill:
 >
 > - [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) — **router** to convention shards; **§0 gotchas** live in [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md). For geometry + pages + naming, read [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md); for `codeSyntax` rules, [`skills/create-design-system/conventions/02-codesyntax.md`](skills/create-design-system/conventions/02-codesyntax.md). **Do not** load every shard at session start — follow each skill’s lazy-load instructions.
-> - [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) — the **matrix-default** 5-section layout every component uses: header + properties table + **live Component Set section (inline, editable)** + variant × state specimen matrix + Do/Don't usage notes. Covers per-category state axes, per-component variant rows, instance-vs-component handling, the `CONFIG` schema (including `labelStyle` bindings to published `Label/*` text styles), and a Button reference `CONFIG`.
+> - [`skills/create-component/conventions/`](skills/create-component/conventions/) — **topic-scoped** convention shards (router at [`conventions/00-overview.md`](skills/create-component/conventions/00-overview.md), legacy [`CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) kept as a §→file map). Covers the **matrix-default** 5-section layout every component uses: header + properties table + **live Component Set section (inline, editable)** + variant × state specimen matrix + Do/Don't usage notes. Per-category state axes, per-component variant rows, instance-vs-component handling, the `CONFIG` schema (including `labelStyle` bindings to published `Label/*` text styles), and a Button reference `CONFIG` live across [`01-config-schema.md`](skills/create-component/conventions/01-config-schema.md) / [`02-archetype-routing.md`](skills/create-component/conventions/02-archetype-routing.md) / [`04-doc-pipeline-contract.md`](skills/create-component/conventions/04-doc-pipeline-contract.md).
 
 ---
 
@@ -242,7 +242,7 @@ Install one or more shadcn/ui components, wire them to the project's CSS token f
 
 **Inner labels use published text styles.** The text inside each component variant is bound to the `Label/XS · Label/SM · Label/MD · Label/LG` text styles (driven per size via `CONFIG.labelStyle`) so labels stay in sync with the Typography system — no stray `fontSize: 14` overrides.
 
-The `/create-component` script is structured as a single **`CONFIG`** object (the only part you edit per component — variants, sizes, style, states, labels, label text styles, properties, usage, state-override callback) + a generic draw engine (identical for every component). Full `CONFIG` schema, per-category state axes (button-like / input-like / checkable / overlay / layout), audit checklist, and a Button reference `CONFIG` live in [`skills/create-component/CONVENTIONS.md`](skills/create-component/CONVENTIONS.md).
+The `/create-component` script is structured as a single **`CONFIG`** object (the only part you edit per component — variants, sizes, style, states, labels, label text styles, properties, usage, state-override callback) + a generic draw engine (identical for every component). Full `CONFIG` schema lives in [`skills/create-component/conventions/01-config-schema.md`](skills/create-component/conventions/01-config-schema.md); per-category state axes (button-like / input-like / checkable / overlay / layout) and Button reference `CONFIG` live in [`skills/create-component/conventions/04-doc-pipeline-contract.md`](skills/create-component/conventions/04-doc-pipeline-contract.md); the audit checklist lives in [`skills/create-component/conventions/06-audit-checklist.md`](skills/create-component/conventions/06-audit-checklist.md). Start at the router: [`skills/create-component/conventions/00-overview.md`](skills/create-component/conventions/00-overview.md).
 
 Because `tokens.css` defines **canonical** Tailwind-friendly theme vars (`--color-background`, `--color-content`, `--color-border`, `--color-primary`, …) plus shadcn aliases (`--background` → `var(--color-background)`, `--foreground` → `var(--color-content)`, `--primary` → `var(--color-primary)`, …), Web and shadcn stay aligned without extra mapping.
 
@@ -608,6 +608,85 @@ Detroit Labs projects use a standardized three-folder hierarchy within each Figm
 
 ---
 
+## Development
+
+### Syncing to the Claude marketplace cache
+
+Claude Code reads skills from the marketplace cache at `~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/`, not from this workspace. Edits to `skills/**` in the repo do not automatically propagate — you have to copy them.
+
+Two scripts under [`scripts/`](scripts/) handle this:
+
+| Script | Purpose |
+|---|---|
+| [`scripts/sync-cache.sh`](scripts/sync-cache.sh) | Mirror every file under `skills/` into the cache via `rsync -a --delete` when available, otherwise via a portable `rm -rf` + `cp -r` fallback (Git Bash / WSL / anywhere without rsync on PATH). Respects `$CLAUDE_CACHE` when the marketplace is installed elsewhere. |
+| [`scripts/verify-cache.sh`](scripts/verify-cache.sh) | `diff -rq` the workspace against the cache and exit non-zero on any drift. Also checks that `*.min.figma.js` files are fresher than their readable `*.figma.js` siblings. |
+
+Typical flow after editing a skill:
+
+```bash
+bash scripts/sync-cache.sh     # propagate edits into the cache
+bash scripts/verify-cache.sh   # confirm zero drift + minified-template freshness
+```
+
+Set `CLAUDE_CACHE=/path/to/labs-design-ops` if the marketplace lives outside the default location. `rsync` is preferred; when it is missing (e.g. default Windows Git Bash) the script falls back to a portable `rm -rf` + `cp -r` that emulates `rsync -a --delete`.
+
+### Regenerating generated doc blocks
+
+Some tables inside `skills/create-component/SKILL.md` are derived from `skills/create-component/shadcn-props.json` (the per-component SSOT) and are rewritten between `<!-- GENERATED:... START/END -->` markers.
+
+| Script | Purpose |
+|---|---|
+| [`scripts/build-create-component-docs.mjs`](scripts/build-create-component-docs.mjs) | Seeds missing `category` fields on `shadcn-props.json` entries, then regenerates the **Supported Components** block and the **Component → Page routing** table in `SKILL.md`. Idempotent — safe to run any time. Pass `--check` to fail (non-zero exit) on drift without writing. |
+
+Typical flow after editing `shadcn-props.json`:
+
+```bash
+node scripts/build-create-component-docs.mjs         # rewrite generated blocks
+node scripts/build-create-component-docs.mjs --check # CI guard: exits 1 on drift
+```
+
+Do **not** hand-edit anything between the `<!-- GENERATED:... -->` markers — changes will be overwritten the next time the generator runs.
+
+### Regenerating the shadcn-props bundle
+
+`/create-component`'s Mode A (shadcn-1:1) reads curated per-component metadata from [`skills/create-component/shadcn-props/*.json`](skills/create-component/shadcn-props/) (one file per component, ~300 B – 3 KB each) plus a thin `_index.json` (~3 KB) that lists every component's name, category, layout, pageName, and docsUrl. The monolithic [`skills/create-component/shadcn-props.json`](skills/create-component/shadcn-props.json) is kept for back-compat — it is regenerated from the split directory by `scripts/build-shadcn-props.mjs` and is always byte-identical to `concat(shadcn-props/*.json, key-sorted)`.
+
+| Script | Purpose |
+|---|---|
+| [`scripts/split-shadcn-props.mjs`](scripts/split-shadcn-props.mjs) | **One-time migration** — reads the monolithic `shadcn-props.json` and explodes it into per-component files under `shadcn-props/`. Already run; kept for disaster-recovery. |
+| [`scripts/build-shadcn-props.mjs`](scripts/build-shadcn-props.mjs) | Regenerates the monolithic `shadcn-props.json` **and** `shadcn-props/_index.json` from the per-component files. `--check` fails (non-zero exit) on drift. |
+
+Typical flow after editing a per-component file:
+
+```bash
+npm run build:props           # regenerate monolith + _index.json
+npm run build:props:check     # CI guard
+```
+
+Agents should prefer `Read`-ing the single `shadcn-props/{component}.json` file they need (saves ~60 KB of context vs the monolith) and only fall back to the monolith if a tool explicitly requires it (e.g. `resolver/validate-composes.mjs`).
+
+### Regenerating minified templates
+
+`/create-component`'s `use_figma` payload inlines two large plugin-API scripts on every run: `templates/draw-engine.figma.js` and `templates/archetype-builders.figma.js`. Both are committed alongside a pre-built `.min.figma.js` sibling so agents inline the small variant (~40–60% savings) without running Node at runtime.
+
+| Script | Purpose |
+|---|---|
+| [`scripts/build-min-templates.mjs`](scripts/build-min-templates.mjs) | Minifies whitespace + syntax (esbuild, identifiers preserved) of the two source templates and writes committed `.min.figma.js` siblings. `--check` fails (non-zero exit) if any source is newer than its sibling. |
+
+Typical flow after editing either source template:
+
+```bash
+npm install                 # once, for esbuild (devDependency)
+npm run build:min           # regenerate both .min siblings
+npm run build:min:check     # CI guard: exits 1 on stale .min files
+```
+
+The combined CI gate is `npm run verify` (runs `build:docs:check`, `build:min:check`, and `verify-cache` in sequence). `scripts/verify-cache.sh` fails the drift check if any source `.figma.js` is newer than its `.min` sibling, so a commit that forgets `npm run build:min` is caught automatically.
+
+Identifier renaming is intentionally **disabled** in the minifier because the runtime `typeof buildSurfaceStackVariant === 'function'` assertions at `draw-engine.figma.js §6.2a` / `§6.9a` resolve helpers by source name. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md) for the full contract.
+
+---
+
 ## Contributing
 
 This plugin is distributed internally via this Git repository. To add or modify a skill:
@@ -616,5 +695,8 @@ This plugin is distributed internally via this Git repository. To add or modify 
 2. If adding a new skill, add an entry to `.claude-plugin/plugin.json` with the skill `name`, `description`, `path`, and `arguments` schema
 3. Update `templates/workflow.md` and this `README.md` if the change affects designer-facing behavior or conventions
 4. Test with a live Figma file using the Figma MCP connector before committing
+5. If your change touches `skills/create-component/shadcn-props/*.json`, run `npm run build:props` to regenerate `shadcn-props.json` + `_index.json`, then `npm run build:docs` so the generated blocks in `SKILL.md` stay in sync
+6. If your change touches `skills/create-component/templates/draw-engine.figma.js` or `archetype-builders.figma.js`, run `npm run build:min` so the committed `.min.figma.js` siblings stay fresh
+7. Run `bash scripts/sync-cache.sh` to push the change into the Claude marketplace cache, then `bash scripts/verify-cache.sh` to confirm zero drift (combined gate: `npm run verify`)
 
 All Figma operations require the Figma MCP connector to be active and authenticated with an Organization-tier account. The Variables REST API write endpoint (`PUT /v1/files/:key/variables`) is the most common source of plan-tier errors — verify your account tier if `/create-design-system` or `/sync-design-system` fails with a `403`.

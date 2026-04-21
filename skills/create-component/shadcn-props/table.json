@@ -1,0 +1,44 @@
+{
+  "pageName": "↳ Data Table",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/table",
+  "summary": "Semantic <table> wrapper with header / body / footer / caption sub-components.",
+  "surface": {
+    "titleText": "Invoices",
+    "descriptionText": "A list of your recent invoices.",
+    "titleStyleName": "Label/LG",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/lg",
+    "gap": "space/md",
+    "innerGap": "space/xs",
+    "width": 640,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Table rows",
+      "minHeight": 200
+    },
+    "footerSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Data Display"
+}

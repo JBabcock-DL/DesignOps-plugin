@@ -1,0 +1,39 @@
+{
+  "pageName": "↳ Pagination",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/pagination",
+  "summary": "Page-number navigation with prev/next controls.",
+  "composes": [
+    {
+      "component": "button",
+      "slot": "items",
+      "cardinality": "many",
+      "count": 3,
+      "defaultProps": {
+        "variant": "outline",
+        "size": "default"
+      }
+    }
+  ],
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Navigation"
+}

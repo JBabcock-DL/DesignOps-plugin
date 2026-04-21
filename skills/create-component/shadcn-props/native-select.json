@@ -1,0 +1,69 @@
+{
+  "pageName": "↳ Native Select",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/native-select",
+  "summary": "Native `<select>` styling aligned with design-system tokens.",
+  "field": {
+    "fieldType": "select",
+    "showLabel": true,
+    "labelText": "Option",
+    "placeholderText": "Choose…",
+    "leadingIcon": false,
+    "trailingIcon": true,
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled value."
+    ],
+    [
+      "defaultValue",
+      "string",
+      "—",
+      "no",
+      "Uncontrolled default."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables the control."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Prefer native select when accessibility beats customization.",
+    "Keep option list <200 items for performance.",
+    "Mirror `Select` page spacing tokens.",
+    "Provide `aria-invalid` when in error state."
+  ],
+  "usageDont": [
+    "Do not replace with custom dropdown without a11y review.",
+    "Do not hide the focus ring.",
+    "Do not use placeholder option as label substitute.",
+    "Do not disable all options with no explanation."
+  ],
+  "category": "Form & Input"
+}

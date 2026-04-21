@@ -1,0 +1,54 @@
+{
+  "pageName": "↳ Accordion",
+  "labelKey": "type",
+  "layout": "container",
+  "docsUrl": "https://ui.shadcn.com/docs/components/accordion",
+  "summary": "Vertical expand/collapse group (Radix Accordion).",
+  "container": {
+    "kind": "accordion",
+    "width": 380,
+    "titleText": "Is it accessible?",
+    "panelText": "Yes. It adheres to the WAI-ARIA design pattern."
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "content": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "type",
+      "\"single\" | \"multiple\"",
+      "—",
+      "yes",
+      "Expansion mode."
+    ],
+    [
+      "value",
+      "string | string[]",
+      "—",
+      "no",
+      "Controlled expanded items."
+    ],
+    [
+      "collapsible",
+      "boolean",
+      "false",
+      "no",
+      "Allow closing the last open item (type=single only)."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Data Display"
+}

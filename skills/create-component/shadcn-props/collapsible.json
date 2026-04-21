@@ -1,0 +1,61 @@
+{
+  "pageName": "↳ Collapsible",
+  "labelKey": "variant",
+  "layout": "container",
+  "docsUrl": "https://ui.shadcn.com/docs/components/collapsible",
+  "summary": "Single-item expand/collapse primitive (Radix Collapsible).",
+  "container": {
+    "kind": "accordion",
+    "width": 380,
+    "titleText": "@peduarte starred 3 repositories",
+    "panelText": "@radix-ui/primitives, @radix-ui/colors, @stitches/react"
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "content": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "defaultOpen",
+      "boolean",
+      "false",
+      "no",
+      "Uncontrolled initial state."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open-change handler."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Data Display"
+}

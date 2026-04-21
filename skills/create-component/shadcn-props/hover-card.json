@@ -1,0 +1,58 @@
+{
+  "pageName": "↳ Hover Card",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/hover-card",
+  "summary": "Rich content popover on hover (Radix HoverCard).",
+  "surface": {
+    "titleText": "@nextjs",
+    "descriptionText": "The React Framework – created and maintained by @vercel.",
+    "titleStyleName": "Label/MD",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/lg",
+    "gap": "space/md",
+    "innerGap": "space/xs",
+    "width": 280,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Hover content",
+      "minHeight": 60
+    },
+    "footerSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true
+  },
+  "properties": [
+    [
+      "openDelay",
+      "number",
+      "700",
+      "no",
+      "Open delay in ms."
+    ],
+    [
+      "closeDelay",
+      "number",
+      "300",
+      "no",
+      "Close delay in ms."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

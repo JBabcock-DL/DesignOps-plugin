@@ -1,0 +1,62 @@
+{
+  "pageName": "↳ Buttons",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/button",
+  "summary": "Trigger an action or navigate. Follows shadcn/ui defaults — visual variants and size presets.",
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual style."
+    ],
+    [
+      "size",
+      "enum",
+      "\"default\"",
+      "no",
+      "Overall height + padding preset."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables pointer + keyboard interaction; adds visual dim."
+    ],
+    [
+      "asChild",
+      "boolean",
+      "false",
+      "no",
+      "Renders styled classes onto the immediate child via Radix Slot."
+    ],
+    [
+      "type",
+      "\"button\" | \"submit\" | \"reset\"",
+      "\"button\"",
+      "no",
+      "Native HTML button type."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

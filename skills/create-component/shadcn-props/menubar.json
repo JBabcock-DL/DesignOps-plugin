@@ -1,0 +1,51 @@
+{
+  "pageName": "↳ Menubar",
+  "labelKey": "variant",
+  "layout": "row-item",
+  "docsUrl": "https://ui.shadcn.com/docs/components/menubar",
+  "summary": "App-style menu item row (Radix MenubarItem — File/Edit/View-like).",
+  "row": {
+    "titleText": "New Tab",
+    "leadingIcon": false,
+    "trailingIcon": false,
+    "shortcut": true,
+    "shortcutText": "⌘T",
+    "titleStyleName": "Label/SM",
+    "width": 220
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "shortcut": true,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled active menu."
+    ],
+    [
+      "onValueChange",
+      "(value: string) => void",
+      "—",
+      "no",
+      "Active-change handler."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Overlay & Dialog"
+}

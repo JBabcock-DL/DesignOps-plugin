@@ -1,0 +1,62 @@
+{
+  "pageName": "↳ Input OTP",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/input-otp",
+  "summary": "Segmented one-time-password / verification-code input.",
+  "field": {
+    "fieldType": "otp",
+    "showLabel": true,
+    "labelText": "Verification code",
+    "otpLength": 6,
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "maxLength",
+      "number",
+      "—",
+      "yes",
+      "Total digit count."
+    ],
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled value."
+    ],
+    [
+      "onChange",
+      "(value: string) => void",
+      "—",
+      "no",
+      "Change handler."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

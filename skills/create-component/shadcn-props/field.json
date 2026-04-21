@@ -1,0 +1,48 @@
+{
+  "pageName": "↳ Field",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/field",
+  "summary": "Form field primitive grouping label, control, hint, and error text.",
+  "field": {
+    "fieldType": "input",
+    "showLabel": true,
+    "labelText": "Email",
+    "placeholderText": "you@example.com",
+    "showHelper": true,
+    "helperText": "We’ll never share your email.",
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "helper": true
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Associate label `htmlFor` with control `id`.",
+    "Surface errors inline below the control.",
+    "Use `aria-describedby` for hints.",
+    "Keep vertical rhythm consistent with `Text Field` page."
+  ],
+  "usageDont": [
+    "Do not nest interactive elements inside the label.",
+    "Do not rely on color alone for errors.",
+    "Do not omit error text when `invalid`.",
+    "Do not disable hints when errors show."
+  ],
+  "category": "Form & Input"
+}

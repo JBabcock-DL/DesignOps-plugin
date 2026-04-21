@@ -1,0 +1,54 @@
+{
+  "pageName": "↳ Alerts",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/alert",
+  "summary": "Inline status message with optional icon + description.",
+  "surface": {
+    "titleText": "Heads up!",
+    "descriptionText": "You can add components and dependencies to your app using the cli.",
+    "titleStyleName": "Label/MD",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/md",
+    "gap": "space/xs",
+    "innerGap": "space/xs",
+    "width": 520,
+    "contentSlot": {
+      "enabled": false
+    },
+    "footerSlot": {
+      "enabled": false
+    },
+    "actionSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "leadingIcon": true,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual style."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Feedback & Status"
+}

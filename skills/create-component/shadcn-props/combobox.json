@@ -1,0 +1,69 @@
+{
+  "pageName": "↳ Combobox",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/combobox",
+  "summary": "Filterable autocomplete list (Command + Popover pattern).",
+  "field": {
+    "fieldType": "select",
+    "showLabel": true,
+    "labelText": "Framework",
+    "placeholderText": "Select framework…",
+    "leadingIcon": false,
+    "trailingIcon": true,
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "open",
+      "boolean",
+      "—",
+      "no",
+      "Controlled open state."
+    ],
+    [
+      "onOpenChange",
+      "(open: boolean) => void",
+      "—",
+      "no",
+      "Open state handler."
+    ],
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled value."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Pair with `Command` items for keyboard nav.",
+    "Debounce server fetches on input.",
+    "Announce result count live.",
+    "Keep trigger height aligned with `Text Field`."
+  ],
+  "usageDont": [
+    "Do not block input while loading without a spinner.",
+    "Do not hide the clear affordance when `value` is set.",
+    "Do not nest another popover inside the list without portal strategy.",
+    "Do not strip `aria-expanded` from the trigger."
+  ],
+  "category": "Form & Input"
+}

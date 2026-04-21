@@ -1,0 +1,75 @@
+{
+  "pageName": "↳ Text Field",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/input",
+  "summary": "Single-line text field. Supports native HTML input types.",
+  "field": {
+    "fieldType": "input",
+    "showLabel": true,
+    "labelText": "Email",
+    "labelStyleName": "Label/SM",
+    "placeholderText": "you@example.com",
+    "showHelper": false,
+    "leadingIcon": false,
+    "trailingIcon": false,
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "helper": false,
+    "leadingIcon": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "type",
+      "string",
+      "\"text\"",
+      "no",
+      "Native HTML input type (text, email, password, number, …)."
+    ],
+    [
+      "placeholder",
+      "string",
+      "—",
+      "no",
+      "Placeholder text."
+    ],
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled value."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "readOnly",
+      "boolean",
+      "false",
+      "no",
+      "Non-editable but focusable."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

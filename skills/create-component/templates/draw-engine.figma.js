@@ -56,7 +56,7 @@
 //
 // If you catch yourself editing anything in THIS file per-component, stop —
 // you are forking, not configuring. Extend the CONFIG schema in
-// SKILL.md §0 / CONVENTIONS.md §3 instead.
+// SKILL.md §0 / conventions/01-config-schema.md §3 instead.
 // ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -304,7 +304,7 @@ const ICON_SLOT_MODE = DEFAULT_ICON_COMPONENT ? 'instance-swap' : 'placeholder';
 // Figma editor so designers can locate drop targets on canvas, and sits
 // behind any child the designer adds — final renders show the child, not
 // the placeholder. Slots preserve their 24×24 footprint in auto-layout
-// even while empty. See CONVENTIONS.md §3.3.1 for the authoritative spec.
+// even while empty. See conventions/01-config-schema.md §3.3.1 for the authoritative spec.
 //
 // Per the Plugin API docs, element component properties (TEXT / BOOLEAN /
 // INSTANCE_SWAP) MUST be added to each variant component BEFORE combining.
@@ -575,7 +575,7 @@ function buildVariant(name, fillVar, fallbackFill, {
 // ═══════════════════════════════════════════════════════════════════════════
 // STEP 6. DEFAULT DRAW FLOW — matrix documentation frame (every component)
 // ═══════════════════════════════════════════════════════════════════════════
-// Every component renders the same 5-section doc frame per CONVENTIONS.md §1:
+// Every component renders the same 5-section doc frame per conventions/04-doc-pipeline-contract.md §1:
 //   1. Header         — title + summary + source link
 //   2. Properties     — Properties + Types table
 //   3. Component Set  — live, editable ComponentSet (horizontal-wrap grid)
@@ -596,8 +596,8 @@ function buildVariant(name, fillVar, fallbackFill, {
 // stroke bound to `color/border/default` (fallback #d4d4d8), cornerRadius
 // 4, layoutMode NONE. The dashed outline is discoverable on canvas and in
 // the layers panel; it sits behind any child the designer drops in, so
-// final renders show the icon and not the placeholder. See CONVENTIONS.md
-// §3.3.1 for the authoritative slot spec.
+// final renders show the icon and not the placeholder. See
+// conventions/01-config-schema.md §3.3.1 for the authoritative slot spec.
 //
 // The ComponentSet exposes three element component properties so
 // designers edit instances WITHOUT DETACHING:
@@ -621,7 +621,7 @@ for (const node of [...figma.currentPage.children]) {
 }
 
 // --- 6.1  Resolve published Doc/* text styles + makeText ----------------
-// CONVENTIONS.md §7 — every doc text node must assign textStyleId.
+// conventions/04-doc-pipeline-contract.md §7 — every doc text node must assign textStyleId.
 //
 // REUSE — do NOT re-fetch. `allTextStyles` is already populated by §5.5
 // (see that block's comment for why the await must live above buildVariant).
@@ -651,7 +651,7 @@ function makeText(chars, styleKey, fallbackSize = 13, fillVar = 'color/backgroun
 
 // --- 6.2  Build the ComponentSet (variant x size only — NOT state) ------
 // State (hover/pressed/disabled) is an instance override in the matrix,
-// not a Figma variant property. CONVENTIONS.md §13.1 explains why.
+// not a Figma variant property. conventions/04-doc-pipeline-contract.md §13.1 explains why.
 
 const hasSizeAxis = CONFIG.sizes && CONFIG.sizes.length > 0;
 const sizeList    = hasSizeAxis ? CONFIG.sizes : [null];
@@ -1053,7 +1053,7 @@ function makeFrame(name, o = {}) {
 // and must be restored to these three helpers.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// --- 6.6  Properties + Types table (CONVENTIONS.md §4) ------------------
+// --- 6.6  Properties + Types table (conventions/04-doc-pipeline-contract.md §4) ------------------
 // Cols sum to 1640: PROPERTY 240 · TYPE 380 · DEFAULT 160 · REQUIRED 120 · DESCRIPTION 740
 
 function buildPropertiesTable(rows) {
@@ -1202,7 +1202,7 @@ function buildComponentSetSection() {
 }
 docRoot.appendChild(buildComponentSetSection());
 
-// --- 6.7  Variant × State matrix (CONVENTIONS.md §5) --------------------
+// --- 6.7  Variant × State matrix (conventions/04-doc-pipeline-contract.md §5) --------------------
 // Rows = variants, Columns = states, vertically stacked by size.
 // Reads CONFIG.variants, CONFIG.sizes, CONFIG.states, CONFIG.applyStateOverride.
 
@@ -1355,7 +1355,7 @@ function buildMatrix() {
 }
 docRoot.appendChild(buildMatrix());
 
-// --- 6.8  Usage notes — Do / Don't cards (CONVENTIONS.md §6) ------------
+// --- 6.8  Usage notes — Do / Don't cards (conventions/04-doc-pipeline-contract.md §6) ------------
 // Reads CONFIG.usageDo and CONFIG.usageDont.
 
 function buildUsageNotes() {

@@ -53,8 +53,12 @@ Four band strips (`band-strip/{slug}`) separating Foundations / Atoms / Componen
 Call `use_figma` with the `fileKey` from Step 4. Navigate to the `📝 Table of Contents` page. Wrap all TOC body content in a `_PageContent` vertical auto-layout frame at `y = 320` (directly beneath `_Header` once Step 5b runs — zero gap seam, per `create-design-system/conventions/03-through-07-geometry-and-doc-styles.md` § 3). Each system band emits **one** `band-strip/{slug}` followed by **one** `band-list/{slug}` VERTICAL stack of full-width `toc-card/{title}` section cards — no 2-column grid. Section cards, rows, and strips are all auto-layout so heights hug content — do not precompute `cardHeight` or a running `currentY`. **Do not** set hyperlinks here; Step **5c-links** (phase 05f) runs after Steps 5b, 5d, and 5e.
 
 
-> **AGENT ACTION REQUIRED.** The Table of Contents draw script (≈370 lines) has been extracted into a sibling `.figma.js` template for consistency with the `/new-project` Phase 05d and `/create-component` extractions (both done to prevent `Read` truncation from silently dropping code mid-file).
+> **AGENT ACTION REQUIRED.** The Table of Contents draw script has been extracted into a sibling `.figma.js` template for consistency with the `/new-project` Phase 05d and `/create-component` extractions (both done to prevent `Read` truncation from silently dropping code mid-file).
 >
-> **`Read`** [`skills/new-project/phases/05c-table-of-contents.figma.js`](./05c-table-of-contents.figma.js) **in full** (no `limit`) and **inline its contents VERBATIM** into a single `use_figma` call, passing the `fileKey` from Step 4.
+> Script-assembly order for this `use_figma` call:
+>
+> 1. **`Read`** [`skills/new-project/phases/05c-table-of-contents.figma.js`](./05c-table-of-contents.figma.js) **in full** (no `limit`) and use it as the base script.
+> 2. **`Read`** [`skills/new-project/phases/_shared-token-helpers.figma.js`](./_shared-token-helpers.figma.js) **in full** (no `limit`) and paste its contents verbatim between the `↓↓↓ INLINE _shared-token-helpers.figma.js HERE ↓↓↓` / `↑↑↑ END` markers inside the base script. A runtime `typeof` assert after the markers throws an actionable error if the shared helpers were not inlined.
+> 3. Inline the fully assembled payload into a single `use_figma` call, passing the `fileKey` from Step 4.
 >
 > Do NOT paraphrase, do NOT truncate. Hyperlinks are wired later in Phase 05f (`toc-hyperlinks`) — this phase only draws the bands and section cards.

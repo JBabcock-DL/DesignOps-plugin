@@ -1,0 +1,78 @@
+{
+  "pageName": "↳ Carousel",
+  "labelKey": "variant",
+  "layout": "container",
+  "docsUrl": "https://ui.shadcn.com/docs/components/carousel",
+  "summary": "Slide carousel with prev/next controls and optional thumbnails (Embla).",
+  "container": {
+    "kind": "tabs",
+    "width": 480,
+    "tabs": [
+      "1",
+      "2",
+      "3"
+    ],
+    "activeIndex": 0,
+    "panelMinHeight": 240
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "orientation",
+      "\"horizontal\" | \"vertical\"",
+      "\"horizontal\"",
+      "no",
+      "Scroll axis."
+    ],
+    [
+      "opts",
+      "Partial<EmblaOptionsType>",
+      "—",
+      "no",
+      "Embla carousel options."
+    ],
+    [
+      "plugins",
+      "EmblaPluginType[]",
+      "—",
+      "no",
+      "Embla plugins."
+    ],
+    [
+      "setApi",
+      "(api: CarouselApi) => void",
+      "—",
+      "no",
+      "Callback with Embla API instance."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Expose slide count to assistive tech.",
+    "Keep controls keyboard reachable.",
+    "Use tokens for slide chrome and focus rings.",
+    "Prefer fixed slide aspect via `className`."
+  ],
+  "usageDont": [
+    "Do not autoplay without pause control.",
+    "Do not nest interactive controls inside slide without focus management.",
+    "Do not hardcode pixel widths for responsive layouts.",
+    "Do not omit labels on icon-only arrows."
+  ],
+  "category": "Layout & Display"
+}

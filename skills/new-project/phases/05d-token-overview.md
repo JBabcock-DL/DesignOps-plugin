@@ -53,8 +53,12 @@ Leave `_Header` in place — Phase 05b owns it.
 Call `use_figma` with the `fileKey` from Step 4. Navigate to the `↳ Token Overview` page. Wrap all Token Overview body sections in a `_PageContent` vertical auto-layout frame at `y = 320` (directly beneath `_Header` — zero-gap seam, per `create-design-system/conventions/03-through-07-geometry-and-doc-styles.md` § 3). `_PageContent.fills` must be **literal `#FFFFFF`**, not token-bound. Every section, table, row, and cell is auto-layout — no absolute positioning. Mark every placeholder element with an amber annotation text node named `placeholder/{section}` so that **Step 17** in `/create-design-system` knows which elements to replace with real token values.
 
 
-> **AGENT ACTION REQUIRED.** The Token Overview draw script (≈780 lines) has been extracted into a sibling `.figma.js` template to prevent `Read` truncation from silently dropping the claudeSection footer or platform-mapping table.
+> **AGENT ACTION REQUIRED.** The Token Overview draw script has been extracted into a sibling `.figma.js` template to prevent `Read` truncation from silently dropping the claudeSection footer or platform-mapping table.
 >
-> **`Read`** [`skills/new-project/phases/05d-token-overview.figma.js`](./05d-token-overview.figma.js) **in full** (no `limit`) and **inline its contents VERBATIM** into a single `use_figma` call, passing the `fileKey` from Step 4.
+> Script-assembly order for this `use_figma` call:
+>
+> 1. **`Read`** [`skills/new-project/phases/05d-token-overview.figma.js`](./05d-token-overview.figma.js) **in full** (no `limit`) and use it as the base script.
+> 2. **`Read`** [`skills/new-project/phases/_shared-token-helpers.figma.js`](./_shared-token-helpers.figma.js) **in full** (no `limit`) and paste its contents verbatim between the `↓↓↓ INLINE _shared-token-helpers.figma.js HERE ↓↓↓` / `↑↑↑ END` markers inside the base script — the helpers it defines (`bindThemeColor`, `bindPrimColor`, `bindThemeStroke`, `applyDocStyle`, …) are referenced throughout the Token Overview body. A runtime `typeof` assert immediately after the markers throws with an actionable message if they're missed.
+> 3. Inline the fully assembled payload into a single `use_figma` call, passing the `fileKey` from Step 4.
 >
 > Do NOT paraphrase, do NOT truncate, do NOT split across multiple `use_figma` calls. The script walks every section (Primitives → Theme → Typography → Layout → Effects → Code Connect → Claude section) in dependency order; a partial run leaves a half-built skeleton that `/create-design-system` Step 17 will then try to populate.

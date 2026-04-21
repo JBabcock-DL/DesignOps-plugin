@@ -1,0 +1,74 @@
+{
+  "pageName": "↳ Textarea",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/textarea",
+  "summary": "Multi-line text input. Auto-grow handled by consumer.",
+  "field": {
+    "fieldType": "textarea",
+    "showLabel": true,
+    "labelText": "Message",
+    "placeholderText": "Type your message here.",
+    "showHelper": true,
+    "helperText": "Your message will be copied to the support team.",
+    "textareaMinHeight": 96,
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "helper": true,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "placeholder",
+      "string",
+      "—",
+      "no",
+      "Placeholder text."
+    ],
+    [
+      "value",
+      "string",
+      "—",
+      "no",
+      "Controlled value."
+    ],
+    [
+      "rows",
+      "number",
+      "—",
+      "no",
+      "Initial visible rows."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "readOnly",
+      "boolean",
+      "false",
+      "no",
+      "Non-editable but focusable."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

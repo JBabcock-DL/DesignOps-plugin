@@ -1,0 +1,56 @@
+{
+  "pageName": "↳ Switch",
+  "labelKey": "variant",
+  "layout": "control",
+  "docsUrl": "https://ui.shadcn.com/docs/components/switch",
+  "summary": "On/off toggle with thumb slide animation.",
+  "control": {
+    "shape": "switch",
+    "width": 36,
+    "height": 20,
+    "trackOnVar": "color/primary/default",
+    "trackOffVar": "color/background/variant",
+    "thumbVar": "color/background/default"
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "checked",
+      "boolean",
+      "false",
+      "no",
+      "Controlled checked state."
+    ],
+    [
+      "defaultChecked",
+      "boolean",
+      "false",
+      "no",
+      "Uncontrolled initial state."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}

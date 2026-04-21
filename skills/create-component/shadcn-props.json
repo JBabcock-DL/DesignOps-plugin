@@ -1,27 +1,339 @@
 {
   "$schema": "./shadcn-props.schema.json",
   "$comment": "Curated per-component prop map consumed by /create-component Mode A. Keys are kebab-case and should match every component listed under https://ui.shadcn.com/docs/components (install name from `npx shadcn add <name>`). Each entry supplies: `layout` (archetype routing — see SKILL.md §6.0), `docsUrl` (canonical shadcn docs URL for 1:1 structural matching), `properties` (Properties+Types table rows [name, type, default, required, description]), `componentProps`, `iconSlots`, `pageName` (Detroit Labs Foundations page from /new-project scaffold), `labelKey` (cva axis for Figma `variant` when present), `summary`, optional per-archetype spec (`surface`/`field`/`row`/`tiny`/`control`/`container`), and optional `composes`. Mode A merges with extract-cva + resolve-classes; missing source falls back to Mode B synthetic CONFIG.",
-
-  "button": {
-    "pageName": "\u21b3 Buttons",
+  "accordion": {
+    "pageName": "↳ Accordion",
+    "labelKey": "type",
+    "layout": "container",
+    "docsUrl": "https://ui.shadcn.com/docs/components/accordion",
+    "summary": "Vertical expand/collapse group (Radix Accordion).",
+    "container": {
+      "kind": "accordion",
+      "width": 380,
+      "titleText": "Is it accessible?",
+      "panelText": "Yes. It adheres to the WAI-ARIA design pattern."
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "content": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "type",
+        "\"single\" | \"multiple\"",
+        "—",
+        "yes",
+        "Expansion mode."
+      ],
+      [
+        "value",
+        "string | string[]",
+        "—",
+        "no",
+        "Controlled expanded items."
+      ],
+      [
+        "collapsible",
+        "boolean",
+        "false",
+        "no",
+        "Allow closing the last open item (type=single only)."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Data Display"
+  },
+  "alert-dialog": {
+    "pageName": "↳ Dialogue",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/alert-dialog",
+    "summary": "Confirmation / destructive-action dialog with explicit cancel + confirm.",
+    "surface": {
+      "titleText": "Are you absolutely sure?",
+      "descriptionText": "This action cannot be undone. This will permanently delete your account and remove your data from our servers.",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/2xl",
+      "gap": "space/lg",
+      "innerGap": "space/xs",
+      "width": 480,
+      "actionSlot": {
+        "enabled": false
+      },
+      "contentSlot": {
+        "enabled": false
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "Continue",
+        "align": "end",
+        "minHeight": 44
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "footer": true
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
+  "alert": {
+    "pageName": "↳ Alerts",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/alert",
+    "summary": "Inline status message with optional icon + description.",
+    "surface": {
+      "titleText": "Heads up!",
+      "descriptionText": "You can add components and dependencies to your app using the cli.",
+      "titleStyleName": "Label/MD",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/md",
+      "gap": "space/xs",
+      "innerGap": "space/xs",
+      "width": 520,
+      "contentSlot": {
+        "enabled": false
+      },
+      "footerSlot": {
+        "enabled": false
+      },
+      "actionSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "leadingIcon": true,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual style."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Feedback & Status"
+  },
+  "aspect-ratio": {
+    "pageName": "↳ Aspect Ratio",
+    "labelKey": "variant",
+    "layout": "tiny",
+    "docsUrl": "https://ui.shadcn.com/docs/components/aspect-ratio",
+    "summary": "Content frame that preserves a fixed width:height ratio.",
+    "tiny": {
+      "shape": "aspect-ratio",
+      "width": 320,
+      "height": 180
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "ratio",
+        "number",
+        "1",
+        "no",
+        "Width / height ratio (e.g. 16/9)."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Layout & Display"
+  },
+  "avatar": {
+    "pageName": "↳ Avatar",
+    "labelKey": "variant",
+    "layout": "tiny",
+    "docsUrl": "https://ui.shadcn.com/docs/components/avatar",
+    "summary": "Circular user image with fallback initials (Radix Avatar).",
+    "tiny": {
+      "shape": "avatar",
+      "size": 40,
+      "initials": "CN"
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "src",
+        "string",
+        "—",
+        "no",
+        "Image source URL."
+      ],
+      [
+        "alt",
+        "string",
+        "—",
+        "no",
+        "Alt text."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Data Display"
+  },
+  "badge": {
+    "pageName": "↳ Badge",
     "labelKey": "variant",
     "layout": "chip",
-    "docsUrl": "https://ui.shadcn.com/docs/components/button",
-    "summary": "Trigger an action or navigate. Follows shadcn/ui defaults \u2014 visual variants and size presets.",
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
+    "docsUrl": "https://ui.shadcn.com/docs/components/badge",
+    "summary": "Compact status / count label.",
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": true,
+      "trailingIcon": true
+    },
     "properties": [
-      ["variant", "enum", "\"default\"", "no", "Visual style."],
-      ["size", "enum", "\"default\"", "no", "Overall height + padding preset."],
-      ["disabled", "boolean", "false", "no", "Disables pointer + keyboard interaction; adds visual dim."],
-      ["asChild", "boolean", "false", "no", "Renders styled classes onto the immediate child via Radix Slot."],
-      ["type", "\"button\" | \"submit\" | \"reset\"", "\"button\"", "no", "Native HTML button type."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual style."
+      ],
+      [
+        "asChild",
+        "boolean",
+        "false",
+        "no",
+        "Renders styled classes onto the child via Radix Slot."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Feedback & Status"
   },
-
+  "breadcrumb": {
+    "pageName": "↳ Breadcrumb",
+    "labelKey": "variant",
+    "layout": "row-item",
+    "docsUrl": "https://ui.shadcn.com/docs/components/breadcrumb",
+    "summary": "Breadcrumb item row (nav path segment).",
+    "row": {
+      "titleText": "Components",
+      "leadingIcon": false,
+      "trailingIcon": true,
+      "trailingIsChevron": true,
+      "titleStyleName": "Label/SM",
+      "width": 200
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": true,
+      "size": 16
+    },
+    "componentProps": {
+      "title": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Navigation"
+  },
   "button-group": {
-    "pageName": "\u21b3 Button Group",
+    "pageName": "↳ Button Group",
     "labelKey": "variant",
     "layout": "chip",
     "docsUrl": "https://ui.shadcn.com/docs/components/button-group",
@@ -32,78 +344,1362 @@
         "slot": "items",
         "cardinality": "many",
         "count": 3,
-        "defaultProps": { "variant": "outline", "size": "default" }
+        "defaultProps": {
+          "variant": "outline",
+          "size": "default"
+        }
       }
     ],
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
     "properties": [
-      ["variant", "enum", "\"default\"", "no", "Visual style applied to member buttons."],
-      ["size", "enum", "\"default\"", "no", "Size preset for member buttons."],
-      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Layout axis of the group."],
-      ["asChild", "boolean", "false", "no", "Renders onto child via Radix Slot."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual style applied to member buttons."
+      ],
+      [
+        "size",
+        "enum",
+        "\"default\"",
+        "no",
+        "Size preset for member buttons."
+      ],
+      [
+        "orientation",
+        "\"horizontal\" | \"vertical\"",
+        "\"horizontal\"",
+        "no",
+        "Layout axis of the group."
+      ],
+      [
+        "asChild",
+        "boolean",
+        "false",
+        "no",
+        "Renders onto child via Radix Slot."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
     "usageDo": [
       "Keep related actions in one group so spacing and focus order stay predictable.",
       "Use `orientation=\"vertical\"` only when horizontal space is constrained.",
-      "Rely on member `Button` instances from `\u21b3 Buttons` so paint updates propagate.",
+      "Rely on member `Button` instances from `↳ Buttons` so paint updates propagate.",
       "Expose at most one primary `default` button per group."
     ],
     "usageDont": [
-      "Do not mix unrelated actions into one group \u2014 split into separate groups.",
+      "Do not mix unrelated actions into one group — split into separate groups.",
       "Do not detach member buttons from the `Button` ComponentSet.",
-      "Do not override member sizing with ad-hoc frames \u2014 use the `size` prop.",
+      "Do not override member sizing with ad-hoc frames — use the `size` prop.",
       "Do not nest another full `ButtonGroup` inside a single group cell."
-    ]
-  },
-
-  "toggle": {
-    "pageName": "\u21b3 Toggle",
-    "labelKey": "variant",
-    "layout": "chip",
-    "docsUrl": "https://ui.shadcn.com/docs/components/toggle",
-    "summary": "Two-state button. Pressed state persists until clicked again.",
-    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
-    "properties": [
-      ["variant", "enum", "\"default\"", "no", "Visual style (default outline fill)."],
-      ["size", "enum", "\"default\"", "no", "Height + padding preset."],
-      ["pressed", "boolean", "false", "no", "Controlled pressed state."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "toggle-group": {
-    "pageName": "\u21b3 Toggle Group",
-    "labelKey": "variant",
-    "layout": "chip",
-    "docsUrl": "https://ui.shadcn.com/docs/components/toggle-group",
-    "summary": "Set of Toggle buttons wired as a single selection control (single or multiple).",
-    "composes": [
-      {
-        "component": "toggle",
-        "slot": "items",
-        "cardinality": "many",
-        "count": 3,
-        "defaultProps": { "variant": "default", "size": "default" }
-      }
     ],
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["type", "\"single\" | \"multiple\"", "\u2014", "yes", "Selection mode."],
-      ["variant", "enum", "\"default\"", "no", "Visual style inherited by member Toggles."],
-      ["size", "enum", "\"default\"", "no", "Size inherited by member Toggles."],
-      ["value", "string | string[]", "\u2014", "no", "Controlled selection."],
-      ["disabled", "boolean", "false", "no", "Disables every member."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
+    "category": "Form & Input"
   },
-
+  "button": {
+    "pageName": "↳ Buttons",
+    "labelKey": "variant",
+    "layout": "chip",
+    "docsUrl": "https://ui.shadcn.com/docs/components/button",
+    "summary": "Trigger an action or navigate. Follows shadcn/ui defaults — visual variants and size presets.",
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual style."
+      ],
+      [
+        "size",
+        "enum",
+        "\"default\"",
+        "no",
+        "Overall height + padding preset."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables pointer + keyboard interaction; adds visual dim."
+      ],
+      [
+        "asChild",
+        "boolean",
+        "false",
+        "no",
+        "Renders styled classes onto the immediate child via Radix Slot."
+      ],
+      [
+        "type",
+        "\"button\" | \"submit\" | \"reset\"",
+        "\"button\"",
+        "no",
+        "Native HTML button type."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "calendar": {
+    "pageName": "↳ Calendar",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/calendar",
+    "summary": "Date-picker calendar grid backed by react-day-picker.",
+    "surface": {
+      "titleText": "February 2026",
+      "descriptionText": null,
+      "titleStyleName": "Label/MD",
+      "gap": "space/md",
+      "sectionPadY": "space/md",
+      "width": 320,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Date grid",
+        "minHeight": 260
+      },
+      "footerSlot": {
+        "enabled": false
+      },
+      "actionSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "mode",
+        "\"single\" | \"multiple\" | \"range\"",
+        "\"single\"",
+        "no",
+        "Selection mode."
+      ],
+      [
+        "selected",
+        "Date | Date[]",
+        "—",
+        "no",
+        "Controlled selection."
+      ],
+      [
+        "onSelect",
+        "(date) => void",
+        "—",
+        "no",
+        "Selection handler."
+      ],
+      [
+        "disabled",
+        "Date[] | matcher",
+        "—",
+        "no",
+        "Disabled dates."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Data Display"
+  },
+  "card": {
+    "pageName": "↳ Cards",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/card",
+    "summary": "Surface container with header, content, and footer slots. Use to group related content on a shared background.",
+    "surface": {
+      "titleText": "Card title",
+      "descriptionText": "A brief one-line description of what this card contains.",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/2xl",
+      "gap": "space/2xl",
+      "innerGap": "space/xs",
+      "width": 420,
+      "actionSlot": {
+        "enabled": false,
+        "slotLabel": "Action",
+        "width": 80,
+        "height": 32
+      },
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Content",
+        "minHeight": 96
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "Footer",
+        "align": "end",
+        "minHeight": 44
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "actionSlot": false,
+      "footer": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "size",
+        "\"default\" | \"sm\"",
+        "\"default\"",
+        "no",
+        "Padding + spacing preset (py-6/gap-6 vs py-4/gap-4)."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "usageDo": [
+      "Use Card to group related content onto a single surface.",
+      "Compose with CardHeader, CardContent, and CardFooter sub-components.",
+      "Prefer `size=\"sm\"` for dense grids; keep `default` for standalone cards."
+    ],
+    "usageDont": [
+      "Do not nest cards more than one level deep.",
+      "Do not use a card just to hold a single paragraph of plain text.",
+      "Do not override the background color inline — use the token variable."
+    ],
+    "category": "Layout & Display"
+  },
+  "carousel": {
+    "pageName": "↳ Carousel",
+    "labelKey": "variant",
+    "layout": "container",
+    "docsUrl": "https://ui.shadcn.com/docs/components/carousel",
+    "summary": "Slide carousel with prev/next controls and optional thumbnails (Embla).",
+    "container": {
+      "kind": "tabs",
+      "width": 480,
+      "tabs": [
+        "1",
+        "2",
+        "3"
+      ],
+      "activeIndex": 0,
+      "panelMinHeight": 240
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "orientation",
+        "\"horizontal\" | \"vertical\"",
+        "\"horizontal\"",
+        "no",
+        "Scroll axis."
+      ],
+      [
+        "opts",
+        "Partial<EmblaOptionsType>",
+        "—",
+        "no",
+        "Embla carousel options."
+      ],
+      [
+        "plugins",
+        "EmblaPluginType[]",
+        "—",
+        "no",
+        "Embla plugins."
+      ],
+      [
+        "setApi",
+        "(api: CarouselApi) => void",
+        "—",
+        "no",
+        "Callback with Embla API instance."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "usageDo": [
+      "Expose slide count to assistive tech.",
+      "Keep controls keyboard reachable.",
+      "Use tokens for slide chrome and focus rings.",
+      "Prefer fixed slide aspect via `className`."
+    ],
+    "usageDont": [
+      "Do not autoplay without pause control.",
+      "Do not nest interactive controls inside slide without focus management.",
+      "Do not hardcode pixel widths for responsive layouts.",
+      "Do not omit labels on icon-only arrows."
+    ],
+    "category": "Layout & Display"
+  },
+  "chart": {
+    "pageName": "↳ Chart",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/chart",
+    "summary": "Recharts-based chart shell with design-token friendly container.",
+    "surface": {
+      "titleText": "Bar Chart – Interactive",
+      "descriptionText": "Showing total visitors for the last 3 months",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/lg",
+      "gap": "space/md",
+      "innerGap": "space/xs",
+      "width": 640,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Chart canvas",
+        "minHeight": 240
+      },
+      "footerSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true
+    },
+    "properties": [
+      [
+        "data",
+        "unknown[]",
+        "—",
+        "yes",
+        "Series data passed to Recharts primitives."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch (dimensions + spacing)."
+      ]
+    ],
+    "usageDo": [
+      "Bind chart colors to Theme CSS variables.",
+      "Provide axis titles for screen readers.",
+      "Keep default margins readable on 360px width.",
+      "Export static snapshots for design reviews when needed."
+    ],
+    "usageDont": [
+      "Do not encode secrets in chart data.",
+      "Do not disable animation without designer sign-off.",
+      "Do not mix arbitrary hex outside the token set.",
+      "Do not overload one chart with >5 series without legend."
+    ],
+    "category": "Data Display"
+  },
+  "checkbox": {
+    "pageName": "↳ Checkbox",
+    "labelKey": "variant",
+    "layout": "control",
+    "docsUrl": "https://ui.shadcn.com/docs/components/checkbox",
+    "summary": "Two-state or tri-state checkbox (checked / unchecked / indeterminate).",
+    "control": {
+      "shape": "checkbox",
+      "size": 16,
+      "indicatorVar": "color/primary/content"
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "checked",
+        "boolean | \"indeterminate\"",
+        "false",
+        "no",
+        "Controlled checked state."
+      ],
+      [
+        "defaultChecked",
+        "boolean",
+        "false",
+        "no",
+        "Uncontrolled initial state."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "required",
+        "boolean",
+        "false",
+        "no",
+        "Required in form submission."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "collapsible": {
+    "pageName": "↳ Collapsible",
+    "labelKey": "variant",
+    "layout": "container",
+    "docsUrl": "https://ui.shadcn.com/docs/components/collapsible",
+    "summary": "Single-item expand/collapse primitive (Radix Collapsible).",
+    "container": {
+      "kind": "accordion",
+      "width": 380,
+      "titleText": "@peduarte starred 3 repositories",
+      "panelText": "@radix-ui/primitives, @radix-ui/colors, @stitches/react"
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "content": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "defaultOpen",
+        "boolean",
+        "false",
+        "no",
+        "Uncontrolled initial state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Data Display"
+  },
+  "combobox": {
+    "pageName": "↳ Combobox",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/combobox",
+    "summary": "Filterable autocomplete list (Command + Popover pattern).",
+    "field": {
+      "fieldType": "select",
+      "showLabel": true,
+      "labelText": "Framework",
+      "placeholderText": "Select framework…",
+      "leadingIcon": false,
+      "trailingIcon": true,
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open state handler."
+      ],
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled value."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "usageDo": [
+      "Pair with `Command` items for keyboard nav.",
+      "Debounce server fetches on input.",
+      "Announce result count live.",
+      "Keep trigger height aligned with `Text Field`."
+    ],
+    "usageDont": [
+      "Do not block input while loading without a spinner.",
+      "Do not hide the clear affordance when `value` is set.",
+      "Do not nest another popover inside the list without portal strategy.",
+      "Do not strip `aria-expanded` from the trigger."
+    ],
+    "category": "Form & Input"
+  },
+  "command": {
+    "pageName": "↳ Command",
+    "labelKey": "variant",
+    "layout": "row-item",
+    "docsUrl": "https://ui.shadcn.com/docs/components/command",
+    "summary": "cmdk-powered command palette item row — fuzzy-search launcher.",
+    "row": {
+      "titleText": "Calendar",
+      "leadingIcon": true,
+      "trailingIcon": false,
+      "shortcut": true,
+      "shortcutText": "⌘K",
+      "titleStyleName": "Label/SM",
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "shortcut": true,
+      "leadingIcon": true,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled selected item value."
+      ],
+      [
+        "onValueChange",
+        "(value: string) => void",
+        "—",
+        "no",
+        "Value-change handler."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Navigation"
+  },
+  "context-menu": {
+    "pageName": "↳ Context Menu",
+    "labelKey": "variant",
+    "layout": "row-item",
+    "docsUrl": "https://ui.shadcn.com/docs/components/context-menu",
+    "summary": "Right-click menu (Radix ContextMenu).",
+    "row": {
+      "titleText": "Back",
+      "leadingIcon": true,
+      "trailingIcon": false,
+      "shortcut": true,
+      "shortcutText": "⌘[",
+      "titleStyleName": "Label/SM",
+      "width": 220
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "shortcut": true,
+      "leadingIcon": true,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
+  "date-picker": {
+    "pageName": "↳ Date Picker",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/date-picker",
+    "summary": "Calendar + Popover + Button composite for date entry.",
+    "field": {
+      "fieldType": "select",
+      "showLabel": true,
+      "labelText": "Date",
+      "placeholderText": "Pick a date",
+      "leadingIcon": true,
+      "trailingIcon": false,
+      "width": 280
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "leadingIcon": true,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "value",
+        "Date | Date[]",
+        "—",
+        "no",
+        "Controlled value."
+      ],
+      [
+        "onChange",
+        "(date) => void",
+        "—",
+        "no",
+        "Change handler."
+      ],
+      [
+        "placeholder",
+        "string",
+        "\"Pick a date\"",
+        "no",
+        "Trigger placeholder."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Data Display"
+  },
+  "dialog": {
+    "pageName": "↳ Dialogue",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/dialog",
+    "summary": "Modal dialog with overlay, header, footer.",
+    "surface": {
+      "titleText": "Edit profile",
+      "descriptionText": "Make changes to your profile here. Click save when you're done.",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/2xl",
+      "gap": "space/lg",
+      "innerGap": "space/xs",
+      "width": 480,
+      "actionSlot": {
+        "enabled": true,
+        "slotLabel": "Close",
+        "width": 24,
+        "height": 24
+      },
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Dialog body",
+        "minHeight": 120
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "Save changes",
+        "align": "end",
+        "minHeight": 44
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "actionSlot": true,
+      "footer": true
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "defaultOpen",
+        "boolean",
+        "false",
+        "no",
+        "Uncontrolled initial open."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "modal",
+        "boolean",
+        "true",
+        "no",
+        "Blocks interaction with surrounding content."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
+  "direction": {
+    "pageName": "↳ Typography",
+    "labelKey": "variant",
+    "layout": "chip",
+    "docsUrl": "https://ui.shadcn.com/docs/components/direction",
+    "summary": "RTL/LTR direction context provider for subtree layout and mirroring.",
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "dir",
+        "\"ltr\" | \"rtl\"",
+        "\"ltr\"",
+        "no",
+        "Document direction for descendants."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "usageDo": [
+      "Set `dir` at the route shell for locale switches.",
+      "Mirror spacing utilities when flipping to RTL.",
+      "Test focus order in both directions.",
+      "Document direction in handoff for engineers."
+    ],
+    "usageDont": [
+      "Do not toggle `dir` without reflowing breakpoints.",
+      "Do not nest conflicting direction providers.",
+      "Do not rely on CSS `float` for critical layout.",
+      "Do not forget mirrored icons for back navigation."
+    ],
+    "category": "Typography & platform"
+  },
+  "drawer": {
+    "pageName": "↳ Drawer",
+    "labelKey": "direction",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/drawer",
+    "summary": "Edge-anchored sliding panel (vaul).",
+    "surface": {
+      "titleText": "Move Goal",
+      "descriptionText": "Set your daily activity goal.",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/2xl",
+      "gap": "space/lg",
+      "innerGap": "space/xs",
+      "width": 420,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Drawer body",
+        "minHeight": 200
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "Submit",
+        "align": "end",
+        "minHeight": 44
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "footer": true
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "direction",
+        "\"top\" | \"right\" | \"bottom\" | \"left\"",
+        "\"bottom\"",
+        "no",
+        "Anchor edge."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
+  "dropdown-menu": {
+    "pageName": "↳ Dropdown Menu",
+    "labelKey": "variant",
+    "layout": "row-item",
+    "docsUrl": "https://ui.shadcn.com/docs/components/dropdown-menu",
+    "summary": "Button-triggered menu row (Radix DropdownMenuItem).",
+    "row": {
+      "titleText": "Profile",
+      "leadingIcon": true,
+      "trailingIcon": false,
+      "shortcut": true,
+      "shortcutText": "⌘P",
+      "titleStyleName": "Label/SM",
+      "width": 240
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "shortcut": true,
+      "leadingIcon": true,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
+  "empty": {
+    "pageName": "↳ Blank states",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/empty",
+    "summary": "Empty-state panel with title, description, and optional media + actions.",
+    "surface": {
+      "titleText": "No projects yet",
+      "descriptionText": "Get started by creating a new project.",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/2xl",
+      "gap": "space/lg",
+      "innerGap": "space/xs",
+      "width": 480,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Illustration",
+        "minHeight": 120
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "Create project",
+        "align": "start",
+        "minHeight": 40
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "footer": true
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "usageDo": [
+      "Offer a single primary recovery action.",
+      "Keep copy concise (≤12 words title).",
+      "Use illustration tokens from brand kit.",
+      "Log empty-state impressions if product requires."
+    ],
+    "usageDont": [
+      "Do not use empty states for loading skeletons.",
+      "Do not stack >2 CTAs.",
+      "Do not hide navigation to escape the state.",
+      "Do not use alarmist copy for benign empties."
+    ],
+    "category": "Feedback & Status"
+  },
+  "field": {
+    "pageName": "↳ Field",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/field",
+    "summary": "Form field primitive grouping label, control, hint, and error text.",
+    "field": {
+      "fieldType": "input",
+      "showLabel": true,
+      "labelText": "Email",
+      "placeholderText": "you@example.com",
+      "showHelper": true,
+      "helperText": "We’ll never share your email.",
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "helper": true
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "usageDo": [
+      "Associate label `htmlFor` with control `id`.",
+      "Surface errors inline below the control.",
+      "Use `aria-describedby` for hints.",
+      "Keep vertical rhythm consistent with `Text Field` page."
+    ],
+    "usageDont": [
+      "Do not nest interactive elements inside the label.",
+      "Do not rely on color alone for errors.",
+      "Do not omit error text when `invalid`.",
+      "Do not disable hints when errors show."
+    ],
+    "category": "Form & Input"
+  },
+  "form": {
+    "pageName": "↳ Form Composite Groups",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/form",
+    "summary": "react-hook-form + zod wrapper pattern — composite of Label + Input + Description + Error slots.",
+    "field": {
+      "fieldType": "input",
+      "showLabel": true,
+      "labelText": "Username",
+      "placeholderText": "shadcn",
+      "showHelper": true,
+      "helperText": "This is your public display name.",
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "helper": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "name",
+        "string",
+        "—",
+        "yes",
+        "Field name registered with react-hook-form."
+      ],
+      [
+        "label",
+        "string",
+        "—",
+        "no",
+        "Label text."
+      ],
+      [
+        "description",
+        "string",
+        "—",
+        "no",
+        "Helper text below the input."
+      ],
+      [
+        "required",
+        "boolean",
+        "false",
+        "no",
+        "Required in form submission."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "hover-card": {
+    "pageName": "↳ Hover Card",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/hover-card",
+    "summary": "Rich content popover on hover (Radix HoverCard).",
+    "surface": {
+      "titleText": "@nextjs",
+      "descriptionText": "The React Framework – created and maintained by @vercel.",
+      "titleStyleName": "Label/MD",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/lg",
+      "gap": "space/md",
+      "innerGap": "space/xs",
+      "width": 280,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Hover content",
+        "minHeight": 60
+      },
+      "footerSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true
+    },
+    "properties": [
+      [
+        "openDelay",
+        "number",
+        "700",
+        "no",
+        "Open delay in ms."
+      ],
+      [
+        "closeDelay",
+        "number",
+        "300",
+        "no",
+        "Close delay in ms."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
+  "input-group": {
+    "pageName": "↳ Input Group",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/input-group",
+    "summary": "Grouped input with leading/trailing addons and focus ring continuity.",
+    "field": {
+      "fieldType": "input",
+      "showLabel": true,
+      "labelText": "Website",
+      "placeholderText": "yoursite.com",
+      "leadingIcon": true,
+      "trailingIcon": true,
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "leadingIcon": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "usageDo": [
+      "Keep addon width fixed for stable layout.",
+      "Mirror focus ring across segments.",
+      "Use icon buttons with `aria-label`.",
+      "Test with long translated strings."
+    ],
+    "usageDont": [
+      "Do not split focus across detached frames.",
+      "Do not place two primary actions inside addons.",
+      "Do not remove keyboard focus order on segments.",
+      "Do not use low-contrast divider lines."
+    ],
+    "category": "Form & Input"
+  },
+  "input-otp": {
+    "pageName": "↳ Input OTP",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/input-otp",
+    "summary": "Segmented one-time-password / verification-code input.",
+    "field": {
+      "fieldType": "otp",
+      "showLabel": true,
+      "labelText": "Verification code",
+      "otpLength": 6,
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "maxLength",
+        "number",
+        "—",
+        "yes",
+        "Total digit count."
+      ],
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled value."
+      ],
+      [
+        "onChange",
+        "(value: string) => void",
+        "—",
+        "no",
+        "Change handler."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
   "input": {
-    "pageName": "\u21b3 Text Field",
+    "pageName": "↳ Text Field",
     "labelKey": "variant",
     "layout": "field",
     "docsUrl": "https://ui.shadcn.com/docs/components/input",
@@ -119,1180 +1715,66 @@
       "trailingIcon": false,
       "width": 320
     },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "helper": false, "leadingIcon": true, "trailingIcon": true },
-    "properties": [
-      ["type", "string", "\"text\"", "no", "Native HTML input type (text, email, password, number, \u2026)."],
-      ["placeholder", "string", "\u2014", "no", "Placeholder text."],
-      ["value", "string", "\u2014", "no", "Controlled value."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["readOnly", "boolean", "false", "no", "Non-editable but focusable."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "textarea": {
-    "pageName": "\u21b3 Textarea",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/textarea",
-    "summary": "Multi-line text input. Auto-grow handled by consumer.",
-    "field": {
-      "fieldType": "textarea",
-      "showLabel": true,
-      "labelText": "Message",
-      "placeholderText": "Type your message here.",
-      "showHelper": true,
-      "helperText": "Your message will be copied to the support team.",
-      "textareaMinHeight": 96,
-      "width": 320
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
     },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "helper": true, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["placeholder", "string", "\u2014", "no", "Placeholder text."],
-      ["value", "string", "\u2014", "no", "Controlled value."],
-      ["rows", "number", "\u2014", "no", "Initial visible rows."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["readOnly", "boolean", "false", "no", "Non-editable but focusable."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "checkbox": {
-    "pageName": "\u21b3 Checkbox",
-    "labelKey": "variant",
-    "layout": "control",
-    "docsUrl": "https://ui.shadcn.com/docs/components/checkbox",
-    "summary": "Two-state or tri-state checkbox (checked / unchecked / indeterminate).",
-    "control": {
-      "shape": "checkbox",
-      "size": 16,
-      "indicatorVar": "color/primary/content"
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["checked", "boolean | \"indeterminate\"", "false", "no", "Controlled checked state."],
-      ["defaultChecked", "boolean", "false", "no", "Uncontrolled initial state."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["required", "boolean", "false", "no", "Required in form submission."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "radio-group": {
-    "pageName": "\u21b3 Radio",
-    "labelKey": "variant",
-    "layout": "control",
-    "docsUrl": "https://ui.shadcn.com/docs/components/radio-group",
-    "summary": "Single-selection group of radio buttons.",
-    "control": {
-      "shape": "radio",
-      "size": 16,
-      "indicatorVar": "color/primary/content"
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["value", "string", "\u2014", "no", "Controlled selected value."],
-      ["defaultValue", "string", "\u2014", "no", "Uncontrolled initial value."],
-      ["disabled", "boolean", "false", "no", "Disables every item."],
-      ["required", "boolean", "false", "no", "Required in form submission."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "select": {
-    "pageName": "\u21b3 Select",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/select",
-    "summary": "Dropdown selection backed by Radix Select. Trigger + content + items.",
-    "field": {
-      "fieldType": "select",
-      "showLabel": true,
-      "labelText": "Framework",
-      "placeholderText": "Select a framework",
-      "showHelper": false,
-      "leadingIcon": false,
-      "trailingIcon": true,
-      "width": 320
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "helper": false, "leadingIcon": false, "trailingIcon": true },
-    "properties": [
-      ["value", "string", "\u2014", "no", "Controlled selected value."],
-      ["defaultValue", "string", "\u2014", "no", "Uncontrolled initial value."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["required", "boolean", "false", "no", "Required in form submission."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "switch": {
-    "pageName": "\u21b3 Switch",
-    "labelKey": "variant",
-    "layout": "control",
-    "docsUrl": "https://ui.shadcn.com/docs/components/switch",
-    "summary": "On/off toggle with thumb slide animation.",
-    "control": {
-      "shape": "switch",
-      "width": 36,
-      "height": 20,
-      "trackOnVar": "color/primary/default",
-      "trackOffVar": "color/background/variant",
-      "thumbVar": "color/background/default"
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["checked", "boolean", "false", "no", "Controlled checked state."],
-      ["defaultChecked", "boolean", "false", "no", "Uncontrolled initial state."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "slider": {
-    "pageName": "\u21b3 Slider",
-    "labelKey": "variant",
-    "layout": "tiny",
-    "docsUrl": "https://ui.shadcn.com/docs/components/slider",
-    "summary": "Horizontal or vertical range selector.",
-    "tiny": {
-      "shape": "progress",
-      "width": 280,
-      "height": 4,
-      "filled": 0.5
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["value", "number[]", "\u2014", "no", "Controlled value array (supports multi-thumb)."],
-      ["defaultValue", "number[]", "[0]", "no", "Uncontrolled initial value."],
-      ["min", "number", "0", "no", "Minimum."],
-      ["max", "number", "100", "no", "Maximum."],
-      ["step", "number", "1", "no", "Step increment."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "form": {
-    "pageName": "\u21b3 Form Composite Groups",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/form",
-    "summary": "react-hook-form + zod wrapper pattern \u2014 composite of Label + Input + Description + Error slots.",
-    "field": {
-      "fieldType": "input",
-      "showLabel": true,
-      "labelText": "Username",
-      "placeholderText": "shadcn",
-      "showHelper": true,
-      "helperText": "This is your public display name.",
-      "width": 320
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "helper": true, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["name", "string", "\u2014", "yes", "Field name registered with react-hook-form."],
-      ["label", "string", "\u2014", "no", "Label text."],
-      ["description", "string", "\u2014", "no", "Helper text below the input."],
-      ["required", "boolean", "false", "no", "Required in form submission."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "label": {
-    "pageName": "\u21b3 Label",
-    "labelKey": "variant",
-    "layout": "chip",
-    "docsUrl": "https://ui.shadcn.com/docs/components/label",
-    "summary": "Native <label> associated with a form control via htmlFor.",
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["htmlFor", "string", "\u2014", "no", "ID of the associated form control."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "input-otp": {
-    "pageName": "\u21b3 Input OTP",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/input-otp",
-    "summary": "Segmented one-time-password / verification-code input.",
-    "field": {
-      "fieldType": "otp",
-      "showLabel": true,
-      "labelText": "Verification code",
-      "otpLength": 6,
-      "width": 320
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["maxLength", "number", "\u2014", "yes", "Total digit count."],
-      ["value", "string", "\u2014", "no", "Controlled value."],
-      ["onChange", "(value: string) => void", "\u2014", "no", "Change handler."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "calendar": {
-    "pageName": "\u21b3 Calendar",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/calendar",
-    "summary": "Date-picker calendar grid backed by react-day-picker.",
-    "surface": {
-      "titleText": "February 2026",
-      "descriptionText": null,
-      "titleStyleName": "Label/MD",
-      "gap": "space/md",
-      "sectionPadY": "space/md",
-      "width": 320,
-      "contentSlot": { "enabled": true, "slotLabel": "Date grid", "minHeight": 260 },
-      "footerSlot": { "enabled": false },
-      "actionSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["mode", "\"single\" | \"multiple\" | \"range\"", "\"single\"", "no", "Selection mode."],
-      ["selected", "Date | Date[]", "\u2014", "no", "Controlled selection."],
-      ["onSelect", "(date) => void", "\u2014", "no", "Selection handler."],
-      ["disabled", "Date[] | matcher", "\u2014", "no", "Disabled dates."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "date-picker": {
-    "pageName": "\u21b3 Date Picker",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/date-picker",
-    "summary": "Calendar + Popover + Button composite for date entry.",
-    "field": {
-      "fieldType": "select",
-      "showLabel": true,
-      "labelText": "Date",
-      "placeholderText": "Pick a date",
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "helper": false,
       "leadingIcon": true,
-      "trailingIcon": false,
-      "width": 280
+      "trailingIcon": true
     },
-    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "leadingIcon": true, "trailingIcon": false },
     "properties": [
-      ["value", "Date | Date[]", "\u2014", "no", "Controlled value."],
-      ["onChange", "(date) => void", "\u2014", "no", "Change handler."],
-      ["placeholder", "string", "\"Pick a date\"", "no", "Trigger placeholder."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "card": {
-    "pageName": "\u21b3 Cards",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/card",
-    "summary": "Surface container with header, content, and footer slots. Use to group related content on a shared background.",
-    "surface": {
-      "titleText": "Card title",
-      "descriptionText": "A brief one-line description of what this card contains.",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/2xl",
-      "gap": "space/2xl",
-      "innerGap": "space/xs",
-      "width": 420,
-      "actionSlot": { "enabled": false, "slotLabel": "Action", "width": 80, "height": 32 },
-      "contentSlot": { "enabled": true, "slotLabel": "Content", "minHeight": 96 },
-      "footerSlot": { "enabled": true, "slotLabel": "Footer", "align": "end", "minHeight": 44 }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "actionSlot": false, "footer": true, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["size", "\"default\" | \"sm\"", "\"default\"", "no", "Padding + spacing preset (py-6/gap-6 vs py-4/gap-4)."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "type",
+        "string",
+        "\"text\"",
+        "no",
+        "Native HTML input type (text, email, password, number, …)."
+      ],
+      [
+        "placeholder",
+        "string",
+        "—",
+        "no",
+        "Placeholder text."
+      ],
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled value."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "readOnly",
+        "boolean",
+        "false",
+        "no",
+        "Non-editable but focusable."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
-    "usageDo": [
-      "Use Card to group related content onto a single surface.",
-      "Compose with CardHeader, CardContent, and CardFooter sub-components.",
-      "Prefer `size=\"sm\"` for dense grids; keep `default` for standalone cards."
-    ],
-    "usageDont": [
-      "Do not nest cards more than one level deep.",
-      "Do not use a card just to hold a single paragraph of plain text.",
-      "Do not override the background color inline \u2014 use the token variable."
-    ]
+    "category": "Form & Input"
   },
-
-  "separator": {
-    "pageName": "\u21b3 Dividers",
-    "labelKey": "orientation",
-    "layout": "tiny",
-    "docsUrl": "https://ui.shadcn.com/docs/components/separator",
-    "summary": "Horizontal or vertical rule (Radix Separator).",
-    "tiny": {
-      "shape": "separator",
-      "orientation": "horizontal",
-      "width": 240,
-      "height": 1
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Axis."],
-      ["decorative", "boolean", "true", "no", "Presentation-only (no aria separator)."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "aspect-ratio": {
-    "pageName": "\u21b3 Aspect Ratio",
-    "labelKey": "variant",
-    "layout": "tiny",
-    "docsUrl": "https://ui.shadcn.com/docs/components/aspect-ratio",
-    "summary": "Content frame that preserves a fixed width:height ratio.",
-    "tiny": {
-      "shape": "aspect-ratio",
-      "width": 320,
-      "height": 180
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["ratio", "number", "1", "no", "Width / height ratio (e.g. 16/9)."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "scroll-area": {
-    "pageName": "\u21b3 Scroll Area",
-    "labelKey": "variant",
-    "layout": "tiny",
-    "docsUrl": "https://ui.shadcn.com/docs/components/scroll-area",
-    "summary": "Styled scroll container with custom scrollbars (Radix ScrollArea).",
-    "tiny": {
-      "shape": "scroll-area",
-      "width": 320,
-      "height": 200
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "resizable": {
-    "pageName": "\u21b3 Resizable",
-    "labelKey": "direction",
-    "layout": "container",
-    "docsUrl": "https://ui.shadcn.com/docs/components/resizable",
-    "summary": "Resizable panel group with drag handles (react-resizable-panels).",
-    "container": {
-      "kind": "tabs",
-      "width": 420,
-      "tabs": ["Panel A", "Panel B"],
-      "activeIndex": 0,
-      "panelMinHeight": 160
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["direction", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "yes", "Panel axis."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "dialog": {
-    "pageName": "\u21b3 Dialogue",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/dialog",
-    "summary": "Modal dialog with overlay, header, footer.",
-    "surface": {
-      "titleText": "Edit profile",
-      "descriptionText": "Make changes to your profile here. Click save when you're done.",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/2xl",
-      "gap": "space/lg",
-      "innerGap": "space/xs",
-      "width": 480,
-      "actionSlot": { "enabled": true, "slotLabel": "Close", "width": 24, "height": 24 },
-      "contentSlot": { "enabled": true, "slotLabel": "Dialog body", "minHeight": 120 },
-      "footerSlot": { "enabled": true, "slotLabel": "Save changes", "align": "end", "minHeight": 44 }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "actionSlot": true, "footer": true },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["defaultOpen", "boolean", "false", "no", "Uncontrolled initial open."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["modal", "boolean", "true", "no", "Blocks interaction with surrounding content."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "alert-dialog": {
-    "pageName": "\u21b3 Dialogue",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/alert-dialog",
-    "summary": "Confirmation / destructive-action dialog with explicit cancel + confirm.",
-    "surface": {
-      "titleText": "Are you absolutely sure?",
-      "descriptionText": "This action cannot be undone. This will permanently delete your account and remove your data from our servers.",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/2xl",
-      "gap": "space/lg",
-      "innerGap": "space/xs",
-      "width": 480,
-      "actionSlot": { "enabled": false },
-      "contentSlot": { "enabled": false },
-      "footerSlot": { "enabled": true, "slotLabel": "Continue", "align": "end", "minHeight": 44 }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "footer": true },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "drawer": {
-    "pageName": "\u21b3 Drawer",
-    "labelKey": "direction",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/drawer",
-    "summary": "Edge-anchored sliding panel (vaul).",
-    "surface": {
-      "titleText": "Move Goal",
-      "descriptionText": "Set your daily activity goal.",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/2xl",
-      "gap": "space/lg",
-      "innerGap": "space/xs",
-      "width": 420,
-      "contentSlot": { "enabled": true, "slotLabel": "Drawer body", "minHeight": 200 },
-      "footerSlot": { "enabled": true, "slotLabel": "Submit", "align": "end", "minHeight": 44 }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "footer": true },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["direction", "\"top\" | \"right\" | \"bottom\" | \"left\"", "\"bottom\"", "no", "Anchor edge."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "sheet": {
-    "pageName": "\u21b3 Sheets",
-    "labelKey": "side",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/sheet",
-    "summary": "Side-anchored sliding panel (Radix Dialog under the hood).",
-    "surface": {
-      "titleText": "Edit profile",
-      "descriptionText": "Make changes to your profile here. Click save when you're done.",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/2xl",
-      "gap": "space/lg",
-      "innerGap": "space/xs",
-      "width": 400,
-      "contentSlot": { "enabled": true, "slotLabel": "Sheet body", "minHeight": 280 },
-      "footerSlot": { "enabled": true, "slotLabel": "Save changes", "align": "end", "minHeight": 44 }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "footer": true },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["side", "\"top\" | \"right\" | \"bottom\" | \"left\"", "\"right\"", "no", "Anchor edge."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "popover": {
-    "pageName": "\u21b3 Popover",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/popover",
-    "summary": "Anchored floating panel (Radix Popover).",
-    "surface": {
-      "titleText": "Dimensions",
-      "descriptionText": "Set the dimensions for the layer.",
-      "titleStyleName": "Label/MD",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/lg",
-      "gap": "space/md",
-      "innerGap": "space/xs",
-      "width": 260,
-      "contentSlot": { "enabled": true, "slotLabel": "Popover body", "minHeight": 80 },
-      "footerSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "tooltip": {
-    "pageName": "\u21b3 Tooltips",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/tooltip",
-    "summary": "On-hover / focus info popover (Radix Tooltip).",
-    "surface": {
-      "titleText": "Add to library",
-      "descriptionText": null,
-      "titleStyleName": "Label/SM",
-      "sectionPadY": "space/xs",
-      "gap": "space/none",
-      "width": 140,
-      "contentSlot": { "enabled": false },
-      "footerSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true },
-    "properties": [
-      ["delayDuration", "number", "700", "no", "Open delay in ms."],
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "hover-card": {
-    "pageName": "\u21b3 Hover Card",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/hover-card",
-    "summary": "Rich content popover on hover (Radix HoverCard).",
-    "surface": {
-      "titleText": "@nextjs",
-      "descriptionText": "The React Framework \u2013 created and maintained by @vercel.",
-      "titleStyleName": "Label/MD",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/lg",
-      "gap": "space/md",
-      "innerGap": "space/xs",
-      "width": 280,
-      "contentSlot": { "enabled": true, "slotLabel": "Hover content", "minHeight": 60 },
-      "footerSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true },
-    "properties": [
-      ["openDelay", "number", "700", "no", "Open delay in ms."],
-      ["closeDelay", "number", "300", "no", "Close delay in ms."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "context-menu": {
-    "pageName": "\u21b3 Context Menu",
-    "labelKey": "variant",
-    "layout": "row-item",
-    "docsUrl": "https://ui.shadcn.com/docs/components/context-menu",
-    "summary": "Right-click menu (Radix ContextMenu).",
-    "row": {
-      "titleText": "Back",
-      "leadingIcon": true,
-      "trailingIcon": false,
-      "shortcut": true,
-      "shortcutText": "\u2318[",
-      "titleStyleName": "Label/SM",
-      "width": 220
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "shortcut": true, "leadingIcon": true, "trailingIcon": false },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "dropdown-menu": {
-    "pageName": "\u21b3 Dropdown Menu",
-    "labelKey": "variant",
-    "layout": "row-item",
-    "docsUrl": "https://ui.shadcn.com/docs/components/dropdown-menu",
-    "summary": "Button-triggered menu row (Radix DropdownMenuItem).",
-    "row": {
-      "titleText": "Profile",
-      "leadingIcon": true,
-      "trailingIcon": false,
-      "shortcut": true,
-      "shortcutText": "\u2318P",
-      "titleStyleName": "Label/SM",
-      "width": 240
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "shortcut": true, "leadingIcon": true, "trailingIcon": false },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "command": {
-    "pageName": "\u21b3 Command",
-    "labelKey": "variant",
-    "layout": "row-item",
-    "docsUrl": "https://ui.shadcn.com/docs/components/command",
-    "summary": "cmdk-powered command palette item row \u2014 fuzzy-search launcher.",
-    "row": {
-      "titleText": "Calendar",
-      "leadingIcon": true,
-      "trailingIcon": false,
-      "shortcut": true,
-      "shortcutText": "\u2318K",
-      "titleStyleName": "Label/SM",
-      "width": 320
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "shortcut": true, "leadingIcon": true, "trailingIcon": false },
-    "properties": [
-      ["value", "string", "\u2014", "no", "Controlled selected item value."],
-      ["onValueChange", "(value: string) => void", "\u2014", "no", "Value-change handler."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "navigation-menu": {
-    "pageName": "\u21b3 Navigation Menu",
-    "labelKey": "variant",
-    "layout": "row-item",
-    "docsUrl": "https://ui.shadcn.com/docs/components/navigation-menu",
-    "summary": "Horizontal navigation bar item row (Radix NavigationMenuItem).",
-    "row": {
-      "titleText": "Getting started",
-      "descriptionText": "Beautifully designed components built with Radix UI and Tailwind.",
-      "leadingIcon": false,
-      "trailingIcon": true,
-      "trailingIsChevron": true,
-      "titleStyleName": "Label/MD",
-      "descriptionStyleName": "Label/SM",
-      "width": 320
-    },
-    "iconSlots": { "leading": false, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "description": true, "trailingIcon": true },
-    "properties": [
-      ["value", "string", "\u2014", "no", "Controlled active item."],
-      ["onValueChange", "(value: string) => void", "\u2014", "no", "Active-change handler."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "menubar": {
-    "pageName": "\u21b3 Menubar",
-    "labelKey": "variant",
-    "layout": "row-item",
-    "docsUrl": "https://ui.shadcn.com/docs/components/menubar",
-    "summary": "App-style menu item row (Radix MenubarItem \u2014 File/Edit/View-like).",
-    "row": {
-      "titleText": "New Tab",
-      "leadingIcon": false,
-      "trailingIcon": false,
-      "shortcut": true,
-      "shortcutText": "\u2318T",
-      "titleStyleName": "Label/SM",
-      "width": 220
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "shortcut": true, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["value", "string", "\u2014", "no", "Controlled active menu."],
-      ["onValueChange", "(value: string) => void", "\u2014", "no", "Active-change handler."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "tabs": {
-    "pageName": "\u21b3 Tabs bar",
-    "labelKey": "variant",
-    "layout": "container",
-    "docsUrl": "https://ui.shadcn.com/docs/components/tabs",
-    "summary": "Tab list + panels (Radix Tabs).",
-    "container": {
-      "kind": "tabs",
-      "width": 400,
-      "tabs": ["Account", "Password", "Notifications"],
-      "activeIndex": 0,
-      "panelMinHeight": 140
-    },
-    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": false },
-    "properties": [
-      ["value", "string", "\u2014", "no", "Controlled active tab."],
-      ["defaultValue", "string", "\u2014", "no", "Uncontrolled initial tab."],
-      ["onValueChange", "(value: string) => void", "\u2014", "no", "Change handler."],
-      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Tab list axis."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "breadcrumb": {
-    "pageName": "\u21b3 Breadcrumb",
-    "labelKey": "variant",
-    "layout": "row-item",
-    "docsUrl": "https://ui.shadcn.com/docs/components/breadcrumb",
-    "summary": "Breadcrumb item row (nav path segment).",
-    "row": {
-      "titleText": "Components",
-      "leadingIcon": false,
-      "trailingIcon": true,
-      "trailingIsChevron": true,
-      "titleStyleName": "Label/SM",
-      "width": 200
-    },
-    "iconSlots": { "leading": false, "trailing": true, "size": 16 },
-    "componentProps": { "title": true, "trailingIcon": true },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "pagination": {
-    "pageName": "\u21b3 Pagination",
-    "labelKey": "variant",
-    "layout": "chip",
-    "docsUrl": "https://ui.shadcn.com/docs/components/pagination",
-    "summary": "Page-number navigation with prev/next controls.",
-    "composes": [
-      {
-        "component": "button",
-        "slot": "items",
-        "cardinality": "many",
-        "count": 3,
-        "defaultProps": { "variant": "outline", "size": "default" }
-      }
-    ],
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "alert": {
-    "pageName": "\u21b3 Alerts",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/alert",
-    "summary": "Inline status message with optional icon + description.",
-    "surface": {
-      "titleText": "Heads up!",
-      "descriptionText": "You can add components and dependencies to your app using the cli.",
-      "titleStyleName": "Label/MD",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/md",
-      "gap": "space/xs",
-      "innerGap": "space/xs",
-      "width": 520,
-      "contentSlot": { "enabled": false },
-      "footerSlot": { "enabled": false },
-      "actionSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "leadingIcon": true, "trailingIcon": false },
-    "properties": [
-      ["variant", "enum", "\"default\"", "no", "Visual style."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "badge": {
-    "pageName": "\u21b3 Badge",
-    "labelKey": "variant",
-    "layout": "chip",
-    "docsUrl": "https://ui.shadcn.com/docs/components/badge",
-    "summary": "Compact status / count label.",
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
-    "properties": [
-      ["variant", "enum", "\"default\"", "no", "Visual style."],
-      ["asChild", "boolean", "false", "no", "Renders styled classes onto the child via Radix Slot."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "progress": {
-    "pageName": "\u21b3 Progress Bar",
-    "labelKey": "variant",
-    "layout": "tiny",
-    "docsUrl": "https://ui.shadcn.com/docs/components/progress",
-    "summary": "Determinate horizontal progress indicator.",
-    "tiny": {
-      "shape": "progress",
-      "width": 280,
-      "height": 8,
-      "filled": 0.4
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["value", "number", "\u2014", "no", "Current value 0\u2013100."],
-      ["max", "number", "100", "no", "Maximum."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "skeleton": {
-    "pageName": "\u21b3 Skeleton",
-    "labelKey": "variant",
-    "layout": "tiny",
-    "docsUrl": "https://ui.shadcn.com/docs/components/skeleton",
-    "summary": "Pulsing placeholder block used while content loads.",
-    "tiny": {
-      "shape": "skeleton",
-      "width": 200,
-      "height": 16
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch (sizing + shape lives here)."]
-    ]
-  },
-
-  "sonner": {
-    "pageName": "\u21b3 Sonner",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/sonner",
-    "summary": "Toast notifications via the sonner library.",
-    "surface": {
-      "titleText": "Event has been created",
-      "descriptionText": "Sunday, December 03, 2023 at 9:00 AM",
-      "titleStyleName": "Label/MD",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/md",
-      "gap": "space/xs",
-      "innerGap": "space/xs",
-      "width": 360,
-      "contentSlot": { "enabled": false },
-      "footerSlot": { "enabled": true, "slotLabel": "Undo", "align": "end", "minHeight": 32 }
-    },
-    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "footer": true, "leadingIcon": true },
-    "properties": [
-      ["position", "\"top-left\" | \"top-right\" | \"bottom-left\" | \"bottom-right\" | \"top-center\" | \"bottom-center\"", "\"bottom-right\"", "no", "Anchor corner."],
-      ["richColors", "boolean", "false", "no", "Use tinted backgrounds per intent."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "toast": {
-    "pageName": "\u21b3 Toast",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/toast",
-    "summary": "Radix Toast primitive \u2014 in-app notification with action slot.",
-    "surface": {
-      "titleText": "Scheduled: Catch up",
-      "descriptionText": "Friday, February 10, 2023 at 5:57 PM",
-      "titleStyleName": "Label/MD",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/md",
-      "gap": "space/xs",
-      "innerGap": "space/xs",
-      "width": 360,
-      "contentSlot": { "enabled": false },
-      "actionSlot": { "enabled": true, "slotLabel": "Action", "width": 80, "height": 32 },
-      "footerSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": true, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "actionSlot": true, "leadingIcon": true },
-    "properties": [
-      ["variant", "enum", "\"default\"", "no", "Visual style."],
-      ["duration", "number", "5000", "no", "Auto-dismiss after N ms."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "table": {
-    "pageName": "\u21b3 Data Table",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/table",
-    "summary": "Semantic <table> wrapper with header / body / footer / caption sub-components.",
-    "surface": {
-      "titleText": "Invoices",
-      "descriptionText": "A list of your recent invoices.",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/lg",
-      "gap": "space/md",
-      "innerGap": "space/xs",
-      "width": 640,
-      "contentSlot": { "enabled": true, "slotLabel": "Table rows", "minHeight": 200 },
-      "footerSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "accordion": {
-    "pageName": "\u21b3 Accordion",
-    "labelKey": "type",
-    "layout": "container",
-    "docsUrl": "https://ui.shadcn.com/docs/components/accordion",
-    "summary": "Vertical expand/collapse group (Radix Accordion).",
-    "container": {
-      "kind": "accordion",
-      "width": 380,
-      "titleText": "Is it accessible?",
-      "panelText": "Yes. It adheres to the WAI-ARIA design pattern."
-    },
-    "iconSlots": { "leading": false, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "content": true, "trailingIcon": true },
-    "properties": [
-      ["type", "\"single\" | \"multiple\"", "\u2014", "yes", "Expansion mode."],
-      ["value", "string | string[]", "\u2014", "no", "Controlled expanded items."],
-      ["collapsible", "boolean", "false", "no", "Allow closing the last open item (type=single only)."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "collapsible": {
-    "pageName": "\u21b3 Collapsible",
-    "labelKey": "variant",
-    "layout": "container",
-    "docsUrl": "https://ui.shadcn.com/docs/components/collapsible",
-    "summary": "Single-item expand/collapse primitive (Radix Collapsible).",
-    "container": {
-      "kind": "accordion",
-      "width": 380,
-      "titleText": "@peduarte starred 3 repositories",
-      "panelText": "@radix-ui/primitives, @radix-ui/colors, @stitches/react"
-    },
-    "iconSlots": { "leading": false, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "content": true, "trailingIcon": true },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["defaultOpen", "boolean", "false", "no", "Uncontrolled initial state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open-change handler."],
-      ["disabled", "boolean", "false", "no", "Disables interaction."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "avatar": {
-    "pageName": "\u21b3 Avatar",
-    "labelKey": "variant",
-    "layout": "tiny",
-    "docsUrl": "https://ui.shadcn.com/docs/components/avatar",
-    "summary": "Circular user image with fallback initials (Radix Avatar).",
-    "tiny": {
-      "shape": "avatar",
-      "size": 40,
-      "initials": "CN"
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["src", "string", "\u2014", "no", "Image source URL."],
-      ["alt", "string", "\u2014", "no", "Alt text."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ]
-  },
-
-  "carousel": {
-    "pageName": "\u21b3 Carousel",
-    "labelKey": "variant",
-    "layout": "container",
-    "docsUrl": "https://ui.shadcn.com/docs/components/carousel",
-    "summary": "Slide carousel with prev/next controls and optional thumbnails (Embla).",
-    "container": {
-      "kind": "tabs",
-      "width": 480,
-      "tabs": ["1", "2", "3"],
-      "activeIndex": 0,
-      "panelMinHeight": 240
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": true, "trailingIcon": true },
-    "properties": [
-      ["orientation", "\"horizontal\" | \"vertical\"", "\"horizontal\"", "no", "Scroll axis."],
-      ["opts", "Partial<EmblaOptionsType>", "\u2014", "no", "Embla carousel options."],
-      ["plugins", "EmblaPluginType[]", "\u2014", "no", "Embla plugins."],
-      ["setApi", "(api: CarouselApi) => void", "\u2014", "no", "Callback with Embla API instance."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ],
-    "usageDo": ["Expose slide count to assistive tech.", "Keep controls keyboard reachable.", "Use tokens for slide chrome and focus rings.", "Prefer fixed slide aspect via `className`."],
-    "usageDont": ["Do not autoplay without pause control.", "Do not nest interactive controls inside slide without focus management.", "Do not hardcode pixel widths for responsive layouts.", "Do not omit labels on icon-only arrows."]
-  },
-
-  "chart": {
-    "pageName": "\u21b3 Chart",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/chart",
-    "summary": "Recharts-based chart shell with design-token friendly container.",
-    "surface": {
-      "titleText": "Bar Chart \u2013 Interactive",
-      "descriptionText": "Showing total visitors for the last 3 months",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/lg",
-      "gap": "space/md",
-      "innerGap": "space/xs",
-      "width": 640,
-      "contentSlot": { "enabled": true, "slotLabel": "Chart canvas", "minHeight": 240 },
-      "footerSlot": { "enabled": false }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true },
-    "properties": [
-      ["data", "unknown[]", "\u2014", "yes", "Series data passed to Recharts primitives."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch (dimensions + spacing)."]
-    ],
-    "usageDo": ["Bind chart colors to Theme CSS variables.", "Provide axis titles for screen readers.", "Keep default margins readable on 360px width.", "Export static snapshots for design reviews when needed."],
-    "usageDont": ["Do not encode secrets in chart data.", "Do not disable animation without designer sign-off.", "Do not mix arbitrary hex outside the token set.", "Do not overload one chart with \u003e5 series without legend."]
-  },
-
-  "combobox": {
-    "pageName": "\u21b3 Combobox",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/combobox",
-    "summary": "Filterable autocomplete list (Command + Popover pattern).",
-    "field": {
-      "fieldType": "select",
-      "showLabel": true,
-      "labelText": "Framework",
-      "placeholderText": "Select framework\u2026",
-      "leadingIcon": false,
-      "trailingIcon": true,
-      "width": 320
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "trailingIcon": true },
-    "properties": [
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["onOpenChange", "(open: boolean) => void", "\u2014", "no", "Open state handler."],
-      ["value", "string", "\u2014", "no", "Controlled value."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ],
-    "usageDo": ["Pair with `Command` items for keyboard nav.", "Debounce server fetches on input.", "Announce result count live.", "Keep trigger height aligned with `Text Field`."],
-    "usageDont": ["Do not block input while loading without a spinner.", "Do not hide the clear affordance when `value` is set.", "Do not nest another popover inside the list without portal strategy.", "Do not strip `aria-expanded` from the trigger."]
-  },
-
-  "direction": {
-    "pageName": "\u21b3 Typography",
-    "labelKey": "variant",
-    "layout": "chip",
-    "docsUrl": "https://ui.shadcn.com/docs/components/direction",
-    "summary": "RTL/LTR direction context provider for subtree layout and mirroring.",
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
-    "properties": [
-      ["dir", "\"ltr\" | \"rtl\"", "\"ltr\"", "no", "Document direction for descendants."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ],
-    "usageDo": ["Set `dir` at the route shell for locale switches.", "Mirror spacing utilities when flipping to RTL.", "Test focus order in both directions.", "Document direction in handoff for engineers."],
-    "usageDont": ["Do not toggle `dir` without reflowing breakpoints.", "Do not nest conflicting direction providers.", "Do not rely on CSS `float` for critical layout.", "Do not forget mirrored icons for back navigation."]
-  },
-
-  "empty": {
-    "pageName": "\u21b3 Blank states",
-    "labelKey": "variant",
-    "layout": "surface-stack",
-    "docsUrl": "https://ui.shadcn.com/docs/components/empty",
-    "summary": "Empty-state panel with title, description, and optional media + actions.",
-    "surface": {
-      "titleText": "No projects yet",
-      "descriptionText": "Get started by creating a new project.",
-      "titleStyleName": "Label/LG",
-      "descriptionStyleName": "Label/SM",
-      "sectionPadY": "space/2xl",
-      "gap": "space/lg",
-      "innerGap": "space/xs",
-      "width": 480,
-      "contentSlot": { "enabled": true, "slotLabel": "Illustration", "minHeight": 120 },
-      "footerSlot": { "enabled": true, "slotLabel": "Create project", "align": "start", "minHeight": 40 }
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "title": true, "description": true, "footer": true },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ],
-    "usageDo": ["Offer a single primary recovery action.", "Keep copy concise (\u226412 words title).", "Use illustration tokens from brand kit.", "Log empty-state impressions if product requires."],
-    "usageDont": ["Do not use empty states for loading skeletons.", "Do not stack \u003e2 CTAs.", "Do not hide navigation to escape the state.", "Do not use alarmist copy for benign empties."]
-  },
-
-  "field": {
-    "pageName": "\u21b3 Field",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/field",
-    "summary": "Form field primitive grouping label, control, hint, and error text.",
-    "field": {
-      "fieldType": "input",
-      "showLabel": true,
-      "labelText": "Email",
-      "placeholderText": "you@example.com",
-      "showHelper": true,
-      "helperText": "We\u2019ll never share your email.",
-      "width": 320
-    },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "helper": true },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ],
-    "usageDo": ["Associate label `htmlFor` with control `id`.", "Surface errors inline below the control.", "Use `aria-describedby` for hints.", "Keep vertical rhythm consistent with `Text Field` page."],
-    "usageDont": ["Do not nest interactive elements inside the label.", "Do not rely on color alone for errors.", "Do not omit error text when `invalid`.", "Do not disable hints when errors show."]
-  },
-
-  "input-group": {
-    "pageName": "\u21b3 Input Group",
-    "labelKey": "variant",
-    "layout": "field",
-    "docsUrl": "https://ui.shadcn.com/docs/components/input-group",
-    "summary": "Grouped input with leading/trailing addons and focus ring continuity.",
-    "field": {
-      "fieldType": "input",
-      "showLabel": true,
-      "labelText": "Website",
-      "placeholderText": "yoursite.com",
-      "leadingIcon": true,
-      "trailingIcon": true,
-      "width": 320
-    },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "leadingIcon": true, "trailingIcon": true },
-    "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
-    ],
-    "usageDo": ["Keep addon width fixed for stable layout.", "Mirror focus ring across segments.", "Use icon buttons with `aria-label`.", "Test with long translated strings."],
-    "usageDont": ["Do not split focus across detached frames.", "Do not place two primary actions inside addons.", "Do not remove keyboard focus order on segments.", "Do not use low-contrast divider lines."]
-  },
-
   "item": {
-    "pageName": "\u21b3 Lists",
+    "pageName": "↳ Lists",
     "labelKey": "variant",
     "layout": "row-item",
     "docsUrl": "https://ui.shadcn.com/docs/components/item",
@@ -1307,35 +1789,187 @@
       "descriptionStyleName": "Label/SM",
       "width": 360
     },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "description": true, "leadingIcon": true, "trailingIcon": true },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "leadingIcon": true,
+      "trailingIcon": true
+    },
     "properties": [
-      ["variant", "enum", "\"default\"", "no", "Visual density / emphasis."],
-      ["size", "enum", "\"default\"", "no", "Row height preset."],
-      ["asChild", "boolean", "false", "no", "Radix Slot composition."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual density / emphasis."
+      ],
+      [
+        "size",
+        "enum",
+        "\"default\"",
+        "no",
+        "Row height preset."
+      ],
+      [
+        "asChild",
+        "boolean",
+        "false",
+        "no",
+        "Radix Slot composition."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
-    "usageDo": ["Keep tap targets \u226544px tall on mobile.", "Align leading media to a 40px grid.", "Truncate titles with tooltip on hover.", "Use separators between dense rows."],
-    "usageDont": ["Do not nest interactive controls without spacing.", "Do not use `Item` as a full page layout root.", "Do not omit pressed state on touch rows.", "Do not mix conflicting `size` within one list."]
+    "usageDo": [
+      "Keep tap targets ≥44px tall on mobile.",
+      "Align leading media to a 40px grid.",
+      "Truncate titles with tooltip on hover.",
+      "Use separators between dense rows."
+    ],
+    "usageDont": [
+      "Do not nest interactive controls without spacing.",
+      "Do not use `Item` as a full page layout root.",
+      "Do not omit pressed state on touch rows.",
+      "Do not mix conflicting `size` within one list."
+    ],
+    "category": "Data Display"
   },
-
   "kbd": {
-    "pageName": "\u21b3 Kbd",
+    "pageName": "↳ Kbd",
     "labelKey": "variant",
     "layout": "chip",
     "docsUrl": "https://ui.shadcn.com/docs/components/kbd",
     "summary": "Keyboard key cap styling for shortcuts and chord hints.",
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
     "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
-    "usageDo": ["Use sentence case inside caps.", "Pair with visible command labels.", "Keep min width for single-letter keys.", "Use monospace token for key glyphs when available."],
-    "usageDont": ["Do not encode OS-specific glyphs without detection.", "Do not rely on color alone to imply modifier.", "Do not shrink below 24px height on mobile.", "Do not nest clickable areas inside `Kbd`."]
+    "usageDo": [
+      "Use sentence case inside caps.",
+      "Pair with visible command labels.",
+      "Keep min width for single-letter keys.",
+      "Use monospace token for key glyphs when available."
+    ],
+    "usageDont": [
+      "Do not encode OS-specific glyphs without detection.",
+      "Do not rely on color alone to imply modifier.",
+      "Do not shrink below 24px height on mobile.",
+      "Do not nest clickable areas inside `Kbd`."
+    ],
+    "category": "Typography & platform"
   },
-
+  "label": {
+    "pageName": "↳ Label",
+    "labelKey": "variant",
+    "layout": "chip",
+    "docsUrl": "https://ui.shadcn.com/docs/components/label",
+    "summary": "Native <label> associated with a form control via htmlFor.",
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "htmlFor",
+        "string",
+        "—",
+        "no",
+        "ID of the associated form control."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "menubar": {
+    "pageName": "↳ Menubar",
+    "labelKey": "variant",
+    "layout": "row-item",
+    "docsUrl": "https://ui.shadcn.com/docs/components/menubar",
+    "summary": "App-style menu item row (Radix MenubarItem — File/Edit/View-like).",
+    "row": {
+      "titleText": "New Tab",
+      "leadingIcon": false,
+      "trailingIcon": false,
+      "shortcut": true,
+      "shortcutText": "⌘T",
+      "titleStyleName": "Label/SM",
+      "width": 220
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "shortcut": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled active menu."
+      ],
+      [
+        "onValueChange",
+        "(value: string) => void",
+        "—",
+        "no",
+        "Active-change handler."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
   "native-select": {
-    "pageName": "\u21b3 Native Select",
+    "pageName": "↳ Native Select",
     "labelKey": "variant",
     "layout": "field",
     "docsUrl": "https://ui.shadcn.com/docs/components/native-select",
@@ -1344,25 +1978,581 @@
       "fieldType": "select",
       "showLabel": true,
       "labelText": "Option",
-      "placeholderText": "Choose\u2026",
+      "placeholderText": "Choose…",
       "leadingIcon": false,
       "trailingIcon": true,
       "width": 320
     },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "label": true, "placeholder": true, "trailingIcon": true },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "trailingIcon": true
+    },
     "properties": [
-      ["value", "string", "\u2014", "no", "Controlled value."],
-      ["defaultValue", "string", "\u2014", "no", "Uncontrolled default."],
-      ["disabled", "boolean", "false", "no", "Disables the control."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled value."
+      ],
+      [
+        "defaultValue",
+        "string",
+        "—",
+        "no",
+        "Uncontrolled default."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables the control."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
-    "usageDo": ["Prefer native select when accessibility beats customization.", "Keep option list \u003c200 items for performance.", "Mirror `Select` page spacing tokens.", "Provide `aria-invalid` when in error state."],
-    "usageDont": ["Do not replace with custom dropdown without a11y review.", "Do not hide the focus ring.", "Do not use placeholder option as label substitute.", "Do not disable all options with no explanation."]
+    "usageDo": [
+      "Prefer native select when accessibility beats customization.",
+      "Keep option list <200 items for performance.",
+      "Mirror `Select` page spacing tokens.",
+      "Provide `aria-invalid` when in error state."
+    ],
+    "usageDont": [
+      "Do not replace with custom dropdown without a11y review.",
+      "Do not hide the focus ring.",
+      "Do not use placeholder option as label substitute.",
+      "Do not disable all options with no explanation."
+    ],
+    "category": "Form & Input"
   },
-
+  "navigation-menu": {
+    "pageName": "↳ Navigation Menu",
+    "labelKey": "variant",
+    "layout": "row-item",
+    "docsUrl": "https://ui.shadcn.com/docs/components/navigation-menu",
+    "summary": "Horizontal navigation bar item row (Radix NavigationMenuItem).",
+    "row": {
+      "titleText": "Getting started",
+      "descriptionText": "Beautifully designed components built with Radix UI and Tailwind.",
+      "leadingIcon": false,
+      "trailingIcon": true,
+      "trailingIsChevron": true,
+      "titleStyleName": "Label/MD",
+      "descriptionStyleName": "Label/SM",
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled active item."
+      ],
+      [
+        "onValueChange",
+        "(value: string) => void",
+        "—",
+        "no",
+        "Active-change handler."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Navigation"
+  },
+  "pagination": {
+    "pageName": "↳ Pagination",
+    "labelKey": "variant",
+    "layout": "chip",
+    "docsUrl": "https://ui.shadcn.com/docs/components/pagination",
+    "summary": "Page-number navigation with prev/next controls.",
+    "composes": [
+      {
+        "component": "button",
+        "slot": "items",
+        "cardinality": "many",
+        "count": 3,
+        "defaultProps": {
+          "variant": "outline",
+          "size": "default"
+        }
+      }
+    ],
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Navigation"
+  },
+  "popover": {
+    "pageName": "↳ Popover",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/popover",
+    "summary": "Anchored floating panel (Radix Popover).",
+    "surface": {
+      "titleText": "Dimensions",
+      "descriptionText": "Set the dimensions for the layer.",
+      "titleStyleName": "Label/MD",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/lg",
+      "gap": "space/md",
+      "innerGap": "space/xs",
+      "width": 260,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Popover body",
+        "minHeight": 80
+      },
+      "footerSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
+  "progress": {
+    "pageName": "↳ Progress Bar",
+    "labelKey": "variant",
+    "layout": "tiny",
+    "docsUrl": "https://ui.shadcn.com/docs/components/progress",
+    "summary": "Determinate horizontal progress indicator.",
+    "tiny": {
+      "shape": "progress",
+      "width": 280,
+      "height": 8,
+      "filled": 0.4
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "value",
+        "number",
+        "—",
+        "no",
+        "Current value 0–100."
+      ],
+      [
+        "max",
+        "number",
+        "100",
+        "no",
+        "Maximum."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Feedback & Status"
+  },
+  "radio-group": {
+    "pageName": "↳ Radio",
+    "labelKey": "variant",
+    "layout": "control",
+    "docsUrl": "https://ui.shadcn.com/docs/components/radio-group",
+    "summary": "Single-selection group of radio buttons.",
+    "control": {
+      "shape": "radio",
+      "size": 16,
+      "indicatorVar": "color/primary/content"
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled selected value."
+      ],
+      [
+        "defaultValue",
+        "string",
+        "—",
+        "no",
+        "Uncontrolled initial value."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables every item."
+      ],
+      [
+        "required",
+        "boolean",
+        "false",
+        "no",
+        "Required in form submission."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "resizable": {
+    "pageName": "↳ Resizable",
+    "labelKey": "direction",
+    "layout": "container",
+    "docsUrl": "https://ui.shadcn.com/docs/components/resizable",
+    "summary": "Resizable panel group with drag handles (react-resizable-panels).",
+    "container": {
+      "kind": "tabs",
+      "width": 420,
+      "tabs": [
+        "Panel A",
+        "Panel B"
+      ],
+      "activeIndex": 0,
+      "panelMinHeight": 160
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "direction",
+        "\"horizontal\" | \"vertical\"",
+        "\"horizontal\"",
+        "yes",
+        "Panel axis."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Layout & Display"
+  },
+  "scroll-area": {
+    "pageName": "↳ Scroll Area",
+    "labelKey": "variant",
+    "layout": "tiny",
+    "docsUrl": "https://ui.shadcn.com/docs/components/scroll-area",
+    "summary": "Styled scroll container with custom scrollbars (Radix ScrollArea).",
+    "tiny": {
+      "shape": "scroll-area",
+      "width": 320,
+      "height": 200
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Layout & Display"
+  },
+  "select": {
+    "pageName": "↳ Select",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/select",
+    "summary": "Dropdown selection backed by Radix Select. Trigger + content + items.",
+    "field": {
+      "fieldType": "select",
+      "showLabel": true,
+      "labelText": "Framework",
+      "placeholderText": "Select a framework",
+      "showHelper": false,
+      "leadingIcon": false,
+      "trailingIcon": true,
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "helper": false,
+      "leadingIcon": false,
+      "trailingIcon": true
+    },
+    "properties": [
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled selected value."
+      ],
+      [
+        "defaultValue",
+        "string",
+        "—",
+        "no",
+        "Uncontrolled initial value."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "required",
+        "boolean",
+        "false",
+        "no",
+        "Required in form submission."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "separator": {
+    "pageName": "↳ Dividers",
+    "labelKey": "orientation",
+    "layout": "tiny",
+    "docsUrl": "https://ui.shadcn.com/docs/components/separator",
+    "summary": "Horizontal or vertical rule (Radix Separator).",
+    "tiny": {
+      "shape": "separator",
+      "orientation": "horizontal",
+      "width": 240,
+      "height": 1
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "orientation",
+        "\"horizontal\" | \"vertical\"",
+        "\"horizontal\"",
+        "no",
+        "Axis."
+      ],
+      [
+        "decorative",
+        "boolean",
+        "true",
+        "no",
+        "Presentation-only (no aria separator)."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Layout & Display"
+  },
+  "sheet": {
+    "pageName": "↳ Sheets",
+    "labelKey": "side",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/sheet",
+    "summary": "Side-anchored sliding panel (Radix Dialog under the hood).",
+    "surface": {
+      "titleText": "Edit profile",
+      "descriptionText": "Make changes to your profile here. Click save when you're done.",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/2xl",
+      "gap": "space/lg",
+      "innerGap": "space/xs",
+      "width": 400,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Sheet body",
+        "minHeight": 280
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "Save changes",
+        "align": "end",
+        "minHeight": 44
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "footer": true
+    },
+    "properties": [
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "side",
+        "\"top\" | \"right\" | \"bottom\" | \"left\"",
+        "\"right\"",
+        "no",
+        "Anchor edge."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
   "sidebar": {
-    "pageName": "\u21b3 Sidebar",
+    "pageName": "↳ Sidebar",
     "labelKey": "variant",
     "layout": "surface-stack",
     "docsUrl": "https://ui.shadcn.com/docs/components/sidebar",
@@ -1376,23 +2566,242 @@
       "gap": "space/md",
       "innerGap": "space/xs",
       "width": 280,
-      "contentSlot": { "enabled": true, "slotLabel": "Nav items", "minHeight": 320 },
-      "footerSlot": { "enabled": true, "slotLabel": "User account", "align": "start", "minHeight": 56 }
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Nav items",
+        "minHeight": 320
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "User account",
+        "align": "start",
+        "minHeight": 56
+      }
     },
-    "iconSlots": { "leading": true, "trailing": true, "size": 24 },
-    "componentProps": { "title": true, "description": true, "footer": true },
+    "iconSlots": {
+      "leading": true,
+      "trailing": true,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "footer": true
+    },
     "properties": [
-      ["defaultOpen", "boolean", "true", "no", "Uncontrolled default open."],
-      ["open", "boolean", "\u2014", "no", "Controlled open state."],
-      ["collapsible", "\"offcanvas\" | \"icon\" | \"none\"", "\"offcanvas\"", "no", "Collapse behavior."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "defaultOpen",
+        "boolean",
+        "true",
+        "no",
+        "Uncontrolled default open."
+      ],
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "collapsible",
+        "\"offcanvas\" | \"icon\" | \"none\"",
+        "\"offcanvas\"",
+        "no",
+        "Collapse behavior."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
-    "usageDo": ["Persist collapsed state per user.", "Keep active route contrast \u22654.5:1.", "Provide skip link to main content.", "Reserve 280px min width for expanded desktop rail."],
-    "usageDont": ["Do not trap focus when collapsed offcanvas is closed.", "Do not mix two different sidebar patterns in one product.", "Do not hide global nav without alternative entry.", "Do not animate width below 60fps on low-end devices."]
+    "usageDo": [
+      "Persist collapsed state per user.",
+      "Keep active route contrast ≥4.5:1.",
+      "Provide skip link to main content.",
+      "Reserve 280px min width for expanded desktop rail."
+    ],
+    "usageDont": [
+      "Do not trap focus when collapsed offcanvas is closed.",
+      "Do not mix two different sidebar patterns in one product.",
+      "Do not hide global nav without alternative entry.",
+      "Do not animate width below 60fps on low-end devices."
+    ],
+    "category": "Layout & Display"
   },
-
+  "skeleton": {
+    "pageName": "↳ Skeleton",
+    "labelKey": "variant",
+    "layout": "tiny",
+    "docsUrl": "https://ui.shadcn.com/docs/components/skeleton",
+    "summary": "Pulsing placeholder block used while content loads.",
+    "tiny": {
+      "shape": "skeleton",
+      "width": 200,
+      "height": 16
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch (sizing + shape lives here)."
+      ]
+    ],
+    "category": "Feedback & Status"
+  },
+  "slider": {
+    "pageName": "↳ Slider",
+    "labelKey": "variant",
+    "layout": "tiny",
+    "docsUrl": "https://ui.shadcn.com/docs/components/slider",
+    "summary": "Horizontal or vertical range selector.",
+    "tiny": {
+      "shape": "progress",
+      "width": 280,
+      "height": 4,
+      "filled": 0.5
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "value",
+        "number[]",
+        "—",
+        "no",
+        "Controlled value array (supports multi-thumb)."
+      ],
+      [
+        "defaultValue",
+        "number[]",
+        "[0]",
+        "no",
+        "Uncontrolled initial value."
+      ],
+      [
+        "min",
+        "number",
+        "0",
+        "no",
+        "Minimum."
+      ],
+      [
+        "max",
+        "number",
+        "100",
+        "no",
+        "Maximum."
+      ],
+      [
+        "step",
+        "number",
+        "1",
+        "no",
+        "Step increment."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "sonner": {
+    "pageName": "↳ Sonner",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/sonner",
+    "summary": "Toast notifications via the sonner library.",
+    "surface": {
+      "titleText": "Event has been created",
+      "descriptionText": "Sunday, December 03, 2023 at 9:00 AM",
+      "titleStyleName": "Label/MD",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/md",
+      "gap": "space/xs",
+      "innerGap": "space/xs",
+      "width": 360,
+      "contentSlot": {
+        "enabled": false
+      },
+      "footerSlot": {
+        "enabled": true,
+        "slotLabel": "Undo",
+        "align": "end",
+        "minHeight": 32
+      }
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "footer": true,
+      "leadingIcon": true
+    },
+    "properties": [
+      [
+        "position",
+        "\"top-left\" | \"top-right\" | \"bottom-left\" | \"bottom-right\" | \"top-center\" | \"bottom-center\"",
+        "\"bottom-right\"",
+        "no",
+        "Anchor corner."
+      ],
+      [
+        "richColors",
+        "boolean",
+        "false",
+        "no",
+        "Use tinted backgrounds per intent."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Feedback & Status"
+  },
   "spinner": {
-    "pageName": "\u21b3 Spinner",
+    "pageName": "↳ Spinner",
     "labelKey": "variant",
     "layout": "tiny",
     "docsUrl": "https://ui.shadcn.com/docs/components/spinner",
@@ -1401,29 +2810,583 @@
       "shape": "spinner",
       "size": 24
     },
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": false, "leadingIcon": false, "trailingIcon": false },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
     "properties": [
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
-    "usageDo": ["Pair with `aria-busy` on parent region.", "Provide `aria-label` describing wait state.", "Cap diameter at 48px for inline use.", "Use Theme primary stroke token."],
-    "usageDont": ["Do not use spinner for determinate progress.", "Do not stack multiple spinners in one card.", "Do not remove reduced-motion fallback.", "Do not use spinner as the only loading hint on slow networks."]
+    "usageDo": [
+      "Pair with `aria-busy` on parent region.",
+      "Provide `aria-label` describing wait state.",
+      "Cap diameter at 48px for inline use.",
+      "Use Theme primary stroke token."
+    ],
+    "usageDont": [
+      "Do not use spinner for determinate progress.",
+      "Do not stack multiple spinners in one card.",
+      "Do not remove reduced-motion fallback.",
+      "Do not use spinner as the only loading hint on slow networks."
+    ],
+    "category": "Feedback & Status"
   },
-
+  "switch": {
+    "pageName": "↳ Switch",
+    "labelKey": "variant",
+    "layout": "control",
+    "docsUrl": "https://ui.shadcn.com/docs/components/switch",
+    "summary": "On/off toggle with thumb slide animation.",
+    "control": {
+      "shape": "switch",
+      "width": 36,
+      "height": 20,
+      "trackOnVar": "color/primary/default",
+      "trackOffVar": "color/background/variant",
+      "thumbVar": "color/background/default"
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "checked",
+        "boolean",
+        "false",
+        "no",
+        "Controlled checked state."
+      ],
+      [
+        "defaultChecked",
+        "boolean",
+        "false",
+        "no",
+        "Uncontrolled initial state."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "table": {
+    "pageName": "↳ Data Table",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/table",
+    "summary": "Semantic <table> wrapper with header / body / footer / caption sub-components.",
+    "surface": {
+      "titleText": "Invoices",
+      "descriptionText": "A list of your recent invoices.",
+      "titleStyleName": "Label/LG",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/lg",
+      "gap": "space/md",
+      "innerGap": "space/xs",
+      "width": 640,
+      "contentSlot": {
+        "enabled": true,
+        "slotLabel": "Table rows",
+        "minHeight": 200
+      },
+      "footerSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true
+    },
+    "properties": [
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Data Display"
+  },
+  "tabs": {
+    "pageName": "↳ Tabs bar",
+    "labelKey": "variant",
+    "layout": "container",
+    "docsUrl": "https://ui.shadcn.com/docs/components/tabs",
+    "summary": "Tab list + panels (Radix Tabs).",
+    "container": {
+      "kind": "tabs",
+      "width": 400,
+      "tabs": [
+        "Account",
+        "Password",
+        "Notifications"
+      ],
+      "activeIndex": 0,
+      "panelMinHeight": 140
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": true,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled active tab."
+      ],
+      [
+        "defaultValue",
+        "string",
+        "—",
+        "no",
+        "Uncontrolled initial tab."
+      ],
+      [
+        "onValueChange",
+        "(value: string) => void",
+        "—",
+        "no",
+        "Change handler."
+      ],
+      [
+        "orientation",
+        "\"horizontal\" | \"vertical\"",
+        "\"horizontal\"",
+        "no",
+        "Tab list axis."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Navigation"
+  },
+  "textarea": {
+    "pageName": "↳ Textarea",
+    "labelKey": "variant",
+    "layout": "field",
+    "docsUrl": "https://ui.shadcn.com/docs/components/textarea",
+    "summary": "Multi-line text input. Auto-grow handled by consumer.",
+    "field": {
+      "fieldType": "textarea",
+      "showLabel": true,
+      "labelText": "Message",
+      "placeholderText": "Type your message here.",
+      "showHelper": true,
+      "helperText": "Your message will be copied to the support team.",
+      "textareaMinHeight": 96,
+      "width": 320
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "placeholder": true,
+      "helper": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "placeholder",
+        "string",
+        "—",
+        "no",
+        "Placeholder text."
+      ],
+      [
+        "value",
+        "string",
+        "—",
+        "no",
+        "Controlled value."
+      ],
+      [
+        "rows",
+        "number",
+        "—",
+        "no",
+        "Initial visible rows."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "readOnly",
+        "boolean",
+        "false",
+        "no",
+        "Non-editable but focusable."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "toast": {
+    "pageName": "↳ Toast",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/toast",
+    "summary": "Radix Toast primitive — in-app notification with action slot.",
+    "surface": {
+      "titleText": "Scheduled: Catch up",
+      "descriptionText": "Friday, February 10, 2023 at 5:57 PM",
+      "titleStyleName": "Label/MD",
+      "descriptionStyleName": "Label/SM",
+      "sectionPadY": "space/md",
+      "gap": "space/xs",
+      "innerGap": "space/xs",
+      "width": 360,
+      "contentSlot": {
+        "enabled": false
+      },
+      "actionSlot": {
+        "enabled": true,
+        "slotLabel": "Action",
+        "width": 80,
+        "height": 32
+      },
+      "footerSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": true,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true,
+      "description": true,
+      "actionSlot": true,
+      "leadingIcon": true
+    },
+    "properties": [
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual style."
+      ],
+      [
+        "duration",
+        "number",
+        "5000",
+        "no",
+        "Auto-dismiss after N ms."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Feedback & Status"
+  },
+  "toggle-group": {
+    "pageName": "↳ Toggle Group",
+    "labelKey": "variant",
+    "layout": "chip",
+    "docsUrl": "https://ui.shadcn.com/docs/components/toggle-group",
+    "summary": "Set of Toggle buttons wired as a single selection control (single or multiple).",
+    "composes": [
+      {
+        "component": "toggle",
+        "slot": "items",
+        "cardinality": "many",
+        "count": 3,
+        "defaultProps": {
+          "variant": "default",
+          "size": "default"
+        }
+      }
+    ],
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": false,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "type",
+        "\"single\" | \"multiple\"",
+        "—",
+        "yes",
+        "Selection mode."
+      ],
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual style inherited by member Toggles."
+      ],
+      [
+        "size",
+        "enum",
+        "\"default\"",
+        "no",
+        "Size inherited by member Toggles."
+      ],
+      [
+        "value",
+        "string | string[]",
+        "—",
+        "no",
+        "Controlled selection."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables every member."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "toggle": {
+    "pageName": "↳ Toggle",
+    "labelKey": "variant",
+    "layout": "chip",
+    "docsUrl": "https://ui.shadcn.com/docs/components/toggle",
+    "summary": "Two-state button. Pressed state persists until clicked again.",
+    "iconSlots": {
+      "leading": true,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": true,
+      "trailingIcon": false
+    },
+    "properties": [
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Visual style (default outline fill)."
+      ],
+      [
+        "size",
+        "enum",
+        "\"default\"",
+        "no",
+        "Height + padding preset."
+      ],
+      [
+        "pressed",
+        "boolean",
+        "false",
+        "no",
+        "Controlled pressed state."
+      ],
+      [
+        "disabled",
+        "boolean",
+        "false",
+        "no",
+        "Disables interaction."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Form & Input"
+  },
+  "tooltip": {
+    "pageName": "↳ Tooltips",
+    "labelKey": "variant",
+    "layout": "surface-stack",
+    "docsUrl": "https://ui.shadcn.com/docs/components/tooltip",
+    "summary": "On-hover / focus info popover (Radix Tooltip).",
+    "surface": {
+      "titleText": "Add to library",
+      "descriptionText": null,
+      "titleStyleName": "Label/SM",
+      "sectionPadY": "space/xs",
+      "gap": "space/none",
+      "width": 140,
+      "contentSlot": {
+        "enabled": false
+      },
+      "footerSlot": {
+        "enabled": false
+      }
+    },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "title": true
+    },
+    "properties": [
+      [
+        "delayDuration",
+        "number",
+        "700",
+        "no",
+        "Open delay in ms."
+      ],
+      [
+        "open",
+        "boolean",
+        "—",
+        "no",
+        "Controlled open state."
+      ],
+      [
+        "onOpenChange",
+        "(open: boolean) => void",
+        "—",
+        "no",
+        "Open-change handler."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
+    ],
+    "category": "Overlay & Dialog"
+  },
   "typography": {
-    "pageName": "\u21b3 Typography",
+    "pageName": "↳ Typography",
     "labelKey": "variant",
     "layout": "chip",
     "docsUrl": "https://ui.shadcn.com/docs/components/typography",
     "summary": "Typography scale primitives mapping to design-system text styles.",
-    "iconSlots": { "leading": false, "trailing": false, "size": 24 },
-    "componentProps": { "label": true, "leadingIcon": false, "trailingIcon": false },
+    "iconSlots": {
+      "leading": false,
+      "trailing": false,
+      "size": 24
+    },
+    "componentProps": {
+      "label": true,
+      "leadingIcon": false,
+      "trailingIcon": false
+    },
     "properties": [
-      ["variant", "enum", "\"default\"", "no", "Preset text role / size."],
-      ["as", "React.ElementType", "\"p\"", "no", "Polymorphic root element."],
-      ["className", "string", "\u2014", "no", "Tailwind class escape hatch."]
+      [
+        "variant",
+        "enum",
+        "\"default\"",
+        "no",
+        "Preset text role / size."
+      ],
+      [
+        "as",
+        "React.ElementType",
+        "\"p\"",
+        "no",
+        "Polymorphic root element."
+      ],
+      [
+        "className",
+        "string",
+        "—",
+        "no",
+        "Tailwind class escape hatch."
+      ]
     ],
-    "usageDo": ["Bind to published `Doc/*` / `Label/*` styles in Figma.", "Keep line length \u226465ch in paragraphs.", "Use responsive type tokens from Typography modes.", "Document locale-specific line height tweaks."],
-    "usageDont": ["Do not hardcode `fontSize` outside the scale.", "Do not nest heading levels out of order.", "Do not disable user zoom.", "Do not mix more than two families in one view."]
+    "usageDo": [
+      "Bind to published `Doc/*` / `Label/*` styles in Figma.",
+      "Keep line length ≤65ch in paragraphs.",
+      "Use responsive type tokens from Typography modes.",
+      "Document locale-specific line height tweaks."
+    ],
+    "usageDont": [
+      "Do not hardcode `fontSize` outside the scale.",
+      "Do not nest heading levels out of order.",
+      "Do not disable user zoom.",
+      "Do not mix more than two families in one view."
+    ],
+    "category": "Typography & platform"
   }
 }

@@ -1,0 +1,63 @@
+{
+  "pageName": "↳ Chart",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/chart",
+  "summary": "Recharts-based chart shell with design-token friendly container.",
+  "surface": {
+    "titleText": "Bar Chart – Interactive",
+    "descriptionText": "Showing total visitors for the last 3 months",
+    "titleStyleName": "Label/LG",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/lg",
+    "gap": "space/md",
+    "innerGap": "space/xs",
+    "width": 640,
+    "contentSlot": {
+      "enabled": true,
+      "slotLabel": "Chart canvas",
+      "minHeight": 240
+    },
+    "footerSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true
+  },
+  "properties": [
+    [
+      "data",
+      "unknown[]",
+      "—",
+      "yes",
+      "Series data passed to Recharts primitives."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch (dimensions + spacing)."
+    ]
+  ],
+  "usageDo": [
+    "Bind chart colors to Theme CSS variables.",
+    "Provide axis titles for screen readers.",
+    "Keep default margins readable on 360px width.",
+    "Export static snapshots for design reviews when needed."
+  ],
+  "usageDont": [
+    "Do not encode secrets in chart data.",
+    "Do not disable animation without designer sign-off.",
+    "Do not mix arbitrary hex outside the token set.",
+    "Do not overload one chart with >5 series without legend."
+  ],
+  "category": "Data Display"
+}

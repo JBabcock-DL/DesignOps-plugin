@@ -1,0 +1,79 @@
+{
+  "pageName": "↳ Button Group",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/button-group",
+  "summary": "Grouped buttons for related actions (orientation + shared variant/size).",
+  "composes": [
+    {
+      "component": "button",
+      "slot": "items",
+      "cardinality": "many",
+      "count": 3,
+      "defaultProps": {
+        "variant": "outline",
+        "size": "default"
+      }
+    }
+  ],
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual style applied to member buttons."
+    ],
+    [
+      "size",
+      "enum",
+      "\"default\"",
+      "no",
+      "Size preset for member buttons."
+    ],
+    [
+      "orientation",
+      "\"horizontal\" | \"vertical\"",
+      "\"horizontal\"",
+      "no",
+      "Layout axis of the group."
+    ],
+    [
+      "asChild",
+      "boolean",
+      "false",
+      "no",
+      "Renders onto child via Radix Slot."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Keep related actions in one group so spacing and focus order stay predictable.",
+    "Use `orientation=\"vertical\"` only when horizontal space is constrained.",
+    "Rely on member `Button` instances from `↳ Buttons` so paint updates propagate.",
+    "Expose at most one primary `default` button per group."
+  ],
+  "usageDont": [
+    "Do not mix unrelated actions into one group — split into separate groups.",
+    "Do not detach member buttons from the `Button` ComponentSet.",
+    "Do not override member sizing with ad-hoc frames — use the `size` prop.",
+    "Do not nest another full `ButtonGroup` inside a single group cell."
+  ],
+  "category": "Form & Input"
+}

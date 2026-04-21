@@ -1,0 +1,49 @@
+{
+  "pageName": "↳ Input Group",
+  "labelKey": "variant",
+  "layout": "field",
+  "docsUrl": "https://ui.shadcn.com/docs/components/input-group",
+  "summary": "Grouped input with leading/trailing addons and focus ring continuity.",
+  "field": {
+    "fieldType": "input",
+    "showLabel": true,
+    "labelText": "Website",
+    "placeholderText": "yoursite.com",
+    "leadingIcon": true,
+    "trailingIcon": true,
+    "width": 320
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": true,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "placeholder": true,
+    "leadingIcon": true,
+    "trailingIcon": true
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Keep addon width fixed for stable layout.",
+    "Mirror focus ring across segments.",
+    "Use icon buttons with `aria-label`.",
+    "Test with long translated strings."
+  ],
+  "usageDont": [
+    "Do not split focus across detached frames.",
+    "Do not place two primary actions inside addons.",
+    "Do not remove keyboard focus order on segments.",
+    "Do not use low-contrast divider lines."
+  ],
+  "category": "Form & Input"
+}

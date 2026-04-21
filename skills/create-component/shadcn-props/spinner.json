@@ -1,0 +1,43 @@
+{
+  "pageName": "↳ Spinner",
+  "labelKey": "variant",
+  "layout": "tiny",
+  "docsUrl": "https://ui.shadcn.com/docs/components/spinner",
+  "summary": "Indeterminate loading spinner with token-bound stroke.",
+  "tiny": {
+    "shape": "spinner",
+    "size": 24
+  },
+  "iconSlots": {
+    "leading": false,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": false,
+    "leadingIcon": false,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "usageDo": [
+    "Pair with `aria-busy` on parent region.",
+    "Provide `aria-label` describing wait state.",
+    "Cap diameter at 48px for inline use.",
+    "Use Theme primary stroke token."
+  ],
+  "usageDont": [
+    "Do not use spinner for determinate progress.",
+    "Do not stack multiple spinners in one card.",
+    "Do not remove reduced-motion fallback.",
+    "Do not use spinner as the only loading hint on slow networks."
+  ],
+  "category": "Feedback & Status"
+}

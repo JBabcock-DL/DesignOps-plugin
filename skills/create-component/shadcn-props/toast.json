@@ -1,0 +1,64 @@
+{
+  "pageName": "↳ Toast",
+  "labelKey": "variant",
+  "layout": "surface-stack",
+  "docsUrl": "https://ui.shadcn.com/docs/components/toast",
+  "summary": "Radix Toast primitive — in-app notification with action slot.",
+  "surface": {
+    "titleText": "Scheduled: Catch up",
+    "descriptionText": "Friday, February 10, 2023 at 5:57 PM",
+    "titleStyleName": "Label/MD",
+    "descriptionStyleName": "Label/SM",
+    "sectionPadY": "space/md",
+    "gap": "space/xs",
+    "innerGap": "space/xs",
+    "width": 360,
+    "contentSlot": {
+      "enabled": false
+    },
+    "actionSlot": {
+      "enabled": true,
+      "slotLabel": "Action",
+      "width": 80,
+      "height": 32
+    },
+    "footerSlot": {
+      "enabled": false
+    }
+  },
+  "iconSlots": {
+    "leading": true,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "title": true,
+    "description": true,
+    "actionSlot": true,
+    "leadingIcon": true
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual style."
+    ],
+    [
+      "duration",
+      "number",
+      "5000",
+      "no",
+      "Auto-dismiss after N ms."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Feedback & Status"
+}

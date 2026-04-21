@@ -21,6 +21,12 @@ None.
 ## Instructions
 Load **figma-use** before `use_figma` if required. One `use_figma` with the script below and the Step 4 `fileKey`.
 
+**Script-assembly order** — the script below references `bindPrimColor` from [`_shared-token-helpers.figma.js`](./_shared-token-helpers.figma.js). Before executing:
+
+1. Start with the JS script block below as the base script.
+2. **`Read`** [`skills/new-project/phases/_shared-token-helpers.figma.js`](./_shared-token-helpers.figma.js) in full (no `limit`) and paste its contents verbatim between the `↓↓↓ INLINE _shared-token-helpers.figma.js HERE ↓↓↓` / `↑↑↑ END` markers inside the script. A runtime `typeof` assert after the markers throws with an actionable message if they're missed.
+3. Inline the fully assembled payload into a single `use_figma` call, passing the `fileKey` from Step 4.
+
 Before editing this script, **`Read`** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md) section **Canvas documentation visual spec** § A and [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) § 3 — both specify the current `_Header` geometry (1800 × 320, `cornerRadius: 0`, VERTICAL auto-layout, fill `color/neutral/950` bound with `#000000` fallback) and the zero-gap seam with `_PageContent` at `y = 320`.
 
 ## Re-running on a non-empty file (idempotency)
@@ -182,31 +188,31 @@ await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
 
-// ── Variable helpers — binds to color/neutral/950 (Primitives) when available,
-//    falls back to raw #000000 on a fresh file where /create-design-system has not run yet.
-const variableCollections = figma.variables.getLocalVariableCollections();
-const allColorVars = figma.variables.getLocalVariables('COLOR');
-const primCol  = variableCollections.find(c => c.name === 'Primitives');
+// ═══════════════════════════════════════════════════════════════════════════
+// ↓↓↓  INLINE _shared-token-helpers.figma.js HERE  ↓↓↓
+// ═══════════════════════════════════════════════════════════════════════════
+// Agent action required: `Read` skills/new-project/phases/_shared-token-helpers.figma.js
+// in full (no `limit`) and paste its contents verbatim between this marker
+// and the matching ↑↑↑ marker below. That template defines the variable
+// helpers (`bindPrimColor`, `getPrimColorVar`, `hexToRgb`) that this phase
+// uses to bind `_Header` black fills to `color/neutral/950` with a raw
+// hex fallback on fresh files where `/create-design-system` has not run yet.
+//
+// Phase 05b only needs the Primitives helpers, but pulling the full shared
+// file keeps the pattern identical to 05c / 05d and lets future edits flow
+// through one source of truth.
+// ═══════════════════════════════════════════════════════════════════════════
 
-function getPrimColorVar(path) {
-  if (!primCol) return null;
-  return allColorVars.find(v => v.variableCollectionId === primCol.id && v.name === path) ?? null;
-}
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  return {
-    r: parseInt(h.slice(0, 2), 16) / 255,
-    g: parseInt(h.slice(2, 4), 16) / 255,
-    b: parseInt(h.slice(4, 6), 16) / 255,
-  };
-}
-function bindPrimColor(node, path, fallbackHex, target = 'fills') {
-  const variable = getPrimColorVar(path);
-  const paint = { type: 'SOLID', color: hexToRgb(fallbackHex) };
-  if (variable) {
-    try { paint.boundVariables = { color: figma.variables.createVariableAlias(variable) }; } catch (_) {}
-  }
-  node[target] = [paint];
+// ═══════════════════════════════════════════════════════════════════════════
+// ↑↑↑  END _shared-token-helpers.figma.js insertion point  ↑↑↑
+// ═══════════════════════════════════════════════════════════════════════════
+
+if (typeof bindPrimColor !== 'function') {
+  throw new Error(
+    '[05b-documentation-headers] _shared-token-helpers.figma.js was not inlined. ' +
+    'Read skills/new-project/phases/_shared-token-helpers.figma.js and paste its contents ' +
+    'between the ↓↓↓ / ↑↑↑ markers above.'
+  );
 }
 
 // ── Phase A: master _Header component on Documentation components ──

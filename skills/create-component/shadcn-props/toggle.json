@@ -1,0 +1,55 @@
+{
+  "pageName": "↳ Toggle",
+  "labelKey": "variant",
+  "layout": "chip",
+  "docsUrl": "https://ui.shadcn.com/docs/components/toggle",
+  "summary": "Two-state button. Pressed state persists until clicked again.",
+  "iconSlots": {
+    "leading": true,
+    "trailing": false,
+    "size": 24
+  },
+  "componentProps": {
+    "label": true,
+    "leadingIcon": true,
+    "trailingIcon": false
+  },
+  "properties": [
+    [
+      "variant",
+      "enum",
+      "\"default\"",
+      "no",
+      "Visual style (default outline fill)."
+    ],
+    [
+      "size",
+      "enum",
+      "\"default\"",
+      "no",
+      "Height + padding preset."
+    ],
+    [
+      "pressed",
+      "boolean",
+      "false",
+      "no",
+      "Controlled pressed state."
+    ],
+    [
+      "disabled",
+      "boolean",
+      "false",
+      "no",
+      "Disables interaction."
+    ],
+    [
+      "className",
+      "string",
+      "—",
+      "no",
+      "Tailwind class escape hatch."
+    ]
+  ],
+  "category": "Form & Input"
+}
