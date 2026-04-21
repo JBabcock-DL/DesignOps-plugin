@@ -371,13 +371,16 @@ async function makeShadowPreviewCell(
 colWidth, tier, useDark,
 effectsCollectionId, effectsLightModeId, effectsDarkModeId,
 themeCollectionId, themeLightModeId, themeDarkModeId,
-bgDefaultVar,
+cardBgVar, cellTintVar,
 ) {
 const cell = makeBodyCell(colWidth, 'HORIZONTAL');
 cell.counterAxisAlignItems = 'CENTER';
-cell.paddingLeft = 4;
-cell.paddingRight = 4;
+cell.paddingLeft = 0;
+cell.paddingRight = 0;
+cell.paddingTop = 12;
+cell.paddingBottom = 12;
 cell.fills = [];
+if (cellTintVar) bindPaintToVar(cell, cellTintVar);
 const card = figma.createFrame();
 card.name = `shadow-preview/${useDark ? 'dark' : 'light'}`;
 card.layoutMode = 'HORIZONTAL';
@@ -386,7 +389,7 @@ card.counterAxisSizingMode = 'FIXED';
 card.resize(88, 88);
 card.cornerRadius = 8;
 card.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 1 }];
-if (bgDefaultVar) bindPaintToVar(card, bgDefaultVar);
+if (cardBgVar) bindPaintToVar(card, cardBgVar);
 const styles = await figma.getLocalEffectStylesAsync();
 const es = styles.find(s => s.name === `Effect/shadow-${tier}`);
 if (es) card.effectStyleId = es.id;
@@ -412,13 +415,14 @@ themeCollectionId, themeLightModeId, themeDarkModeId,
 } = deps;
 const tier = rowData.tier || 'sm';
 const bgDefaultVar = variables['color/background/default'];
+const cellTintVar = variables['color/background/container-highest'] || variables['color/background/variant'];
 for (const col of columns) {
 if (col.id === 'LIGHT' || col.id === 'DARK') {
 const cell = await makeShadowPreviewCell(
 col.width, tier, col.id === 'DARK',
 effectsCollectionId, effectsLightModeId, effectsDarkModeId,
 themeCollectionId, themeLightModeId, themeDarkModeId,
-bgDefaultVar,
+bgDefaultVar, cellTintVar,
 );
 row.appendChild(cell);
 continue;

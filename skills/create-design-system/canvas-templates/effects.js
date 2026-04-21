@@ -109,17 +109,25 @@ async function build(ctx) {
 // col.width (§0.1.H). Card background binds to `color/background/default` Theme variable and
 // applies Theme + Effects mode overrides so the card reads white/black across Light/Dark and
 // the drop shadow follows shadow/color + shadow/{tier}/blur Effects modes (§0.9 shadow pair).
+//
+// Wrapper cell is tinted with `color/background/container` (a subtle gray that doesn't override
+// Theme mode on the cell itself — the cell inherits the page's Light mode so the tint stays
+// neutral for BOTH columns). This is the only reason the white LIGHT card is visible against
+// the otherwise-white table body: without the tint the light card disappears into bg/default.
 async function makeShadowPreviewCell(
   colWidth, tier, useDark,
   effectsCollectionId, effectsLightModeId, effectsDarkModeId,
   themeCollectionId, themeLightModeId, themeDarkModeId,
-  bgDefaultVar,
+  cardBgVar, cellTintVar,
 ) {
   const cell = makeBodyCell(colWidth, 'HORIZONTAL');
   cell.counterAxisAlignItems = 'CENTER';
-  cell.paddingLeft = 4;
-  cell.paddingRight = 4;
+  cell.paddingLeft = 0;
+  cell.paddingRight = 0;
+  cell.paddingTop = 12;
+  cell.paddingBottom = 12;
   cell.fills = [];
+  if (cellTintVar) bindPaintToVar(cell, cellTintVar);
 
   const card = figma.createFrame();
   card.name = `shadow-preview/${useDark ? 'dark' : 'light'}`;
@@ -129,7 +137,7 @@ async function makeShadowPreviewCell(
   card.resize(88, 88);
   card.cornerRadius = 8;
   card.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 1 }];
-  if (bgDefaultVar) bindPaintToVar(card, bgDefaultVar);
+  if (cardBgVar) bindPaintToVar(card, cardBgVar);
 
   const styles = await figma.getLocalEffectStylesAsync();
   const es = styles.find(s => s.name === `Effect/shadow-${tier}`);
@@ -159,6 +167,11 @@ async function buildShadowTierRow(row, rowData, columns, deps) {
   } = deps;
   const tier = rowData.tier || 'sm';
   const bgDefaultVar = variables['color/background/default'];
+  // Tint the preview cell with a subtle gray so the white LIGHT card doesn't disappear
+  // into the table body (which is also `color/background/default` = white in Light mode).
+  // We intentionally do NOT override Theme mode on the wrapper — so the tint stays neutral
+  // gray for both LIGHT and DARK columns; only the inner card flips Theme + Effects modes.
+  const cellTintVar = variables['color/background/container-highest'] || variables['color/background/variant'];
 
   for (const col of columns) {
     if (col.id === 'LIGHT' || col.id === 'DARK') {
@@ -166,7 +179,7 @@ async function buildShadowTierRow(row, rowData, columns, deps) {
         col.width, tier, col.id === 'DARK',
         effectsCollectionId, effectsLightModeId, effectsDarkModeId,
         themeCollectionId, themeLightModeId, themeDarkModeId,
-        bgDefaultVar,
+        bgDefaultVar, cellTintVar,
       );
       row.appendChild(cell);
       continue;
