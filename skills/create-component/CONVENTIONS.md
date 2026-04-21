@@ -255,6 +255,59 @@ The `/create-component` script in `SKILL.md` is split into two halves: a per-com
 3. Adding a CONFIG reference block in `SKILL.md §0` (Mode B synthesis template).
 4. Updating every matching entry in `shadcn-props.json`.
 
+### 3.1.2 — Figma auto-layout enum invariants (do not violate)
+
+Figma throws a hard validation error and aborts the entire `use_figma` draw when an auto-layout enum receives a disallowed value. The most common regression is putting `'STRETCH'` on the wrong property — it's valid on `layoutAlign` (a **child-side** property) but never on `counterAxisAlignItems` or `primaryAxisAlignItems` (both **parent-side**).
+
+| Property (on an auto-layout frame) | Allowed values | Common bug |
+|---|---|---|
+| `layoutMode` | `'NONE'` \| `'HORIZONTAL'` \| `'VERTICAL'` | — |
+| `primaryAxisSizingMode` | `'FIXED'` \| `'AUTO'` | — |
+| `counterAxisSizingMode` | `'FIXED'` \| `'AUTO'` | — |
+| `primaryAxisAlignItems` | `'MIN'` \| `'MAX'` \| `'CENTER'` \| `'SPACE_BETWEEN'` | Setting `'STRETCH'` (invalid). |
+| `counterAxisAlignItems` | `'MIN'` \| `'MAX'` \| `'CENTER'` \| `'BASELINE'` | Setting `'STRETCH'` (invalid) — agents reach for this when they want children to fill the counter axis. |
+| `layoutAlign` (on the **child**) | `'INHERIT'` \| `'STRETCH'` \| `'MIN'` \| `'CENTER'` \| `'MAX'` | — `'STRETCH'` IS valid here. |
+| `layoutSizingHorizontal` / `layoutSizingVertical` (on the **child**) | `'HUG'` \| `'FILL'` \| `'FIXED'` | — |
+
+**To stretch a child across the parent counter-axis, do this on the CHILD after `appendChild`:**
+
+```js
+parent.appendChild(child);
+child.layoutAlign = 'STRETCH';           // or
+child.layoutSizingHorizontal = 'FILL';   // (on a HORIZONTAL parent: stretches vertically; swap property on VERTICAL parent)
+```
+
+**Never do this on the parent:**
+
+```js
+parent.counterAxisAlignItems = 'STRETCH'; // ❌ throws "Invalid enum value" and aborts the draw
+parent.primaryAxisAlignItems = 'STRETCH'; // ❌ same
+```
+
+Every archetype builder in `SKILL.md §6.0` already follows this contract — they set `counterAxisAlignItems` to `'MIN'` / `'CENTER'` on the parent and `layoutAlign = 'STRETCH'` on stretched children. If you're editing or porting a builder and see an agent-authored variant with `'STRETCH'` on either axis-align property, rewrite it per the rules above before running.
+
+### 3.1.3 — Archetype builders must not touch the doc pipeline
+
+The archetype builders in `SKILL.md §6.2a` (`buildSurfaceStackVariant`, `buildFieldVariant`, `buildRowItemVariant`, `buildTinyVariant`, `buildContainerVariant`, `buildControlVariant`, plus the classic `buildVariant` chip path) produce **component masters only**. They return `{ component, slots, propKeys }` and nothing else.
+
+The surrounding doc frame — title, summary, Properties table, ComponentSet tile, Variants × States matrix, Do / Don't cards — is rendered by three shared functions in `SKILL.md §§6.6 – 6.8`:
+
+- `buildPropertiesTable(CONFIG.properties)` — §6.6, full 1640px table with **uppercase** headers (`PROPERTY`, `TYPE`, `DEFAULT`, `REQUIRED`, `DESCRIPTION`) and a `color/background/variant` header fill.
+- `buildMatrix()` — §6.7, a single Variants × States grid that implicitly covers every size (size is the inner group axis).
+- `buildUsageNotes()` — §6.8, the Do / Don't card row.
+
+These three helpers are **archetype-agnostic**. They must render the same frame whether the component is a button (chip), card (surface-stack), input (field), menu item (row-item), checkbox (tiny), dialog (container), or switch (control). Button (`v60 Foundations` file, node `388:95`) is the canonical visual reference. If a rendered page does not match Button's doc-frame structure:
+
+| Regression symptom | What it means | Fix |
+|---|---|---|
+| Mixed-case column headers (`Name`, `Type`, `Default`, `Required`, `Description`). | Builder rewrote the header row. | Restore `buildPropertiesTable` from §6.6 verbatim — uppercase is non-negotiable. |
+| Properties table narrower than 1640px. | Builder used a local `width` override. | Remove it. Every doc section spans the full `DOC_FRAME_WIDTH`. |
+| A "Size variants" (or "Size Variants") section appears under ComponentSet. | Builder injected a per-size strip. | Delete it. Size differences are already covered by `buildMatrix` grouping. |
+| Two separate ComponentSet tiles (one per size). | Builder emitted the tile per size. | Remove. §6.6B wraps **one** ComponentSet containing every variant × size. |
+| `docRoot` has more or fewer than 5 children at the end of the run. | Builder appended extra doc frames, or skipped §§6.6 / 6.6B / 6.7 / 6.8. | Builders must never touch `docRoot`. Only the main script adds the five canonical sections. |
+
+The §6.9a self-check in `SKILL.md` now throws on each of these fingerprints — treat a failure there as evidence that an archetype builder was forking the doc pipeline, not as a bug in the self-check itself.
+
 ### `style` entry shape
 
 ```js

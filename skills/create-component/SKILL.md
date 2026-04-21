@@ -1673,6 +1673,36 @@ function buildVariant(name, fillVar, fallbackFill, {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ⚠️  FIGMA AUTO-LAYOUT ENUM GUARDRAIL — READ BEFORE EDITING ANY BUILDER
+// ═══════════════════════════════════════════════════════════════════════════
+// Figma rejects the entire script if any auto-layout enum is wrong. These
+// are the ONLY valid values — do not paste `'STRETCH'` into anything except
+// `layoutAlign`. If you see an agent-authored or runtime-inlined variant of
+// these builders setting `counterAxisAlignItems = 'STRETCH'`, FIX IT TO
+// `'MIN'` and rely on child-side stretching instead.
+//
+//   frame.layoutMode               'NONE' | 'HORIZONTAL' | 'VERTICAL'
+//   frame.primaryAxisSizingMode    'FIXED' | 'AUTO'
+//   frame.counterAxisSizingMode    'FIXED' | 'AUTO'
+//   frame.primaryAxisAlignItems    'MIN' | 'MAX' | 'CENTER' | 'SPACE_BETWEEN'
+//   frame.counterAxisAlignItems    'MIN' | 'MAX' | 'CENTER' | 'BASELINE'
+//                                  ⚠️  NO 'STRETCH' — see below for how to stretch children
+//   frame.layoutAlign              'INHERIT' | 'STRETCH' | 'MIN' | 'CENTER' | 'MAX'
+//                                  (parent-axis alignment OF THE CHILD; 'STRETCH' is only valid HERE)
+//   frame.layoutPositioning        'AUTO' | 'ABSOLUTE'
+//   frame.layoutSizingHorizontal   'HUG' | 'FILL' | 'FIXED'
+//   frame.layoutSizingVertical     'HUG' | 'FILL' | 'FIXED'
+//
+// To stretch a child across the parent's counter axis, use EITHER:
+//   (a) `child.layoutAlign = 'STRETCH'` — works when parent is auto-layout
+//       and child was appended to it. This is what every builder below uses.
+//   (b) `child.layoutSizingHorizontal = 'FILL'` (or 'FILL' on vertical) —
+//       same effect, Figma's newer sizing API.
+// NEVER set `parent.counterAxisAlignItems = 'STRETCH'` — Figma throws
+// `Property "counterAxisAlignItems" failed validation` and the whole draw
+// aborts.
+//
+// ═══════════════════════════════════════════════════════════════════════════
 // SHARED DRAW HELPERS (used by every archetype below `buildVariant`)
 // ═══════════════════════════════════════════════════════════════════════════
 // These helpers are deliberately hoisted to top-level (not closed over a
@@ -2863,6 +2893,49 @@ const defaultLabelText = (() => {
 // code (combineAsVariants, matrix renderer, property-definition readout)
 // stays archetype-agnostic.
 //
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚨 ARCHETYPE BUILDER CONTRACT — READ BEFORE WRITING / MODIFYING ANY BUILDER
+// ═══════════════════════════════════════════════════════════════════════════
+// Builders produce ONE THING: a single Figma COMPONENT node (the master for
+// one variant) plus a `slots` / `propKeys` bag for later wiring. That is the
+// ENTIRE scope of a builder. Specifically, every builder MUST:
+//
+//   ✅ Create and return `{ component, slots, propKeys }`.
+//   ✅ Use shared helpers (`makeDashedSlot`, `makeSampleText`,
+//      `makeIconSlotShared`, `wireIconSwapProp`) for placeholders, text,
+//      and icon-slot instances so visual language stays uniform.
+//   ✅ Honor Figma auto-layout enum rules (§ guardrail block below).
+//
+// And MUST NOT:
+//
+//   ❌ Create any `doc/*`, `doc/table/*`, `doc/table-group/*`,
+//      `doc/component/*`, `doc/component-set-group`, `doc/matrix*`,
+//      `doc/usage*`, `_PageContent`, or any other doc-frame node.
+//   ❌ Render a Properties table, a ComponentSet section wrapper, a Variants
+//      × States matrix, Size-variant sub-sections, or Do / Don't cards.
+//   ❌ Emit section headings like "Size variants", "Properties", "Component",
+//      "Variants × States", or "Do / Don't" — those come from §§6.6–6.8.
+//   ❌ Rename doc columns to mixed-case (e.g. `Name / Type / Default / Required
+//      / Description`). The canonical column casing is defined exactly once at
+//      §6.6 (`PROPERTY / TYPE / DEFAULT / REQUIRED / DESCRIPTION`) and is
+//      shared by every archetype — no exceptions.
+//
+// If you catch an agent-authored variant of a builder (especially for
+// `surface-stack`, `field`, `row-item`, or `container`) creating its own
+// doc frames or rewriting the header row of the properties table, REMOVE
+// that code. The correct output of §6.2a is a `variantData[]` array of
+// masters — nothing else. §§6.3–6.9 then build the doc frame around them.
+//
+// REGRESSION FINGERPRINTS — if the rendered page shows ANY of these, a
+// builder forked the doc pipeline and must be reverted:
+//   · Mixed-case table headers ("Name", "Type", …) instead of uppercase.
+//   · A "Size variants" section (not in the canonical §§6.6–6.8).
+//   · Properties table narrower than 1640px.
+//   · Properties header row missing the `color/background/variant` fill.
+//   · Two separate ComponentSet tiles (one per size) instead of the single
+//     wrapped ComponentSet from §6.6B + the full matrix from §6.7.
+// ═══════════════════════════════════════════════════════════════════════════
+//
 //   'chip'          → buildVariant             (Button, Badge, Toggle, Kbd)
 //   'surface-stack' → buildSurfaceStackVariant (Card, Alert, Dialog, Sheet)
 //   'field'         → buildFieldVariant        (Input, Textarea, Select)
@@ -3092,6 +3165,41 @@ function makeFrame(name, o = {}) {
   if (o.radius != null) f.cornerRadius = o.radius;
   return f;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔒 DOC PIPELINE CONTRACT — §§6.6 – 6.8 ARE ARCHETYPE-AGNOSTIC
+// ═══════════════════════════════════════════════════════════════════════════
+// The next three functions — `buildPropertiesTable`, `buildMatrix`, and
+// `buildUsageNotes` — render the STANDARD doc frame that wraps EVERY
+// component in this design system, regardless of its `CONFIG.layout`
+// archetype (`chip`, `surface-stack`, `field`, `row-item`, `tiny`,
+// `container`, `control`). They rely on only two inputs from §§6.2–6.2a:
+//
+//   (1) `compSet`          — the Figma ComponentSet produced by
+//                            `figma.combineAsVariants(...)`
+//   (2) `variantByKey[key]` — a lookup map of variant masters keyed by
+//                            `${variant}` or `${variant}|${size}`.
+//
+// That is the ENTIRE interface. The doc pipeline does NOT care whether a
+// variant is a button, a card, an input, or a dropdown-menu-item. It does
+// NOT peek at children. It does NOT read archetype-specific config.
+//
+//   🚫 DO NOT FORK THIS PIPELINE PER ARCHETYPE.
+//   🚫 DO NOT INLINE A "SIMPLER" TABLE RENDERER IN A BUILDER.
+//   🚫 DO NOT RENAME THE COLUMN HEADERS (they are uppercase, by design —
+//      `PROPERTY`, `TYPE`, `DEFAULT`, `REQUIRED`, `DESCRIPTION`).
+//   🚫 DO NOT INSERT A "Size variants" OR "ComponentSet" SECTION OF YOUR
+//      OWN — §6.6B draws the single canonical ComponentSet tile, and §6.7
+//      draws the matrix that implicitly covers every size.
+//   🚫 DO NOT SHRINK THE TABLE BELOW 1640px — it always spans the full
+//      DOC_FRAME_WIDTH so column proportions stay consistent file-wide.
+//
+// The Button page (see the v60 Foundations file, node 388:95) is the
+// canonical reference output. If an archetype renders differently from
+// Button's doc frame in structure (title → summary → Properties table →
+// ComponentSet → Variants × States → Do / Don't), the pipeline was forked
+// and must be restored to these three helpers.
+// ═══════════════════════════════════════════════════════════════════════════
 
 // --- 6.6  Properties + Types table (CONVENTIONS.md §4) ------------------
 // Cols sum to 1640: PROPERTY 240 · TYPE 380 · DEFAULT 160 · REQUIRED 120 · DESCRIPTION 740
@@ -3433,8 +3541,43 @@ docRoot.appendChild(buildUsageNotes());
 if (docRoot.children.length < 5) {
   throw new Error(`Matrix draw incomplete: docRoot has ${docRoot.children.length} children, expected 5 (header, properties, component-set, matrix, usage).`);
 }
+if (docRoot.children.length > 5) {
+  // A builder forked the doc pipeline and added extra sections (e.g. a
+  // bespoke "Size variants" strip). Only §§6.4 / 6.6 / 6.6B / 6.7 / 6.8
+  // are allowed to append direct children to docRoot.
+  const extraNames = docRoot.children.slice(5).map(n => n.name).join(', ');
+  throw new Error(`Doc pipeline was forked: docRoot has ${docRoot.children.length} children (expected exactly 5). Extra frames: ${extraNames}. Remove bespoke doc rendering from your archetype builder — §§6.6–6.8 are archetype-agnostic.`);
+}
 if (pageContent.height < 500) {
   throw new Error(`_PageContent collapsed to height ${pageContent.height}. Likely a text node is missing textAutoResize = 'HEIGHT'.`);
+}
+
+// --- 6.9a  Doc-pipeline integrity checks -------------------------------
+// Detect the Card-regression signature: mixed-case table headers,
+// narrowed table, or a rogue "Size variants" section. These all indicate
+// a builder forked the canonical doc pipeline defined in §§6.6–6.8.
+{
+  const propsTable = docRoot.findOne(n => n.name === `doc/table/${CONFIG.component}/properties`);
+  if (!propsTable) {
+    throw new Error(`Properties table not found. §6.6 (buildPropertiesTable) did not run — do not replace it with a bespoke renderer.`);
+  }
+  if (Math.round(propsTable.width) !== 1640) {
+    throw new Error(`Properties table is ${Math.round(propsTable.width)}px wide (expected 1640). Someone shrank the table — restore buildPropertiesTable from §6.6 verbatim.`);
+  }
+  const propsHeader = propsTable.children[0];
+  const firstHeaderText = propsHeader?.findOne(n => n.type === 'TEXT');
+  if (!firstHeaderText || firstHeaderText.characters !== 'PROPERTY') {
+    throw new Error(`Properties table header is '${firstHeaderText?.characters ?? '(none)'}' (expected 'PROPERTY'). Canonical casing is UPPERCASE — do not rename columns to 'Name'/'Type'/etc.`);
+  }
+  // Scan direct docRoot children for off-spec headings.
+  const forbiddenHeadings = ['Size variants', 'Size Variants'];
+  for (const child of docRoot.children) {
+    const heading = child.findOne?.(n => n.type === 'TEXT');
+    const text = heading?.characters ?? '';
+    if (forbiddenHeadings.includes(text)) {
+      throw new Error(`Found forbidden section heading '${text}' inside docRoot. The canonical doc frame has exactly five sections (header, Properties, Component, Variants × States, Do / Don't). Size-level differences are covered by the matrix in §6.7 — do not add a separate "Size variants" strip.`);
+    }
+  }
 }
 // Sanity-check that the ComponentSet ended up inside the doc frame and not
 // orphaned on the page — prior versions of this script parked it at y=-2000.
