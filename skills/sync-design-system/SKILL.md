@@ -356,16 +356,30 @@ If any legacy collections (`Web`, `Android/M3`, `iOS/HIG` from pre-refactor runs
 
 ### 5.figma — Page picker (short-circuit decision)
 
-Call **AskUserQuestion** once to decide which style-guide pages to redraw. This is the only decision moment in the Figma-only scope.
+Call **AskUserQuestion** **once**, with **`allow_multiple: true`**, listing all seven style-guide pages as options. Do **not** split this into a mode picker ("all/select/cancel") followed by a per-page selector — agents flatten that into a single-select UI and drop options. One question, one multi-select.
 
-> "Refresh the Figma style-guide docs to match the current variables. Which pages should I redraw?
-> - **all** — ↳ Primitives, ↳ Theme, ↳ Layout, ↳ Text Styles, ↳ Effects, ↳ Token Overview, and the Thumbnail Cover (7 pages)
-> - **select** — Pick a subset (I'll ask per page)
-> - **cancel** — Do not redraw any pages; skip to the continuation prompt"
+Prompt body:
 
-On **select**, immediately follow up with a multi-select **AskUserQuestion** listing the seven page names as individual yes/no sub-questions (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`, `↳ Token Overview`, `Thumbnail Cover`). Collect the set.
+> "Refresh the Figma style-guide docs to reflect the current variables. Select every page you want redrawn — you can pick any combination, or Skip to redraw nothing."
 
-On **cancel**, record an empty affected-page set and continue to Step 11 (with zero redraw rows) and Step 11.5 — do **not** ask the continuation prompt twice.
+Options (all seven, in this order):
+
+1. `↳ Primitives`
+2. `↳ Theme`
+3. `↳ Layout`
+4. `↳ Text Styles`
+5. `↳ Effects`
+6. `↳ Token Overview`
+7. `Thumbnail Cover`
+
+All seven options **must** be present in the tool call even when you believe only a subset is affected — the user is the source of truth for scope, not the agent's inference.
+
+**Result handling:**
+
+- Any non-empty selection → record as the affected-page set; advance to Step 6.figma.
+- Empty selection or user-skipped the question → record an empty set; skip Step 6.figma entirely and advance directly to Step 11 (zero redraw rows) and Step 11.5. Do **not** re-prompt.
+
+If you want to hint at a recommended subset (e.g. "given the primitive / theme edits observed in 2A.figma, `↳ Primitives` and `↳ Theme` are the likely minimum"), put that in a one-line comment **above** the prompt body — never as a separate question. The picker itself stays flat.
 
 ### 6.figma — Canvas refresh only
 
