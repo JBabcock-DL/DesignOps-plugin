@@ -24,7 +24,7 @@ This skill audits every design-system surface in a single pass: tokens (**Axis A
 
 > **First time in a session?** Post a liveness line, then `Read` these **only** (not the full old monolith): [`../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) (geometry + pages + body variants + naming), [`../create-design-system/conventions/02-codesyntax.md`](../create-design-system/conventions/02-codesyntax.md) (iOS dot-path / WEB / ANDROID rules), and **§0** in [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md) — including **§0.9** before any **6.Canvas.9d** work so **↳ Token Overview** platform-mapping does not regain stacked shadows. Index: [`../create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md). Axis A's canvas redraws (Steps 6 / 9b / 9d / 9e below) **must** match those conventions.
 
-> **Tokens-only projects** — if only Axis A is enabled at preflight, the experience is byte-identical to prior versions of this skill: one diff, one direction prompt, one push + canvas chain. Axes B and C turn on only when their source files are present (see Step 1). On a multi-axis project, the user can reach the same lightweight shape by picking **`figma-only`** at the Step 0 scope prompt.
+> **Tokens-only projects** — on a project with a token file but no `components.json`, preflight auto-enables only Axis A when scope is `full` or `code-to-figma`. The experience is then byte-identical to prior versions of this skill: one diff, one direction prompt, one push + canvas chain. Scope **`figma-only`** is a different beast — it deliberately ignores `tokens.css` / `tokens.json` entirely and only refreshes in-Figma docs from current Figma variables.
 
 ---
 
@@ -41,21 +41,33 @@ Do not dump multiple decision prompts as plain markdown without calling **AskUse
 ## Global flow (one reconcile)
 
 ```
- 0. Scope                  — ONE AskUserQuestion: figma-only | full | code-to-figma
- 1. Preflight              — detect enabledAxes ∈ {A, B, C}, clipped by scope
- 2. Read                   — enabled axes only (parallel where possible)
- 3. Diff                   — per axis, every item tagged with a stable key
- 4. Present                — all diffs in one block
- 5. Decide (bundled)       — ONE AskUserQuestion, N sub-questions (collapsed in scope=code-to-figma)
- 6. Execute Axis A         — tokens + canvas chain (9b/9d/9e)
- 7. Validate Axis B        — reclassify B's plan; pause + re-prompt only on ALTERED or NEW
- 8. Execute Axis B         — redraw / PR / review as planned
- 9. Validate Axis C        — reclassify C's plan; pause + re-prompt only on ALTERED or NEW
-10. Execute Axis C         — publish / refresh / review as planned
-11. Unified report         — including scope, upstream-resolved + validation-pause counts
+ 0.    Scope               — ONE AskUserQuestion: figma-only | full | code-to-figma
+
+ ─── scope = figma-only (short-circuit) ───────────────────────────
+  1.5  Figma-only preflight — resolve Figma file key only (no code probes)
+  2A.figma  Read Figma vars — GET /v1/files/:key/variables/local
+  4.figma   Summary         — variable counts per collection
+  5.figma   Page picker     — all | select | cancel
+  6.figma   Canvas refresh  — 9b/9d/9e on selected pages
+  11.figma  Report          — scope, file key, pages refreshed
+  11.5      Continuation    — continue-full | continue-code-to-figma | done
+            (if continue-*, set plan.scope and jump to Step 1 below)
+
+ ─── scope = full | code-to-figma ─────────────────────────────────
+  1. Preflight              — detect enabledAxes ∈ {A, B, C}
+  2. Read                   — enabled axes only (parallel where possible)
+  3. Diff                   — per axis, every item tagged with a stable key
+  4. Present                — all diffs in one block
+  5. Decide (bundled)       — ONE AskUserQuestion, N sub-questions (collapsed in scope=code-to-figma)
+  6. Execute Axis A         — tokens + canvas chain (9b/9d/9e)
+  7. Validate Axis B        — reclassify B's plan; pause + re-prompt only on ALTERED or NEW
+  8. Execute Axis B         — redraw / PR / review as planned
+  9. Validate Axis C        — reclassify C's plan; pause + re-prompt only on ALTERED or NEW
+ 10. Execute Axis C         — publish / refresh / review as planned
+ 11. Unified report         — scope, upstream-resolved + validation-pause counts
 ```
 
-In a clean run, the user answers **two** `AskUserQuestion` calls: scope (Step 0) and direction (Step 5). Validation pauses (Steps 7, 9) are exception-driven and fire only when an upstream write has introduced or altered drift items the user never decided on.
+In a clean `figma-only` run the user answers **two** `AskUserQuestion` calls (scope at Step 0, page picker at Step 5.figma) plus one continuation prompt at Step 11.5. In a clean `full` / `code-to-figma` run the user answers **two** (scope at Step 0, direction at Step 5). Validation pauses (Steps 7, 9) are exception-driven and fire only when an upstream write has introduced or altered drift items the user never decided on.
 
 ### Plan state object
 
@@ -83,21 +95,21 @@ Before any file probes, reads, or diffs, call **AskUserQuestion** once to pin th
 **Prompt**
 
 > "What do you want this sync to cover?
-> - **figma-only** — Reconcile Figma variables only and refresh the style-guide docs (↳ Primitives / Theme / Layout / Text Styles / Effects / Token Overview / Thumbnail). No component pairing, no Code Connect, no code-side PRs.
-> - **full** — Full reconcile across Variables, Components, and Code Connect. Direction is chosen per axis at Step 5. May open a drift-report PR (Axis B F-wins) and/or publish mappings (Axis C C-wins).
+> - **figma-only** — Refresh the Figma style-guide docs (↳ Primitives / Theme / Layout / Text Styles / Effects / Token Overview / Thumbnail) so they reflect the current Figma variables. Stays entirely inside Figma. **No** `tokens.css` / `tokens.json` read, **no** component scan, **no** Code Connect, **no** code-side writes. When it finishes, the skill asks whether to continue to a code-side reconcile.
+> - **full** — Full reconcile across Variables (code ↔ Figma), Components, and Code Connect. Direction is chosen per axis at Step 5. May open a drift-report PR (Axis B F-wins) and/or publish mappings (Axis C C-wins).
 > - **code-to-figma** — One-way push of code as source of truth: tokens push up to Figma, drifted components get redrawn via `/create-component`, mappings get republished via `/code-connect`. Skips the per-axis direction prompt and asks a single confirmation instead."
 
 Record the answer as `plan.scope`.
 
 ### How scope shapes the rest of the run
 
-| `plan.scope` | Axes active (intersected with preflight) | Step 5 prompt shape | Notes |
-|---|---|---|---|
-| **figma-only** | `A` only (B and C are forced off even if source files exist) | Per-axis F / C / R / S for Axis A only — identical to a pre-scope tokens-only run | Canvas chain (6.Canvas.9b/9d/9e) runs normally if Axis A writes to Figma |
-| **full** | All axes preflight detects (today's default) | One sub-question per drifted axis, four options each (F / C / R / S) | Unchanged from prior behavior |
-| **code-to-figma** | All axes preflight detects | Single confirmation sub-question per drifted axis (**Apply C** / **Review per item** / **Skip this axis**). Direction is pre-locked to **C** for every axis with drift | Axis A → push + canvas redraws. Axis B → `/create-component --components=<list>`. Axis C → `/code-connect` publish. No drift-report PR, no code-side file writes. |
+| `plan.scope` | What runs | Interaction |
+|---|---|---|
+| **figma-only** | **Short-circuit path — Figma only.** Resolve the Figma file key, read `GET /v1/files/:key/variables/local`, present a variable summary, ask which style-guide doc pages to refresh, run the canvas chain (6.Canvas.9b/9d/9e) on the chosen pages. **No** tokens file read, no Axis A / B / C diff, no direction prompt. Steps 2A token parse, 3A–3C diff, 5 bundled direction, 7/8/9/10 axis execution are all **skipped**. After the canvas chain completes, Step 11.5 asks whether to continue into a code-side reconcile (`full` or `code-to-figma`). | Step 0 (scope) → Step 1.5 (figma file key only) → Step 2A.figma (read vars) → Step 4.figma (variable summary) → Step 5.figma (page picker) → Step 6.figma (canvas refresh) → Step 11 (report) → Step 11.5 (continuation prompt) |
+| **full** | All axes preflight detects (today's default). | One sub-question per drifted axis at Step 5, four options each (F / C / R / S). |
+| **code-to-figma** | All axes preflight detects. | Single confirmation sub-question per drifted axis (**Apply C** / **Review per item** / **Skip this axis**). Direction is pre-locked to **C** for every axis with drift. Axis A → push + canvas redraws. Axis B → `/create-component --components=<list>`. Axis C → `/code-connect` publish. No drift-report PR, no code-side file writes. |
 
-If the user later realizes the scope was wrong (e.g. picked `figma-only` but also wants a code PR), they re-run `/sync-design-system` with the intended scope — do **not** let the skill up-scope itself mid-run.
+If the user later realizes the scope was wrong (e.g. picked `full` but wants to start with `figma-only`), they re-run `/sync-design-system` with the intended scope. The only automatic up-scope path is Step 11.5 after a successful `figma-only` run.
 
 ---
 
@@ -113,13 +125,13 @@ Probe the file system silently — no blocking prompts, no warnings unless parti
 
 **Clip by `plan.scope`.** After the raw detect:
 
-- `plan.scope === 'figma-only'` → force `enabledAxes = ['A']`. Do **not** probe for `components.json`, do **not** glob `.figma.tsx`. If Axis A itself is not detected, fall through to the "no axes active" branch below. Log: `Scope: figma-only — Axes B and C skipped by scope.`
-- `plan.scope === 'full'` or `'code-to-figma'` → keep the raw detection result.
+- `plan.scope === 'figma-only'` → **jump to the Figma-only short-circuit** (Step 1.5 below). Do **not** run the detection table above. No `tokens.css` / `tokens.json` lookup, no `components.json` probe, no `.figma.tsx` glob. The only prerequisite is a Figma file key.
+- `plan.scope === 'full'` or `'code-to-figma'` → run the detection table above and keep the raw result.
 
 Report the detected set once:
 
 ```
-Scope: <figma-only | full | code-to-figma>
+Scope: <full | code-to-figma>
 Enabled axes: A (Variables), B (Components), C (Code Connect)
 ```
 
@@ -128,7 +140,18 @@ If an axis looks like it should be enabled but a prerequisite is missing, emit *
 - `components.json` present but no `.tsx` under `aliases.ui` → `Axis B skipped — aliases.ui path is empty.`
 - Axis B enabled but no `.figma.tsx` → `Axis C skipped — no Code Connect mapping files found.`
 
-If **no** axes are active after scope clipping (e.g. scope = `figma-only` and no token file found), stop and tell the user what to fix before re-running.
+If **no** axes are active after detection (e.g. scope = `full` but no token file, no components, no mappings), stop and tell the user what to fix before re-running.
+
+---
+
+## Step 1.5 — Figma-only preflight (scope = `figma-only` only)
+
+Skip Step 1's axis-detection table entirely — it's predicated on code-side sources the Figma-only flow never touches.
+
+1. **Resolve Figma file key.** Check `$ARGUMENTS` first, then `plugin/templates/agent-handoff.md:active_file_key`, then call **AskUserQuestion**: "Paste the Figma file URL or file key for the design system file to refresh." Extract the key from a full URL if one is provided.
+2. Log: `Scope: figma-only — Figma file <key> will be read; no code-side files will be opened.`
+
+Then jump to **Step 2A.figma** (Figma-only variable read). The normal Steps 2A/2B/2C, 3, 4, 5, 7–10 are skipped in this scope.
 
 ---
 
@@ -136,7 +159,7 @@ If **no** axes are active after scope clipping (e.g. scope = `figma-only` and no
 
 Run each enabled axis's read pass. Reads may run in parallel where tooling allows; collect all results before computing diffs.
 
-### 2A — Axis A read (unchanged from prior versions)
+### 2A — Axis A read (full / code-to-figma scopes)
 
 1. **Locate token source file.** Read `plugin/.claude/settings.local.json` for `token_schema_path`; if missing or file not found, call **AskUserQuestion**: "I couldn't find the token file at the path in settings.local.json. Paste the path to your token file (e.g. `src/tokens.json`, `tailwind.config.js`, or `src/styles/tokens.css`)." Repeat until you have a readable file.
 2. **Parse into a flat map.** Produce `{ "collection/token/name": value }` per the **Supported Token File Formats** section below. Token names use forward-slash notation; values are resolved primitives (not aliases).
@@ -152,6 +175,16 @@ Run each enabled axis's read pass. Reads may run in parallel where tooling allow
    Legacy collections (`Web`, `Android/M3`, `iOS/HIG`) from pre-refactor runs are included in the read and flagged as deprecated in the diff.
 
    If the API call fails, report the error (see **Error Guidance**) and stop.
+
+### 2A.figma — Figma-only variable read (scope = `figma-only` only)
+
+This is the **only** read that runs in the Figma-only short-circuit. It's a subset of 2A.
+
+1. **Read Figma variables.** Call `GET /v1/files/:key/variables/local` with the key resolved in Step 1.5. Build the same flat map `{ "collection/token/name": value }` across `Primitives`, `Theme`, `Typography`, `Layout`, `Effects`, with the same mode-aware flattening rules as 2A step 4 (Theme light/dark, Typography 8 modes, Effects light/dark, Primitives + Layout 1 mode). Resolve aliases to final primitive values.
+2. Tally per collection (e.g. `{ primitives: 124, theme: 72, typography: 60, layout: 18, effects: 14 }`) and keep the flat map in memory for the canvas chain in Step 6.figma.
+3. Do **not** read `tokens.css`, `tokens.json`, or `tailwind.config.*`. Do **not** call the extractor. Do **not** probe `components.json` or `.figma.tsx`.
+
+If the API call fails, report the error (see **Error Guidance**) and stop.
 
 ### 2B — Axis B read
 
@@ -299,6 +332,93 @@ In-sync mappings are omitted.
 
 ---
 
+## Figma-only short-circuit (Steps 4.figma / 5.figma / 6.figma / 11.figma)
+
+When `plan.scope === 'figma-only'`, Steps 3 / 4 / 5 / 7 / 8 / 9 / 10 of the normal flow are **skipped**. The skill goes directly from Step 2A.figma to the short-circuit steps below, then to Step 11 and Step 11.5.
+
+### 4.figma — Variable summary (no diff)
+
+Print a compact, non-blocking summary derived from the Step 2A.figma read. There is no code-side to diff against, so this is informational only:
+
+```
+── Figma variable summary ─────────────────────────────────────────
+File: <figma file key>
+  Primitives:   124 variables
+  Theme:         72 variables  (Light + Dark)
+  Typography:    60 variables  (8 Android-curve scale modes)
+  Layout:        18 variables
+  Effects:       14 variables  (Light + Dark)
+  Total:        288 variables
+───────────────────────────────────────────────────────────────────
+```
+
+If any legacy collections (`Web`, `Android/M3`, `iOS/HIG` from pre-refactor runs) are still present, list them as a one-line deprecation note — the Figma-only scope does not rewrite legacy collections; it only refreshes doc pages that render from the current collections.
+
+### 5.figma — Page picker (short-circuit decision)
+
+Call **AskUserQuestion** once to decide which style-guide pages to redraw. This is the only decision moment in the Figma-only scope.
+
+> "Refresh the Figma style-guide docs to match the current variables. Which pages should I redraw?
+> - **all** — ↳ Primitives, ↳ Theme, ↳ Layout, ↳ Text Styles, ↳ Effects, ↳ Token Overview, and the Thumbnail Cover (7 pages)
+> - **select** — Pick a subset (I'll ask per page)
+> - **cancel** — Do not redraw any pages; skip to the continuation prompt"
+
+On **select**, immediately follow up with a multi-select **AskUserQuestion** listing the seven page names as individual yes/no sub-questions (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`, `↳ Token Overview`, `Thumbnail Cover`). Collect the set.
+
+On **cancel**, record an empty affected-page set and continue to Step 11 (with zero redraw rows) and Step 11.5 — do **not** ask the continuation prompt twice.
+
+### 6.figma — Canvas refresh only
+
+Run the canvas chain (6.Canvas.9b / 9d / 9e) **scoped to the user's selection** from Step 5.figma. No Axis A token push happens — the Figma variables are already the source of truth; only the rendered docs are being refreshed.
+
+- For each selected style-guide page (↳ Primitives / Theme / Layout / Text Styles / Effects), run 6.Canvas.9b's matching canvas-bundle-runner subagent Task (slug mapping table in Step 6.Canvas.9b). 15c pages fire as three sequential Tasks in Layout → Text Styles → Effects order when multiple are selected.
+- If `↳ Token Overview` is in the selection, run 6.Canvas.9d.
+- If `Thumbnail Cover` is in the selection, run 6.Canvas.9e.
+- Everything else about the canvas chain (AGENTS.md inline-payload rule, subagent delegation, §0.9 platform-mapping flatness, codeSyntax hygiene) is unchanged — see [`AGENTS.md`](../../AGENTS.md) § *Canvas bundles — subagent delegation*.
+
+Log one checklist row per executed page (same format as 6.Canvas's blocking checklist). Pages not selected are logged as `skipped (not selected)`.
+
+### 11.figma — Report (Figma-only shape)
+
+Skip the Axis A / B / C sub-blocks of Step 11. Emit:
+
+```
+Figma-only sync complete.
+
+  Scope:                       figma-only
+  Figma file:                  <file key>
+  Variables read:              <n>
+  Style-guide pages refreshed: <comma-separated or "—">
+  Canvas checklist:            <per-page done/skipped lines>
+```
+
+Then run **Step 11.5** unconditionally (it runs even when no pages were refreshed — the user may still want to continue to code).
+
+---
+
+## Step 11.5 — Continuation prompt (Figma-only only)
+
+This step runs **only** when `plan.scope === 'figma-only'`. For `full` and `code-to-figma` runs, skip it entirely.
+
+Call **AskUserQuestion** once:
+
+> "Figma-only sync finished. Do you want to continue with a code-side reconcile now?
+> - **continue-full** — Re-enter the skill with `scope = full`. Reads `tokens.css` / `tokens.json` / components / Code Connect, diffs against the current Figma state, and asks per-axis direction at Step 5.
+> - **continue-code-to-figma** — Re-enter the skill with `scope = code-to-figma`. Pushes code as source of truth back into Figma with a single confirmation per axis.
+> - **done** — Stop here. Re-run `/sync-design-system` later if you want a code reconcile."
+
+Record the answer:
+
+- **continue-full** → set `plan.scope = 'full'` and jump to **Step 1** (the normal preflight axis-detection table). The Figma variables already in memory from 2A.figma are re-used — do not re-fetch unless the canvas chain may have indirectly modified variables, which it should not.
+- **continue-code-to-figma** → set `plan.scope = 'code-to-figma'` and jump to **Step 1**.
+- **done** → finish the skill. Print: `Figma-only sync closed without code reconcile.`
+
+The recursive entry at Step 1 runs the full axis-detect, read (Step 2A/2B/2C), diff (Step 3), present (Step 4), bundled decision (Step 5), and executes the rest of the flow normally — this time with the chosen scope. Do **not** re-prompt Step 0; `plan.scope` is already pinned. When the second pass reaches Step 11, its report block supersedes the Figma-only summary printed earlier.
+
+If the user picks a continuation path and the code-side preflight finds zero axes active (e.g. no `tokens.css` and no `components.json`), stop with a clear message and do not loop back to Step 11.5.
+
+---
+
 ## Step 4 — Present all diffs
 
 Print **one** markdown block with three sub-sections, in order. This happens before any `AskUserQuestion` call — the user sees the complete reconcile picture before deciding anything.
@@ -367,9 +487,9 @@ If every enabled axis is in sync (diff is empty everywhere), stop:
 
 ## Step 5 — Bundled decision
 
-**This is the only mandatory direction decision in a clean run.** Shape depends on `plan.scope`.
+**This is the only mandatory direction decision in a clean run.** Shape depends on `plan.scope`. Scope `figma-only` does not reach this step — it runs the short-circuit (see **Figma-only short-circuit** section below).
 
-### 5.a — `plan.scope === 'full'` or `'figma-only'`
+### 5.a — `plan.scope === 'full'`
 
 Call **AskUserQuestion** with **one sub-question per axis that has drift**. Axes in sync are omitted. Each sub-question offers the same four options:
 
@@ -426,7 +546,7 @@ Record each decision at the item level. At the end of Step 5, `plan.{A,B,C}.item
 
 ## Step 6 — Execute Axis A
 
-> **Trigger rule.** This step always runs (Axis A is always Step 6). Its internal branches depend on `plan.A.direction` and on whether the resolved plan writes ≥ 1 token to Figma.
+> **Trigger rule.** Runs for scope `full` and `code-to-figma` only. Its internal branches depend on `plan.A.direction` and on whether the resolved plan writes ≥ 1 token to Figma. Scope `figma-only` uses **Step 6.figma** (canvas refresh only, no token push) instead.
 
 ### 6.F — Axis A, direction F (Figma wins)
 
