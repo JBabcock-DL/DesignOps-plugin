@@ -23,16 +23,18 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **MCP payloads:** Each `use_figma` invocation must pass its Plugin API script **inline** in the tool’s `code` field (built from this SKILL + committed `templates/*.figma.js` where referenced). Do **not** add throwaway `.mcp-*` / `*-payload.json` / scratch copies under the repo to stage that script — see [`AGENTS.md`](../../AGENTS.md).
 
-**Seven steps. Do not skip any.**
+**Nine steps. Do not skip any.**
 
 | # | Step | Tool | Required inputs | Expected outcome |
 |---|------|------|-----------------|------------------|
 | 1 | Resolve component list | `AskUserQuestion` (if missing) | argument-hint list or designer reply | `components: string[]` of kebab-case shadcn names (`button`, `input`, …) |
 | 2 | Locate `tokens.css` | `Read` / `Glob` | repo path | `TOKEN_CSS_PATH: string \| null` — absolute path or `null` if designer skipped |
 | 3 | Initialize shadcn + wire tokens | `Shell` + `AskUserQuestion` | `components.json` presence check | `components.json` exists, `tokens.css` imported at top of `globals.css`, variable-declaration blocks removed |
-| 4 | Install each component | `Shell` | `npx shadcn@latest add {component}` | Files written under `components/ui/`, per-component status `installed \| already_exists \| failed` |
+| 3b | Icon-pack bootstrap (first-time-only) | `Read` (probe) → `AskUserQuestion` (only if missing) | `designops.config.json` presence check | `ICON_PACK: { npm, import, figmaIconLibraryKey, defaultIconKey } \| null` — persisted to `designops.config.json`; skipped silently on subsequent runs |
+| 4 | Install each component | `Shell` | `npx shadcn@latest add {component}` + `npm install {ICON_PACK.npm}` (when set, first run only) | Files written under `components/ui/`, per-component status `installed \| already_exists \| failed`; icon-pack dependency present in `package.json` |
+| 4.4 | Icon-pack import rewrite (global) | `Read` / `StrReplace` (AST preferred) | `ICON_PACK.choice` + installed source files | `from 'lucide-react'` imports + JSX identifiers rewritten to match Step 3b choice (material-symbols mapped, custom specifier-swapped, lucide-react / none = no-op); pinned comment added for idempotence |
 | 5 | Resolve Figma file key | handoff lookup → `AskUserQuestion` fallback | `templates/agent-handoff.md` frontmatter | `fileKey: string` |
-| 6 | Draw component → Figma | `use_figma` (one call per component) | `fileKey`, `CONFIG` block per §6 | Return payload with `{ compSetId, compSetVariants, compSetPropertyDefinitions, firstVariantChildren, iconVariantChildren, propErrorsCount, … }` |
+| 6 | Draw component → Figma | `use_figma` (one call per component) | `fileKey`, `CONFIG` block per §6, optional `ICON_PACK.figmaIconLibraryKey` + `ICON_PACK.defaultIconKey` | Return payload with `{ compSetId, compSetVariants, compSetPropertyDefinitions, firstVariantChildren, iconVariantChildren, propErrorsCount, iconSlotMode: "placeholder" \| "instance-swap", … }` |
 | 7 | Self-check the return payload | agent-side assertions per §9 | step 6's return JSON | Zero drift; if any assertion fails, stop and report — do not mark the component done |
 
 ### §0.1 — Decision tree for edge cases
@@ -40,6 +42,12 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 - **No components provided** → step 1 prompts with the full supported list (see the routing table in §6).
 - **`tokens.css` not found** → step 2 prompts; reply `skip` sets `TOKEN_CSS_PATH = null` and canvas uses hex fallbacks.
 - **shadcn not initialized** → step 3 prompts to run `npx shadcn@latest init`; if declined, stop the skill.
+- **`designops.config.json` already has an `iconPack` block** → step 3b is silent; `ICON_PACK` is read from disk and reused. Designer can edit the file by hand or pass `--re-ask-icon-pack` to force re-prompt.
+- **`designops.config.json` missing or has no `iconPack` block** → step 3b prompts once; choice is written back so future runs skip this step.
+- **Designer chose `none` for icon pack** → step 3b writes `{ "iconPack": { "choice": "none" } }` and subsequent runs treat it as done. Figma keeps empty 24×24 placeholder slots; no npm install. Step 4.4 **keeps** lucide-react imports but emits a build-time warning per installed file — shadcn components will fail to resolve icons until designer re-runs `/create-component --re-ask-icon-pack`.
+- **Icon-pack choice ≠ lucide-react / none** → step 4.4 rewrites `from 'lucide-react'` imports + JSX usage sites per the dispatch table (material-symbols mapped, custom specifier-swapped). Unmapped specifiers stay on lucide-react with a warning; pinned comment makes the rewrite idempotent.
+- **Designer re-ran with `--re-ask-icon-pack` and picked a different pack** → step 4.4 detects the mismatch via the pinned comment and prompts before re-rewriting; `keep-current` leaves existing imports alone for this component.
+- **`iconPack.figmaIconLibraryKey` set but `iconPack.defaultIconKey` missing (or vice versa)** → step 6 skips INSTANCE_SWAP wiring and uses empty 24×24 dashed placeholders. Run report flags it so the designer can complete the config.
 - **Component install fails** → log, mark `failed`, **continue** to the next component.
 - **`use_figma` throws** → **stop**, do not retry. Read the error, fix the CONFIG or the template, then resubmit one component at a time.
 
@@ -67,7 +75,9 @@ If any row fails → surface the failure verbatim in the run report and do NOT c
 |-------|---------|
 | Interactive prompts | §1 Interactive input contract |
 | Shadcn init + token wiring | §3 / §3a |
+| Icon-pack bootstrap (first-time-only) | §3b |
 | Install per component | §4 |
+| Icon-pack import rewrite (lucide → chosen pack) | §4.4 |
 | File-key resolution | §5 |
 | The `use_figma` template (CONFIG + draw engine) | §6 |
 | Reporting table | §8 |
@@ -189,6 +199,112 @@ After shadcn is confirmed initialized (whether it was just run or already existe
 }
 ```
 
+### Step 3b — Icon-pack bootstrap (first-time-only)
+
+> **Goal:** Decide **once per project** which icon pack the component library should use, install its npm dependency, and optionally record a published Figma icon library so later draw/sync passes can bind `icon-slot/*` defaults. On subsequent `/create-component` runs the choice is read from disk and this step is silent.
+
+This step runs after `components.json` / `tokens.css` wiring (Step 3a) and before the per-component install loop (Step 4). Output is assigned to `ICON_PACK` and consumed by Step 4 (install) and Step 6 (draw).
+
+#### 3b.a — Probe for an existing choice
+
+1. Look for `designops.config.json` at the project root.
+2. If it exists **and** has a top-level `iconPack` key, parse it and assign to `ICON_PACK`. Skip the prompts below — emit a single line in the run report:
+
+   ```text
+   Using stored icon pack: <iconPack.choice> (npm: <iconPack.npm ?? "—">, figma: <iconPack.figmaIconLibraryKey ?? "—">).
+   Re-run with --re-ask-icon-pack to change.
+   ```
+
+3. If the file is missing, unreadable, or has no `iconPack` key, continue to 3b.b.
+4. If the designer passed `--re-ask-icon-pack` on the slash-command invocation, also continue to 3b.b (overwrites the existing block).
+
+Do **not** run this step's prompts for every component — it's gated by disk state, not by the components list.
+
+#### 3b.b — Ask which icon pack to use
+
+Call **AskUserQuestion** with exactly these four options (one question, single-select):
+
+> "Which icon pack should components in this project use? (This is asked once per project — your choice is saved to `designops.config.json` and reused on every future `/create-component` run.)
+>
+> - **lucide-react** — shadcn's default. Thin-stroke outline set. Installed as `lucide-react`.
+> - **material-symbols** — Google Material 3 icon set. Installed as `@material-symbols/svg-400` (filled + outlined variants).
+> - **custom** — you name the package / source. Follow-up prompt collects a free-form string (npm name, local path, CDN URL — whatever you use).
+> - **none** — skip icon-pack install entirely. Figma keeps empty 24×24 placeholder slots and no npm dependency is added. You can re-run `/create-component --re-ask-icon-pack` later."
+
+Map the reply to an `ICON_PACK` draft:
+
+| Reply | `ICON_PACK.choice` | `ICON_PACK.npm` | `ICON_PACK.import` |
+|---|---|---|---|
+| `lucide-react` | `"lucide-react"` | `"lucide-react"` | `"lucide-react"` |
+| `material-symbols` | `"material-symbols"` | `"@material-symbols/svg-400"` | `"@material-symbols/svg-400"` |
+| `custom` | `"custom"` | _free-form reply from 3b.c_ | _same as `.npm`, unless designer provides a separate import specifier_ |
+| `none` | `"none"` | `null` | `null` |
+
+#### 3b.c — Custom pack follow-up (only when choice = `custom`)
+
+Call **AskUserQuestion** as a free-form text prompt:
+
+> "Paste the npm package, local path, or source identifier for your icon pack. This is opaque — the skill just records it and installs it if it looks like an npm spec (starts with a letter / `@`). Examples: `@tabler/icons-react`, `./src/icons`, `https://cdn.example.com/icons`."
+
+Store the reply verbatim as `ICON_PACK.npm` (and mirror to `ICON_PACK.import`). If the string does **not** look like an npm spec (contains `/` that isn't `@scope/`, contains `://`, or starts with `.`), skip the `npm install` in Step 4 but keep the record — the designer wires it manually.
+
+#### 3b.d — Figma icon library follow-up (only when choice ≠ `none`)
+
+Call **AskUserQuestion** (single-select, yes/no):
+
+> "Do you already have a published Figma icon library — either on an `↳ Icons` page inside this file, or as a separately published team library linked to this file — that you want component `icon-slot/*` default-swap targets to reference? If **no**, slots stay as empty 24×24 dashed placeholders (current behavior) and the designer wires icons manually per instance."
+
+- **no** → set `ICON_PACK.figmaIconLibraryKey = null` and `ICON_PACK.defaultIconKey = null`. Done with 3b.
+- **yes** → call **AskUserQuestion** for the file key / library id:
+
+   > "Paste the Figma file key (or team library id) for the published icon library. Format: the 22-character segment from `figma.com/design/:fileKey/…`, or the full URL — the skill will parse the key. If the library is a component set inside the **current** file, paste this file's key."
+
+   Store as `ICON_PACK.figmaIconLibraryKey`. **Do not** try to validate the key here — Step 6's draw engine will surface a non-fatal warning if the key is unreachable at draw time, and the designer can edit `designops.config.json` by hand.
+
+   Then call **AskUserQuestion** one more time for the default-icon component key:
+
+   > "Paste the component **key** (not node-id) of one icon from that library to use as the default-swap target for every new `icon-slot/*` placeholder. This is the icon that shows up by default when a designer drops a new component on the canvas; any instance can be swapped to a different icon from the same library via the right-panel INSTANCE_SWAP dropdown. A component key is the hash returned by `getComponentByKeyAsync` / shown in the library inspector — not a node-id like `12:34`. If you don't have one handy, reply `skip` and the skill will fall back to empty 24×24 dashed placeholders until you edit `designops.config.json.iconPack.defaultIconKey` by hand."
+
+   Store as `ICON_PACK.defaultIconKey` (or `null` if the designer replied `skip`). INSTANCE_SWAP wiring in Step 6 is gated on **both** `figmaIconLibraryKey` **and** `defaultIconKey` being non-null — if either is missing, slots stay as empty 24×24 dashed placeholders (current behavior).
+
+#### 3b.e — Persist to `designops.config.json`
+
+Write (or merge) the following shape at the project root:
+
+```json
+{
+  "iconPack": {
+    "choice": "lucide-react" | "material-symbols" | "custom" | "none",
+    "npm": "lucide-react" | "@material-symbols/svg-400" | "<free-form>" | null,
+    "import": "lucide-react" | "@material-symbols/svg-400" | "<free-form>" | null,
+    "figmaIconLibraryKey": "<fileKey>" | null,
+    "defaultIconKey": "<componentKey>" | null,
+    "chosenAt": "<ISO-8601 timestamp>"
+  }
+}
+```
+
+Rules:
+- If `designops.config.json` already exists with other top-level keys, preserve them — merge `iconPack` in, don't overwrite the file.
+- Use 2-space indent and a trailing newline (LF).
+- If the project has a `.gitignore` that excludes this filename, emit a one-line warning in the run report and still write the file — the designer decides whether to commit it.
+
+#### 3b.f — Post-choice report line
+
+After persistence, emit one line in the run report before Step 4 starts:
+
+```text
+Icon pack: <ICON_PACK.choice> (npm: <ICON_PACK.npm ?? "—">, figma library: <ICON_PACK.figmaIconLibraryKey ?? "—">, default icon key: <ICON_PACK.defaultIconKey ?? "—">).
+```
+
+When `ICON_PACK.choice !== 'lucide-react'` and `ICON_PACK.choice !== 'none'`, also append:
+
+```text
+Global lucide-react → <ICON_PACK.choice> import rewrite will run at Step 4.4 after each component install.
+```
+
+The rewrite step is mandatory for non-lucide / non-none choices — the designer's Step 3b selection is the project-wide source of truth and shadcn's lucide-react defaults must be normalized to match. See Step 4.4 for the exact rewrite contract and fallback behavior.
+
 ### Step 4 — Install components
 
 For each component in the list:
@@ -199,6 +315,92 @@ For each component in the list:
 3. Track install status per component: `installed`, `already_exists`, or `failed`.
 
 If a component install fails, log the error, mark it `failed`, and continue to the next component — do not abort the entire run.
+
+**Icon-pack install (one-shot, runs once per session before the first component add):**
+
+If Step 3b produced an `ICON_PACK` block where `ICON_PACK.npm` is a non-null, npm-shaped string (starts with a letter or `@`, no `://`, no leading `./`), and the package is not already listed as a `dependency` or `devDependency` in the project's `package.json`:
+
+1. Run `npm install {ICON_PACK.npm}` (swap to `pnpm add` / `yarn add` / `bun add` if the project has the matching lockfile — `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`).
+2. On failure, log it, mark the icon-pack install `failed` in the run report, and **continue** the component loop — a failed icon-pack install does not block shadcn component installs.
+3. On success, record it (`installed` or `already_exists`) in the run report alongside the component rows.
+
+If `ICON_PACK.npm` is null (choice = `none`) or non-npm-shaped (custom free-form path/URL), skip the install step silently — the config block is still persisted in `designops.config.json` for later reference.
+
+### Step 4.4 — Icon-pack import rewrite (global)
+
+> **Goal:** The designer's Step 3b choice is the project-wide source of truth. Shadcn-generated components ship with hardcoded `import { X, Check, ChevronDown, … } from 'lucide-react'` lines; when the designer picks a non-lucide pack, those imports are rewritten once per installed component so the project compiles against a single icon dependency. This is the "global replacement on creation" promise made at Step 3b.
+
+This step runs **per just-installed component** immediately after Step 4 records its status, and **before** Step 4.5's CONFIG assembly. Only components whose install status in Step 4 was `installed` are touched — `already_exists` and `failed` are skipped (the first because the designer may have already hand-edited the file, the second because there's nothing to rewrite).
+
+#### 4.4.a — Dispatch on `ICON_PACK.choice`
+
+| `ICON_PACK.choice` | Behavior |
+|---|---|
+| `lucide-react` | Skip — shadcn's default matches the project choice. No rewrite. |
+| `none` | Skip — but emit a one-line warning in the run report per component touched: `"Kept lucide-react imports in components/ui/<name>.tsx — icon-pack choice is 'none'. Shadcn icons will fail to resolve at build time until you run /create-component --re-ask-icon-pack and choose a pack."` |
+| `material-symbols` | Run the mapping rewrite in 4.4.b. |
+| `custom` | Run the specifier-only rewrite in 4.4.c. |
+
+#### 4.4.b — `material-symbols` rewrite (mapping-based)
+
+For each `installed` component's source file (typically `components/ui/<name>.tsx`):
+
+1. **Find every `import` statement that ends in `from 'lucide-react'` or `from "lucide-react"`**. Use an AST walk if available (e.g. via `ts-morph` / `@babel/parser`); fall back to a line-level regex only if AST tooling is unavailable in the session. AST is strongly preferred because JSX usage sites like `<ChevronDown />` must be rewritten too — a pure specifier swap without renaming the JSX identifiers leaves dead references.
+2. **Translate each imported specifier via the canonical mapping below.** Specifiers that map cleanly are renamed; specifiers without a mapping stay on a new `from 'lucide-react'` line (so the file still compiles — the designer sees a mixed-pack file and a warning in the run report rather than a broken build).
+3. **Rewrite JSX usage sites** for every successfully-translated specifier: `<ChevronDown />` → `<ChevronRightRounded />` (or whatever the target identifier is). JSX attribute props (`size`, `className`) are preserved verbatim.
+4. **Collapse duplicate imports** from the new pack into a single `import { … } from '<ICON_PACK.import>'` statement at the top of the existing import block.
+5. **Append a single pinned comment** above the rewritten import: `// Icon imports rewritten from lucide-react → <ICON_PACK.import> by /create-component Step 4.4. Edit designops.config.json.iconPack.choice and re-run /create-component to change.`
+
+Canonical lucide → material-symbols mapping (ship this as a const table inside the skill — extend as new shadcn components require new icons):
+
+| lucide (shadcn ships these) | material-symbols/react equivalent |
+|---|---|
+| `X` | `CloseRounded` |
+| `Check` | `CheckRounded` |
+| `ChevronDown` | `ExpandMoreRounded` |
+| `ChevronUp` | `ExpandLessRounded` |
+| `ChevronLeft` | `ChevronLeftRounded` |
+| `ChevronRight` | `ChevronRightRounded` |
+| `ChevronsUpDown` | `UnfoldMoreRounded` |
+| `ArrowLeft` | `ArrowBackRounded` |
+| `ArrowRight` | `ArrowForwardRounded` |
+| `ArrowUp` | `ArrowUpwardRounded` |
+| `ArrowDown` | `ArrowDownwardRounded` |
+| `Circle` | `CircleRounded` |
+| `Dot` | `FiberManualRecordRounded` |
+| `Search` | `SearchRounded` |
+| `Plus` | `AddRounded` |
+| `Minus` | `RemoveRounded` |
+| `MoreHorizontal` | `MoreHorizRounded` |
+| `MoreVertical` | `MoreVertRounded` |
+| `GripVertical` | `DragIndicatorRounded` |
+| `PanelLeft` | `ViewSidebarRounded` |
+| `AlertCircle` | `ErrorOutlineRounded` |
+| `AlertTriangle` | `WarningAmberRounded` |
+| `Info` | `InfoOutlineRounded` |
+| `CheckCircle` | `CheckCircleOutlineRounded` |
+| `XCircle` | `CancelOutlineRounded` |
+| `Calendar` | `CalendarMonthRounded` |
+| `Clock` | `ScheduleRounded` |
+| `Eye` | `VisibilityRounded` |
+| `EyeOff` | `VisibilityOffRounded` |
+| `Loader` / `Loader2` | `ProgressActivityRounded` |
+
+Unmapped specifiers → stay on lucide-react with a warning. The run report summarizes per component: `"rewrote 4 / 5 icon imports in <file>; 1 unmapped (`CustomIcon`) kept on lucide-react. Extend the mapping table in /create-component Step 4.4.b to cover it."`
+
+#### 4.4.c — `custom` rewrite (specifier-only + warning)
+
+For custom packs the skill does not know the target identifier names, so it only swaps the `from` specifier and warns the designer:
+
+1. Rewrite every `from 'lucide-react'` → `from '<ICON_PACK.import>'`. Do **not** touch the imported specifier list or JSX usage sites.
+2. Emit a per-component warning in the run report: `"Rewrote import path only in components/ui/<name>.tsx: 'lucide-react' → '<ICON_PACK.import>'. Icon identifiers (X, Check, ChevronDown, …) were NOT renamed — if your pack uses different names, either alias them in the import (`{ Close as X }`) or extend the mapping table in Step 4.4.b and re-run /create-component."`
+3. If the final file contains `from '<custom>'` but the custom package is non-npm-shaped (Step 4 skipped its install), also warn: `"Icon-pack is non-npm — no dependency was installed. Wire the import path manually or change designops.config.json.iconPack.npm to an npm-shaped spec."`
+
+#### 4.4.d — Idempotence + re-run safety
+
+- Before rewriting, check the top of the file for the pinned comment `// Icon imports rewritten from lucide-react → …`. If present **and** the recorded target matches the current `ICON_PACK.import`, skip the rewrite for that file (it's already been rewritten by a prior run).
+- If the pinned comment is present but the target **differs** from the current `ICON_PACK.import`, emit a warning — the designer re-ran `/create-component --re-ask-icon-pack` and changed packs. Offer to continue with a fresh rewrite (prompt `AskUserQuestion`: "Re-rewrite imports to <new pack>? yes / keep-current / abort"). `keep-current` aborts Step 4.4 for this component only; `abort` aborts the whole run.
+- If the pinned comment is absent and the file has no `from 'lucide-react'` imports at all, skip silently — nothing to rewrite.
 
 ### Step 4.5 — Extract source-of-truth CONFIG (Mode A)
 
@@ -271,6 +473,7 @@ Merge the extractor output, the resolver output, and the `shadcn-props.json` ent
 | `states`, `applyStateOverride` | `shadcn-props.json[component]` defaults (see §4.5.e) |
 | `defaultVariant` | `cvaOutput.defaultVariants.variant` → feed to §6.6D as the ComponentSet default |
 | `defaultSize` | `cvaOutput.defaultVariants.size` → feed to §6.6D |
+| `iconPack` | the `ICON_PACK` block from Step 3b (or `null`). Surfaced in CONFIG so the draw engine / future `/code-connect` runs can read `iconPack.figmaIconLibraryKey` when wiring `icon-slot/*` default-swap targets. The current draw engine treats this field as advisory — if absent, slots remain empty 24×24 dashed placeholders (the existing behavior). |
 
 Record every resolver `unresolved[]` entry in the run report under `unresolvedClasses` for the component. Do not abort on unresolved classes — the draw engine falls back to fallback hex and raw px where the token is null.
 
@@ -631,6 +834,56 @@ function bindNum(node, field, varName, fallback) {
   }
 }
 
+// ── 5.5. Pre-resolve published Doc/* + Label/* text styles (ASYNC, ONCE) ─
+//
+// CRITICAL ORDERING RULE — DO NOT MOVE / DO NOT INLINE:
+//   `figma.getLocalTextStylesAsync()` is async and MUST be awaited at the
+//   top level of the script (which runs in an async IIFE per the MCP
+//   plugin execution model). It MUST be resolved BEFORE `buildVariant`
+//   is declared in §6 so the synchronous `buildVariant` / `makeLabel`
+//   closure can read `allTextStyles` without needing `await` itself.
+//
+//   DO NOT move this block inside `buildVariant`, `makeLabel`, or any
+//   other non-async helper. A naive "just move the fetch to where it's
+//   used" refactor will insert `await` inside a non-async function and
+//   the whole script fails to parse with a SyntaxError before any draw
+//   happens. If you need the text styles at a new site, read them from
+//   THIS closure variable — never re-fetch.
+//
+// Also: §6.1 (Doc/* resolver + makeText) reuses this same `allTextStyles`
+// array — do NOT call `figma.getLocalTextStylesAsync()` a second time.
+const allTextStyles = await figma.getLocalTextStylesAsync();
+
+// ── 5.6. Resolve default icon component (ASYNC, ONCE, OPTIONAL) ──────────
+//
+// When the designer configured both `iconPack.figmaIconLibraryKey` AND
+// `iconPack.defaultIconKey` in `designops.config.json` (Step 3b), every
+// `icon-slot/*` in this component becomes an INSTANCE of that default icon
+// AND gets an INSTANCE_SWAP component property — designers pick any icon
+// from the library via the right-panel dropdown on a per-instance basis.
+//
+// When either key is missing, `DEFAULT_ICON_COMPONENT` stays null and
+// `makeIconSlot` falls back to the original empty 24×24 dashed placeholder
+// (current behavior — nothing changes for projects without a library).
+//
+// Same ordering rule as §5.5: `figma.importComponentByKeyAsync` is async,
+// must resolve at the top level BEFORE `buildVariant` is declared, and the
+// resolved component is captured via closure. DO NOT inline the await
+// inside `makeIconSlot` — it's a synchronous helper.
+const ICON_PACK_CFG = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.iconPack) || null;
+let DEFAULT_ICON_COMPONENT = null;
+if (ICON_PACK_CFG && ICON_PACK_CFG.figmaIconLibraryKey && ICON_PACK_CFG.defaultIconKey) {
+  try {
+    DEFAULT_ICON_COMPONENT = await figma.importComponentByKeyAsync(ICON_PACK_CFG.defaultIconKey);
+  } catch (err) {
+    // Non-fatal — fall back to empty placeholders and surface the warning
+    // in the return payload so the designer knows the key was unreachable.
+    console.warn('importComponentByKeyAsync failed for defaultIconKey:', err && err.message ? err.message : err);
+    DEFAULT_ICON_COMPONENT = null;
+  }
+}
+const ICON_SLOT_MODE = DEFAULT_ICON_COMPONENT ? 'instance-swap' : 'placeholder';
+
 // Build one fully complete ComponentNode — layout, spacing, radius, color,
 // icon slots, text label, AND element component properties all applied
 // and bound before this function returns. Call once per variant. Pass
@@ -677,6 +930,12 @@ function bindNum(node, field, varName, fallback) {
 //   addLeadingProp — add BOOLEAN "Leading icon" property bound to leading slot visibility
 //   addTrailingProp— add BOOLEAN "Trailing icon" property bound to trailing slot visibility
 //   propLabelText  — default string for the TEXT "Label" property
+//
+// NOTE: `buildVariant` is intentionally synchronous. `makeLabel` below
+// reads `allTextStyles` via CLOSURE from the §5.5 top-level await. DO NOT
+// add `async` to this function and DO NOT insert `await figma.getLocal*
+// *Async()` calls inside it — the correct fetch site is §5.5, above the
+// function declaration. See the §5.5 comment block for the full rule.
 function buildVariant(name, fillVar, fallbackFill, {
   label            = null,
   labelVar         = 'color/background/content',
@@ -732,13 +991,33 @@ function buildVariant(name, fillVar, fallbackFill, {
   }
 
   // --- Helpers scoped to this variant -----------------------------------
-  // 24×24 placeholder frame. Transparent fill + 1px dashed stroke bound
-  // to `color/border/default` — invisible in renders, but discoverable
-  // on the canvas and in the layers panel. Designers drop SVG content
-  // into it later (stroke hides behind the child) or toggle the slot off
-  // via the matching Boolean component property. `cornerRadius: 4` keeps
-  // the placeholder visually distinct from the parent component chrome.
+  // Two modes, selected by the top-level §5.6 resolver:
+  //
+  //   'instance-swap' (DEFAULT_ICON_COMPONENT is set): slot is an INSTANCE
+  //       of the designer's chosen default library icon. Back at the
+  //       variant-property block below, each slot gets an INSTANCE_SWAP
+  //       component property so designers can swap per-instance via the
+  //       right-panel dropdown without detaching the component.
+  //
+  //   'placeholder' (DEFAULT_ICON_COMPONENT is null): slot is a 24×24
+  //       transparent frame with a 1px dashed stroke bound to
+  //       `color/border/default`. Invisible in renders, discoverable on the
+  //       canvas and layers panel. Designers drop SVG content into it later
+  //       (stroke hides behind the child) or toggle the slot off via the
+  //       matching Boolean property. cornerRadius: 4 keeps the placeholder
+  //       visually distinct from the parent component chrome.
+  //
+  // DO NOT call `figma.importComponentByKeyAsync` here — that's an async
+  // fetch and would break `buildVariant`'s sync contract. The default
+  // component is resolved once at §5.6 and captured via closure.
   function makeIconSlot(slotName) {
+    if (DEFAULT_ICON_COMPONENT) {
+      const inst = DEFAULT_ICON_COMPONENT.createInstance();
+      inst.name = slotName;
+      try { inst.resize(iconSlotSize, iconSlotSize); } catch (_) {}
+      inst.layoutPositioning = 'AUTO';
+      return inst;
+    }
     const f = figma.createFrame();
     f.name          = slotName;
     f.layoutMode    = 'NONE';       // children, if any, are positioned manually
@@ -818,6 +1097,45 @@ function buildVariant(name, fillVar, fallbackFill, {
     if (addTrailingProp && slots.trailing) {
       propKeys.trailingIcon = c.addComponentProperty('Trailing icon', 'BOOLEAN', false);
       slots.trailing.componentPropertyReferences = { visible: propKeys.trailingIcon };
+    }
+
+    // INSTANCE_SWAP wiring — only when §5.6 resolved a default library icon.
+    // Each `icon-slot/*` instance gets its own INSTANCE_SWAP property bound
+    // to `mainComponent` so designers can swap to any icon from the library
+    // via the right-panel dropdown. The default value is the same library
+    // component id for every slot; designers override per-instance at the
+    // canvas usage site, not here.
+    //
+    // Per Figma API: INSTANCE_SWAP property defaultValue is the component
+    // id of the default target. The `preferredValues` hint scopes the
+    // dropdown to the same library the default came from, when available.
+    if (DEFAULT_ICON_COMPONENT) {
+      const swapDefault = DEFAULT_ICON_COMPONENT.id;
+      const preferred = DEFAULT_ICON_COMPONENT.key
+        ? [{ type: 'COMPONENT', key: DEFAULT_ICON_COMPONENT.key }]
+        : undefined;
+      const swapOpts = preferred ? { preferredValues: preferred } : undefined;
+      if (slots.leading) {
+        propKeys.leadingSwap = c.addComponentProperty('Icon: leading', 'INSTANCE_SWAP', swapDefault, swapOpts);
+        slots.leading.componentPropertyReferences = {
+          ...(slots.leading.componentPropertyReferences || {}),
+          mainComponent: propKeys.leadingSwap,
+        };
+      }
+      if (slots.trailing) {
+        propKeys.trailingSwap = c.addComponentProperty('Icon: trailing', 'INSTANCE_SWAP', swapDefault, swapOpts);
+        slots.trailing.componentPropertyReferences = {
+          ...(slots.trailing.componentPropertyReferences || {}),
+          mainComponent: propKeys.trailingSwap,
+        };
+      }
+      if (slots.center) {
+        propKeys.centerSwap = c.addComponentProperty('Icon', 'INSTANCE_SWAP', swapDefault, swapOpts);
+        slots.center.componentPropertyReferences = {
+          ...(slots.center.componentPropertyReferences || {}),
+          mainComponent: propKeys.centerSwap,
+        };
+      }
     }
   } catch (err) {
     console.warn(`addComponentProperty failed on variant '${name}':`, err && err.message ? err.message : err);
@@ -956,8 +1274,12 @@ for (const node of [...figma.currentPage.children]) {
 
 // --- 6.1  Resolve published Doc/* text styles + makeText ----------------
 // CONVENTIONS.md §7 — every doc text node must assign textStyleId.
+//
+// REUSE — do NOT re-fetch. `allTextStyles` is already populated by §5.5
+// (see that block's comment for why the await must live above buildVariant).
+// Calling `figma.getLocalTextStylesAsync()` a second time here is safe but
+// wasteful; inlining it inside any helper is a syntax error.
 
-const allTextStyles = await figma.getLocalTextStylesAsync();
 const getDocStyle = name => allTextStyles.find(s => s.name === name) ?? null;
 const DOC = {
   section:   getDocStyle('Doc/Section'),
@@ -1611,6 +1933,8 @@ const returnPayload = {
   iconVariantChildren,
   propErrorsCount: 0,
   propErrorsSample: [],
+  iconSlotMode: ICON_SLOT_MODE,                      // 'instance-swap' | 'placeholder'
+  iconPackDefaultKey: DEFAULT_ICON_COMPONENT ? (DEFAULT_ICON_COMPONENT.key || null) : null,
   composedWith: usesComposes ? CONFIG.composes.map(r => r.component) : [],
   registryEntry: (() => {
     const base = {
