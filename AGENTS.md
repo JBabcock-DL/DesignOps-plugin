@@ -38,6 +38,23 @@ If you accidentally create a staging file, **delete it** before finishing; the d
 
 MCP comparison of a **golden** style-guide table vs a regressed one showed: **header cells** were built with the **body** auto-layout recipe (VERTICAL + Hug + `resize(w,1)`), which collapses header chrome to **1px** while text stays `textAutoResize: 'NONE'`; body rows looked “tall enough” but **code columns** stayed **~9px** tall; **Primitives swatch** `RECTANGLE`s often shipped with **resolved hex only** (no `boundVariables.color`) instead of **`setBoundVariableForPaint`** to the row’s **`Primitives`** variable. **Authoritative fix:** read [`skills/create-design-system/conventions/00-gotchas.md`](skills/create-design-system/conventions/00-gotchas.md) **§0.5–0.7** and [`skills/create-design-system/conventions/14-audit.md`](skills/create-design-system/conventions/14-audit.md) before declaring canvas work done. Do **not** infer header geometry from “the row looks fine,” or swatch correctness from “it shows the right color.”
 
+### Skill edits — repo is canonical, marketplace cache is downstream
+
+This repo (`DesignOps-plugin/`) is the **canonical source** for every skill under `skills/`. Claude Code's plugin loader populates a parallel cache at `~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/skills/<skill>/` from this tree (hence the `local-desktop-app-uploads` segment in the path). Both copies must stay byte-identical or the agent will silently run the stale one.
+
+**Rule for any agent editing a skill:**
+
+1. Edit the file under `skills/<skill>/…` in this repo **first**. That's the version that gets committed and shipped.
+2. After the edit settles, mirror the exact same file to the marketplace cache:
+   ```
+   cp skills/<skill>/<file> ~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/skills/<skill>/<file>
+   ```
+   (Use whatever path form the host OS requires — e.g. `C:/Users/<user>/.claude/plugins/...` on Windows.)
+3. `diff` the two afterwards and expect a clean exit (`FILES IN SYNC`). Never leave the two copies drifted.
+4. Only the repo copy gets committed; the marketplace cache is local-machine state and is not tracked by this repo.
+
+If you edited the marketplace cache by accident (e.g. via an absolute path search), copy it back to the repo copy instead of re-doing the edits by hand, then re-verify with `diff`. Do **not** treat the cache as authoritative when reconciling.
+
 ### IDE rule (Cursor)
 
 Project rule files (always on in Cursor): [`.cursor/rules/mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc), [`.cursor/rules/cursor-designops-skill-root.mdc`](.cursor/rules/cursor-designops-skill-root.mdc).

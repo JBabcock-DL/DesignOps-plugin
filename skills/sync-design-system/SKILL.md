@@ -24,13 +24,13 @@ This skill audits every design-system surface in a single pass: tokens (**Axis A
 
 > **First time in a session?** Post a liveness line, then `Read` these **only** (not the full old monolith): [`../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) (geometry + pages + body variants + naming), [`../create-design-system/conventions/02-codesyntax.md`](../create-design-system/conventions/02-codesyntax.md) (iOS dot-path / WEB / ANDROID rules), and **§0** in [`../create-design-system/SKILL.md`](../create-design-system/SKILL.md) — including **§0.9** before any **6.Canvas.9d** work so **↳ Token Overview** platform-mapping does not regain stacked shadows. Index: [`../create-design-system/CONVENTIONS.md`](../create-design-system/CONVENTIONS.md). Axis A's canvas redraws (Steps 6 / 9b / 9d / 9e below) **must** match those conventions.
 
-> **Tokens-only projects** — if only Axis A is enabled, the experience is byte-identical to prior versions of this skill: one diff, one direction prompt, one push + canvas chain. Axes B and C turn on only when their source files are present (see Step 1).
+> **Tokens-only projects** — if only Axis A is enabled at preflight, the experience is byte-identical to prior versions of this skill: one diff, one direction prompt, one push + canvas chain. Axes B and C turn on only when their source files are present (see Step 1). On a multi-axis project, the user can reach the same lightweight shape by picking **`figma-only`** at the Step 0 scope prompt.
 
 ---
 
 ## Interactive input contract
 
-Whenever this skill needs interactive input — **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
+Whenever this skill needs interactive input — **scope selection** (Step 0), **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
 
 Bundled decisions are one **tool call** with multiple sub-questions (e.g. Step 5: one sub-question per axis with drift). That is still one decision moment, one `AskUserQuestion`.
 
@@ -41,27 +41,29 @@ Do not dump multiple decision prompts as plain markdown without calling **AskUse
 ## Global flow (one reconcile)
 
 ```
- 1. Preflight              — detect enabledAxes ∈ {A, B, C}
- 2. Read                   — all enabled axes (parallel where possible)
+ 0. Scope                  — ONE AskUserQuestion: figma-only | full | code-to-figma
+ 1. Preflight              — detect enabledAxes ∈ {A, B, C}, clipped by scope
+ 2. Read                   — enabled axes only (parallel where possible)
  3. Diff                   — per axis, every item tagged with a stable key
  4. Present                — all diffs in one block
- 5. Decide (bundled)       — ONE AskUserQuestion, N sub-questions
+ 5. Decide (bundled)       — ONE AskUserQuestion, N sub-questions (collapsed in scope=code-to-figma)
  6. Execute Axis A         — tokens + canvas chain (9b/9d/9e)
  7. Validate Axis B        — reclassify B's plan; pause + re-prompt only on ALTERED or NEW
  8. Execute Axis B         — redraw / PR / review as planned
  9. Validate Axis C        — reclassify C's plan; pause + re-prompt only on ALTERED or NEW
 10. Execute Axis C         — publish / refresh / review as planned
-11. Unified report         — including upstream-resolved + validation-pause counts
+11. Unified report         — including scope, upstream-resolved + validation-pause counts
 ```
 
-In a clean run, the user answers **exactly one** `AskUserQuestion` (Step 5). Validation pauses (Steps 7, 9) are exception-driven and fire only when an upstream write has introduced or altered drift items the user never decided on.
+In a clean run, the user answers **two** `AskUserQuestion` calls: scope (Step 0) and direction (Step 5). Validation pauses (Steps 7, 9) are exception-driven and fire only when an upstream write has introduced or altered drift items the user never decided on.
 
 ### Plan state object
 
-From Step 5 onward, the skill holds a `plan` object:
+From Step 0 onward, the skill holds a `plan` object:
 
 ```
 plan = {
+  scope: 'figma-only' | 'full' | 'code-to-figma',
   A: { direction: 'F'|'C'|'R'|'S'|null, items: [...] },
   B: { direction: ..., items: [...] },
   C: { direction: ..., items: [...] },
@@ -71,6 +73,31 @@ plan = {
 ```
 
 Every item across every axis carries a **stable key**: `{axis}.{subject}.{bucket}.{id}` (e.g. `A.tokens.color/primary.conflict`, `B.button.variant-axis.mismatch`, `B.pagination.composition.button.detached-instance`, `C.badge.mapping.stale`). The validation passes in Steps 7 / 9 use these keys to classify post-write diff items as UNCHANGED / RESOLVED / ALTERED / NEW without false positives.
+
+---
+
+## Step 0 — Scope selection
+
+Before any file probes, reads, or diffs, call **AskUserQuestion** once to pin the scope of this run. The skill does heavy work — reading every token, scanning every component page, fetching published Code Connect state — so ask up front how far the user actually wants to go. Do not read tokens, call Figma, or run extractors before this answer lands.
+
+**Prompt**
+
+> "What do you want this sync to cover?
+> - **figma-only** — Reconcile Figma variables only and refresh the style-guide docs (↳ Primitives / Theme / Layout / Text Styles / Effects / Token Overview / Thumbnail). No component pairing, no Code Connect, no code-side PRs.
+> - **full** — Full reconcile across Variables, Components, and Code Connect. Direction is chosen per axis at Step 5. May open a drift-report PR (Axis B F-wins) and/or publish mappings (Axis C C-wins).
+> - **code-to-figma** — One-way push of code as source of truth: tokens push up to Figma, drifted components get redrawn via `/create-component`, mappings get republished via `/code-connect`. Skips the per-axis direction prompt and asks a single confirmation instead."
+
+Record the answer as `plan.scope`.
+
+### How scope shapes the rest of the run
+
+| `plan.scope` | Axes active (intersected with preflight) | Step 5 prompt shape | Notes |
+|---|---|---|---|
+| **figma-only** | `A` only (B and C are forced off even if source files exist) | Per-axis F / C / R / S for Axis A only — identical to a pre-scope tokens-only run | Canvas chain (6.Canvas.9b/9d/9e) runs normally if Axis A writes to Figma |
+| **full** | All axes preflight detects (today's default) | One sub-question per drifted axis, four options each (F / C / R / S) | Unchanged from prior behavior |
+| **code-to-figma** | All axes preflight detects | Single confirmation sub-question per drifted axis (**Apply C** / **Review per item** / **Skip this axis**). Direction is pre-locked to **C** for every axis with drift | Axis A → push + canvas redraws. Axis B → `/create-component --components=<list>`. Axis C → `/code-connect` publish. No drift-report PR, no code-side file writes. |
+
+If the user later realizes the scope was wrong (e.g. picked `figma-only` but also wants a code PR), they re-run `/sync-design-system` with the intended scope — do **not** let the skill up-scope itself mid-run.
 
 ---
 
@@ -84,9 +111,15 @@ Probe the file system silently — no blocking prompts, no warnings unless parti
 | **B — Components** | `components.json` at repo root **and** ≥ 1 `.tsx` under the `aliases.ui` path from `components.json` |
 | **C — Code Connect mappings** | Axis B is enabled **and** ≥ 1 `**/*.figma.tsx` file exists anywhere in the repo |
 
+**Clip by `plan.scope`.** After the raw detect:
+
+- `plan.scope === 'figma-only'` → force `enabledAxes = ['A']`. Do **not** probe for `components.json`, do **not** glob `.figma.tsx`. If Axis A itself is not detected, fall through to the "no axes active" branch below. Log: `Scope: figma-only — Axes B and C skipped by scope.`
+- `plan.scope === 'full'` or `'code-to-figma'` → keep the raw detection result.
+
 Report the detected set once:
 
 ```
+Scope: <figma-only | full | code-to-figma>
 Enabled axes: A (Variables), B (Components), C (Code Connect)
 ```
 
@@ -94,6 +127,8 @@ If an axis looks like it should be enabled but a prerequisite is missing, emit *
 
 - `components.json` present but no `.tsx` under `aliases.ui` → `Axis B skipped — aliases.ui path is empty.`
 - Axis B enabled but no `.figma.tsx` → `Axis C skipped — no Code Connect mapping files found.`
+
+If **no** axes are active after scope clipping (e.g. scope = `figma-only` and no token file found), stop and tell the user what to fix before re-running.
 
 ---
 
@@ -332,7 +367,9 @@ If every enabled axis is in sync (diff is empty everywhere), stop:
 
 ## Step 5 — Bundled decision
 
-**This is the only mandatory decision moment in a clean run.**
+**This is the only mandatory direction decision in a clean run.** Shape depends on `plan.scope`.
+
+### 5.a — `plan.scope === 'full'` or `'figma-only'`
 
 Call **AskUserQuestion** with **one sub-question per axis that has drift**. Axes in sync are omitted. Each sub-question offers the same four options:
 
@@ -351,14 +388,35 @@ The question body for each sub-question is:
 > - **R** Review each item
 > - **S** Skip this axis"
 
+### 5.b — `plan.scope === 'code-to-figma'`
+
+Direction is pre-locked to **C** on every axis that has drift. Call **AskUserQuestion** with one sub-question per drifted axis, each offering **three** options:
+
+| Reply | Meaning |
+|---|---|
+| **Apply C** | Confirm code-wins push for this axis (equivalent to direction `C`) |
+| **Review** | Walk each drift item one at a time, deciding **C** (push) or **S** (skip) per item — **F** is not offered in this scope |
+| **Skip** | Skip this axis — record decision, make no writes |
+
+The question body for each sub-question is:
+
+> "**Axis {name}** — {n} drift items. Scope is code → Figma, so every drift defaults to pushing the code value up.
+> - **Apply C** Push code as-is for this axis
+> - **Review** Review each item (C or S only)
+> - **Skip** Skip this axis"
+
+Record `Apply C` as `plan.{axis}.direction = 'C'`, `Review` as `'R'` with a scope-hint that suppresses the **F** option in the per-item loop, and `Skip` as `'S'`.
+
 ### Post-bundle: per-item review for any axis that got R
 
-Any axis where the user replied **R** now runs a per-item review loop **immediately**, before any execution. For each drifted item in stable-key order, call **AskUserQuestion**:
+Any axis where the user replied **R** (or **Review** in scope = `code-to-figma`) now runs a per-item review loop **immediately**, before any execution. For each drifted item in stable-key order, call **AskUserQuestion**:
 
 > "**{axis} — item {i} of {N}** — `{stable-key}`
 > - Code side: `{code-value}`
 > - Figma side: `{figma-value}`
 > Reply **F** (Figma wins → update code), **C** (Code wins → update Figma), or **S** (skip)."
+
+When `plan.scope === 'code-to-figma'`, omit the **F** option from the per-item prompt — that direction is out of scope for this run. Offer only **C** and **S**.
 
 Record each decision at the item level. At the end of Step 5, `plan.{A,B,C}.items` holds one resolution per drift item on every non-skipped axis.
 
@@ -695,6 +753,8 @@ After Axis C finishes (or is skipped), print a single report block. No sync was 
 
 ```
 Sync complete.
+
+  Scope: {figma-only | full | code-to-figma}
 
   Axis A — Variables
     Tokens pushed to Figma:         {N}
