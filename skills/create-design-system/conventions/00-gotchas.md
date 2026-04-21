@@ -39,6 +39,43 @@ cell.itemSpacing  = 4;
 
 **Table-group wrapper.** `doc/table-group/{slug}` is **`VERTICAL` · primary `AUTO` · counter `FIXED 1640` · `layoutSizingVertical: 'HUG'` · `resizeWithoutConstraints(1640, 1)` · `clipsContent: false`**. Never `resize(1640, 80)` with `primaryAxisSizingMode: 'FIXED'` — it clips the inner `doc/table/{slug}`.
 
+### §0.1.H `primaryAxis` / `counterAxis` flip with `HORIZONTAL` body cells
+
+`primaryAxisSizingMode` refers to the **layout axis**, not the horizontal axis. Default body cells are `VERTICAL` → primary = height (`AUTO`=Hug), counter = width (`FIXED`=colWidth). When a cell is `HORIZONTAL` (Theme `LIGHT`/`DARK` swatch + hex, Spacing / Radius `PREVIEW`, Text Styles category sub-header — anything that calls `makeBodyCell(colWidth, 'HORIZONTAL')` or reassigns `cell.layoutMode = 'HORIZONTAL'` after construction), the axes **flip**: primary = width, counter = height. Reusing the VERTICAL recipe means `primary = 'AUTO'` collapses width to content and `counter = 'FIXED'` pins height at 1px — header cells read `colWidth`, body cells hug to ~110px → every row looks offset from its header.
+
+```js
+// HORIZONTAL body cell (inverse of §0.1 VERTICAL defaults)
+cell.layoutMode            = 'HORIZONTAL';
+cell.primaryAxisSizingMode = 'FIXED';   // horizontal = fixed colWidth
+cell.counterAxisSizingMode = 'AUTO';    // vertical   = Hug height
+cell.resize(colWidth, 1);
+// ... append children, then re-assert after appendChild.
+```
+
+`_lib.js` `makeBodyCell` + `rehugCell` branch on `cell.layoutMode` to apply the correct pair — never hand-roll VERTICAL modes on a HORIZONTAL cell. For sites that flip `layoutMode` post-construction (e.g. `layout.js` / `primitives.js` `PREVIEW`), re-assert `primaryAxisSizingMode = 'FIXED'` + `counterAxisSizingMode = 'AUTO'` **inline** right after the reassignment; don't wait for `rehugCell` to clean up because the cell may be resized before the rehug re-asserts.
+
+### §0.1.V Variable value shape in `valuesByMode` — no `.type` / `.value`
+
+Figma Plugin API `Variable.valuesByMode[modeId]` returns one of:
+
+- `{ type: 'VARIABLE_ALIAS', id }` for aliases — the **only** shape with a `.type` field.
+- A **raw JS primitive** for terminal values: `number` (FLOAT), `string` (STRING), `boolean` (BOOLEAN), or a plain `{ r, g, b }` / `{ r, g, b, a }` object for COLOR. **None of these carry `.type`**.
+
+Old resolvers in runner fragments used `val.type === 'COLOR' ? colorToHex(val) : '#000000'` (Theme hex) and `val.type === 'FLOAT' ? val.value : 0` (Layout / Effects px). Both guards always fell through to the fallback — every Theme hex collapsed to `#000000`, every numeric token resolved to `0`, preview bars/swatches collapsed to `2px`, and aliases never followed.
+
+```js
+// Terminal node — no .type, read the primitive/object directly:
+if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
+  // follow alias, remap modeId by next.variableCollectionId, continue.
+}
+if (typeof val === 'number') return val;                       // FLOAT
+if (typeof val === 'object' && typeof val.r === 'number')       // COLOR
+  return colorToHex(val);
+return fallback;
+```
+
+Audit: if probing a fresh Theme draw returns `#000000` for every row's `cell/light` / `cell/dark` TEXT, or a fresh Layout draw returns `0px` values / PREVIEW bars `w=2`, this bug has fired. The fix lives in `canvas-templates/bundles/_step15b-runner.fragment.js`, `_step15c-layout-runner.fragment.js`, and `_step15c-effects-runner.fragment.js` — re-run [`scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs) after editing any of them.
+
 ## §0.2 `textAutoResize = 'HEIGHT'` on every TEXT
 
 Immediately after `text.characters = "…"`:

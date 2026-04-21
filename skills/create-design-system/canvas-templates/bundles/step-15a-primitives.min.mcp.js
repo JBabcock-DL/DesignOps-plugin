@@ -72,8 +72,13 @@ return cell;
 function makeBodyCell(colWidth, layoutMode) {
 const cell = figma.createFrame();
 cell.layoutMode = layoutMode || 'VERTICAL';
+if (cell.layoutMode === 'HORIZONTAL') {
+cell.primaryAxisSizingMode = 'FIXED';
+cell.counterAxisSizingMode = 'AUTO';
+} else {
 cell.primaryAxisSizingMode = 'AUTO';
 cell.counterAxisSizingMode = 'FIXED';
+}
 cell.resize(colWidth, 1);
 cell.paddingLeft = 16;
 cell.paddingRight = 16;
@@ -86,7 +91,13 @@ cell.fills = [];
 return cell;
 }
 function rehugCell(cell) {
+if (cell.layoutMode === 'HORIZONTAL') {
+cell.primaryAxisSizingMode = 'FIXED';
+cell.counterAxisSizingMode = 'AUTO';
+} else {
 cell.primaryAxisSizingMode = 'AUTO';
+cell.counterAxisSizingMode = 'FIXED';
+}
 cell.layoutSizingVertical = 'HUG';
 }
 function makeBodyRow(tokenPath, borderVariable) {
@@ -491,6 +502,8 @@ break;
 }
 case 'PREVIEW': {
 cell.layoutMode = 'HORIZONTAL';
+cell.primaryAxisSizingMode = 'FIXED';
+cell.counterAxisSizingMode = 'AUTO';
 cell.counterAxisAlignItems = 'CENTER';
 const bar = figma.createRectangle();
 bar.name = 'preview-bar';
@@ -533,6 +546,8 @@ break;
 }
 case 'PREVIEW': {
 cell.layoutMode = 'HORIZONTAL';
+cell.primaryAxisSizingMode = 'FIXED';
+cell.counterAxisSizingMode = 'AUTO';
 cell.counterAxisAlignItems = 'CENTER';
 const sq = figma.createRectangle();
 sq.name = 'preview-square';

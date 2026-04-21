@@ -104,11 +104,20 @@ async function makeHeaderCell(colWidth, label, docStyles, variables) {
 // ─── Body cell (§0.1) ────────────────────────────────────────────────────────
 
 // §0.1: set Hug on height axis BEFORE resize(colWidth, 1); re-assert after appendChild.
+// §0.1.H (HORIZONTAL cells): `primaryAxisSizingMode` is the HORIZONTAL axis, so it must be FIXED
+// (at colWidth) and `counterAxisSizingMode` must be AUTO (Hug height). Using the VERTICAL defaults
+// for HORIZONTAL cells collapses width to content and fixes height at 1px — that's the theme
+// LIGHT/DARK misalignment bug (header = FIXED colWidth, body cell = HUG content).
 function makeBodyCell(colWidth, layoutMode) {
   const cell = figma.createFrame();
   cell.layoutMode = layoutMode || 'VERTICAL';
-  cell.primaryAxisSizingMode = 'AUTO';   // Hug height
-  cell.counterAxisSizingMode = 'FIXED';  // Fixed colWidth
+  if (cell.layoutMode === 'HORIZONTAL') {
+    cell.primaryAxisSizingMode = 'FIXED';   // horizontal = fixed colWidth
+    cell.counterAxisSizingMode = 'AUTO';    // vertical = Hug height
+  } else {
+    cell.primaryAxisSizingMode = 'AUTO';    // vertical = Hug height
+    cell.counterAxisSizingMode = 'FIXED';   // horizontal = fixed colWidth
+  }
   cell.resize(colWidth, 1);
   cell.paddingLeft = 16;
   cell.paddingRight = 16;
@@ -121,9 +130,18 @@ function makeBodyCell(colWidth, layoutMode) {
   return cell;
 }
 
-// Re-assert Hug after appending child (§0.1 post-appendChild re-assert).
+// Re-assert sizing after appending children (§0.1 post-appendChild re-assert).
+// Figma may flip axis sizing modes when a node is appended into a STRETCH parent; we re-assert
+// the mode/axis combination that matches the cell's layoutMode so width stays fixed at colWidth
+// and height hugs content — for BOTH HORIZONTAL (swatch+hex, PREVIEW) and VERTICAL cells.
 function rehugCell(cell) {
-  cell.primaryAxisSizingMode = 'AUTO';
+  if (cell.layoutMode === 'HORIZONTAL') {
+    cell.primaryAxisSizingMode = 'FIXED';
+    cell.counterAxisSizingMode = 'AUTO';
+  } else {
+    cell.primaryAxisSizingMode = 'AUTO';
+    cell.counterAxisSizingMode = 'FIXED';
+  }
   cell.layoutSizingVertical = 'HUG';
 }
 
@@ -439,6 +457,7 @@ async function build(ctx) {
   const {
     pageId, variableMap, docStyles,
     effectsCollectionId, effectsLightModeId, effectsDarkModeId,
+    themeCollectionId, themeLightModeId, themeDarkModeId,
     rows,
   } = ctx;
 
@@ -448,7 +467,7 @@ async function build(ctx) {
   await loadFonts(['Inter', 'Roboto Mono', 'SF Mono']);
 
   const variables = {};
-  for (const path of ['color/border/subtle', 'color/background/default', 'color/background/variant', 'color/background/content', 'color/background/content-muted']) {
+  for (const path of ['color/border/subtle', 'color/background/default', 'color/background/variant', 'color/background/content', 'color/background/content-muted', 'color/background/container-highest', 'color/background/inverse']) {
     if (variableMap[path]) variables[path] = await figma.variables.getVariableByIdAsync(variableMap[path]);
   }
 
@@ -459,6 +478,9 @@ async function build(ctx) {
     effectsCollectionId,
     effectsLightModeId,
     effectsDarkModeId,
+    themeCollectionId,
+    themeLightModeId,
+    themeDarkModeId,
   };
 
   await buildTable({
@@ -487,42 +509,70 @@ async function build(ctx) {
   console.log('Canvas: Step 15c ↳ Effects — done (2 tables)');
 }
 
-async function makeShadowPreviewCard(tier, effectsCollectionId, lightModeId, darkModeId, useDark) {
-  const frame = figma.createFrame();
-  frame.name = `shadow-preview/${useDark ? 'dark' : 'light'}`;
-  frame.layoutMode = 'HORIZONTAL';
-  frame.primaryAxisSizingMode = 'FIXED';
-  frame.counterAxisSizingMode = 'FIXED';
-  frame.resize(88, 88);
-  frame.cornerRadius = 8;
-  frame.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 1 }];
+// Shadow preview — 88x88 card wrapped in a full-width HORIZONTAL body cell so it honors
+// col.width (§0.1.H). Card background binds to `color/background/default` Theme variable and
+// applies Theme + Effects mode overrides so the card reads white/black across Light/Dark and
+// the drop shadow follows shadow/color + shadow/{tier}/blur Effects modes (§0.9 shadow pair).
+async function makeShadowPreviewCell(
+  colWidth, tier, useDark,
+  effectsCollectionId, effectsLightModeId, effectsDarkModeId,
+  themeCollectionId, themeLightModeId, themeDarkModeId,
+  bgDefaultVar,
+) {
+  const cell = makeBodyCell(colWidth, 'HORIZONTAL');
+  cell.counterAxisAlignItems = 'CENTER';
+  cell.paddingLeft = 4;
+  cell.paddingRight = 4;
+  cell.fills = [];
+
+  const card = figma.createFrame();
+  card.name = `shadow-preview/${useDark ? 'dark' : 'light'}`;
+  card.layoutMode = 'HORIZONTAL';
+  card.primaryAxisSizingMode = 'FIXED';
+  card.counterAxisSizingMode = 'FIXED';
+  card.resize(88, 88);
+  card.cornerRadius = 8;
+  card.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 1 }];
+  if (bgDefaultVar) bindPaintToVar(card, bgDefaultVar);
+
   const styles = await figma.getLocalEffectStylesAsync();
   const es = styles.find(s => s.name === `Effect/shadow-${tier}`);
-  if (es) frame.effectStyleId = es.id;
-  if (effectsCollectionId && (useDark ? darkModeId : lightModeId)) {
+  if (es) card.effectStyleId = es.id;
+
+  if (effectsCollectionId && (useDark ? effectsDarkModeId : effectsLightModeId)) {
     try {
-      frame.setExplicitVariableModeForCollection(effectsCollectionId, useDark ? darkModeId : lightModeId);
+      card.setExplicitVariableModeForCollection(effectsCollectionId, useDark ? effectsDarkModeId : effectsLightModeId);
     } catch (_) {}
   }
-  return frame;
+  if (themeCollectionId && (useDark ? themeDarkModeId : themeLightModeId)) {
+    try {
+      card.setExplicitVariableModeForCollection(themeCollectionId, useDark ? themeDarkModeId : themeLightModeId);
+    } catch (_) {}
+  }
+
+  cell.appendChild(card);
+  rehugCell(cell);
+  return cell;
 }
 
 async function buildShadowTierRow(row, rowData, columns, deps) {
   const {
-    docStyles, contentVar, mutedVar,
+    variables, docStyles, contentVar, mutedVar,
     effectsCollectionId, effectsLightModeId, effectsDarkModeId,
+    themeCollectionId, themeLightModeId, themeDarkModeId,
   } = deps;
   const tier = rowData.tier || 'sm';
+  const bgDefaultVar = variables['color/background/default'];
 
   for (const col of columns) {
-    if (col.id === 'LIGHT') {
-      const card = await makeShadowPreviewCard(tier, effectsCollectionId, effectsLightModeId, effectsDarkModeId, false);
-      row.appendChild(card);
-      continue;
-    }
-    if (col.id === 'DARK') {
-      const card = await makeShadowPreviewCard(tier, effectsCollectionId, effectsLightModeId, effectsDarkModeId, true);
-      row.appendChild(card);
+    if (col.id === 'LIGHT' || col.id === 'DARK') {
+      const cell = await makeShadowPreviewCell(
+        col.width, tier, col.id === 'DARK',
+        effectsCollectionId, effectsLightModeId, effectsDarkModeId,
+        themeCollectionId, themeLightModeId, themeDarkModeId,
+        bgDefaultVar,
+      );
+      row.appendChild(cell);
       continue;
     }
 
@@ -641,11 +691,14 @@ const byName = Object.fromEntries(allVars.map((v) => [v.name, v]));
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
 const effectsColl = collections.find((c) => c.name === 'Effects');
 const primColl = collections.find((c) => c.name === 'Primitives');
+const themeColl = collections.find((c) => c.name === 'Theme');
 if (!effectsColl) throw new Error('Effects collection missing');
 if (!primColl) throw new Error('Primitives collection missing');
 const effectsLightModeId = (effectsColl.modes.find((m) => m.name === 'Light') || effectsColl.modes[0]).modeId;
 const effectsDarkModeId  = (effectsColl.modes.find((m) => m.name === 'Dark')  || effectsColl.modes[1] || effectsColl.modes[0]).modeId;
 const primModeId = primColl.modes[0].modeId;
+const themeLightModeId = themeColl ? ((themeColl.modes.find((m) => m.name === 'Light') || themeColl.modes[0]).modeId) : null;
+const themeDarkModeId  = themeColl ? ((themeColl.modes.find((m) => m.name === 'Dark')  || themeColl.modes[1] || themeColl.modes[0]).modeId) : null;
 
 function colorToHex(c) {
   if (!c) return '#000000';
@@ -658,13 +711,20 @@ async function resolvePx(varId, startModeId) {
   let m = startModeId;
   for (let d = 0; d < 10; d++) {
     const val = v.valuesByMode[m];
-    if (!val) return 0;
-    if (val.type !== 'VARIABLE_ALIAS') return val.type === 'FLOAT' ? val.value : 0;
-    const next = await figma.variables.getVariableByIdAsync(val.id);
-    if (next.variableCollectionId === primColl.id) m = primModeId;
-    else if (next.variableCollectionId === effectsColl.id) m = startModeId;
-    else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
-    v = next;
+    if (val == null) return 0;
+    // Figma Plugin API: FLOAT variables store a raw JS number in valuesByMode; aliases are
+    // { type: 'VARIABLE_ALIAS', id }. Old guard `val.type === 'FLOAT' ? val.value : 0` returned 0
+    // for every numeric token (same failure mode as Theme hex resolver — see _step15b).
+    if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
+      const next = await figma.variables.getVariableByIdAsync(val.id);
+      if (next.variableCollectionId === primColl.id) m = primModeId;
+      else if (next.variableCollectionId === effectsColl.id) m = startModeId;
+      else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
+      v = next;
+      continue;
+    }
+    if (typeof val === 'number') return val;
+    return 0;
   }
   return 0;
 }
@@ -717,6 +777,9 @@ const ctx = {
   effectsCollectionId: effectsColl.id,
   effectsLightModeId,
   effectsDarkModeId,
+  themeCollectionId: themeColl ? themeColl.id : null,
+  themeLightModeId,
+  themeDarkModeId,
   rows: { shadows, shadowColor },
 };
 await build(ctx);

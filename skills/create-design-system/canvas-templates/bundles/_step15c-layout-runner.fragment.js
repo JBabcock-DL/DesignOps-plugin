@@ -37,11 +37,18 @@ async function resolvePx(varId) {
   let m = v.variableCollectionId === layoutColl.id ? layoutModeId : primModeId;
   for (let d = 0; d < 10; d++) {
     const val = v.valuesByMode[m];
-    if (!val) return 0;
-    if (val.type !== 'VARIABLE_ALIAS') return val.type === 'FLOAT' ? val.value : 0;
-    const next = await figma.variables.getVariableByIdAsync(val.id);
-    m = next.variableCollectionId === layoutColl.id ? layoutModeId : primModeId;
-    v = next;
+    if (val == null) return 0;
+    // Figma Plugin API: valuesByMode returns a raw JS number for FLOAT variables (no .type / .value),
+    // or { type: 'VARIABLE_ALIAS', id } for aliases. The old `val.type === 'FLOAT' ? val.value : 0`
+    // guard always returned 0 for numeric tokens (everything rendered as 0px / collapsed swatches).
+    if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
+      const next = await figma.variables.getVariableByIdAsync(val.id);
+      m = next.variableCollectionId === layoutColl.id ? layoutModeId : primModeId;
+      v = next;
+      continue;
+    }
+    if (typeof val === 'number') return val;
+    return 0;
   }
   return 0;
 }

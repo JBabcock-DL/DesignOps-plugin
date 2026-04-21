@@ -72,8 +72,13 @@ return cell;
 function makeBodyCell(colWidth, layoutMode) {
 const cell = figma.createFrame();
 cell.layoutMode = layoutMode || 'VERTICAL';
+if (cell.layoutMode === 'HORIZONTAL') {
+cell.primaryAxisSizingMode = 'FIXED';
+cell.counterAxisSizingMode = 'AUTO';
+} else {
 cell.primaryAxisSizingMode = 'AUTO';
 cell.counterAxisSizingMode = 'FIXED';
+}
 cell.resize(colWidth, 1);
 cell.paddingLeft = 16;
 cell.paddingRight = 16;
@@ -86,7 +91,13 @@ cell.fills = [];
 return cell;
 }
 function rehugCell(cell) {
+if (cell.layoutMode === 'HORIZONTAL') {
+cell.primaryAxisSizingMode = 'FIXED';
+cell.counterAxisSizingMode = 'AUTO';
+} else {
 cell.primaryAxisSizingMode = 'AUTO';
+cell.counterAxisSizingMode = 'FIXED';
+}
 cell.layoutSizingVertical = 'HUG';
 }
 function makeBodyRow(tokenPath, borderVariable) {
@@ -492,16 +503,18 @@ let v = await figma.variables.getVariableByIdAsync(varId);
 let m = themeModeId;
 for (let d = 0; d < 10; d++) {
 const val = v.valuesByMode[m];
-if (!val) return '#000000';
-if (val.type !== 'VARIABLE_ALIAS') {
-return val.type === 'COLOR' ? colorToHex(val) : '#000000';
-}
+if (val == null) return '#000000';
+if (typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
 const next = await figma.variables.getVariableByIdAsync(val.id);
 const nextColl = await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId);
 if (nextColl.id === primColl.id) m = primModeId;
 else if (nextColl.id === themeColl.id) m = themeModeId;
 else m = nextColl.modes[0].modeId;
 v = next;
+continue;
+}
+if (typeof val === 'object' && typeof val.r === 'number') return colorToHex(val);
+return '#000000';
 }
 return '#000000';
 }

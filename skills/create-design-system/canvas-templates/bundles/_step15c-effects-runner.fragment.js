@@ -21,11 +21,14 @@ const byName = Object.fromEntries(allVars.map((v) => [v.name, v]));
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
 const effectsColl = collections.find((c) => c.name === 'Effects');
 const primColl = collections.find((c) => c.name === 'Primitives');
+const themeColl = collections.find((c) => c.name === 'Theme');
 if (!effectsColl) throw new Error('Effects collection missing');
 if (!primColl) throw new Error('Primitives collection missing');
 const effectsLightModeId = (effectsColl.modes.find((m) => m.name === 'Light') || effectsColl.modes[0]).modeId;
 const effectsDarkModeId  = (effectsColl.modes.find((m) => m.name === 'Dark')  || effectsColl.modes[1] || effectsColl.modes[0]).modeId;
 const primModeId = primColl.modes[0].modeId;
+const themeLightModeId = themeColl ? ((themeColl.modes.find((m) => m.name === 'Light') || themeColl.modes[0]).modeId) : null;
+const themeDarkModeId  = themeColl ? ((themeColl.modes.find((m) => m.name === 'Dark')  || themeColl.modes[1] || themeColl.modes[0]).modeId) : null;
 
 function colorToHex(c) {
   if (!c) return '#000000';
@@ -38,13 +41,20 @@ async function resolvePx(varId, startModeId) {
   let m = startModeId;
   for (let d = 0; d < 10; d++) {
     const val = v.valuesByMode[m];
-    if (!val) return 0;
-    if (val.type !== 'VARIABLE_ALIAS') return val.type === 'FLOAT' ? val.value : 0;
-    const next = await figma.variables.getVariableByIdAsync(val.id);
-    if (next.variableCollectionId === primColl.id) m = primModeId;
-    else if (next.variableCollectionId === effectsColl.id) m = startModeId;
-    else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
-    v = next;
+    if (val == null) return 0;
+    // Figma Plugin API: FLOAT variables store a raw JS number in valuesByMode; aliases are
+    // { type: 'VARIABLE_ALIAS', id }. Old guard `val.type === 'FLOAT' ? val.value : 0` returned 0
+    // for every numeric token (same failure mode as Theme hex resolver — see _step15b).
+    if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
+      const next = await figma.variables.getVariableByIdAsync(val.id);
+      if (next.variableCollectionId === primColl.id) m = primModeId;
+      else if (next.variableCollectionId === effectsColl.id) m = startModeId;
+      else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
+      v = next;
+      continue;
+    }
+    if (typeof val === 'number') return val;
+    return 0;
   }
   return 0;
 }
@@ -97,6 +107,9 @@ const ctx = {
   effectsCollectionId: effectsColl.id,
   effectsLightModeId,
   effectsDarkModeId,
+  themeCollectionId: themeColl ? themeColl.id : null,
+  themeLightModeId,
+  themeDarkModeId,
   rows: { shadows, shadowColor },
 };
 await build(ctx);

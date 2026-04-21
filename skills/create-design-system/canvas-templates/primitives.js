@@ -259,8 +259,12 @@ async function buildSpaceRow(row, rowData, columns, deps) {
         break;
       }
       case 'PREVIEW': {
-        // Bar width bound to space variable (or resolved px, capped at col.width - 40)
+        // Bar width bound to space variable (or resolved px, capped at col.width - 40).
+        // PREVIEW cell is HORIZONTAL — re-assert axis sizing after flipping layoutMode
+        // so width stays fixed at col.width (§0.1.H in _lib.js makeBodyCell).
         cell.layoutMode = 'HORIZONTAL';
+        cell.primaryAxisSizingMode = 'FIXED';
+        cell.counterAxisSizingMode = 'AUTO';
         cell.counterAxisAlignItems = 'CENTER';
         const bar = figma.createRectangle();
         bar.name = 'preview-bar';
@@ -303,7 +307,11 @@ async function buildRadiusRow(row, rowData, columns, deps) {
         break;
       }
       case 'PREVIEW': {
+        // PREVIEW cell is HORIZONTAL — re-assert axis sizing after flipping layoutMode
+        // so width stays fixed at col.width (§0.1.H in _lib.js makeBodyCell).
         cell.layoutMode = 'HORIZONTAL';
+        cell.primaryAxisSizingMode = 'FIXED';
+        cell.counterAxisSizingMode = 'AUTO';
         cell.counterAxisAlignItems = 'CENTER';
         const sq = figma.createRectangle();
         sq.name = 'preview-square';

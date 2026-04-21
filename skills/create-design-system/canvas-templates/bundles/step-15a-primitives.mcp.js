@@ -104,11 +104,20 @@ async function makeHeaderCell(colWidth, label, docStyles, variables) {
 // ─── Body cell (§0.1) ────────────────────────────────────────────────────────
 
 // §0.1: set Hug on height axis BEFORE resize(colWidth, 1); re-assert after appendChild.
+// §0.1.H (HORIZONTAL cells): `primaryAxisSizingMode` is the HORIZONTAL axis, so it must be FIXED
+// (at colWidth) and `counterAxisSizingMode` must be AUTO (Hug height). Using the VERTICAL defaults
+// for HORIZONTAL cells collapses width to content and fixes height at 1px — that's the theme
+// LIGHT/DARK misalignment bug (header = FIXED colWidth, body cell = HUG content).
 function makeBodyCell(colWidth, layoutMode) {
   const cell = figma.createFrame();
   cell.layoutMode = layoutMode || 'VERTICAL';
-  cell.primaryAxisSizingMode = 'AUTO';   // Hug height
-  cell.counterAxisSizingMode = 'FIXED';  // Fixed colWidth
+  if (cell.layoutMode === 'HORIZONTAL') {
+    cell.primaryAxisSizingMode = 'FIXED';   // horizontal = fixed colWidth
+    cell.counterAxisSizingMode = 'AUTO';    // vertical = Hug height
+  } else {
+    cell.primaryAxisSizingMode = 'AUTO';    // vertical = Hug height
+    cell.counterAxisSizingMode = 'FIXED';   // horizontal = fixed colWidth
+  }
   cell.resize(colWidth, 1);
   cell.paddingLeft = 16;
   cell.paddingRight = 16;
@@ -121,9 +130,18 @@ function makeBodyCell(colWidth, layoutMode) {
   return cell;
 }
 
-// Re-assert Hug after appending child (§0.1 post-appendChild re-assert).
+// Re-assert sizing after appending children (§0.1 post-appendChild re-assert).
+// Figma may flip axis sizing modes when a node is appended into a STRETCH parent; we re-assert
+// the mode/axis combination that matches the cell's layoutMode so width stays fixed at colWidth
+// and height hugs content — for BOTH HORIZONTAL (swatch+hex, PREVIEW) and VERTICAL cells.
 function rehugCell(cell) {
-  cell.primaryAxisSizingMode = 'AUTO';
+  if (cell.layoutMode === 'HORIZONTAL') {
+    cell.primaryAxisSizingMode = 'FIXED';
+    cell.counterAxisSizingMode = 'AUTO';
+  } else {
+    cell.primaryAxisSizingMode = 'AUTO';
+    cell.counterAxisSizingMode = 'FIXED';
+  }
   cell.layoutSizingVertical = 'HUG';
 }
 
@@ -645,8 +663,12 @@ async function buildSpaceRow(row, rowData, columns, deps) {
         break;
       }
       case 'PREVIEW': {
-        // Bar width bound to space variable (or resolved px, capped at col.width - 40)
+        // Bar width bound to space variable (or resolved px, capped at col.width - 40).
+        // PREVIEW cell is HORIZONTAL — re-assert axis sizing after flipping layoutMode
+        // so width stays fixed at col.width (§0.1.H in _lib.js makeBodyCell).
         cell.layoutMode = 'HORIZONTAL';
+        cell.primaryAxisSizingMode = 'FIXED';
+        cell.counterAxisSizingMode = 'AUTO';
         cell.counterAxisAlignItems = 'CENTER';
         const bar = figma.createRectangle();
         bar.name = 'preview-bar';
@@ -689,7 +711,11 @@ async function buildRadiusRow(row, rowData, columns, deps) {
         break;
       }
       case 'PREVIEW': {
+        // PREVIEW cell is HORIZONTAL — re-assert axis sizing after flipping layoutMode
+        // so width stays fixed at col.width (§0.1.H in _lib.js makeBodyCell).
         cell.layoutMode = 'HORIZONTAL';
+        cell.primaryAxisSizingMode = 'FIXED';
+        cell.counterAxisSizingMode = 'AUTO';
         cell.counterAxisAlignItems = 'CENTER';
         const sq = figma.createRectangle();
         sq.name = 'preview-square';
