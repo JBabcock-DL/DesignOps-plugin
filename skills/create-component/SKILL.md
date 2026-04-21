@@ -49,6 +49,7 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 - **Designer re-ran with `--re-ask-icon-pack` and picked a different pack** → step 4.4 detects the mismatch via the pinned comment and prompts before re-rewriting; `keep-current` leaves existing imports alone for this component.
 - **`iconPack.defaultIconRef` missing OR `kind === 'unknown'` OR resolution fails at §5.6** → step 6 skips INSTANCE_SWAP wiring and uses empty 24×24 dashed placeholders. Run report includes `iconPackResolution: "failed:<reason>"` (e.g. `failed:cross-file-needs-key`, `failed:node-not-found:417:9815`, `failed:url-missing-node-id`) so the designer knows exactly how to fix the config.
 - **Designer pasted a URL for the default icon** → §5.6 extracts the node-id and calls `getNodeByIdAsync` IF the URL's fileKey matches the active file; falls back to `failed:cross-file-needs-key` if it's a published-library URL from a different file. Recovery is to re-run with `--re-ask-icon-pack` and paste a component key (40-hex hash) instead of a URL — the parser accepts either.
+- **`figma.fileKey !== ACTIVE_FILE_KEY` at draw time (registry gate)** → **warning only, never a throw.** `figma.fileKey` is unreliable across branch files, shared-library contexts, duplicated files, and some plugin execution contexts — a hard throw here blocks legitimate draws. The template's §5 gate now logs a `console.warn` and continues; the mismatch is surfaced in the return payload as `fileKeyMismatch: { expected, observed }` so the agent can include it in the run report. If registry-bound composes genuinely can't resolve, the downstream "no composes resolved" error will surface the real problem. **Do not** author agent-side scripts that re-introduce the throw.
 - **Component install fails** → log, mark `failed`, **continue** to the next component.
 - **`use_figma` throws** → **stop**, do not retry. Read the error, fix the CONFIG or the template, then resubmit one component at a time.
 
@@ -674,6 +675,22 @@ For each successfully installed component, make **one `use_figma` call** using t
 | `sidebar` | `↳ Sidebar` |
 | `direction`, `typography` | `↳ Typography` |
 
+#### Step 6.0 — Layout archetype routing (pick before assembling CONFIG)
+
+The draw engine dispatches on `CONFIG.layout` to pick the right variant shape. **Every component in Mode A or Mode B must set `CONFIG.layout` explicitly** (Mode A extractor also sets it based on the component name; Mode B agents pick from this table). Defaults to `'chip'` for back-compat with Button, but silent fallback is discouraged — always set it.
+
+| `CONFIG.layout` | Shape produced per variant | shadcn components | Source |
+|---|---|---|---|
+| `'chip'` **(default)** | `[icon-slot/leading] · [label] · [icon-slot/trailing]` horizontal row, CENTER-CENTER aligned | `button`, `badge`, `toggle`, `kbd`, `switch`, `chip`, `sonner`, `toast` (row variant), `label` | Current `buildVariant` |
+| `'surface-stack'` | Vertical surface: `CardHeader(title + description + optional action-slot) → CardContent(dashed content-slot) → CardFooter(dashed footer-slot)`. Matches [shadcn/ui Card](https://ui.shadcn.com/docs/components/radix/card) composition. | `card`, `alert-dialog`, `dialog`, `sheet`, `drawer`, `popover`, `hover-card`, `tooltip`, `empty`, `alert`, `sidebar` (section) | `buildSurfaceStackVariant` |
+| `'field'` | Vertical: `Label → [field-chrome with placeholder glyph/text] → helper/error` | `input`, `textarea`, `select`, `combobox`, `date-picker`, `input-otp`, `input-group`, `field` | **Not yet implemented** — stub throws; falls through to `chip` with a warning if forced. Agents: coordinate with maintainer before using. |
+| `'row-item'` | Horizontal: `[lead] · [title/description stacked] · [trail/chevron]` | `item`, `dropdown-menu`, `menubar`, `navigation-menu`, `context-menu`, `breadcrumb`, `command` | **Not yet implemented** |
+| `'tiny'` | Pure shape with correct size/color, no inner children | `separator`, `skeleton`, `spinner`, `progress`, `aspect-ratio`, `avatar`, `scroll-area` | **Not yet implemented** |
+
+**Authoring tip.** If you can't find a row for your component, it is almost always **`surface-stack`** (for container-shaped components) or **`chip`** (for inline affordances). When in doubt, match the shadcn docs composition block — if the docs show `<Card><CardHeader/>...<CardContent/>...<CardFooter/></Card>` or similar, it's `surface-stack`.
+
+**Sample copy rule.** For non-chip archetypes, seed every variant with real one-line sample copy so the designer sees a plausible shape — never leave a region blank. Title defaults to `CONFIG.title`; description defaults to the first sentence of `CONFIG.summary`. See `§0.surface` in the template for per-component overrides.
+
 **Complete `use_figma` code template** (substitute component-specific values where indicated):
 
 ```js
@@ -698,6 +715,36 @@ const CONFIG = {
   title:     'Button',                // display title (header, page references)
   pageName:  '↳ Buttons',             // target page; see routing table above
   summary:   'Trigger an action or navigate. Follows shadcn/ui defaults — six variants, four sizes.',
+
+  // Layout archetype — routes the variant loop to the right builder.
+  //   'chip'          : horizontal [lead] · [label] · [trail] (Button, Badge, Toggle, Kbd, Switch)
+  //   'surface-stack' : vertical CardHeader → CardContent → CardFooter with
+  //                     dashed content slots (Card, Alert, Dialog, Sheet,
+  //                     Popover, Tooltip, Hover Card, Empty) — matches
+  //                     shadcn/ui Card composition.
+  //   'field'         : Label → field-chrome → helper (NOT YET IMPLEMENTED)
+  //   'row-item'      : lead · stacked-text · trail (NOT YET IMPLEMENTED)
+  //   'tiny'          : pure shape (NOT YET IMPLEMENTED)
+  // See §6.0 routing table for the full shadcn → archetype mapping. Default
+  // is 'chip' for back-compat; set explicitly for every new component.
+  layout: 'chip',
+
+  // Required when layout === 'surface-stack'. Ignored otherwise.
+  //   titleText           : string | ((size, variant) => string)   default CONFIG.title
+  //   descriptionText     : string | ((size, variant) => string | null)  default first sentence of CONFIG.summary
+  //   titleStyleName      : published Label/* style name for the title     default 'Label/LG'
+  //   descriptionStyleName: published Label/* style for description        default 'Label/SM'
+  //   headerPad           : token for header horizontal padding            default CONFIG.padH.default
+  //   contentPad          : token for content horizontal padding           default CONFIG.padH.default
+  //   footerPad           : token for footer horizontal padding            default CONFIG.padH.default
+  //   sectionPadY         : token for vertical padding on Card itself      default CONFIG.padH.default
+  //   gap                 : token for gap between header/content/footer    default 'space/lg'
+  //   innerGap            : token for gap inside header (title/desc)       default 'space/xs'
+  //   actionSlot          : { enabled: boolean, slotLabel?, width?, height? }  default { enabled: false }
+  //   contentSlot         : { enabled: true, slotLabel: 'Content', minHeight: 64 }  always enabled
+  //   footerSlot          : { enabled: boolean, slotLabel: 'Footer', align: 'start'|'end'|'between', minHeight: 40 }  default { enabled: false }
+  // NOT present on Button — see the Card example block below this CONFIG for reference.
+  surface: null,
 
   // Variant × Size cross-product becomes the ComponentSet.
   //   variants[]  → matrix rows (within each size group)
@@ -798,6 +845,294 @@ const CONFIG = {
   ],
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// REFERENCE — `layout: 'surface-stack'` CONFIG shape (for Card and friends)
+// Mirror the shadcn/ui Card composition (CardHeader · CardContent · CardFooter).
+// DELETE THIS BLOCK when composing a chip component; keep it when composing
+// Card / Alert Dialog / Dialog / Sheet / Drawer / Popover / Tooltip / Empty.
+//
+// const CONFIG = {
+//   component: 'card',
+//   title:     'Card',
+//   pageName:  '↳ Cards',
+//   summary:   'Surface container with header, content, and footer slots. Use to group related content on a shared background.',
+//   layout:    'surface-stack',
+//   variants:  ['default'],
+//   sizes:     ['sm', 'default'],                 // shadcn Card API: size="default" | "sm"
+//   style: {
+//     default: {
+//       fill:      'color/background/default',   // Card surface bg
+//       fallback:  '#ffffff',
+//       labelVar:  'color/background/content',   // Title color
+//       strokeVar: 'color/border/subtle',        // 1px border
+//     },
+//   },
+//   padH:   { default: 'space/2xl', sm: 'space/lg' },   // shadcn: px-6 (24) / px-4 (16) inside header/content/footer
+//   radius: 'radius/xl',                                 // shadcn: rounded-xl
+//
+//   // `surface` describes the vertical stack — consumed by buildSurfaceStackVariant.
+//   surface: {
+//     titleText:            (_size, _v) => 'Card title',
+//     descriptionText:      (_size, _v) => 'A brief one-line description of what this card contains.',
+//     titleStyleName:       'Label/LG',
+//     descriptionStyleName: 'Label/SM',
+//     sectionPadY:          'space/2xl',     // shadcn: py-6 on Card itself
+//     gap:                  'space/2xl',     // shadcn: gap-6 between header/content/footer
+//     innerGap:             'space/xs',      // shadcn: gap-1.5 inside header (title/description)
+//     actionSlot:  { enabled: false, slotLabel: 'Action', width: 80, height: 32 },
+//     contentSlot: { enabled: true,  slotLabel: 'Content', minHeight: 96 },
+//     footerSlot:  { enabled: true,  slotLabel: 'Footer', align: 'end', minHeight: 44 },
+//   },
+//
+//   // Cards don't have inline icons — leave iconSlots/componentProps off.
+//   iconSlots:      { leading: false, trailing: false, size: 24 },
+//   componentProps: { label: false, leadingIcon: false, trailingIcon: false },
+//
+//   // Single 'default' state for non-interactive surface — no hover/pressed/disabled.
+//   states: [{ key: 'default', group: 'default' }],
+//   applyStateOverride: () => {},
+//
+//   properties: [
+//     ['size',      '"default" | "sm"', '"default"', 'no', 'Overall padding + spacing preset.'],
+//     ['className', 'string',            '—',        'no', 'Tailwind class escape hatch.'],
+//   ],
+//   usageDo: [
+//     'Use `Card` to group related content onto a single surface.',
+//     'Compose with `CardHeader`, `CardContent`, and `CardFooter` sub-components.',
+//     'Prefer `size="sm"` for dense grids; keep `default` for standalone cards.',
+//   ],
+//   usageDont: [
+//     'Don\'t nest cards more than one level deep.',
+//     'Don\'t use a card just to hold a single paragraph of plain text.',
+//     'Don\'t override the background color inline — use the token variable.',
+//   ],
+// };
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// REFERENCE — `layout: 'field'` CONFIG shape (Input, Textarea, Select)
+// Matches https://ui.shadcn.com/docs/components/radix/input.
+//
+// const CONFIG = {
+//   component: 'input',
+//   title:     'Input',
+//   pageName:  '↳ Text Field',
+//   summary:   'Single-line text field with label, placeholder, and optional helper text.',
+//   layout:    'field',
+//   variants:  ['default', 'invalid', 'disabled'],
+//   sizes:     ['sm', 'default', 'lg'],
+//   style: {
+//     default:  { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content',       strokeVar: 'color/border/default' },
+//     invalid:  { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content',       strokeVar: 'color/error/default'  },
+//     disabled: { fill: 'color/background/variant', fallback: '#f4f4f5', labelVar: 'color/background/content-muted', strokeVar: 'color/border/subtle'  },
+//   },
+//   padH:   { default: 'space/md', sm: 'space/sm', lg: 'space/md' },
+//   radius: 'radius/md',
+//   field: {
+//     fieldType:       'input',            // 'input' | 'textarea' | 'select' | 'otp'
+//     showLabel:       true,
+//     labelText:       'Email',
+//     labelStyleName:  'Label/SM',
+//     placeholderText: 'you@example.com',
+//     showHelper:      true,
+//     helperText:      "We'll never share your email.",
+//     leadingIcon:     false,              // show icon-slot/leading inside field
+//     trailingIcon:    false,              // show icon-slot/trailing (Select auto-enables chevron)
+//     width:           320,
+//   },
+//   componentProps: { label: true, placeholder: true, helper: true, leadingIcon: false, trailingIcon: false },
+//   states: [
+//     { key: 'default',  group: 'default'  },
+//     { key: 'hover',    group: 'default'  },
+//     { key: 'focus',    group: 'default'  },
+//     { key: 'disabled', group: 'disabled' },
+//   ],
+//   applyStateOverride: (inst, st) => { if (st === 'disabled') inst.opacity = 0.5; },
+//   properties: [
+//     ['size',        '"default" | "sm" | "lg"',          '"default"', 'no', 'Height + text-size preset.'],
+//     ['placeholder', 'string',                           '—',         'no', 'Placeholder text.'],
+//     ['disabled',    'boolean',                          'false',     'no', 'Disables input.'],
+//     ['className',   'string',                           '—',         'no', 'Tailwind class escape hatch.'],
+//   ],
+// };
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// REFERENCE — `layout: 'row-item'` CONFIG shape (Dropdown Item, Menubar, Item)
+// Matches https://ui.shadcn.com/docs/components/radix/dropdown-menu.
+//
+// const CONFIG = {
+//   component: 'dropdown-menu-item',
+//   title:     'Dropdown Menu Item',
+//   pageName:  '↳ Dropdown Menu',
+//   summary:   'A row inside a dropdown/context/command menu with icon, label, and optional shortcut.',
+//   layout:    'row-item',
+//   variants:  ['default', 'destructive'],
+//   sizes:     [],
+//   style: {
+//     default:     { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content', strokeVar: null },
+//     destructive: { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/error/default',      strokeVar: null },
+//   },
+//   padH:   { default: 'space/sm' },
+//   radius: 'radius/sm',
+//   row: {
+//     titleText:         'Profile',
+//     descriptionText:   null,              // omit for compact menu items; set for the richer Item archetype
+//     leadingIcon:       true,
+//     trailingIcon:      false,
+//     trailingIsChevron: false,
+//     shortcut:          true,
+//     shortcutText:      '⌘P',
+//     titleStyleName:    'Label/SM',
+//     width:             280,
+//   },
+//   componentProps: { title: true, description: false, shortcut: true, leadingIcon: true, trailingIcon: false },
+//   states: [
+//     { key: 'default',  group: 'default'  },
+//     { key: 'hover',    group: 'default'  },
+//     { key: 'disabled', group: 'disabled' },
+//   ],
+//   applyStateOverride: (inst, st) => {
+//     if (st === 'hover')    inst.opacity = 0.92;
+//     if (st === 'disabled') inst.opacity = 0.5;
+//   },
+//   properties: [
+//     ['inset',    'boolean', 'false', 'no', 'Indents to align with items that have leading icons.'],
+//     ['disabled', 'boolean', 'false', 'no', 'Disables interaction.'],
+//     ['className','string',  '—',     'no', 'Tailwind class escape hatch.'],
+//   ],
+// };
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// REFERENCE — `layout: 'tiny'` CONFIG shape (Separator, Skeleton, Spinner, Progress, Avatar)
+// Matches https://ui.shadcn.com/docs/components/radix/separator,
+//         https://ui.shadcn.com/docs/components/radix/skeleton,
+//         https://ui.shadcn.com/docs/components/radix/avatar,
+//         https://ui.shadcn.com/docs/components/radix/progress.
+//
+// const CONFIG = {
+//   component: 'separator',
+//   title:     'Separator',
+//   pageName:  '↳ Dividers',
+//   summary:   'A thin line that separates content — horizontal or vertical.',
+//   layout:    'tiny',
+//   variants:  ['horizontal', 'vertical'],
+//   sizes:     [],
+//   style: {
+//     horizontal: { fill: 'color/border/default', fallback: '#e5e7eb', labelVar: 'color/background/content', strokeVar: 'color/border/default' },
+//     vertical:   { fill: 'color/border/default', fallback: '#e5e7eb', labelVar: 'color/background/content', strokeVar: 'color/border/default' },
+//   },
+//   padH:   { default: 'space/none' },
+//   radius: 'radius/none',
+//   tiny: {
+//     shape:       'separator',   // 'separator' | 'skeleton' | 'spinner' | 'progress' | 'avatar' | 'aspect-ratio' | 'scroll-area'
+//     orientation: 'horizontal',  // separator-only
+//     width:       240,
+//     height:      1,
+//     // per-shape extras:
+//     // skeleton: { shape: 'skeleton', width: 200, height: 16 }
+//     // spinner:  { shape: 'spinner',  size: 24 }
+//     // progress: { shape: 'progress', width: 280, height: 8, filled: 0.4 }
+//     // avatar:   { shape: 'avatar',   size: 40, initials: 'AB' }
+//   },
+//   states: [{ key: 'default', group: 'default' }],
+//   applyStateOverride: () => {},
+//   properties: [
+//     ['orientation', '"horizontal" | "vertical"', '"horizontal"', 'no', 'Axis of the separator.'],
+//     ['className',   'string',                    '—',            'no', 'Tailwind class escape hatch.'],
+//   ],
+// };
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// REFERENCE — `layout: 'control'` CONFIG shape (Checkbox, Radio, Switch)
+// Matches https://ui.shadcn.com/docs/components/radix/checkbox,
+//         https://ui.shadcn.com/docs/components/radix/radio-group,
+//         https://ui.shadcn.com/docs/components/radix/switch.
+//
+// Control components promote `checked` (or `pressed`) to a Figma variant
+// property because the checked glyph IS the visual axis. The draw engine
+// detects `checked=true`/`pressed=true`/`on` in the variant name to render
+// the filled/indicator state.
+//
+// const CONFIG = {
+//   component: 'checkbox',
+//   title:     'Checkbox',
+//   pageName:  '↳ Checkbox',
+//   summary:   'Binary input. Checked state shows a checkmark glyph.',
+//   layout:    'control',
+//   variants:  ['unchecked', 'checked'],
+//   sizes:     [],
+//   style: {
+//     unchecked: { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content', strokeVar: 'color/border/default' },
+//     checked:   { fill: 'color/primary/default',    fallback: '#1a1a1a', labelVar: 'color/primary/content',    strokeVar: 'color/primary/default' },
+//   },
+//   padH:   { default: 'space/none' },
+//   radius: 'radius/sm',
+//   control: {
+//     shape:         'checkbox',   // 'checkbox' | 'radio' | 'switch'
+//     size:          16,
+//     indicatorVar:  'color/primary/content',
+//     // switch-only:
+//     // width: 36, height: 20,
+//     // trackOnVar: 'color/primary/default', trackOffVar: 'color/background/variant', thumbVar: 'color/background/default',
+//   },
+//   states: [
+//     { key: 'default',  group: 'default'  },
+//     { key: 'hover',    group: 'default'  },
+//     { key: 'disabled', group: 'disabled' },
+//   ],
+//   applyStateOverride: (inst, st) => {
+//     if (st === 'hover')    inst.opacity = 0.92;
+//     if (st === 'disabled') inst.opacity = 0.5;
+//   },
+//   properties: [
+//     ['checked',  'boolean', 'false', 'no', 'Controlled checked state.'],
+//     ['disabled', 'boolean', 'false', 'no', 'Disables interaction.'],
+//     ['className','string',  '—',     'no', 'Tailwind class escape hatch.'],
+//   ],
+// };
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────
+// REFERENCE — `layout: 'container'` CONFIG shape (Accordion, Tabs)
+// Matches https://ui.shadcn.com/docs/components/radix/accordion,
+//         https://ui.shadcn.com/docs/components/radix/tabs.
+//
+// const CONFIG = {
+//   component: 'accordion',
+//   title:     'Accordion',
+//   pageName:  '↳ Accordion',
+//   summary:   'Stack of collapsible panels. Expanded state reveals content.',
+//   layout:    'container',
+//   variants:  ['collapsed', 'expanded'],
+//   sizes:     [],
+//   style: {
+//     collapsed: { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content', strokeVar: 'color/border/subtle' },
+//     expanded:  { fill: 'color/background/default', fallback: '#ffffff', labelVar: 'color/background/content', strokeVar: 'color/border/subtle' },
+//   },
+//   padH:   { default: 'space/none' },
+//   radius: 'radius/none',
+//   container: {
+//     kind:      'accordion',    // 'accordion' | 'tabs'
+//     width:     360,
+//     titleText: 'Is it accessible?',
+//     panelText: 'Yes. It adheres to the WAI-ARIA design pattern.',
+//     // tabs-only:
+//     // tabs: ['Account', 'Password', 'Notifications'], activeIndex: 0, panelMinHeight: 120,
+//   },
+//   componentProps: { title: true, content: true },
+//   states: [{ key: 'default', group: 'default' }],
+//   applyStateOverride: () => {},
+//   properties: [
+//     ['type',     '"single" | "multiple"', '"single"', 'no', 'Allow one or many open panels.'],
+//     ['collapsible','boolean',              'false',   'no', 'Allow closing all panels when type="single".'],
+//     ['className','string',                 '—',       'no', 'Tailwind class escape hatch.'],
+//   ],
+// };
+// ─────────────────────────────────────────────────────────────────────────
+
 // REGISTRY PREFILL (atomic composition — Step 5.1) — agent replaces literals
 // after reading `.designops-registry.json` at repo root before each use_figma:
 //   ACTIVE_FILE_KEY     string | null   — null skips the fileKey gate
@@ -806,11 +1141,40 @@ const ACTIVE_FILE_KEY = null;
 const REGISTRY_COMPONENTS = {};
 const usesComposes = Array.isArray(CONFIG.composes) && CONFIG.composes.length > 0;
 
-if (ACTIVE_FILE_KEY && typeof figma.fileKey === 'string' && figma.fileKey !== ACTIVE_FILE_KEY) {
-  throw new Error(
-    `designops-registry fileKey mismatch: registry is for "${ACTIVE_FILE_KEY}" but this file is "${figma.fileKey}". ` +
-      'Delete or reset `.designops-registry.json`, or open the correct Figma file.',
+// fileKey gate — WARNING ONLY, NEVER THROW.
+//
+// `figma.fileKey` is unreliable as a file-identity check across several
+// common Figma scenarios — a throw here blocks legitimate draws:
+//   • Branch files — returns the branch's internal key, not the URL's.
+//   • Shared-library / team-library context — returns the library key, not
+//     the host file the designer is actually editing in.
+//   • Duplicated / unpublished files — internal key differs from the URL
+//     segment until the file is first published.
+//   • Some plugin execution contexts where the field is stubbed / empty.
+//
+// The registry uses `ACTIVE_FILE_KEY` purely for the composition mapping
+// in `REGISTRY_COMPONENTS` (Step 5.1). A mismatch is a soft warning — the
+// draw still proceeds against the currently-open Figma page. If the agent
+// was pointed at the wrong file, the mismatch warning + the "no composes
+// resolved" error at draw time will surface the problem; it's safer than
+// blocking every branch / duplicated / library-linked file outright.
+//
+// If you genuinely need a hard stop, change `logFileKeyMismatch` below.
+function logFileKeyMismatch(expected, actual) {
+  console.warn(
+    `[create-component] fileKey mismatch — registry expects "${expected}" but ` +
+      `figma.fileKey is "${actual || '(empty)'}". Continuing anyway; this is common ` +
+      'in branch / shared-library / duplicated files where figma.fileKey returns a ' +
+      'different value than the URL segment. If registry-bound composes fail to ' +
+      'resolve, delete or reset `.designops-registry.json` or open the correct file.',
   );
+}
+
+const _fileKeyObserved = (typeof figma.fileKey === 'string' && figma.fileKey) || null;
+const _fileKeyMismatch =
+  ACTIVE_FILE_KEY && _fileKeyObserved && _fileKeyObserved !== ACTIVE_FILE_KEY;
+if (_fileKeyMismatch) {
+  logFileKeyMismatch(ACTIVE_FILE_KEY, _fileKeyObserved);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1308,6 +1672,1009 @@ function buildVariant(name, fillVar, fallbackFill, {
   return { component: c, slots, propKeys };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED DRAW HELPERS (used by every archetype below `buildVariant`)
+// ═══════════════════════════════════════════════════════════════════════════
+// These helpers are deliberately hoisted to top-level (not closed over a
+// single archetype) so `surface-stack`, `field`, `row-item`, `tiny`,
+// `control`, and `container` builders can all share the same placeholder
+// visual language. Every designer-replaceable region uses `makeDashedSlot`
+// so the UX is uniform — dashed outline + muted caption, ready to swap.
+
+// Create a dashed placeholder slot with a centered caption.
+// Use for content regions, footer action slots, avatar image placeholders,
+// chart placeholders, etc. — anywhere a designer will drop a replacement.
+function makeDashedSlot(name, {
+  label = null,
+  w = 200,
+  h = 96,
+  radius = 8,
+  stretch = false,
+  grow = false,
+  captionFillVar = 'color/background/content-muted',
+  captionFillHex = '#6b7280',
+  captionSize = 12,
+  borderVar = 'color/border/subtle',
+  borderHex = '#e5e7eb',
+  fillVar = null,
+  fillHex = null,
+  padX = 12,
+  padY = 8,
+} = {}) {
+  const f = figma.createFrame();
+  f.name = name;
+  f.layoutMode = 'HORIZONTAL';
+  f.primaryAxisSizingMode = 'FIXED';
+  f.counterAxisSizingMode = 'FIXED';
+  f.resize(w, h);
+  f.primaryAxisAlignItems = 'CENTER';
+  f.counterAxisAlignItems = 'CENTER';
+  f.paddingLeft = padX;
+  f.paddingRight = padX;
+  f.paddingTop = padY;
+  f.paddingBottom = padY;
+  f.itemSpacing = 0;
+  if (fillVar) bindColor(f, fillVar, fillHex ?? '#ffffff', 'fills');
+  else if (fillHex) {
+    const h2 = fillHex.replace('#', '');
+    f.fills = [{ type: 'SOLID', color: { r: parseInt(h2.slice(0,2),16)/255, g: parseInt(h2.slice(2,4),16)/255, b: parseInt(h2.slice(4,6),16)/255 } }];
+  } else {
+    f.fills = [];
+  }
+  bindColor(f, borderVar, borderHex, 'strokes');
+  f.strokeWeight = 1;
+  f.dashPattern = [6, 4];
+  f.cornerRadius = radius;
+  if (stretch) f.layoutAlign = 'STRETCH';
+  if (grow) f.layoutGrow = 1;
+  if (label != null) {
+    const cap = figma.createText();
+    cap.fontName = { family: labelFont, style: 'Regular' };
+    cap.characters = String(label);
+    cap.fontSize = captionSize;
+    bindColor(cap, captionFillVar, captionFillHex, 'fills');
+    cap.textAutoResize = 'HEIGHT';
+    f.appendChild(cap);
+  }
+  return f;
+}
+
+// Create a sample text node using a published text style when available.
+// Used everywhere the designer sees meaningful sample copy (CardTitle,
+// CardDescription, Input Label, DropdownMenuItem Title, etc).
+function makeSampleText(chars, styleName, fillVar = 'color/background/content', fallbackSize = 14, weight = 'Regular') {
+  const t = figma.createText();
+  t.fontName = { family: labelFont, style: weight };
+  t.characters = String(chars);
+  const ts = styleName ? allTextStyles.find(s => s.name === styleName) : null;
+  if (ts) {
+    t.textStyleId = ts.id;
+  } else {
+    t.fontSize = fallbackSize;
+    if (labelFontVar) { try { t.setBoundVariable('fontFamily', labelFontVar); } catch (_) {} }
+  }
+  bindColor(t, fillVar, '#0a0a0a', 'fills');
+  t.textAutoResize = 'HEIGHT';
+  return t;
+}
+
+// Icon slot factory reusable across archetypes. Mirrors the `makeIconSlot`
+// inside `buildVariant` but is callable from any builder. Honors the
+// `DEFAULT_ICON_COMPONENT` resolution (§5.6) so INSTANCE_SWAP wiring stays
+// consistent across archetypes.
+function makeIconSlotShared(slotName, size = 24) {
+  if (DEFAULT_ICON_COMPONENT) {
+    const inst = DEFAULT_ICON_COMPONENT.createInstance();
+    inst.name = slotName;
+    try { inst.resize(size, size); } catch (_) {}
+    inst.layoutPositioning = 'AUTO';
+    return inst;
+  }
+  const f = figma.createFrame();
+  f.name          = slotName;
+  f.layoutMode    = 'NONE';
+  f.resize(size, size);
+  f.fills         = [];
+  bindColor(f, 'color/border/default', '#d4d4d8', 'strokes');
+  f.strokeWeight  = 1;
+  f.dashPattern   = [4, 3];
+  f.cornerRadius  = 4;
+  f.clipsContent  = false;
+  f.layoutPositioning = 'AUTO';
+  return f;
+}
+
+// Wire a INSTANCE_SWAP component property on an icon-slot instance when
+// DEFAULT_ICON_COMPONENT is set. No-op for placeholder frames.
+function wireIconSwapProp(comp, slotNode, propKeys, propName) {
+  if (!DEFAULT_ICON_COMPONENT || !slotNode || slotNode.type !== 'INSTANCE') return;
+  try {
+    const swapDefault = DEFAULT_ICON_COMPONENT.id;
+    const preferred = DEFAULT_ICON_COMPONENT.key
+      ? [{ type: 'COMPONENT', key: DEFAULT_ICON_COMPONENT.key }]
+      : undefined;
+    const opts = preferred ? { preferredValues: preferred } : undefined;
+    const key = comp.addComponentProperty(propName, 'INSTANCE_SWAP', swapDefault, opts);
+    propKeys[propName] = key;
+    slotNode.componentPropertyReferences = {
+      ...(slotNode.componentPropertyReferences || {}),
+      mainComponent: key,
+    };
+  } catch (err) {
+    console.warn(`wireIconSwapProp failed for ${propName}:`, err && err.message ? err.message : err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHETYPE: surface-stack
+// ═══════════════════════════════════════════════════════════════════════════
+// Shipped for: Card, Alert, Alert Dialog, Dialog, Sheet, Drawer, Popover,
+//              Tooltip, Hover Card, Empty
+// Reference: https://ui.shadcn.com/docs/components/radix/card (Card.tsx)
+//
+//   Card   → flex flex-col gap-6 rounded-xl border py-6
+//   Header → grid items-start gap-1.5 px-6 has-[action]:grid-cols-[1fr_auto]
+//   Title  → leading-none font-semibold
+//   Desc   → text-muted-foreground text-sm
+//   Action → col-start-2 row-span-2 row-start-1 self-start justify-self-end
+//   Content→ px-6
+//   Footer → flex items-center px-6
+//   size=sm→ gap-4 py-4
+function buildSurfaceStackVariant(name, fillVar, fallbackFill, {
+  labelVar      = 'color/background/content',
+  strokeVar     = 'color/border/subtle',
+  radiusVar     = 'radius/xl',
+  padH          = 'space/2xl',
+  sizeKey       = null,
+  propLabelText = 'Card',
+} = {}) {
+  const surface = CONFIG.surface || {};
+  const padYTok = surface.sectionPadY ?? padH;
+  const gapTok  = surface.gap ?? padH;
+  const innerGapTok = surface.innerGap ?? 'space/xs';
+  const width   = surface.width ?? 420;
+
+  const c = figma.createComponent();
+  c.name = name;
+  c.layoutMode = 'VERTICAL';
+  c.primaryAxisSizingMode = 'AUTO';
+  c.counterAxisSizingMode = 'FIXED';
+  c.resize(width, 1);
+  c.primaryAxisAlignItems = 'MIN';
+  c.counterAxisAlignItems = 'MIN';
+  c.paddingLeft = 0;
+  c.paddingRight = 0;
+  bindNum(c, 'paddingTop',    padYTok, 24);
+  bindNum(c, 'paddingBottom', padYTok, 24);
+  bindNum(c, 'itemSpacing',   gapTok,  24);
+  ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+    .forEach(fn => bindNum(c, fn, radiusVar, 12));
+  bindColor(c, fillVar, fallbackFill, 'fills');
+  if (strokeVar) { bindColor(c, strokeVar, '#e5e7eb', 'strokes'); c.strokeWeight = 1; }
+
+  const titleText = typeof surface.titleText === 'function'
+    ? (surface.titleText(sizeKey, null) ?? CONFIG.title)
+    : (surface.titleText ?? CONFIG.title);
+  const descText = typeof surface.descriptionText === 'function'
+    ? surface.descriptionText(sizeKey, null)
+    : (surface.descriptionText ?? CONFIG.summary?.split('.')[0] ?? null);
+
+  const header = figma.createFrame();
+  header.name = 'CardHeader';
+  header.layoutMode = 'HORIZONTAL';
+  header.primaryAxisSizingMode = 'FIXED';
+  header.counterAxisSizingMode = 'AUTO';
+  header.layoutAlign = 'STRETCH';
+  header.counterAxisAlignItems = 'MIN';
+  bindNum(header, 'paddingLeft',  padH, 24);
+  bindNum(header, 'paddingRight', padH, 24);
+  header.itemSpacing = 16;
+  header.fills = [];
+
+  const titleStack = figma.createFrame();
+  titleStack.name = 'CardHeader/title-stack';
+  titleStack.layoutMode = 'VERTICAL';
+  titleStack.primaryAxisSizingMode = 'AUTO';
+  titleStack.counterAxisSizingMode = 'AUTO';
+  titleStack.layoutGrow = 1;
+  bindNum(titleStack, 'itemSpacing', innerGapTok, 6);
+  titleStack.fills = [];
+
+  const titleNode = makeSampleText(titleText, surface.titleStyleName ?? 'Label/LG', labelVar, 18, 'Medium');
+  titleNode.name = 'CardTitle';
+  titleStack.appendChild(titleNode);
+
+  let descNode = null;
+  if (descText) {
+    descNode = makeSampleText(descText, surface.descriptionStyleName ?? 'Label/SM', 'color/background/content-muted', 14);
+    descNode.name = 'CardDescription';
+    titleStack.appendChild(descNode);
+  }
+  header.appendChild(titleStack);
+
+  let actionSlot = null;
+  const actionSpec = surface.actionSlot;
+  if (actionSpec && actionSpec.enabled) {
+    actionSlot = makeDashedSlot('CardAction', {
+      label: actionSpec.slotLabel ?? 'Action',
+      w: actionSpec.width ?? 80,
+      h: actionSpec.height ?? 32,
+      radius: 6,
+    });
+    header.appendChild(actionSlot);
+  }
+  c.appendChild(header);
+
+  let contentFrame = null;
+  let contentSlotNode = null;
+  const contentSpec = surface.contentSlot ?? { enabled: true, slotLabel: 'Content', minHeight: 96 };
+  if (contentSpec.enabled !== false) {
+    contentFrame = figma.createFrame();
+    contentFrame.name = 'CardContent';
+    contentFrame.layoutMode = 'VERTICAL';
+    contentFrame.primaryAxisSizingMode = 'AUTO';
+    contentFrame.counterAxisSizingMode = 'FIXED';
+    contentFrame.layoutAlign = 'STRETCH';
+    bindNum(contentFrame, 'paddingLeft',  padH, 24);
+    bindNum(contentFrame, 'paddingRight', padH, 24);
+    contentFrame.itemSpacing = 8;
+    contentFrame.fills = [];
+    contentSlotNode = makeDashedSlot('content-slot', {
+      label:     contentSpec.slotLabel ?? 'Content',
+      w:         width - 48,
+      h:         contentSpec.minHeight ?? 96,
+      stretch:   true,
+      radius:    8,
+    });
+    contentFrame.appendChild(contentSlotNode);
+    c.appendChild(contentFrame);
+  }
+
+  let footerFrame = null;
+  const footerSpec = surface.footerSlot ?? { enabled: false };
+  if (footerSpec.enabled) {
+    footerFrame = figma.createFrame();
+    footerFrame.name = 'CardFooter';
+    footerFrame.layoutMode = 'HORIZONTAL';
+    footerFrame.primaryAxisSizingMode = 'FIXED';
+    footerFrame.counterAxisSizingMode = 'AUTO';
+    footerFrame.layoutAlign = 'STRETCH';
+    const align = footerSpec.align ?? 'start';
+    footerFrame.primaryAxisAlignItems = align === 'end' ? 'MAX' : align === 'between' ? 'SPACE_BETWEEN' : 'MIN';
+    footerFrame.counterAxisAlignItems = 'CENTER';
+    bindNum(footerFrame, 'paddingLeft',  padH, 24);
+    bindNum(footerFrame, 'paddingRight', padH, 24);
+    footerFrame.itemSpacing = 8;
+    footerFrame.fills = [];
+    const fh = footerSpec.minHeight ?? 44;
+    const fLabel = footerSpec.slotLabel ?? 'Footer';
+    const footerSlotNode = makeDashedSlot(`footer-slot/${fLabel.toLowerCase().replace(/\s+/g, '-')}`, {
+      label: fLabel, w: 140, h: fh, radius: 6,
+    });
+    footerFrame.appendChild(footerSlotNode);
+    c.appendChild(footerFrame);
+  }
+
+  const propKeys = {};
+  const cp = CONFIG.componentProps || {};
+  try {
+    if (cp.title !== false) {
+      propKeys.title = c.addComponentProperty('Title', 'TEXT', String(titleText));
+      titleNode.componentPropertyReferences = { characters: propKeys.title };
+    }
+    if (descNode && cp.description !== false) {
+      propKeys.description = c.addComponentProperty('Description', 'TEXT', String(descText));
+      descNode.componentPropertyReferences = { characters: propKeys.description };
+    }
+    if (actionSlot && cp.actionSlot !== false) {
+      propKeys.actionSlot = c.addComponentProperty('Show action', 'BOOLEAN', true);
+      actionSlot.componentPropertyReferences = { visible: propKeys.actionSlot };
+    }
+    if (footerFrame && cp.footer !== false) {
+      propKeys.footer = c.addComponentProperty('Show footer', 'BOOLEAN', true);
+      footerFrame.componentPropertyReferences = { visible: propKeys.footer };
+    }
+  } catch (err) {
+    console.warn(`addComponentProperty (surface-stack) failed on '${name}':`, err && err.message ? err.message : err);
+  }
+
+  figma.currentPage.appendChild(c);
+  return {
+    component: c,
+    slots: { title: titleNode, description: descNode, action: actionSlot, content: contentSlotNode, footer: footerFrame, label: null, leading: null, trailing: null, center: null },
+    propKeys,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHETYPE: field
+// ═══════════════════════════════════════════════════════════════════════════
+// Shipped for: Input, Textarea, Select, Combobox, Date Picker, Input OTP,
+//              Input Group, Label, Native Select
+// Reference: https://ui.shadcn.com/docs/components/radix/input (Input.tsx)
+//
+//   Input    → flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm
+//   Textarea → flex min-h-[60px] w-full rounded-md border bg-transparent px-3 py-2 text-sm
+//   Select   → flex h-9 w-full items-center justify-between rounded-md border bg-transparent px-3 py-2 text-sm
+//   sm/lg    → h-8 text-xs / h-10 text-base (per shadcn size variants)
+function buildFieldVariant(name, fillVar, fallbackFill, {
+  labelVar   = 'color/background/content',
+  strokeVar  = 'color/border/default',
+  radiusVar  = 'radius/md',
+  padH       = 'space/md',
+  sizeKey    = null,
+} = {}) {
+  const field = CONFIG.field || {};
+  const fieldType = field.fieldType ?? 'input';           // 'input' | 'textarea' | 'select' | 'otp'
+  const showLabel = field.showLabel !== false;
+  const labelText = field.labelText ?? 'Label';
+  const placeholderText = field.placeholderText ?? (fieldType === 'select' ? 'Select an option…' : 'Placeholder');
+  const showHelper = field.showHelper === true;
+  const helperText = field.helperText ?? 'Helper text';
+  const leadingIcon  = field.leadingIcon === true;
+  const trailingIcon = field.trailingIcon === true || fieldType === 'select';  // Select always has chevron
+  const fh = sizeKey === 'sm' ? 32 : sizeKey === 'lg' ? 44 : 36;
+  const fontSize = sizeKey === 'sm' ? 12 : sizeKey === 'lg' ? 16 : 14;
+  const labelStyleName = field.labelStyleName ?? 'Label/SM';
+  const width = field.width ?? 320;
+
+  const c = figma.createComponent();
+  c.name = name;
+  c.layoutMode = 'VERTICAL';
+  c.primaryAxisSizingMode = 'AUTO';
+  c.counterAxisSizingMode = 'FIXED';
+  c.resize(width, 1);
+  c.primaryAxisAlignItems = 'MIN';
+  c.counterAxisAlignItems = 'MIN';
+  bindNum(c, 'itemSpacing', 'space/xs', 6);
+  c.fills = [];
+  c.strokes = [];
+
+  let labelNode = null;
+  if (showLabel) {
+    labelNode = makeSampleText(labelText, labelStyleName, labelVar, 14, 'Medium');
+    labelNode.name = 'Label';
+    c.appendChild(labelNode);
+  }
+
+  const fieldChrome = figma.createFrame();
+  fieldChrome.name = 'field';
+  fieldChrome.layoutMode = fieldType === 'textarea' ? 'VERTICAL' : 'HORIZONTAL';
+  fieldChrome.primaryAxisSizingMode = fieldType === 'textarea' ? 'FIXED' : 'FIXED';
+  fieldChrome.counterAxisSizingMode = 'FIXED';
+  fieldChrome.layoutAlign = 'STRETCH';
+  if (fieldType === 'textarea') {
+    fieldChrome.resize(width, field.textareaMinHeight ?? 96);
+    fieldChrome.primaryAxisAlignItems = 'MIN';
+    fieldChrome.counterAxisAlignItems = 'MIN';
+  } else {
+    fieldChrome.resize(width, fh);
+    fieldChrome.primaryAxisAlignItems = fieldType === 'select' ? 'SPACE_BETWEEN' : 'MIN';
+    fieldChrome.counterAxisAlignItems = 'CENTER';
+  }
+  bindNum(fieldChrome, 'paddingLeft',  padH, 12);
+  bindNum(fieldChrome, 'paddingRight', padH, 12);
+  fieldChrome.paddingTop    = fieldType === 'textarea' ? 8 : 4;
+  fieldChrome.paddingBottom = fieldType === 'textarea' ? 8 : 4;
+  fieldChrome.itemSpacing = 8;
+  bindColor(fieldChrome, fillVar, fallbackFill, 'fills');
+  if (strokeVar) { bindColor(fieldChrome, strokeVar, '#e5e7eb', 'strokes'); fieldChrome.strokeWeight = 1; }
+  ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+    .forEach(fn => bindNum(fieldChrome, fn, radiusVar, 6));
+
+  let leadingSlotNode = null;
+  if (leadingIcon) {
+    leadingSlotNode = makeIconSlotShared('icon-slot/leading', 20);
+    fieldChrome.appendChild(leadingSlotNode);
+  }
+
+  // OTP renders as 4-6 small boxes rather than a single field.
+  let placeholder = null;
+  if (fieldType === 'otp') {
+    const boxCount = field.otpLength ?? 6;
+    const boxW = Math.min(44, Math.floor((width - 12 * (boxCount - 1)) / boxCount));
+    fieldChrome.fills = [];
+    fieldChrome.strokes = [];
+    fieldChrome.itemSpacing = 8;
+    for (let i = 0; i < boxCount; i++) {
+      const box = figma.createFrame();
+      box.name = `otp-slot/${i}`;
+      box.layoutMode = 'HORIZONTAL';
+      box.primaryAxisSizingMode = 'FIXED';
+      box.counterAxisSizingMode = 'FIXED';
+      box.resize(boxW, fh);
+      box.primaryAxisAlignItems = 'CENTER';
+      box.counterAxisAlignItems = 'CENTER';
+      bindColor(box, fillVar, fallbackFill, 'fills');
+      bindColor(box, strokeVar ?? 'color/border/default', '#e5e7eb', 'strokes');
+      box.strokeWeight = 1;
+      ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+        .forEach(fn => bindNum(box, fn, radiusVar, 6));
+      fieldChrome.appendChild(box);
+    }
+  } else {
+    placeholder = makeSampleText(placeholderText, null, 'color/background/content-muted', fontSize);
+    placeholder.name = fieldType === 'select' ? 'value' : 'placeholder';
+    if (fieldType !== 'textarea') placeholder.layoutGrow = 1;
+    fieldChrome.appendChild(placeholder);
+  }
+
+  let trailingSlotNode = null;
+  if (trailingIcon) {
+    trailingSlotNode = makeIconSlotShared(fieldType === 'select' ? 'icon-slot/chevron' : 'icon-slot/trailing', 16);
+    fieldChrome.appendChild(trailingSlotNode);
+  }
+
+  c.appendChild(fieldChrome);
+
+  let helperNode = null;
+  if (showHelper) {
+    helperNode = makeSampleText(helperText, 'Doc/Caption', 'color/background/content-muted', 12);
+    helperNode.name = 'helper';
+    c.appendChild(helperNode);
+  }
+
+  const propKeys = {};
+  const cp = CONFIG.componentProps || {};
+  try {
+    if (labelNode && cp.label !== false) {
+      propKeys.label = c.addComponentProperty('Label', 'TEXT', labelText);
+      labelNode.componentPropertyReferences = { characters: propKeys.label };
+    }
+    if (placeholder && cp.placeholder !== false) {
+      propKeys.placeholder = c.addComponentProperty('Placeholder', 'TEXT', placeholderText);
+      placeholder.componentPropertyReferences = { characters: propKeys.placeholder };
+    }
+    if (helperNode && cp.helper !== false) {
+      propKeys.helper = c.addComponentProperty('Helper', 'TEXT', helperText);
+      helperNode.componentPropertyReferences = { characters: propKeys.helper };
+    }
+    if (leadingSlotNode) {
+      propKeys.leadingIcon = c.addComponentProperty('Leading icon', 'BOOLEAN', true);
+      leadingSlotNode.componentPropertyReferences = {
+        ...(leadingSlotNode.componentPropertyReferences || {}),
+        visible: propKeys.leadingIcon,
+      };
+      wireIconSwapProp(c, leadingSlotNode, propKeys, 'Icon: leading');
+    }
+    if (trailingSlotNode && fieldType !== 'select') {
+      propKeys.trailingIcon = c.addComponentProperty('Trailing icon', 'BOOLEAN', true);
+      trailingSlotNode.componentPropertyReferences = {
+        ...(trailingSlotNode.componentPropertyReferences || {}),
+        visible: propKeys.trailingIcon,
+      };
+      wireIconSwapProp(c, trailingSlotNode, propKeys, 'Icon: trailing');
+    } else if (trailingSlotNode) {
+      // Select chevron — INSTANCE_SWAP only, no boolean toggle.
+      wireIconSwapProp(c, trailingSlotNode, propKeys, 'Icon: chevron');
+    }
+  } catch (err) {
+    console.warn(`addComponentProperty (field) failed on '${name}':`, err && err.message ? err.message : err);
+  }
+
+  figma.currentPage.appendChild(c);
+  return {
+    component: c,
+    slots: { label: labelNode, placeholder, helper: helperNode, leading: leadingSlotNode, trailing: trailingSlotNode, title: null, description: null, action: null, content: null, footer: null, center: null },
+    propKeys,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHETYPE: row-item
+// ═══════════════════════════════════════════════════════════════════════════
+// Shipped for: Item, Dropdown Menu (MenuItem), Menubar Item, Navigation Menu
+//              Item, Context Menu Item, Command Item, Breadcrumb Item,
+//              Sidebar row
+// Reference: https://ui.shadcn.com/docs/components/radix/dropdown-menu
+//            https://ui.shadcn.com/docs/components/radix/item
+//
+//   MenuItem → flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm
+//   Item     → lead-icon + (title + description stacked) + trail-action
+function buildRowItemVariant(name, fillVar, fallbackFill, {
+  labelVar   = 'color/background/content',
+  strokeVar  = null,
+  radiusVar  = 'radius/sm',
+  padH       = 'space/sm',
+  sizeKey    = null,
+} = {}) {
+  const row = CONFIG.row || {};
+  const titleText = row.titleText ?? CONFIG.title ?? 'Item';
+  const descText  = row.descriptionText ?? null;
+  const showLeading  = row.leadingIcon !== false;
+  const showTrailing = row.trailingIcon !== false;
+  const showShortcut = row.shortcut === true;
+  const shortcutText = row.shortcutText ?? '⌘K';
+  const width = row.width ?? 280;
+
+  const c = figma.createComponent();
+  c.name = name;
+  c.layoutMode = 'HORIZONTAL';
+  c.primaryAxisSizingMode = 'FIXED';
+  c.counterAxisSizingMode = 'AUTO';
+  c.resize(width, 1);
+  c.primaryAxisAlignItems = 'MIN';
+  c.counterAxisAlignItems = 'CENTER';
+  bindNum(c, 'paddingLeft',   padH, 12);
+  bindNum(c, 'paddingRight',  padH, 12);
+  bindNum(c, 'paddingTop',    'space/xs', 6);
+  bindNum(c, 'paddingBottom', 'space/xs', 6);
+  bindNum(c, 'itemSpacing',   'space/sm', 8);
+  ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+    .forEach(fn => bindNum(c, fn, radiusVar, 4));
+  bindColor(c, fillVar, fallbackFill, 'fills');
+  if (strokeVar) { bindColor(c, strokeVar, '#e5e7eb', 'strokes'); c.strokeWeight = 1; }
+
+  let leadingSlotNode = null;
+  if (showLeading) {
+    leadingSlotNode = makeIconSlotShared('icon-slot/leading', 16);
+    c.appendChild(leadingSlotNode);
+  }
+
+  const textStack = figma.createFrame();
+  textStack.name = 'row/text-stack';
+  textStack.layoutMode = 'VERTICAL';
+  textStack.primaryAxisSizingMode = 'AUTO';
+  textStack.counterAxisSizingMode = 'AUTO';
+  textStack.layoutGrow = 1;
+  textStack.itemSpacing = 2;
+  textStack.fills = [];
+
+  const titleNode = makeSampleText(titleText, row.titleStyleName ?? 'Label/SM', labelVar, 14);
+  titleNode.name = 'row/title';
+  textStack.appendChild(titleNode);
+
+  let descNode = null;
+  if (descText) {
+    descNode = makeSampleText(descText, row.descriptionStyleName ?? 'Doc/Caption', 'color/background/content-muted', 12);
+    descNode.name = 'row/description';
+    textStack.appendChild(descNode);
+  }
+  c.appendChild(textStack);
+
+  let shortcutNode = null;
+  if (showShortcut) {
+    shortcutNode = makeSampleText(shortcutText, 'Doc/Code', 'color/background/content-muted', 12);
+    shortcutNode.name = 'row/shortcut';
+    c.appendChild(shortcutNode);
+  }
+
+  let trailingSlotNode = null;
+  if (showTrailing) {
+    trailingSlotNode = makeIconSlotShared(row.trailingIsChevron ? 'icon-slot/chevron' : 'icon-slot/trailing', 16);
+    c.appendChild(trailingSlotNode);
+  }
+
+  const propKeys = {};
+  const cp = CONFIG.componentProps || {};
+  try {
+    if (cp.title !== false) {
+      propKeys.title = c.addComponentProperty('Title', 'TEXT', String(titleText));
+      titleNode.componentPropertyReferences = { characters: propKeys.title };
+    }
+    if (descNode && cp.description !== false) {
+      propKeys.description = c.addComponentProperty('Description', 'TEXT', String(descText));
+      descNode.componentPropertyReferences = { characters: propKeys.description };
+    }
+    if (shortcutNode && cp.shortcut !== false) {
+      propKeys.shortcut = c.addComponentProperty('Shortcut', 'TEXT', String(shortcutText));
+      shortcutNode.componentPropertyReferences = { characters: propKeys.shortcut };
+    }
+    if (leadingSlotNode) {
+      propKeys.leadingIcon = c.addComponentProperty('Leading icon', 'BOOLEAN', true);
+      leadingSlotNode.componentPropertyReferences = {
+        ...(leadingSlotNode.componentPropertyReferences || {}),
+        visible: propKeys.leadingIcon,
+      };
+      wireIconSwapProp(c, leadingSlotNode, propKeys, 'Icon: leading');
+    }
+    if (trailingSlotNode) {
+      propKeys.trailingIcon = c.addComponentProperty('Trailing icon', 'BOOLEAN', true);
+      trailingSlotNode.componentPropertyReferences = {
+        ...(trailingSlotNode.componentPropertyReferences || {}),
+        visible: propKeys.trailingIcon,
+      };
+      wireIconSwapProp(c, trailingSlotNode, propKeys, row.trailingIsChevron ? 'Icon: chevron' : 'Icon: trailing');
+    }
+  } catch (err) {
+    console.warn(`addComponentProperty (row-item) failed on '${name}':`, err && err.message ? err.message : err);
+  }
+
+  figma.currentPage.appendChild(c);
+  return {
+    component: c,
+    slots: { title: titleNode, description: descNode, leading: leadingSlotNode, trailing: trailingSlotNode, shortcut: shortcutNode, label: null, action: null, content: null, footer: null, center: null },
+    propKeys,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHETYPE: tiny
+// ═══════════════════════════════════════════════════════════════════════════
+// Shipped for: Separator, Skeleton, Spinner, Progress, Aspect Ratio, Avatar,
+//              Scroll Area
+// Reference: https://ui.shadcn.com/docs/components/radix/separator
+//            https://ui.shadcn.com/docs/components/radix/skeleton
+//            https://ui.shadcn.com/docs/components/radix/avatar
+//            https://ui.shadcn.com/docs/components/radix/progress
+//
+// Dispatches on CONFIG.tiny.shape to render the canonical primitive.
+function buildTinyVariant(name, fillVar, fallbackFill, {
+  labelVar   = 'color/background/content',
+  strokeVar  = null,
+  radiusVar  = 'radius/full',
+  padH       = 'space/none',
+  sizeKey    = null,
+} = {}) {
+  const tiny = CONFIG.tiny || {};
+  const shape = tiny.shape ?? 'skeleton';
+  const orientation = tiny.orientation ?? 'horizontal';
+
+  if (shape === 'separator') {
+    const w = tiny.width ?? (orientation === 'vertical' ? 1 : 240);
+    const h = tiny.height ?? (orientation === 'vertical' ? 120 : 1);
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'NONE';
+    c.resize(w, h);
+    bindColor(c, strokeVar ?? 'color/border/default', '#e5e7eb', 'fills');
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: {}, propKeys: {} };
+  }
+
+  if (shape === 'skeleton') {
+    const w = tiny.width ?? 200;
+    const h = tiny.height ?? 16;
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'NONE';
+    c.resize(w, h);
+    bindColor(c, fillVar ?? 'color/background/variant', fallbackFill ?? '#f4f4f5', 'fills');
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(c, fn, 'radius/md', 6));
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: {}, propKeys: {} };
+  }
+
+  if (shape === 'spinner') {
+    const sz = tiny.size ?? 24;
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'NONE';
+    c.resize(sz, sz);
+    c.fills = [];
+    bindColor(c, strokeVar ?? 'color/border/default', '#d4d4d8', 'strokes');
+    c.strokeWeight = 2;
+    c.cornerRadius = sz / 2;
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: {}, propKeys: {} };
+  }
+
+  if (shape === 'progress') {
+    const w = tiny.width ?? 280;
+    const h = tiny.height ?? 8;
+    const filled = Math.max(0, Math.min(1, tiny.filled ?? 0.4));
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'HORIZONTAL';
+    c.primaryAxisSizingMode = 'FIXED';
+    c.counterAxisSizingMode = 'FIXED';
+    c.resize(w, h);
+    c.primaryAxisAlignItems = 'MIN';
+    c.counterAxisAlignItems = 'CENTER';
+    bindColor(c, 'color/background/variant', '#f4f4f5', 'fills');
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(c, fn, 'radius/full', h / 2));
+    const bar = figma.createFrame();
+    bar.name = 'progress/bar';
+    bar.resize(Math.max(1, Math.floor(w * filled)), h);
+    bar.layoutPositioning = 'AUTO';
+    bindColor(bar, fillVar ?? 'color/primary/default', fallbackFill ?? '#1a1a1a', 'fills');
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(bar, fn, 'radius/full', h / 2));
+    c.appendChild(bar);
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: { bar }, propKeys: {} };
+  }
+
+  if (shape === 'avatar') {
+    const sz = tiny.size ?? 40;
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'HORIZONTAL';
+    c.primaryAxisSizingMode = 'FIXED';
+    c.counterAxisSizingMode = 'FIXED';
+    c.resize(sz, sz);
+    c.primaryAxisAlignItems = 'CENTER';
+    c.counterAxisAlignItems = 'CENTER';
+    c.clipsContent = true;
+    bindColor(c, fillVar ?? 'color/background/variant', fallbackFill ?? '#e5e7eb', 'fills');
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(c, fn, 'radius/full', sz / 2));
+    const initials = makeSampleText(tiny.initials ?? 'AB', null, 'color/background/content-muted', Math.round(sz * 0.4), 'Medium');
+    initials.name = 'avatar/initials';
+    c.appendChild(initials);
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: { initials }, propKeys: {} };
+  }
+
+  if (shape === 'aspect-ratio' || shape === 'scroll-area') {
+    const w = tiny.width ?? 320;
+    const h = tiny.height ?? (shape === 'aspect-ratio' ? 180 : 200);
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'HORIZONTAL';
+    c.primaryAxisSizingMode = 'FIXED';
+    c.counterAxisSizingMode = 'FIXED';
+    c.resize(w, h);
+    c.primaryAxisAlignItems = 'CENTER';
+    c.counterAxisAlignItems = 'CENTER';
+    c.fills = [];
+    bindColor(c, strokeVar ?? 'color/border/subtle', '#e5e7eb', 'strokes');
+    c.strokeWeight = 1;
+    c.dashPattern = [6, 4];
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(c, fn, 'radius/md', 6));
+    const cap = makeSampleText(shape === 'aspect-ratio' ? 'Aspect ratio' : 'Scroll area', null, 'color/background/content-muted', 12);
+    c.appendChild(cap);
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: {}, propKeys: {} };
+  }
+
+  throw new Error(`buildTinyVariant: unknown CONFIG.tiny.shape '${shape}' for '${name}'. Expected one of: separator, skeleton, spinner, progress, avatar, aspect-ratio, scroll-area.`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHETYPE: control
+// ═══════════════════════════════════════════════════════════════════════════
+// Shipped for: Checkbox, Radio Group item, Switch
+// Reference: https://ui.shadcn.com/docs/components/radix/checkbox
+//            https://ui.shadcn.com/docs/components/radix/radio-group
+//            https://ui.shadcn.com/docs/components/radix/switch
+//
+//   Checkbox → h-4 w-4 rounded-sm border border-primary
+//   Radio    → h-4 w-4 rounded-full border border-primary
+//   Switch   → h-6 w-11 rounded-full border + inner thumb
+//
+// Control variants use cva-driven variant-property-level checked state
+// (see CONVENTIONS §13.1 — checked IS a figma variant for controls).
+function buildControlVariant(name, fillVar, fallbackFill, {
+  labelVar  = 'color/background/content',
+  strokeVar = 'color/border/default',
+  radiusVar = 'radius/sm',
+  padH      = 'space/none',
+  sizeKey   = null,
+} = {}) {
+  const control = CONFIG.control || {};
+  const shape = control.shape ?? 'checkbox';
+  const sz = control.size ?? 16;
+  const checked = /checked=true|pressed=true|on/.test(name);
+
+  if (shape === 'switch') {
+    const w = control.width ?? 36;
+    const h = control.height ?? 20;
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'HORIZONTAL';
+    c.primaryAxisSizingMode = 'FIXED';
+    c.counterAxisSizingMode = 'FIXED';
+    c.resize(w, h);
+    c.primaryAxisAlignItems = checked ? 'MAX' : 'MIN';
+    c.counterAxisAlignItems = 'CENTER';
+    c.paddingLeft = 2; c.paddingRight = 2;
+    bindColor(c, checked ? (control.trackOnVar ?? 'color/primary/default') : (control.trackOffVar ?? 'color/background/variant'), checked ? '#1a1a1a' : '#e5e7eb', 'fills');
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(c, fn, 'radius/full', h / 2));
+    const thumb = figma.createFrame();
+    thumb.name = 'switch/thumb';
+    thumb.resize(h - 4, h - 4);
+    bindColor(thumb, control.thumbVar ?? 'color/background/default', '#ffffff', 'fills');
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(thumb, fn, 'radius/full', (h - 4) / 2));
+    c.appendChild(thumb);
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: { thumb }, propKeys: {} };
+  }
+
+  // checkbox / radio
+  const c = figma.createComponent();
+  c.name = name;
+  c.layoutMode = 'HORIZONTAL';
+  c.primaryAxisSizingMode = 'FIXED';
+  c.counterAxisSizingMode = 'FIXED';
+  c.resize(sz, sz);
+  c.primaryAxisAlignItems = 'CENTER';
+  c.counterAxisAlignItems = 'CENTER';
+  const cornerTok = shape === 'radio' ? 'radius/full' : radiusVar;
+  const cornerFallback = shape === 'radio' ? sz / 2 : 3;
+  if (checked) {
+    bindColor(c, fillVar ?? 'color/primary/default', fallbackFill ?? '#1a1a1a', 'fills');
+  } else {
+    c.fills = [];
+  }
+  bindColor(c, strokeVar, '#d4d4d8', 'strokes');
+  c.strokeWeight = 1;
+  ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+    .forEach(fn => bindNum(c, fn, cornerTok, cornerFallback));
+
+  if (checked) {
+    if (shape === 'radio') {
+      const dot = figma.createFrame();
+      dot.name = 'radio/dot';
+      const dotSz = Math.round(sz * 0.5);
+      dot.resize(dotSz, dotSz);
+      bindColor(dot, control.indicatorVar ?? 'color/primary/content', '#ffffff', 'fills');
+      ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+        .forEach(fn => bindNum(dot, fn, 'radius/full', dotSz / 2));
+      c.appendChild(dot);
+    } else {
+      const check = makeSampleText('✓', null, control.indicatorVar ?? 'color/primary/content', Math.round(sz * 0.7), 'Medium');
+      check.name = 'checkbox/check';
+      c.appendChild(check);
+    }
+  }
+  figma.currentPage.appendChild(c);
+  return { component: c, slots: {}, propKeys: {} };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHETYPE: container
+// ═══════════════════════════════════════════════════════════════════════════
+// Shipped for: Accordion, Collapsible, Tabs, Resizable
+// Reference: https://ui.shadcn.com/docs/components/radix/accordion
+//            https://ui.shadcn.com/docs/components/radix/tabs
+//
+//   Accordion item → header row with title + chevron, divider, expandable
+//                    content panel below (dashed slot when open)
+//   Tabs           → TabsList row (padded, rounded, muted bg) with
+//                    TabsTriggers + TabsContent dashed slot below
+function buildContainerVariant(name, fillVar, fallbackFill, {
+  labelVar   = 'color/background/content',
+  strokeVar  = 'color/border/subtle',
+  radiusVar  = 'radius/md',
+  padH       = 'space/md',
+  sizeKey    = null,
+} = {}) {
+  const container = CONFIG.container || {};
+  const kind = container.kind ?? 'accordion';  // 'accordion' | 'tabs'
+  const expanded = /open=true|expanded=true|active=true|state=open/.test(name);
+  const width = container.width ?? 360;
+
+  if (kind === 'tabs') {
+    const tabs = container.tabs ?? ['Account', 'Password', 'Notifications'];
+    const activeIdx = container.activeIndex ?? 0;
+    const c = figma.createComponent();
+    c.name = name;
+    c.layoutMode = 'VERTICAL';
+    c.primaryAxisSizingMode = 'AUTO';
+    c.counterAxisSizingMode = 'FIXED';
+    c.resize(width, 1);
+    c.primaryAxisAlignItems = 'MIN';
+    c.counterAxisAlignItems = 'MIN';
+    c.itemSpacing = 12;
+    c.fills = [];
+
+    const list = figma.createFrame();
+    list.name = 'TabsList';
+    list.layoutMode = 'HORIZONTAL';
+    list.primaryAxisSizingMode = 'AUTO';
+    list.counterAxisSizingMode = 'AUTO';
+    list.primaryAxisAlignItems = 'MIN';
+    list.counterAxisAlignItems = 'CENTER';
+    list.paddingLeft = 4; list.paddingRight = 4;
+    list.paddingTop = 4;  list.paddingBottom = 4;
+    list.itemSpacing = 4;
+    bindColor(list, 'color/background/variant', '#f4f4f5', 'fills');
+    ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+      .forEach(fn => bindNum(list, fn, radiusVar, 6));
+    tabs.forEach((t, i) => {
+      const trigger = figma.createFrame();
+      trigger.name = `TabsTrigger/${t.toLowerCase()}`;
+      trigger.layoutMode = 'HORIZONTAL';
+      trigger.primaryAxisSizingMode = 'AUTO';
+      trigger.counterAxisSizingMode = 'AUTO';
+      trigger.paddingLeft = 12; trigger.paddingRight = 12;
+      trigger.paddingTop = 6;   trigger.paddingBottom = 6;
+      trigger.primaryAxisAlignItems = 'CENTER';
+      trigger.counterAxisAlignItems = 'CENTER';
+      if (i === activeIdx) {
+        bindColor(trigger, 'color/background/default', '#ffffff', 'fills');
+      } else {
+        trigger.fills = [];
+      }
+      ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
+        .forEach(fn => bindNum(trigger, fn, radiusVar, 6));
+      const lbl = makeSampleText(t, 'Label/SM', i === activeIdx ? labelVar : 'color/background/content-muted', 14, i === activeIdx ? 'Medium' : 'Regular');
+      trigger.appendChild(lbl);
+      list.appendChild(trigger);
+    });
+    c.appendChild(list);
+
+    const panel = makeDashedSlot('TabsContent', {
+      label: `${tabs[activeIdx]} content`,
+      w: width,
+      h: container.panelMinHeight ?? 120,
+      stretch: true,
+      radius: 8,
+    });
+    c.appendChild(panel);
+    figma.currentPage.appendChild(c);
+    return { component: c, slots: { list, panel }, propKeys: {} };
+  }
+
+  // accordion item
+  const titleText = container.titleText ?? 'Is it accessible?';
+  const panelText = container.panelText ?? 'Yes. It adheres to the WAI-ARIA design pattern.';
+  const c = figma.createComponent();
+  c.name = name;
+  c.layoutMode = 'VERTICAL';
+  c.primaryAxisSizingMode = 'AUTO';
+  c.counterAxisSizingMode = 'FIXED';
+  c.resize(width, 1);
+  c.primaryAxisAlignItems = 'MIN';
+  c.counterAxisAlignItems = 'MIN';
+  c.itemSpacing = 0;
+  c.fills = [];
+  bindColor(c, strokeVar, '#e5e7eb', 'strokes');
+  c.strokeWeight = 0;
+  c.strokeTopWeight = 0; c.strokeRightWeight = 0; c.strokeLeftWeight = 0; c.strokeBottomWeight = 1;
+
+  const trigger = figma.createFrame();
+  trigger.name = 'AccordionTrigger';
+  trigger.layoutMode = 'HORIZONTAL';
+  trigger.primaryAxisSizingMode = 'FIXED';
+  trigger.counterAxisSizingMode = 'AUTO';
+  trigger.layoutAlign = 'STRETCH';
+  trigger.primaryAxisAlignItems = 'SPACE_BETWEEN';
+  trigger.counterAxisAlignItems = 'CENTER';
+  trigger.paddingLeft = 0; trigger.paddingRight = 0;
+  trigger.paddingTop = 12; trigger.paddingBottom = 12;
+  trigger.itemSpacing = 8;
+  trigger.fills = [];
+  const tTitle = makeSampleText(titleText, 'Label/MD', labelVar, 14, 'Medium');
+  tTitle.name = 'AccordionTrigger/title';
+  trigger.appendChild(tTitle);
+  const chev = makeIconSlotShared('icon-slot/chevron', 16);
+  trigger.appendChild(chev);
+  c.appendChild(trigger);
+
+  let panel = null;
+  if (expanded) {
+    panel = figma.createFrame();
+    panel.name = 'AccordionContent';
+    panel.layoutMode = 'VERTICAL';
+    panel.primaryAxisSizingMode = 'AUTO';
+    panel.counterAxisSizingMode = 'FIXED';
+    panel.layoutAlign = 'STRETCH';
+    panel.paddingTop = 0; panel.paddingBottom = 16;
+    panel.paddingLeft = 0; panel.paddingRight = 0;
+    panel.fills = [];
+    const body = makeSampleText(panelText, 'Label/SM', 'color/background/content-muted', 14);
+    body.name = 'AccordionContent/body';
+    panel.appendChild(body);
+    c.appendChild(panel);
+  }
+
+  const propKeys = {};
+  const cp = CONFIG.componentProps || {};
+  try {
+    if (cp.title !== false) {
+      propKeys.title = c.addComponentProperty('Title', 'TEXT', String(titleText));
+      tTitle.componentPropertyReferences = { characters: propKeys.title };
+    }
+    if (panel && cp.content !== false) {
+      propKeys.content = c.addComponentProperty('Content', 'TEXT', String(panelText));
+      panel.children[0].componentPropertyReferences = { characters: propKeys.content };
+    }
+    wireIconSwapProp(c, chev, propKeys, 'Icon: chevron');
+  } catch (err) {
+    console.warn(`addComponentProperty (container) failed on '${name}':`, err && err.message ? err.message : err);
+  }
+
+  figma.currentPage.appendChild(c);
+  return { component: c, slots: { trigger, chevron: chev, panel }, propKeys };
+}
+
 // When CONFIG.composes is non-empty, each variant is an instance stack: outer
 // chrome still comes from this composite's cva (same bindColor/bindNum as
 // buildVariant); inner children are real InstanceNodes of published atoms
@@ -1490,6 +2857,25 @@ const defaultLabelText = (() => {
   return String(CONFIG.title ?? 'Label');
 })();
 
+// --- 6.2a  Archetype dispatch ------------------------------------------
+// Each CONFIG.layout value routes to a dedicated builder. All builders
+// return the same `{ component, slots, propKeys }` shape so downstream
+// code (combineAsVariants, matrix renderer, property-definition readout)
+// stays archetype-agnostic.
+//
+//   'chip'          → buildVariant             (Button, Badge, Toggle, Kbd)
+//   'surface-stack' → buildSurfaceStackVariant (Card, Alert, Dialog, Sheet)
+//   'field'         → buildFieldVariant        (Input, Textarea, Select)
+//   'row-item'      → buildRowItemVariant      (Dropdown Item, Menubar)
+//   'tiny'          → buildTinyVariant         (Separator, Skeleton, …)
+//   'container'     → buildContainerVariant    (Accordion, Tabs)
+//   'control'       → buildControlVariant      (Checkbox, Radio, Switch)
+//
+// `usesComposes` (atomic composition) wins over CONFIG.layout when set —
+// composite components always draw via buildComposedVariant regardless
+// of their base archetype.
+const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
+
 const variantData = [];
 for (const v of CONFIG.variants) {
   for (const s of sizeList) {
@@ -1501,37 +2887,63 @@ for (const v of CONFIG.variants) {
       : (CONFIG.label ?? CONFIG.title);
     const padH  = (s !== null && CONFIG.padH?.[s]) || padFallback;
     const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
-    if (usesComposes) {
-      variantData.push(buildComposedVariant(
-        name, st.fill, st.fallback,
-        {
-          labelVar:  st.labelVar,
-          strokeVar: st.strokeVar,
-          radiusVar,
-          padH,
-          padV: 'space/xs',
-        },
-      ));
-    } else {
-      variantData.push(buildVariant(
-        name, st.fill, st.fallback,
-        {
+
+    let built;
+    switch (layoutKey) {
+      case '__composes__':
+        built = buildComposedVariant(name, st.fill, st.fallback, {
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, padV: 'space/xs',
+        });
+        break;
+      case 'surface-stack':
+        built = buildSurfaceStackVariant(name, st.fill, st.fallback, {
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH,
+          sizeKey: s, propLabelText: defaultLabelText,
+        });
+        break;
+      case 'field':
+        built = buildFieldVariant(name, st.fill, st.fallback, {
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+        });
+        break;
+      case 'row-item':
+        built = buildRowItemVariant(name, st.fill, st.fallback, {
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+        });
+        break;
+      case 'tiny':
+        built = buildTinyVariant(name, st.fill, st.fallback, {
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+        });
+        break;
+      case 'container':
+        built = buildContainerVariant(name, st.fill, st.fallback, {
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+        });
+        break;
+      case 'control':
+        built = buildControlVariant(name, st.fill, st.fallback, {
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+        });
+        break;
+      case 'chip':
+      default:
+        if (layoutKey !== 'chip') {
+          console.warn(`[create-component] Unknown CONFIG.layout='${layoutKey}' for '${CONFIG.component}' — falling back to 'chip'. See §6.0 routing table.`);
+        }
+        built = buildVariant(name, st.fill, st.fallback, {
           label,
-          labelVar:        st.labelVar,
-          strokeVar:       st.strokeVar,
-          radiusVar,
-          padH,
+          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH,
           labelStyleName,
-          leadingSlot:     leadingGlobal,
-          trailingSlot:    trailingGlobal,
-          iconSlotSize,
-          addLabelProp:    !!cp.label,
+          leadingSlot: leadingGlobal, trailingSlot: trailingGlobal, iconSlotSize,
+          addLabelProp: !!cp.label,
           addLeadingProp:  !!cp.leadingIcon  && leadingGlobal,
           addTrailingProp: !!cp.trailingIcon && trailingGlobal,
-          propLabelText:   defaultLabelText,
-        }
-      ));
+          propLabelText: defaultLabelText,
+        });
+        break;
     }
+    variantData.push(built);
   }
 }
 // Pre-position so combineAsVariants doesn't stack at (0,0)
@@ -1542,11 +2954,24 @@ const compSet = figma.combineAsVariants(variantData.map(d => d.component), figma
 compSet.name = `${CONFIG.title} — ComponentSet`;
 
 // Roll up the per-variant propKeys for the final reporting log.
-const propsAdded = {
-  label:        variantData.some(d => d.propKeys.label),
-  leadingIcon:  variantData.some(d => d.propKeys.leadingIcon),
-  trailingIcon: variantData.some(d => d.propKeys.trailingIcon),
-};
+// Archetype-aware: every key any builder ever added across all variants
+// flips to true here. Chip reports {label, leadingIcon, trailingIcon};
+// surface-stack adds {title, description, actionSlot, footer}; field adds
+// {placeholder, helper}; row-item adds {shortcut}; etc.
+const propsAdded = (() => {
+  const agg = {};
+  for (const d of variantData) {
+    for (const key of Object.keys(d.propKeys || {})) {
+      agg[key] = true;
+    }
+  }
+  // Ensure chip's canonical three keys are always present for back-compat
+  // with downstream reporting that reads these specifically.
+  agg.label        = agg.label        || false;
+  agg.leadingIcon  = agg.leadingIcon  || false;
+  agg.trailingIcon = agg.trailingIcon || false;
+  return agg;
+})();
 // The ComponentSet is NOT parked off-canvas. It's reparented into the doc
 // frame as its own section later (§6.5.5) so designers can see and edit
 // the live variants in place, with all matrix instances updating from it.
@@ -2099,6 +3524,9 @@ const returnPayload = {
   iconPackResolution: DEFAULT_ICON_RESOLUTION,       // 'by-key' | 'by-node-id' | 'by-node-id-variant' | 'none' | 'failed:*'
   iconPackDefaultKey: DEFAULT_ICON_COMPONENT ? (DEFAULT_ICON_COMPONENT.key || null) : null,
   iconPackDefaultNodeId: DEFAULT_ICON_COMPONENT ? (DEFAULT_ICON_COMPONENT.id || null) : null,
+  fileKeyMismatch: _fileKeyMismatch ? { expected: ACTIVE_FILE_KEY, observed: _fileKeyObserved } : null,
+  layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
+  propsAdded,
   composedWith: usesComposes ? CONFIG.composes.map(r => r.component) : [],
   registryEntry: (() => {
     const base = {
@@ -2274,7 +3702,7 @@ Every assertion ID below (`S9.1` … `S9.9`) maps 1:1 to an audit-checklist item
 | **S9.4** | `compSetParent` ends with `doc/component/{component}/component-set-group` (ComponentSet reparented into the doc frame, not parked off-canvas) | §6.4 reparent step did not run |
 | **S9.5** | When `CONFIG.componentProps.label` is true: `compSetPropertyDefinitions.Label.type === 'TEXT'` and its `defaultValue` is a non-empty string | `addComponentProperty` threw or was skipped — inspect `propErrorsSample` |
 | **S9.6** | When `CONFIG.componentProps.leadingIcon` is true: `compSetPropertyDefinitions['Leading icon'].type === 'BOOLEAN'`. Same for `trailingIcon` → `'Trailing icon'` | As above |
-| **S9.7** | **Atoms (no `composes`):** for every variant with a non-null label, `firstVariantChildren` contains `icon-slot/leading`, a text node, `icon-slot/trailing` **in that reading order** (when both `iconSlots.leading` and `iconSlots.trailing` are true). **Composites (`composedWith.length > 0`):** `firstVariantChildren` includes at least one `slot/{name}` frame whose subtree contains an `INSTANCE` node | Variant / composition assembly is broken — inspect `buildVariant` vs `buildComposedVariant` |
+| **S9.7** | **Archetype-aware variant assembly check.** Match `returnPayload.layout`: <br>• `'chip'` — for every variant with a non-null label, `firstVariantChildren` contains `icon-slot/leading`, a text node, `icon-slot/trailing` **in that reading order** (when both `iconSlots.leading` and `iconSlots.trailing` are true). <br>• `'surface-stack'` — `firstVariantChildren` contains `CardHeader` as first child; when `surface.contentSlot.enabled` (default true) also contains `CardContent`; when `surface.footerSlot.enabled` also contains `CardFooter`. <br>• `'field'` — `firstVariantChildren` contains `field` (and `Label` before it when `field.showLabel` is true, and `helper` after when `field.showHelper` is true). <br>• `'row-item'` — `firstVariantChildren` contains `row/text-stack`; `icon-slot/leading` before it when `row.leadingIcon` is not false; `icon-slot/trailing` or `icon-slot/chevron` after when `row.trailingIcon` is not false. <br>• `'tiny'` — no children required; validate size/shape via `compSet.children[0]` width/height vs `CONFIG.tiny.width/height`. <br>• `'container'` — `firstVariantChildren` contains `AccordionTrigger` + `icon-slot/chevron` (accordion) or `TabsList` + `TabsContent` (tabs). <br>• `'control'` — no children required for unchecked state; checked state contains `radio/dot` or `checkbox/check` or `switch/thumb`. <br>• `'composes'` — `firstVariantChildren` includes at least one `slot/{name}` frame whose subtree contains an `INSTANCE` node. | Variant / composition assembly is broken — inspect the builder matching `returnPayload.layout` in §6.2a |
 | **S9.8** | **Atoms:** for every variant where `CONFIG.label(size, variant) === null`, `iconVariantChildren` contains exactly one child named `icon-slot/center` and **no text node**. **Composites:** skip when `composedWith.length > 0` | Icon-only mode collapsed incorrectly |
 | **S9.9** | `propErrorsCount === 0` | Surface `propErrorsSample` to the designer and STOP — do not report the component drawn |
 

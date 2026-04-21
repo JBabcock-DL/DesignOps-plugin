@@ -47,6 +47,55 @@
         "pageName": { "type": "string" },
         "labelKey": { "type": "string" },
         "summary": { "type": "string" },
+        "docsUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://ui\\.shadcn\\.com/docs/components/",
+          "description": "Canonical shadcn/ui docs URL for this component. The draw engine and Mode A extractor reference this for 1:1 structural matching per §6.0."
+        },
+        "layout": {
+          "enum": ["chip", "surface-stack", "field", "row-item", "tiny", "container", "control"],
+          "description": "Archetype that selects the draw-engine builder (SKILL.md §6.0). Defaults to 'chip' when omitted."
+        },
+        "surface": {
+          "type": "object",
+          "description": "layout='surface-stack' config — header/content/footer composition for Card, Alert, Dialog, Sheet, Drawer, Popover, Tooltip, Hover Card, Empty.",
+          "additionalProperties": true
+        },
+        "field": {
+          "type": "object",
+          "description": "layout='field' config — label/chrome/helper composition for Input, Textarea, Select, Combobox, Date Picker, Input OTP.",
+          "additionalProperties": true
+        },
+        "row": {
+          "type": "object",
+          "description": "layout='row-item' config — leading/title+desc/trailing composition for Dropdown Menu, Menubar, Navigation Menu, Item, Command, Breadcrumb.",
+          "additionalProperties": true
+        },
+        "tiny": {
+          "type": "object",
+          "description": "layout='tiny' config — pure-shape spec for Separator, Skeleton, Spinner, Progress, Avatar, Aspect Ratio, Scroll Area.",
+          "properties": {
+            "shape": { "enum": ["separator", "skeleton", "spinner", "progress", "avatar", "aspect-ratio", "scroll-area"] }
+          },
+          "additionalProperties": true
+        },
+        "control": {
+          "type": "object",
+          "description": "layout='control' config — small primitive spec for Checkbox, Radio Group, Switch.",
+          "properties": {
+            "shape": { "enum": ["checkbox", "radio", "switch"] }
+          },
+          "additionalProperties": true
+        },
+        "container": {
+          "type": "object",
+          "description": "layout='container' config — header + expandable panel spec for Accordion, Collapsible, Tabs, Resizable.",
+          "properties": {
+            "kind": { "enum": ["accordion", "tabs"] }
+          },
+          "additionalProperties": true
+        },
         "iconSlots": {
           "type": "object",
           "properties": {
@@ -61,7 +110,15 @@
           "properties": {
             "label": { "type": "boolean" },
             "leadingIcon": { "type": "boolean" },
-            "trailingIcon": { "type": "boolean" }
+            "trailingIcon": { "type": "boolean" },
+            "title": { "type": "boolean" },
+            "description": { "type": "boolean" },
+            "actionSlot": { "type": "boolean" },
+            "footer": { "type": "boolean" },
+            "placeholder": { "type": "boolean" },
+            "helper": { "type": "boolean" },
+            "shortcut": { "type": "boolean" },
+            "content": { "type": "boolean" }
           },
           "additionalProperties": true
         },

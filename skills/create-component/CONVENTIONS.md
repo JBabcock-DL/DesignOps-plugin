@@ -226,6 +226,34 @@ The `/create-component` script in `SKILL.md` is split into two halves: a per-com
 | `usageDo` | `string[]` | ≥3 bullets | Left "Do" card. |
 | `usageDont` | `string[]` | ≥3 bullets | Right "Don't" card. |
 | `composes` | `{ component, slot, cardinality, count?, defaultProps? }[]` _optional_ | see plan + `shadcn-props.schema.json` | When non-empty, the draw engine uses **instance stacks** per §3.05 instead of icon-slot + label children. |
+| `layout` | `'chip' \| 'surface-stack' \| 'field' \| 'row-item' \| 'tiny' \| 'container' \| 'control'` _optional_ | `'surface-stack'` | Archetype that selects the draw-engine builder. Defaults to `'chip'`. See §3.1.1 for the routing table. |
+| `docsUrl` | `string` _optional_ | `'https://ui.shadcn.com/docs/components/card'` | Canonical shadcn/ui docs URL. Both `/create-component` Mode A extraction and Mode B synthesis reference this for 1:1 structural matching. |
+| `surface` | `object` _optional, required when `layout === 'surface-stack'`_ | see §3.1.1 | Header/content/footer composition for Card, Alert, Dialog, Sheet, Drawer, Popover, Tooltip, Hover Card, Empty, Sidebar. Fields: `titleText`, `descriptionText`, `titleStyleName`, `descriptionStyleName`, `sectionPadY`, `gap`, `innerGap`, `width`, `actionSlot: { enabled, slotLabel, width, height }`, `contentSlot: { enabled, slotLabel, minHeight }`, `footerSlot: { enabled, slotLabel, align: 'start'\|'end'\|'between', minHeight }`. |
+| `field` | `object` _optional, required when `layout === 'field'`_ | see §3.1.1 | Label/chrome/helper composition for Input, Textarea, Select, Combobox, Date Picker, Input OTP, Input Group, Label, Native Select, Form. Fields: `fieldType: 'input'\|'textarea'\|'select'\|'otp'`, `showLabel`, `labelText`, `labelStyleName`, `placeholderText`, `showHelper`, `helperText`, `leadingIcon`, `trailingIcon`, `width`, `textareaMinHeight`, `otpLength`. |
+| `row` | `object` _optional, required when `layout === 'row-item'`_ | see §3.1.1 | Leading/title+desc/trailing composition for Dropdown Menu, Menubar, Navigation Menu, Item, Command, Breadcrumb, Sidebar row, Context Menu. Fields: `titleText`, `descriptionText`, `leadingIcon`, `trailingIcon`, `trailingIsChevron`, `shortcut`, `shortcutText`, `titleStyleName`, `descriptionStyleName`, `width`. |
+| `tiny` | `object` _optional, required when `layout === 'tiny'`_ | see §3.1.1 | Pure-shape spec for Separator, Skeleton, Spinner, Progress, Avatar, Aspect Ratio, Scroll Area. Fields: `shape: 'separator'\|'skeleton'\|'spinner'\|'progress'\|'avatar'\|'aspect-ratio'\|'scroll-area'`, plus per-shape extras (`width`, `height`, `orientation`, `size`, `initials`, `filled`). |
+| `control` | `object` _optional, required when `layout === 'control'`_ | see §3.1.1 | Small primitive spec for Checkbox, Radio Group, Switch. Fields: `shape: 'checkbox'\|'radio'\|'switch'`, `size`, `indicatorVar`, plus switch extras (`width`, `height`, `trackOnVar`, `trackOffVar`, `thumbVar`). **Control variants encode `checked`/`pressed` in the variant name** so the builder renders the filled glyph. |
+| `container` | `object` _optional, required when `layout === 'container'`_ | see §3.1.1 | Header + expandable panel spec for Accordion, Collapsible, Tabs, Resizable, Carousel. Fields: `kind: 'accordion'\|'tabs'`, `width`, `titleText`, `panelText`, `tabs: string[]`, `activeIndex`, `panelMinHeight`. |
+
+### 3.1.1 — Archetype routing table
+
+`CONFIG.layout` selects a draw-engine builder defined in `SKILL.md §6.0`. Every shadcn/ui component listed under [https://ui.shadcn.com/docs/components](https://ui.shadcn.com/docs/components) maps to exactly one archetype; `shadcn-props.json` encodes the canonical mapping so Mode A extraction and Mode B synthesis agree.
+
+| Archetype | Builder | Shape | shadcn/ui components |
+|---|---|---|---|
+| `chip` | `buildVariant` | HORIZONTAL auto-layout with optional leading/trailing icon-slot + label. | Button, Badge, Toggle, Kbd, Label, Typography, Direction, Button Group (via `composes`), Toggle Group (via `composes`), Pagination (via `composes`) |
+| `surface-stack` | `buildSurfaceStackVariant` | VERTICAL auto-layout card surface: `CardHeader` (title stack + optional action) → `CardContent` (dashed content slot) → `CardFooter` (dashed action slot). Matches shadcn Card `flex flex-col gap-6 rounded-xl border py-6`. | Card, Alert, Alert Dialog, Dialog, Sheet, Drawer, Popover, Tooltip, Hover Card, Empty, Sidebar, Sonner, Toast, Chart, Calendar, Table |
+| `field` | `buildFieldVariant` | VERTICAL outer: Label → field chrome (HORIZONTAL or VERTICAL with placeholder + optional icon-slots, or multi-box for OTP) → helper text. Matches shadcn Input `flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm`. | Input, Textarea, Select, Combobox, Date Picker, Input OTP, Input Group, Field, Form, Native Select |
+| `row-item` | `buildRowItemVariant` | HORIZONTAL row with optional leading icon → title + optional description stack → optional shortcut + optional trailing icon/chevron. Matches shadcn DropdownMenuItem `flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm`. | Dropdown Menu, Menubar, Navigation Menu, Context Menu, Command, Breadcrumb, Item |
+| `tiny` | `buildTinyVariant` | Shape dispatcher — `separator` (1px line), `skeleton` (rounded rect with muted fill), `spinner` (circle outline), `progress` (track + filled bar), `avatar` (rounded with initials), `aspect-ratio` / `scroll-area` (dashed container). No label/icon composition. | Separator, Skeleton, Spinner, Progress, Avatar, Aspect Ratio, Scroll Area, Slider |
+| `container` | `buildContainerVariant` | For `kind='accordion'`: trigger row (title + chevron) + bottom border + optional expanded panel with body text. For `kind='tabs'`: TabsList (rounded muted row with triggers) + TabsContent dashed panel. | Accordion, Collapsible, Tabs, Resizable, Carousel |
+| `control` | `buildControlVariant` | Small interactive primitive — 16×16 square (checkbox), 16×16 circle (radio), 36×20 pill w/ thumb (switch). Checked glyph rendered when variant name contains `checked=true`/`pressed=true`/`on`. | Checkbox, Radio Group, Switch |
+
+**Fallback rule:** If `CONFIG.layout` is omitted or the dispatch encounters an unknown value, the engine falls back to `chip` and emits a `console.warn`. Never introduce a new archetype without also:
+1. Adding the builder function in `SKILL.md §6.0` (above the dispatch `switch`).
+2. Extending this table **and** `shadcn-props.schema.json` `layout` enum.
+3. Adding a CONFIG reference block in `SKILL.md §0` (Mode B synthesis template).
+4. Updating every matching entry in `shadcn-props.json`.
 
 ### `style` entry shape
 
