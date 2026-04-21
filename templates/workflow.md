@@ -40,6 +40,7 @@ The DesignOps Plugin is a set of Claude Code skill instruction files (SKILL.md) 
 | Code Connect | `/code-connect` | Maps Figma components to codebase counterparts using Figma Code Connect and publishes the mappings after designer review |
 | New Language | `/new-language` | Localizes a Figma frame into a new language by duplicating it, translating text inline via Claude, and writing strings back |
 | Accessibility Check | `/accessibility-check` | Runs a WCAG 2.1 AA audit: contrast ratios, text size minimums, iOS Dynamic Type simulation, Android font scaling simulation |
+| Dev Handoff | `/dev-handoff` | Turns a selected Figma frame/node or a raw typed note into a backlog ticket on GitHub or Jira. Delegates to the ClaudeOps-plugin `/create-ticket` skill when installed; otherwise calls `gh issue create` (GitHub) or the Atlassian MCP `createJiraIssue` (Jira). Asks only for platform + destination repo/project. |
 
 ---
 
@@ -58,7 +59,9 @@ All Figma operations in this plugin go through the official Figma MCP server (`m
 | `get_context_for_code_connect` | `/code-connect` | Retrieve component context (props, variants) for a specific node ID |
 | `send_code_connect_mappings` | `/code-connect` | Publish finalized Code Connect mappings |
 | `get_design_context` | `/code-connect`, `/accessibility-check`, `/create-component` | Enumerate component nodes for Code Connect discovery; read frame/node layout and style data for accessibility and component drawing |
-| `get_screenshot` | `/accessibility-check` | Capture rendered frame for visual diff |
+| `get_screenshot` | `/accessibility-check`, `/dev-handoff` | Capture rendered frame for visual diff or to reference in a handoff ticket |
+| `getAccessibleAtlassianResources` / `getVisibleJiraProjects` / `createJiraIssue` | `/dev-handoff` (Jira path) | Resolve Atlassian site + project and create a backlog ticket when the Jira path is chosen |
+| `gh issue create` (CLI, not MCP) | `/dev-handoff` (GitHub path) | Create a GitHub backlog issue when the GitHub path is chosen and ClaudeOps `/create-ticket` is not installed |
 
 **Auth notes:**
 - All MCP calls are authenticated by the Figma MCP connector configured in Claude Code. No per-skill token injection is needed.
@@ -186,6 +189,7 @@ These keys are stored in `plugin/.claude/settings.local.json` under `template_fi
 | /code-connect | `/code-connect` | none | Finds and publishes missing Code Connect mappings |
 | /new-language | `/new-language [locale] [node_id]` | locale: BCP 47 code, node_id: Figma node | Duplicates a frame for a new locale with inline translations |
 | /accessibility-check | `/accessibility-check [node_id]` | node_id: Figma node | Runs WCAG AA + Dynamic Type + Android font scale audit |
+| /dev-handoff | `/dev-handoff ["note" \| node-id \| figma URL]` | all optional | Creates a backlog ticket on GitHub or Jira from a Figma selection, node ID, URL, or free-form note. Delegates to ClaudeOps `/create-ticket` when installed |
 
 ---
 

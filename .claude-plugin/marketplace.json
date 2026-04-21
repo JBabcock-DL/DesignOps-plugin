@@ -1,8 +1,8 @@
 {
   "name": "labs-design-ops",
   "description": "Detroit Labs design operations plugin — scaffold Figma projects, create design systems, sync tokens, build components, check accessibility, and more.",
-  "tags": ["figma", "design-ops", "design-system", "detroit-labs", "accessibility"],
+  "tags": ["figma", "design-ops", "design-system", "detroit-labs", "accessibility", "handoff"],
   "distribution": "internal",
   "repository": "https://github.com/JBabcock-DL/DesignOps-plugin",
-  "skills_count": 7
+  "skills_count": 8
 }
