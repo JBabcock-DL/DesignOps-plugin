@@ -49,13 +49,29 @@ async function build(ctx) {
 
   // ─── 1–5: Color ramps ────────────────────────────────────────────────────
 
-  const rampMeta = [
-    { ramp: 'primary',   title: 'Primary',   caption: 'Brand anchor — used for the most prominent actions, links, and focus.' },
-    { ramp: 'secondary', title: 'Secondary',  caption: 'Supporting brand color for secondary actions and decorative surfaces.' },
-    { ramp: 'tertiary',  title: 'Tertiary',   caption: 'Accent hue for highlights, chips, and illustrative moments.' },
-    { ramp: 'error',     title: 'Error',      caption: 'Destructive and error feedback — do not use for incidental UI.' },
-    { ramp: 'neutral',   title: 'Neutral',    caption: 'Greyscale foundation for text, borders, and calm surfaces.' },
-  ];
+  const rampDefaults = {
+    primary:   { title: 'Primary',   caption: 'Brand anchor — used for the most prominent actions, links, and focus.' },
+    secondary: { title: 'Secondary', caption: 'Supporting brand color for secondary actions and decorative surfaces.' },
+    tertiary:  { title: 'Tertiary',  caption: 'Accent hue for highlights, chips, and illustrative moments.' },
+    error:     { title: 'Error',     caption: 'Destructive and error feedback — do not use for incidental UI.' },
+    neutral:   { title: 'Neutral',   caption: 'Greyscale foundation for text, borders, and calm surfaces.' },
+  };
+  const RAMP_ORDER = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
+  const rampMeta = Object.keys(rows.colorRamps || {})
+    .filter((ramp) => Array.isArray(rows.colorRamps[ramp]) && rows.colorRamps[ramp].length > 0)
+    .sort((a, b) => {
+      const ia = RAMP_ORDER.indexOf(a);
+      const ib = RAMP_ORDER.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    })
+    .map((ramp) => ({
+      ramp,
+      title: rampDefaults[ramp]?.title || (ramp.charAt(0).toUpperCase() + ramp.slice(1)),
+      caption: rampDefaults[ramp]?.caption || `${ramp.charAt(0).toUpperCase() + ramp.slice(1)} ramp.`,
+    }));
 
   const colorColumns = [
     { id: 'TOKEN',   width: 320 },

@@ -518,6 +518,19 @@ return '#000000';
 }
 return '#000000';
 }
+async function resolveFirstAlias(varId, themeModeId) {
+const v = await figma.variables.getVariableByIdAsync(varId);
+const val = v.valuesByMode[themeModeId];
+if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
+try {
+const next = await figma.variables.getVariableByIdAsync(val.id);
+return next && next.name ? next.name : null;
+} catch (_) {
+return null;
+}
+}
+return null;
+}
 const allRows = {};
 for (const k of THEME_DATA.groupOrder) allRows[k] = [];
 for (const r of THEME_DATA.rows) {
@@ -525,14 +538,16 @@ const v = byName[r.path];
 if (!v) continue;
 const light = await resolveHex(v.id, themeLightModeId);
 const dark  = await resolveHex(v.id, themeDarkModeId);
+const aliasLightLive = await resolveFirstAlias(v.id, themeLightModeId);
+const aliasDarkLive  = await resolveFirstAlias(v.id, themeDarkModeId);
 const group = r.path.split('/')[1];
 if (allRows[group]) {
 allRows[group].push({
 tokenPath: r.path,
 resolvedHexLight: light,
 resolvedHexDark: dark,
-aliasLight: r.light,
-aliasDark: r.dark,
+aliasLight: aliasLightLive,
+aliasDark: aliasDarkLive,
 codeSyntax: r.codeSyntax,
 });
 }

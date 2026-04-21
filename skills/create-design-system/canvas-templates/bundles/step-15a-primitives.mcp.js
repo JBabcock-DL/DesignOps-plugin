@@ -453,13 +453,29 @@ async function build(ctx) {
 
   // ─── 1–5: Color ramps ────────────────────────────────────────────────────
 
-  const rampMeta = [
-    { ramp: 'primary',   title: 'Primary',   caption: 'Brand anchor — used for the most prominent actions, links, and focus.' },
-    { ramp: 'secondary', title: 'Secondary',  caption: 'Supporting brand color for secondary actions and decorative surfaces.' },
-    { ramp: 'tertiary',  title: 'Tertiary',   caption: 'Accent hue for highlights, chips, and illustrative moments.' },
-    { ramp: 'error',     title: 'Error',      caption: 'Destructive and error feedback — do not use for incidental UI.' },
-    { ramp: 'neutral',   title: 'Neutral',    caption: 'Greyscale foundation for text, borders, and calm surfaces.' },
-  ];
+  const rampDefaults = {
+    primary:   { title: 'Primary',   caption: 'Brand anchor — used for the most prominent actions, links, and focus.' },
+    secondary: { title: 'Secondary', caption: 'Supporting brand color for secondary actions and decorative surfaces.' },
+    tertiary:  { title: 'Tertiary',  caption: 'Accent hue for highlights, chips, and illustrative moments.' },
+    error:     { title: 'Error',     caption: 'Destructive and error feedback — do not use for incidental UI.' },
+    neutral:   { title: 'Neutral',   caption: 'Greyscale foundation for text, borders, and calm surfaces.' },
+  };
+  const RAMP_ORDER = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
+  const rampMeta = Object.keys(rows.colorRamps || {})
+    .filter((ramp) => Array.isArray(rows.colorRamps[ramp]) && rows.colorRamps[ramp].length > 0)
+    .sort((a, b) => {
+      const ia = RAMP_ORDER.indexOf(a);
+      const ib = RAMP_ORDER.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    })
+    .map((ramp) => ({
+      ramp,
+      title: rampDefaults[ramp]?.title || (ramp.charAt(0).toUpperCase() + ramp.slice(1)),
+      caption: rampDefaults[ramp]?.caption || `${ramp.charAt(0).toUpperCase() + ramp.slice(1)} ramp.`,
+    }));
 
   const colorColumns = [
     { id: 'TOKEN',   width: 320 },
@@ -810,14 +826,18 @@ async function buildTypefaceRow(row, rowData, columns, deps) {
   }
 }
 // Concatenate after _lib.js + primitives.js (phase 07). Resolves rows in-plugin; ctx omits variableMap.
-const RAMPS = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
-const STOPS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+// Discover ramps and stops dynamically from the Primitives collection so any new stop
+// (e.g. color/neutral/25, color/primary/1000) or new ramp (e.g. color/success/500)
+// gets a row without editing this file. RAMP_ORDER is an ordering hint only —
+// unknown ramps are appended alphabetically.
+const RAMP_ORDER = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
 const allVars = await figma.variables.getLocalVariablesAsync();
 const p = Object.fromEntries(allVars.map((v) => [v.name, v.id]));
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
 const primColl = collections.find((c) => c.name === 'Primitives');
 if (!primColl) throw new Error('Primitives collection missing');
 const primitivesModeId = primColl.modes[0].modeId;
+const primVarsById = new Set(allVars.filter((v) => v.variableCollectionId === primColl.id).map((v) => v.id));
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
   Section: textStyles.find((s) => s.name === 'Doc/Section')?.id || null,
@@ -858,12 +878,28 @@ async function crow(tp) {
   return { tokenPath: tp, resolvedHex: colorToHex(raw), codeSyntax: readCS(v) };
 }
 const colorRamps = {};
-for (const r of RAMPS) {
-  colorRamps[r] = [];
-  for (const s of STOPS) {
-    const tp = 'color/' + r + '/' + s;
-    if (p[tp]) colorRamps[r].push(await crow(tp));
-  }
+const discoveredRamps = {};
+for (const v of allVars) {
+  if (!primVarsById.has(v.id)) continue;
+  const m = /^color\/([^/]+)\/([^/]+)$/.exec(v.name);
+  if (!m) continue;
+  const ramp = m[1];
+  const stop = m[2];
+  if (!/^\d+$/.test(stop)) continue;
+  (discoveredRamps[ramp] = discoveredRamps[ramp] || []).push({ stop, tokenPath: v.name });
+}
+const rampNames = Object.keys(discoveredRamps).sort((a, b) => {
+  const ia = RAMP_ORDER.indexOf(a);
+  const ib = RAMP_ORDER.indexOf(b);
+  if (ia !== -1 && ib !== -1) return ia - ib;
+  if (ia !== -1) return -1;
+  if (ib !== -1) return 1;
+  return a.localeCompare(b);
+});
+for (const ramp of rampNames) {
+  const stops = discoveredRamps[ramp].sort((a, b) => parseInt(a.stop, 10) - parseInt(b.stop, 10));
+  colorRamps[ramp] = [];
+  for (const s of stops) colorRamps[ramp].push(await crow(s.tokenPath));
 }
 async function frow(tp) {
   const v = await figma.variables.getVariableByIdAsync(p[tp]);

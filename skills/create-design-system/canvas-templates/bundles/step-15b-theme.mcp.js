@@ -562,6 +562,12 @@ async function buildThemeRow(row, rowData, columns, deps) {
   }
 }
 // Concatenate after _lib.js + theme.js (phase 07). Resolves Theme rows in-plugin; ctx omits variableMap.
+//
+// NOTE: THEME_DATA.rows[i].light / .dark fields below are design-intent references only.
+// The actual `L → …` / `D → …` alias text labels rendered on the ↳ Theme canvas are resolved
+// LIVE from each Theme variable's first-hop alias target (see resolveFirstAlias below). This is
+// the fix for the "canvas labels go stale after re-aliasing Theme variables" bug — editing
+// those hardcoded light/dark fields will NOT change what the canvas displays.
 const THEME_DATA = {
   rows: [
     { path: 'color/background/dim',                light: 'color/neutral/100', dark: 'color/neutral/950', codeSyntax: { WEB: 'var(--color-background-dim)',              ANDROID: 'surface-dim',                 iOS: '.Background.dim' } },
@@ -666,6 +672,24 @@ async function resolveHex(varId, themeModeId) {
   return '#000000';
 }
 
+// Live first-hop alias lookup. Returns the name of the variable this Theme variable
+// points at for the given mode, or null if the value is a raw color. The `L → …` /
+// `D → …` labels rendered on the canvas consume this so they always reflect the
+// current Figma alias binding, not THEME_DATA's stale design-intent hardcoded list.
+async function resolveFirstAlias(varId, themeModeId) {
+  const v = await figma.variables.getVariableByIdAsync(varId);
+  const val = v.valuesByMode[themeModeId];
+  if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
+    try {
+      const next = await figma.variables.getVariableByIdAsync(val.id);
+      return next && next.name ? next.name : null;
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
 const allRows = {};
 for (const k of THEME_DATA.groupOrder) allRows[k] = [];
 
@@ -674,14 +698,16 @@ for (const r of THEME_DATA.rows) {
   if (!v) continue;
   const light = await resolveHex(v.id, themeLightModeId);
   const dark  = await resolveHex(v.id, themeDarkModeId);
+  const aliasLightLive = await resolveFirstAlias(v.id, themeLightModeId);
+  const aliasDarkLive  = await resolveFirstAlias(v.id, themeDarkModeId);
   const group = r.path.split('/')[1];
   if (allRows[group]) {
     allRows[group].push({
       tokenPath: r.path,
       resolvedHexLight: light,
       resolvedHexDark: dark,
-      aliasLight: r.light,
-      aliasDark: r.dark,
+      aliasLight: aliasLightLive,
+      aliasDark: aliasDarkLive,
       codeSyntax: r.codeSyntax,
     });
   }

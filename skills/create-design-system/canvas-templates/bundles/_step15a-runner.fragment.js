@@ -1,12 +1,16 @@
 // Concatenate after _lib.js + primitives.js (phase 07). Resolves rows in-plugin; ctx omits variableMap.
-const RAMPS = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
-const STOPS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+// Discover ramps and stops dynamically from the Primitives collection so any new stop
+// (e.g. color/neutral/25, color/primary/1000) or new ramp (e.g. color/success/500)
+// gets a row without editing this file. RAMP_ORDER is an ordering hint only —
+// unknown ramps are appended alphabetically.
+const RAMP_ORDER = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
 const allVars = await figma.variables.getLocalVariablesAsync();
 const p = Object.fromEntries(allVars.map((v) => [v.name, v.id]));
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
 const primColl = collections.find((c) => c.name === 'Primitives');
 if (!primColl) throw new Error('Primitives collection missing');
 const primitivesModeId = primColl.modes[0].modeId;
+const primVarsById = new Set(allVars.filter((v) => v.variableCollectionId === primColl.id).map((v) => v.id));
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
   Section: textStyles.find((s) => s.name === 'Doc/Section')?.id || null,
@@ -47,12 +51,28 @@ async function crow(tp) {
   return { tokenPath: tp, resolvedHex: colorToHex(raw), codeSyntax: readCS(v) };
 }
 const colorRamps = {};
-for (const r of RAMPS) {
-  colorRamps[r] = [];
-  for (const s of STOPS) {
-    const tp = 'color/' + r + '/' + s;
-    if (p[tp]) colorRamps[r].push(await crow(tp));
-  }
+const discoveredRamps = {};
+for (const v of allVars) {
+  if (!primVarsById.has(v.id)) continue;
+  const m = /^color\/([^/]+)\/([^/]+)$/.exec(v.name);
+  if (!m) continue;
+  const ramp = m[1];
+  const stop = m[2];
+  if (!/^\d+$/.test(stop)) continue;
+  (discoveredRamps[ramp] = discoveredRamps[ramp] || []).push({ stop, tokenPath: v.name });
+}
+const rampNames = Object.keys(discoveredRamps).sort((a, b) => {
+  const ia = RAMP_ORDER.indexOf(a);
+  const ib = RAMP_ORDER.indexOf(b);
+  if (ia !== -1 && ib !== -1) return ia - ib;
+  if (ia !== -1) return -1;
+  if (ib !== -1) return 1;
+  return a.localeCompare(b);
+});
+for (const ramp of rampNames) {
+  const stops = discoveredRamps[ramp].sort((a, b) => parseInt(a.stop, 10) - parseInt(b.stop, 10));
+  colorRamps[ramp] = [];
+  for (const s of stops) colorRamps[ramp].push(await crow(s.tokenPath));
 }
 async function frow(tp) {
   const v = await figma.variables.getVariableByIdAsync(p[tp]);
