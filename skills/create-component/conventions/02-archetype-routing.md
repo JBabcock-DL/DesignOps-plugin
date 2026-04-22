@@ -18,6 +18,12 @@
 | `container` | `buildContainerVariant` | For `kind='accordion'`: trigger row (title + chevron) + bottom border + optional expanded panel with body text. For `kind='tabs'`: TabsList (rounded muted row with triggers) + TabsContent dashed panel. | Accordion, Collapsible, Tabs, Resizable, Carousel |
 | `control` | `buildControlVariant` | Small interactive primitive — 16×16 square (checkbox), 16×16 circle (radio), 36×20 pill w/ thumb (switch). Checked glyph rendered when variant name contains `checked=true`/`pressed=true`/`on`. | Checkbox, Radio Group, Switch |
 
+**Control archetype — variant naming vs checked glyph.** In [`draw-engine.figma.js`](../templates/draw-engine.figma.js), each control variant component is named `variant=${v}` for `v` in `CONFIG.variants`. [`buildControlVariant`](../templates/archetype-builders.figma.js) sets `checked = /checked=true|pressed=true|on/.test(name)` — the **entire** name string is tested.
+
+- **Matches (checked glyph):** variant keys whose string form makes `name` include **`on`** as a substring (e.g. **`on`** → `variant=on`), or **`checked=true`**, **`pressed=true`** as substrings.
+- **Does not match:** e.g. **`checked`** → `variant=checked` — there is no `on` / `checked=true` / `pressed=true` substring, so the **unchecked** chrome may render for both axis values unless you rename variants (e.g. **`off` / `on`**) in Mode B or align a future engine change.
+- **`indeterminate`** → `variant=indeterminate` does **not** match the checked regex; expect **no** distinct indeterminate glyph unless `buildControlVariant` is extended.
+
 > **Slider note.** `slider` is currently routed to `tiny` because its canonical display is a 1-pixel-stripe track + thumb shape with no label/icon composition. It is the only **interactive** control in the `tiny` archetype — every other `tiny` component is pure display / passive chrome. Revisit this mapping if hover / drag states are ever needed: at that point a dedicated `range` archetype (or promoting `slider` into `control` with `shape: 'slider'`) becomes more accurate than `tiny`.
 
 **Fallback rule:** If `CONFIG.layout` is omitted or the dispatch encounters an unknown value, the engine falls back to `chip` and emits a `console.warn`. Never introduce a new archetype without also:

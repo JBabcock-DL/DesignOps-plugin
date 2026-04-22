@@ -55,6 +55,12 @@ This repo (`DesignOps-plugin/`) is the **canonical source** for every skill unde
 
 If you edited the marketplace cache by accident (e.g. via an absolute path search), copy it back to the repo copy instead of re-doing the edits by hand, then re-verify with `diff`. Do **not** treat the cache as authoritative when reconciling.
 
+### `/create-component` — Mode A vs Mode B
+
+When installing shadcn components and drawing them to Figma, **Mode B (`synthetic-fallback`) is not always an error** — many files (e.g. `form`) have no extractable `cva()` for [`skills/create-component/resolver/extract-cva.mjs`](skills/create-component/resolver/extract-cva.mjs). **Do not** conflate “extractor exit 1” with “missing `class-variance-authority`” in a single paraphrase; read stdout JSON verbatim and follow [`skills/create-component/SKILL.md`](skills/create-component/SKILL.md) §4.5.0 and [`skills/create-component/conventions/05-code-connect.md`](skills/create-component/conventions/05-code-connect.md) §2.5.5. **Axis B** in [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) may mark a component `unresolvable` for drift diffs while `/create-component` can still draw in Mode B.
+
+**MCP transport (short-context / Composer-class agents):** Large `use_figma` payloads (~40–43K characters) must be **one complete JSON tool argument** — `Unexpected end of JSON input` usually means **truncation or invalid JSON**, not a Figma bug. Run [`scripts/check-payload.mjs`](scripts/check-payload.mjs) on the `code` string; do **not** use gzip/base64 bootstrap unless the plugin host supports **`DecompressionStream`** (often it does not — see [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md)). Prefer **one component’s** draw per assistant turn when output limits bite. Full checklist: [`skills/create-component/SKILL.md`](skills/create-component/SKILL.md) §0 — *Short-context agents / MCP transport*.
+
 ### IDE rule (Cursor)
 
 Project rule files (always on in Cursor): [`.cursor/rules/mcp-inline-payloads.mdc`](.cursor/rules/mcp-inline-payloads.mdc), [`.cursor/rules/cursor-designops-skill-root.mdc`](.cursor/rules/cursor-designops-skill-root.mdc).

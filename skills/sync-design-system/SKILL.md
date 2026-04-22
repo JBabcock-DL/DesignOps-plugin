@@ -1213,6 +1213,8 @@ If `extract-cva.mjs` exits non-zero for a component (custom composition, no cva,
 
 > `Axis B: {component} — source is not cva-based, cannot extract variant structure. Included in the diff as informational only; direction prompts will not target this component.`
 
+That **`unresolvable` label applies to this Axis B diff only** (code-vs-Figma variant structure comparison). It does **not** mean `/create-component` cannot run: the same extractor outcome routes that skill to **Mode B**, and Step 6 may still draw a valid ComponentSet from curated `shadcn-props` + the synthetic template. See [`skills/create-component/SKILL.md`](../create-component/SKILL.md) §4.5.0.
+
 ### Axis C Connect API failure
 
 **Partial failure — per-node tool flakes on some mappings.** If `get_code_connect_map` succeeds for some local mappings and fails for others (timeouts, transient errors, throws), mark only the failing ones as `publishedState: 'indeterminate'` per Step 2C. They're omitted from the 3C diff. Successful lookups still participate normally. This is the graceful degradation path — **never** blanket-mark everything as `unpublished` because a subset failed.

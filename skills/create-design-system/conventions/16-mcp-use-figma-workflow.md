@@ -99,6 +99,7 @@ Other skills (`/create-component`, ad-hoc Figma edits) still call `use_figma` di
 The JavaScript runs in a **Figma plugin context** exposed by the MCP server — not necessarily a full browser or dev plugin.
 
 - **Do not rely on** `atob`, `TextDecoder`, `DecompressionStream`, or other **browser** APIs unless you have confirmed they exist in this host. If you must decode, use **small inline helpers** and still respect the **50k** `code` limit — but the preferred approach is **plain source text** from the repo (no base64-wrapped bundles).
+- **Same constraints apply to `/create-component`** when assembling large `use_figma.code` strings (CONFIG + preamble + one per-archetype `create-component-engine-*.min.figma.js`) — see [`skills/create-component/SKILL.md`](../../create-component/SKILL.md) §0 *Short-context agents / MCP transport* and the 50k cap table there.
 - **Do not use** `figma.clientStorage.setAsync` / `getAsync` to stitch multi-part scripts unless you have verified support — many MCP hosts **do not** implement `clientStorage` the same way as a shipped plugin.
 
 ---

@@ -13,6 +13,23 @@
 | [`conventions/04-doc-pipeline-contract.md`](./conventions/04-doc-pipeline-contract.md) | Matrix rule · page layout · ComponentSet section · properties table · matrix spec · usage notes · build order · Button reference (§§1, 2, 3, 3.1.3, 3.2, 4, 5, 6, 7, 8, 9, 11, 12, 13) |
 | [`conventions/05-code-connect.md`](./conventions/05-code-connect.md) | Mode A extraction · class-to-token resolution · Code Connect integration (§2.5, §3.4) |
 | [`conventions/06-audit-checklist.md`](./conventions/06-audit-checklist.md) | MA.* + S9.* audit checklist · authoritative-rule index (§14, §15) |
+| [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) | Token path canonicals · Step 4.7 pre-flight · banned inference strategies |
+
+## System audit — Mode A / Mode B (read order for agents)
+
+Lower-capability models should walk this list in order when debugging extraction vs draw. Authoritative behavior always defers to [`SKILL.md`](./SKILL.md) (especially §4.5.0, §4.5, §6, §8).
+
+| Layer | Path | Role |
+|------|------|------|
+| Canonical skill | [`SKILL.md`](./SKILL.md) | Steps 1–9; reporting; `_source` tags |
+| Overview + glossary | [`conventions/00-overview.md`](./conventions/00-overview.md) | Mode A vs B vocabulary |
+| Extraction + error semantics | [`conventions/05-code-connect.md`](./conventions/05-code-connect.md) | Tier1/Tier2; §2.5.5 decision table |
+| Doc pipeline | [`conventions/04-doc-pipeline-contract.md`](./conventions/04-doc-pipeline-contract.md) | Mode A-only doc step 0 |
+| Audit | [`conventions/06-audit-checklist.md`](./conventions/06-audit-checklist.md) | §14.0 MA.* (N/A in Mode B) |
+| Token gate | [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) | Step 4.7; `unresolvedTokenPaths` |
+| Implementations | [`resolver/extract-cva.mjs`](./resolver/extract-cva.mjs), [`resolver/resolve-classes.mjs`](./resolver/resolve-classes.mjs) | Extractor + resolver |
+| Curated props | [`shadcn-props/`](./shadcn-props/) | Mode B seed; Mode A merge fields |
+| Axis B consumer | [`../sync-design-system/SKILL.md`](../sync-design-system/SKILL.md) | Drift diff `unresolvable` (not a create-component hard stop) |
 
 ## Legacy section-ID map
 

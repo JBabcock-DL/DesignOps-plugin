@@ -29,7 +29,14 @@ This folder replaces the single-file `CONVENTIONS.md` (~940 lines) that used to 
 >
 > Mode A and Mode B share **exactly the same draw engine** below the CONFIG block — the icon slots, element component properties, matrix, properties table, and usage notes are byte-identical. The only variable is who writes CONFIG. `SKILL.md` §4.5 defines the Mode A extraction pipeline and the precondition probe that decides the mode per component; `SKILL.md` §6's mode branch routes into the correct CONFIG producer. [`06-audit-checklist.md`](./06-audit-checklist.md) §14.0 adds Mode A-specific audit assertions.
 
-Every component drawn in a run carries a `CONFIG._source` tag (`shadcn-1:1`, `synthetic-fallback`, or `synthetic-no-shadcn`) that surfaces in the SKILL.md §8 reporting table. Designers should treat `synthetic-*` rows as placeholders until the corresponding source file lands; Mode A rows track the code automatically on every subsequent `/create-component` run.
+Every component drawn in a run carries a `CONFIG._source` tag (`shadcn-1:1`, `synthetic-fallback`, or `synthetic-no-shadcn`) that surfaces in the SKILL.md §8 reporting table.
+
+**How to read `synthetic-fallback`:**
+
+- **Recoverable** — a precondition failed (missing file, missing peer so Tier 1 `import()` threw, one-off parse bug). Fixing the project and re-running may flip the row to `shadcn-1:1`.
+- **Structural** — the installed source **does not** expose an extractable `cva` config (e.g. `form`, `cn()`-only files, `tailwind-variants`). **`shadcn-props.json` + Mode B** may remain the long-term source for variant chrome; the canvas draw is still valid. Do not treat this as “waiting for a better source file” if upstream shadcn never used `cva` for that component.
+
+Mode A rows track variant chrome from code automatically on every subsequent `/create-component` run when extraction succeeds.
 
 ## 0.1 — Glossary (canonical vocabulary)
 

@@ -4,6 +4,24 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
+### Changed — Composer / short-context MCP hardening (2026-04-22)
+
+- **`skills/create-component/SKILL.md`** — §0 *Short-context agents / MCP transport*: 50k cap, JSON completeness vs `check-payload`, no gzip/`DecompressionStream`, one-component-per-turn, long-line `Read` discipline, optional host probe; §4.7 intro stresses full variable enumeration when `get_variable_defs` is thin; §0.3 map row.
+- **`skills/create-component/conventions/02-archetype-routing.md`** — control archetype: documents `variant=${v}` naming and `/checked=true|pressed=true|on/` heuristic; `indeterminate` / plain `checked` limitations.
+- **`AGENTS.md`** — MCP transport bullets under `/create-component` with link to SKILL §0 transport subsection.
+- **`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`** — cross-link to create-component §0 for large `use_figma.code` assemblies.
+- **`scripts/check-payload.mjs`** — advisory stderr warning when payload JS string length exceeds 49,000 characters (MCP `maxLength` 50,000).
+
+### Changed — create-component Mode A / Mode B agent clarity (2026-04-22)
+
+- **`skills/create-component/SKILL.md`** — new §4.5.0 (cva extraction contract, when `synthetic-fallback` is expected, verbatim JSON logging, Axis B vs create-component); §4.5.a/b and §8 reporting tightened; §0.3 deep-section map row.
+- **`skills/create-component/conventions/00-overview.md`** — `synthetic-fallback` split into recoverable vs structural (curated-props-long-term).
+- **`skills/create-component/conventions/05-code-connect.md`** — §2.5.5 expanded with exit-1 interpretation table, Axis B note, and future extractor `reason` codes pointer.
+- **`skills/create-component/CONVENTIONS.md`** — `07-token-paths` in Files table; new “System audit — Mode A / Mode B” read-order table.
+- **`skills/sync-design-system/SKILL.md`** — Axis B `unresolvable` clarified as diff-only; cross-link to create-component §4.5.0.
+- **`AGENTS.md`** — `/create-component` Mode A vs Mode B primer with links to SKILL §4.5.0 and `05-code-connect` §2.5.5.
+- **`skills/create-component/resolver/extract-cva.mjs`** — header comment points maintainers at optional future `reason` codes (no runtime change).
+
 ### Added — Peak-optimization sweep (2026-04-21)
 
 - **`scripts/sync-cache.sh` + `scripts/verify-cache.sh`** — `skills/**` → `~/.claude/plugins/.../skills` mirror, with a pure-bash `rm -rf + cp -r` fallback for Windows / Git Bash where `rsync` is not on PATH. `verify-cache.sh` exits non-zero on any drift and (once Phase 7 lands) on stale minified-template mtimes.

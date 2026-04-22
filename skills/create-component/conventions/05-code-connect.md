@@ -48,7 +48,21 @@ For each component, Mode A builds CONFIG by merging three inputs in this exact o
 |---|---|
 | exit 0, `source: "runtime"` | Proceed with `CONFIG._extractSource = "runtime"`. |
 | exit 0, `source: "parsed"` | Proceed with `CONFIG._extractSource = "parsed"`. Log a note: "cva .variants not exposed; used source-text fallback" in the run report. |
-| exit 1, any error | Abort Mode A **for this component only**. Log `error` verbatim in the run report. Fall back to Mode B synthetic CONFIG with `_source = 'synthetic-fallback'`. Never crash the overall run. |
+| exit 1, any error | Mode A **does not run** for this component only. Log **full stdout JSON** (`error`, `runtimeTier1`, `args` if present) verbatim in SKILL.md §8 Notes. Fall back to Mode B synthetic CONFIG with `_source = 'synthetic-fallback'`. Never crash the overall run. |
+
+**Interpreting exit 1 — map `error` (and Tier 1) to meaning** (do not paraphrase multiple causes as one):
+
+| stdout `error` prefix / pattern | Meaning | Next action |
+|---|---|---|
+| `no \`const X = cva(...)\` call found in source` | No top-level `cva` call matching the extractor regex | Mode B. **Installing `class-variance-authority` does not create `cva` in this file.** Optional maintainer path: extend `extract-cva.mjs` or treat curated `shadcn-props` as canonical for this component. |
+| `failed to evaluate cva args:` | Tier 2 `node:vm` could not evaluate an argument (helper reference, unsupported syntax) | Mode B. Inspect the `cva(...)` call site; simplify args to literals or rely on Tier 1. |
+| `unterminated cva(...) call` / `cva() called with no arguments` | Balanced-bracket parse failed | Mode B. Fix source syntax or Mode B. |
+| `read failed:` | File not readable | Mode B. Fix path / permissions. |
+| `runtimeTier1` object with `error` containing `class-variance-authority`, `Cannot find module`, or similar | Tier 1 dynamic `import()` of the component file failed (missing peer, broken TS path) | Run SKILL.md **Step 4.3** peer-dep audit, fix `import()` / tsconfig, **re-run 4.5.b**. If exit 1 persists with `no cva...`, the failure is structural — stop installing deps in a loop. |
+
+**Axis B (`/sync-design-system`):** labeling a component `unresolvable` here means the **drift diff** cannot use extracted cva axes — not that `/create-component` cannot draw. That skill still proceeds in Mode B.
+
+**Future (optional implementation):** machine-readable `reason` codes on the extractor stdout (e.g. `NO_CVA_PATTERN`, `TIER1_IMPORT_FAILED`, `TIER2_VM_FAILED`) plus golden fixtures — separate change to [`resolver/extract-cva.mjs`](../resolver/extract-cva.mjs); see repo discussion / CHANGELOG when landed.
 
 For the resolver, any `unresolved[]` entries ship in the run report; the agent never re-runs the resolver with different inputs hoping to "fix" them — the fix is either (a) a missing alias in `tokens.css` (which the design-system owner addresses) or (b) a missing entry in the resolver's `LEAF_TO_FIGMA` table (which is a skill update).
 

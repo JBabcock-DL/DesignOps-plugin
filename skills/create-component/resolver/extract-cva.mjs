@@ -17,6 +17,11 @@
 //
 // Exit codes: 0 on success, 1 on any failure the skill should surface.
 //
+// Future improvement (not shipped yet): add machine-readable `reason` codes on
+// failure stdout (e.g. NO_CVA_PATTERN | TIER1_IMPORT_FAILED | TIER2_VM_FAILED)
+// so agents classify without paraphrasing — see conventions/05-code-connect.md
+// §2.5.5 "Future (optional implementation)".
+//
 // Why two paths:
 //   class-variance-authority v0.7+ returns a function whose .variants,
 //   .defaultVariants, .compoundVariants are exposed as own properties on the

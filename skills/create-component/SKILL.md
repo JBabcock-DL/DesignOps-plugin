@@ -61,6 +61,19 @@ If your `Read` of this SKILL file truncated before §0, assume Steps 2 and 3 are
 - **Gate 1 (JS parse):** a hand-retyped `summary` / `usageDo` / `description` string with an unescaped apostrophe → `SyntaxError: expecting ')'`. Angle brackets (`<label>`) in strings are a red herring — do not chase them.
 - **Gate 2 (JSON transport):** a `\xHH` hex escape somewhere in the payload (valid JS, invalid JSON) → `Bad escaped character in JSON at position N` when MCP serializes `use_figma.code` over stdio. The committed `*.min.figma.js` bundles pin esbuild to `charset: 'utf8'` to avoid this at build time; if you see `\xHH` in a fresh bundle, the flag was dropped — restore it in `scripts/build-min-templates.mjs` per [`templates/README.md`](./templates/README.md). Hand-authored CONFIG? Use literal characters (`§`, `×`, `·`, `¬`) or `\u00HH` — never `\xHH`.
 
+**Short-context agents / MCP transport (Composer-class hosts).** The skill contract is the same across products; **orchestration and transport** differ. Short output limits or fragile tool plumbing cause failures that are **not** Figma API bugs.
+
+| Topic | Guidance |
+|--------|-----------|
+| **`Unexpected end of JSON input` (or empty tool args) on `use_figma`** | The MCP request body was **truncated, incomplete, or not valid JSON**. After assembly, verify the **entire** tool-arguments object serializes: `JSON.stringify` → `JSON.parse` with no throw. `check-payload.mjs` validates the `code` **string** only — it does not prove the **wrapper** JSON is complete. |
+| **50k `code` cap** | MCP `use_figma.code` **`maxLength` is 50 000** characters. Use **one** per-archetype `create-component-engine-{layout}.min.figma.js` + CONFIG + preamble (§0 table above). **Never** inline the full debug [`create-component-engine.min.figma.js`](./templates/create-component-engine.min.figma.js) at runtime. Typical assembled payloads are ~40–43K — inside the cap when **one** string is passed whole. |
+| **Gzip / base64 bootstrap** | **Do not use** as the default path. Figma MCP plugin sandboxes often lack **`DecompressionStream`** and other browser APIs — a gzip-decode wrapper **fails at runtime**. Use **plain** committed template text only; see [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](../create-design-system/conventions/16-mcp-use-figma-workflow.md) § *MCP host constraints*. |
+| **Session / output limits** | Prefer finishing **install → 4.5 → 4.7 → assemble → `check-payload` → one `use_figma` → registry** for **one component** before starting the next in a **new** assistant turn. Do not assume a single message can draw four full components end-to-end without truncation. |
+| **Long single-line minified bundles** | Editor UIs may **clip** one long line when copying. **`Read` the bundle file path in full** (or pipe the file to `check-payload`) and pass that complete string into MCP — never hand-copy a partial line from the panel. |
+| **Repo hygiene** | Do not commit `*.tmp.js` / payload scratch under the repo. Use [`AGENTS.md`](../../AGENTS.md) rules: `/tmp`, stdin, or ephemeral paths only. |
+
+**Optional host probe (once per session when debugging transport):** a minimal `use_figma` payload may `return { hasDecompressionStream: typeof DecompressionStream !== 'undefined', fileKey: figma.fileKey };` — if `hasDecompressionStream` is false, **no gzip path**; if `fileKey` is `headless` or mismatched, rely on **`ACTIVE_FILE_KEY`** / handoff / registry (preamble already treats `figma.fileKey` as a soft signal). Mode A/B (§4.5.0) is unrelated to these transport issues.
+
 **CONFIG-authoring rules — non-negotiable:**
 
 - **Do NOT hand-retype `summary`, `properties`, `usageDo`, `usageDont`, or any other string field from [`shadcn-props/<component>.json`](./shadcn-props/).** `Read` the JSON file and inline the entry as a JS object literal (JSON is a strict subset of JavaScript, so every field is already correctly escaped). Re-typing prose is the #1 source of `SyntaxError: expecting ')'` / `Unexpected token` crashes — apostrophes in text (`doesn't`, `you're`) collide with single-quote delimiters, backticks collide with template literals, and the agent often misdiagnoses the crash as a `<label>`-HTML-tag issue and re-spirals (see the anti-pattern note at [`conventions/07-token-paths.md` § red-herrings](./conventions/07-token-paths.md) and below).
@@ -130,6 +143,7 @@ If any row fails → surface the failure verbatim in the run report and do NOT c
 | Icon-pack bootstrap (first-time-only) | §3b |
 | Install per component | §4 |
 | Icon-pack import rewrite (lucide → chosen pack) | §4.4 |
+| Mode A contract · when Mode B is normal · extractor exit-1 discipline | §4.5.0 |
 | File-key resolution | §5 |
 | The `use_figma` template (CONFIG + draw engine) | §6 |
 | Reporting table | §8 |
@@ -138,6 +152,7 @@ If any row fails → surface the failure verbatim in the run report and do NOT c
 | State override policy | [`conventions/04-doc-pipeline-contract.md` §13.1](./conventions/04-doc-pipeline-contract.md) |
 | Audit checklist | [`conventions/06-audit-checklist.md` §14](./conventions/06-audit-checklist.md) |
 | Token-path canonicals + pre-flight + banned strategies | [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) |
+| Short-context / MCP transport (50k cap, no gzip, JSON completeness) | §0 *Short-context agents / MCP transport* |
 
 ---
 
@@ -587,13 +602,29 @@ For custom packs the skill does not know the target identifier names, so it only
 
 > **Goal:** Make the **installed shadcn source file** authoritative for every component, so Figma cannot drift when the designer/developer customizes `components/ui/*.tsx`. See [`conventions/00-overview.md` §0](./conventions/00-overview.md) for the Mode A vs Mode B contract.
 
+#### 4.5.0 — Mode A contract and when Mode B is normal (anti-spiral)
+
+**Mode A** applies only when the installed file matches the **cva extraction contract** consumed by [`resolver/extract-cva.mjs`](./resolver/extract-cva.mjs): Tier 1 finds a **function export** whose **own** `.variants` object exists (`class-variance-authority` v0.7+), **or** Tier 2 finds a top-level `const|let|var` (optionally `export`) assignment `Name = cva(...)` whose two argument expressions can be evaluated inside an **empty** `node:vm` sandbox (no imported helpers).
+
+**Mode B (`synthetic-fallback`) is not always a defect.** It is the correct branch when:
+
+- The source file **never** uses that `cva` pattern (e.g. **`form`** and other **composition / context** shadcn files that are not built around one exported `cva` config).
+- The project uses **`cn()`-only** styling, **`tailwind-variants` (`tv`)**, or **`cva` arguments that reference imports** (Tier 2 VM evaluation fails).
+- Any Step **4.5.a** precondition fails (missing `tokens.css`, missing `shadcn-props` entry, etc.).
+
+**Do not** treat `npm install class-variance-authority` as a universal fix. It only helps when **Tier 1** failed because **dynamic `import()`** of the component module could not load the dependency graph (e.g. `Cannot find module 'class-variance-authority'`). It does **not** add `cva` to files that do not use it. After installing missing peers, re-run **4.5.b**; if stdout still reports `no \`const X = cva(...)\` call found in source`, stay on Mode B — do not loop `npx shadcn add` or peer installs hoping to “force” Mode A.
+
+**On `extract-cva.mjs` exit 1:** copy the **entire** stdout JSON into Step 8 **Notes** — at minimum the `error` string and, when present, `runtimeTier1` (verbatim). **Do not** merge causes into a single paraphrase (e.g. “no cva or missing class-variance-authority”). Classify using [`conventions/05-code-connect.md` §2.5.5](./conventions/05-code-connect.md#255--error-recovery).
+
+**Axis B note:** [`sync-design-system`](../sync-design-system/SKILL.md) may label a component `unresolvable` when extraction cannot drive a **code-vs-Figma variant diff**. That classification does **not** mean `/create-component` cannot draw the component — the same extractor exit 1 still routes to **Mode B** and Step 6 may succeed.
+
 This step runs **per installed component** immediately after Step 4 and before Step 6's draw loop. Each component gets a `CONFIG` assembled from three inputs:
 
 1. **cva variants** — extracted at runtime from the installed source file.
 2. **Tailwind class tokens** — resolved against `tokens.css` to Figma variable paths.
 3. **Prop surface / icon slots / page routing** — read from the curated per-component files under [`shadcn-props/`](./shadcn-props/). Prefer reading **one file per component** (`shadcn-props/{component}.json`, ~300 B – 3 KB each) over the monolithic [`shadcn-props.json`](./shadcn-props.json) (~65 KB) — agents that only need one entry should `Read` the single file to save context. The monolith is kept as a build artifact regenerated from the split directory by `scripts/build-shadcn-props.mjs`; both are always in sync. `shadcn-props/_index.json` lists every component's name, category, layout, pageName, and docsUrl in ~3 KB and is the right input for agents that only need to classify the full set (e.g. routing tables).
 
-If any input is missing, Mode A is aborted for that component and the agent falls back to the synthetic CONFIG (Mode B) at Step 6 with `source: 'synthetic-fallback'` in the run report.
+If any input is missing, Mode A **does not run** for that component; the agent uses the synthetic CONFIG (Mode B) at Step 6 with `source: 'synthetic-fallback'` in the run report (this is a **branch**, not a run-stopping error).
 
 #### 4.5.a — Preconditions (probe, do not prompt)
 
@@ -615,7 +646,7 @@ npx tsx <abs-path-to-this-skill>/resolver/extract-cva.mjs <abs-path-to>/componen
 ```
 
 - **Success (exit 0):** stdout is JSON `{ source: "runtime" | "parsed", exportName, base, variants, defaultVariants, compoundVariants, displayName }`. Capture the object.
-- **Failure (exit 1):** stdout is JSON `{ error, ... }`. Log the error into the run report, mark the component `source: 'synthetic-fallback'`, continue with Mode B.
+- **Failure (exit 1):** stdout is JSON `{ error, runtimeTier1?, ... }`. Log **verbatim JSON** into Step 8 Notes (see §4.5.0), mark the component `source: 'synthetic-fallback'`, continue with Mode B. Interpret `error` using [`conventions/05-code-connect.md` §2.5.5](./conventions/05-code-connect.md#255--error-recovery).
 
 The extractor runs a two-tier strategy automatically — runtime `await import()` first, then a source-text fallback that evaluates the cva() argument expressions in a `node:vm` sandbox. Agents never need to orchestrate the fallback themselves.
 
@@ -687,6 +718,8 @@ node <abs-path-to-this-skill>/resolver/validate-composes.mjs \
 ### Step 4.7 — Pre-flight token-path verification (MANDATORY, blocks Step 6)
 
 > **Goal:** Before a single `use_figma` draw, confirm that every token path in the staged `CONFIG` exists as a named variable in the active Figma file's Theme / Layout / Typography collections. This is the one step that prevents the "spiral" where the agent cycles through `color/primary`, `color/primary/default`, `--color-primary`, `bg-primary`, etc. without knowing which is right. Canonical rules: [`conventions/07-token-paths.md`](./conventions/07-token-paths.md).
+
+**Thin `get_variable_defs` is normal until you fall back.** If the MCP tool returns a **small or empty** path set for the `nodeId` you passed (wrong node, or node references few variables), that is **not** proof the file lacks Theme tokens — run the **full enumeration** path in §4.7.a option 2 **before** validating CONFIG. Skipping full enumeration leads to false misses, then **`unresolvedTokenPaths.total > 0`** after draw, which fails §0.2 / §9.
 
 Runs **once per component**, after `CONFIG` is assembled (whether via Mode A at §4.5 or Mode B defaults) and **before** Step 5's registry gate.
 
@@ -1451,8 +1484,13 @@ Output a summary table:
 
 `source` column values:
 - **`shadcn-1:1`** — CONFIG was built in Step 4.5 from the installed shadcn source file + tokens.css + `shadcn-props.json`. Figma is a live mirror of the code.
-- **`synthetic-fallback`** — shadcn is installed but Step 4.5 could not extract a usable CONFIG (missing source file, cva import failure, tokens.css missing, no `shadcn-props.json` entry). The synthetic Mode B template was used; list the specific cause in Notes.
+- **`synthetic-fallback`** — shadcn is installed but Step 4.5 could not produce Mode A (precondition miss, or `extract-cva.mjs` exit 1). Mode B template + curated props were used. See §4.5.0 — this is often **expected** (e.g. `form`), not a defect.
 - **`synthetic-no-shadcn`** — `components.json` was absent at Step 4.5.a, so Mode A was never attempted. Mode B synthetic template used.
+
+**Notes column (required discipline):**
+
+- For **`synthetic-fallback`** when extraction ran: paste the **verbatim** stdout JSON from `extract-cva.mjs` (at minimum `error` and `runtimeTier1` when present). For precondition skips, write `precondition: <which 4.5.a row failed>` instead of guessing.
+- **Do not** re-run `npx shadcn@latest add <same-component>` or bulk `npm install` solely because `synthetic-fallback` appeared — only when Notes show a **recoverable** Tier 1 module error (see [`conventions/05-code-connect.md` §2.5.5](./conventions/05-code-connect.md#255--error-recovery)) and Step 4.3 has not yet cleared it.
 
 Follow with:
 - Total installed: N

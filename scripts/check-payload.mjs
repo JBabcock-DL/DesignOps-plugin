@@ -159,6 +159,14 @@ if (hexEscapeMatches && hexEscapeMatches.length > 0) {
   process.exit(1);
 }
 
+const MCP_CODE_MAX_LENGTH = 50000;
+if (code.length > 49000) {
+  console.error(
+    `check-payload: warning — payload is ${code.length.toLocaleString()} JS string chars; Figma MCP use_figma.code schema maxLength is ${MCP_CODE_MAX_LENGTH.toLocaleString()}. ` +
+      `If the tool call fails or truncates, use one per-archetype engine bundle only (see skills/create-component/SKILL.md §0).`
+  );
+}
+
 const bytes = Buffer.byteLength(code, 'utf8');
 console.log(`OK  ${sourceLabel} parses as an async function body (${bytes.toLocaleString()} bytes, JSON-safe).`);
 process.exit(0);
