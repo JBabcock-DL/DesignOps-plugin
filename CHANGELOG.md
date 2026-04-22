@@ -4,6 +4,10 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
+### Fixed — README matches full plugin surface (2026-04-22)
+
+- **`README.md`** — Documents all **eight** user-facing slash commands (adds **`/dev-handoff`**), updates install copy, **Typical Workflow** step 8, and **Plugin File Structure** (`sync-design-system` shards, **`EXECUTOR.md`**, **`canvas-bundle-runner`**, **`shared/`**).
+
 ### Added / changed — Medium-reasoning agent instruction hardening (2026-04-22)
 
 - **`skills/sync-design-system/SKILL.md`** — **Router** (~155 lines) with branch table, `plan` object, non-negotiables, lazy-read rule; step bodies moved to **`skills/sync-design-system/phases/*.md`** and **`reference/token-formats.md`**, **`reference/error-guidance.md`**.
