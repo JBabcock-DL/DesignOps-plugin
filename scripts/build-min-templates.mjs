@@ -1,34 +1,53 @@
 #!/usr/bin/env node
 // Minify the `.figma.js` templates that /create-component inlines into every
-// `use_figma` call, AND emit a pre-bundled engine file that agents can paste
-// as a single block.
+// `use_figma` call, and emit per-archetype pre-bundled engine files sized to
+// fit under the `use_figma.code` hard limit of 50000 characters.
 //
-// Why the pre-bundle exists:
-//   draw-engine.figma.js has an insertion marker (`// ↓↓↓ INLINE
-//   archetype-builders.figma.js HERE ↓↓↓`) that splits the file into a top
-//   half (helpers + chip buildVariant, §0-§5.7) and a bottom half (main
-//   dispatch + doc pipeline, §6.0+). When minified as a single file those
-//   comment markers vanish, so agents cannot reliably find the split point
-//   to inject archetype-builders between the halves. The runtime `typeof
-//   buildSurfaceStackVariant === 'function'` assertion in §6.2a then fires
-//   for every non-chip archetype (Card, Input, Checkbox, Select, …) and the
-//   whole draw aborts.
+// Why per-archetype:
+//   1. The `use_figma` MCP tool schema caps `code` at maxLength:50000. A single
+//      full-engine bundle (draw-engine + all 7 archetype builders) minifies to
+//      ~49 KB with identifier mangling — technically under the limit, but too
+//      tight once the agent prepends the §0 CONFIG preamble (typically
+//      1–4 KB), so the submission is rejected by the MCP before it ever runs.
+//   2. Each component only needs ONE archetype builder (determined by
+//      CONFIG.layout), not all seven. Emitting a separate bundle per archetype
+//      gets each file down to 26–32 KB, leaving 18–24 KB of headroom for
+//      CONFIG regardless of registry size.
+//   3. The two-file runtime workflow (`draw-engine.min` + `archetype-builders
+//      .min`, spliced by the agent at a comment marker) doesn't work at all
+//      because minification strips the marker — there is no machine-findable
+//      split point in the minified output. The build script does the splice
+//      from the source files instead, where the marker still exists.
 //
-//   Fix: build the correct ordering once, at build time, and commit it as
-//   `create-component-engine.min.figma.js`. The SKILL.md script-assembly
-//   order becomes CONFIG preamble + one bundle file — no manual splicing.
+// Identifier mangling is safe even though the source uses
+// `typeof buildSurfaceStackVariant === 'function'` runtime assertions,
+// because those references are in the SAME compilation unit as the
+// declarations: esbuild renames the declaration and all references
+// consistently. The four "boundary" identifiers declared by the agent-
+// authored §0 CONFIG preamble (`CONFIG`, `ACTIVE_FILE_KEY`,
+// `REGISTRY_COMPONENTS`, `usesComposes`) are *referenced but not declared*
+// inside the templates, so esbuild treats them as free variables and leaves
+// them un-renamed automatically.
 //
 // Inputs:
 //   skills/create-component/templates/draw-engine.figma.js
 //   skills/create-component/templates/archetype-builders.figma.js
 //
-// Outputs (committed siblings):
-//   skills/create-component/templates/draw-engine.min.figma.js
-//   skills/create-component/templates/archetype-builders.min.figma.js
-//   skills/create-component/templates/create-component-engine.min.figma.js  ← preferred inline
+// Outputs (committed siblings, regenerated on every `npm run build:min`):
+//   skills/create-component/templates/create-component-engine-chip.min.figma.js
+//   skills/create-component/templates/create-component-engine-surface-stack.min.figma.js
+//   skills/create-component/templates/create-component-engine-field.min.figma.js
+//   skills/create-component/templates/create-component-engine-row-item.min.figma.js
+//   skills/create-component/templates/create-component-engine-tiny.min.figma.js
+//   skills/create-component/templates/create-component-engine-control.min.figma.js
+//   skills/create-component/templates/create-component-engine-container.min.figma.js
+//   skills/create-component/templates/create-component-engine-composed.min.figma.js  (for CONFIG.layout === '__composes__')
+//   skills/create-component/templates/create-component-engine.min.figma.js           (debug-only; full 7-archetype bundle, too tight for runtime)
+//   skills/create-component/templates/draw-engine.min.figma.js                       (debug-only; standalone draw-engine with no archetype builders)
+//   skills/create-component/templates/archetype-builders.min.figma.js                (debug-only; standalone archetype-builders with no draw-engine)
 //
 // Usage:
-//   node scripts/build-min-templates.mjs           # writes all three outputs
+//   node scripts/build-min-templates.mjs           # writes all outputs
 //   node scripts/build-min-templates.mjs --check   # non-zero if any output is stale
 //
 // `verify-cache.sh` invokes --check to ensure committed .min artifacts stay
@@ -40,23 +59,59 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
+const TEMPLATES_DIR = 'skills/create-component/templates';
 
-const DRAW_ENGINE_REL = 'skills/create-component/templates/draw-engine.figma.js';
-const ARCHETYPE_BUILDERS_REL = 'skills/create-component/templates/archetype-builders.figma.js';
-const BUNDLE_REL = 'skills/create-component/templates/create-component-engine.min.figma.js';
+const DRAW_ENGINE_REL = `${TEMPLATES_DIR}/draw-engine.figma.js`;
+const ARCHETYPE_BUILDERS_REL = `${TEMPLATES_DIR}/archetype-builders.figma.js`;
 
-// Standalone minified artifacts (one-to-one with each source).
-const STANDALONE_TEMPLATES = [DRAW_ENGINE_REL, ARCHETYPE_BUILDERS_REL];
+// CONFIG.layout value → builder function name that handles it.
+// 'composed' is the filename-safe spelling of CONFIG.layout === '__composes__'.
+const ARCHETYPE_BUILDERS = {
+  'surface-stack': 'buildSurfaceStackVariant',
+  'field': 'buildFieldVariant',
+  'row-item': 'buildRowItemVariant',
+  'tiny': 'buildTinyVariant',
+  'control': 'buildControlVariant',
+  'container': 'buildContainerVariant',
+  'composed': 'buildComposedVariant',
+};
 
-// Every committed artifact the build produces — used by --check.
-const ALL_OUTPUTS = [
-  { src: DRAW_ENGINE_REL, dest: minifiedPath(DRAW_ENGINE_REL) },
-  { src: ARCHETYPE_BUILDERS_REL, dest: minifiedPath(ARCHETYPE_BUILDERS_REL) },
-  // The bundle depends on BOTH sources. Track as two rows so --check reports
-  // the actually-stale input when drift is detected.
-  { src: DRAW_ENGINE_REL, dest: BUNDLE_REL },
-  { src: ARCHETYPE_BUILDERS_REL, dest: BUNDLE_REL },
-];
+// HARD_LIMIT must match the maxLength in the use_figma tool descriptor
+// (mcps/plugin-figma-figma/tools/use_figma.json). The build refuses to commit
+// any per-archetype bundle that exceeds HARD_LIMIT - CONFIG_HEADROOM so the
+// agent always has enough budget for its §0 CONFIG preamble.
+const HARD_LIMIT = 50000;
+const CONFIG_HEADROOM = 10000; // agent gets at least 10 KB for CONFIG + registry
+
+const PER_ARCHETYPE_REL = Object.fromEntries(
+  Object.keys({ chip: 'chip', ...ARCHETYPE_BUILDERS }).map(layout => [
+    layout,
+    `${TEMPLATES_DIR}/create-component-engine-${layout}.min.figma.js`,
+  ]),
+);
+const FULL_BUNDLE_REL = `${TEMPLATES_DIR}/create-component-engine.min.figma.js`;
+const DRAW_ENGINE_MIN_REL = `${TEMPLATES_DIR}/draw-engine.min.figma.js`;
+const ARCHETYPE_BUILDERS_MIN_REL = `${TEMPLATES_DIR}/archetype-builders.min.figma.js`;
+
+// Every committed artifact the build produces — used by --check. Per-archetype
+// bundles depend on BOTH sources, so each is tracked as two rows.
+function buildCheckRows() {
+  const rows = [];
+  for (const dest of Object.values(PER_ARCHETYPE_REL)) {
+    rows.push({ src: DRAW_ENGINE_REL, dest });
+    // chip bundles don't use archetype-builders, but including the dep is
+    // harmless — it just means editing archetype-builders.figma.js marks
+    // every bundle stale, prompting a rebuild. That matches reality since
+    // editing the shared helpers in archetype-builders.figma.js would change
+    // cross-bundle contracts.
+    rows.push({ src: ARCHETYPE_BUILDERS_REL, dest });
+  }
+  rows.push({ src: DRAW_ENGINE_REL, dest: FULL_BUNDLE_REL });
+  rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: FULL_BUNDLE_REL });
+  rows.push({ src: DRAW_ENGINE_REL, dest: DRAW_ENGINE_MIN_REL });
+  rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: ARCHETYPE_BUILDERS_MIN_REL });
+  return rows;
+}
 
 async function loadEsbuild() {
   try {
@@ -71,21 +126,13 @@ async function loadEsbuild() {
   }
 }
 
-function minifiedPath(src) {
-  return src.replace(/\.figma\.js$/, '.min.figma.js');
-}
-
 /**
  * Minify a plain-script body that uses top-level `await` and/or top-level
  * `return` (both legal inside Figma's implicit async IIFE, but not at ES
  * module top level). Wraps in an async IIFE so esbuild can parse it, then
  * peels the wrapper so the output is still an inline-able script body.
- *
- * identifier mangling is disabled because the runtime
- * `typeof buildSurfaceStackVariant === 'function'` assertions in
- * draw-engine §6.2a / §6.9a resolve by source name.
  */
-async function minifyScriptBody(esbuild, srcText, label) {
+async function minifyScriptBody(esbuild, srcText, label, { mangle }) {
   const WRAP_OPEN = '(async()=>{';
   const WRAP_CLOSE = '})();';
   const wrapped = `${WRAP_OPEN}\n${srcText}\n${WRAP_CLOSE}`;
@@ -93,7 +140,7 @@ async function minifyScriptBody(esbuild, srcText, label) {
   const result = await esbuild.transform(wrapped, {
     minifyWhitespace: true,
     minifySyntax: true,
-    minifyIdentifiers: false,
+    minifyIdentifiers: mangle,
     loader: 'js',
     target: 'esnext',
     legalComments: 'none',
@@ -133,35 +180,28 @@ function banner(sourceRel) {
   );
 }
 
-function bundleBanner() {
-  return (
-    `// GENERATED by scripts/build-min-templates.mjs — do not edit by hand.\n` +
-    `// bundle of:\n` +
-    `//   1. ${DRAW_ENGINE_REL} (top half: §0 config resolve .. §5.7 chip buildVariant)\n` +
-    `//   2. ${ARCHETYPE_BUILDERS_REL} (all archetype builders, hoisted)\n` +
-    `//   3. ${DRAW_ENGINE_REL} (bottom half: §6.0 clear-page .. §6.9a dispatch + doc pipeline)\n` +
-    `// regenerate with: npm run build:min\n` +
-    `// inline this file verbatim after the Step 0 CONFIG preamble in /create-component.\n`
-  );
+function bundleBanner({ layout, includedBuilder }) {
+  const lines = [
+    `// GENERATED by scripts/build-min-templates.mjs — do not edit by hand.`,
+    `// bundle: create-component-engine (${layout})`,
+    `// sources:`,
+    `//   ${DRAW_ENGINE_REL} (full)`,
+  ];
+  if (layout === 'chip') {
+    lines.push(`//   (no archetype-builders — chip layout uses buildVariant defined in draw-engine §5.7)`);
+  } else if (layout === '__ALL__') {
+    lines.push(`//   ${ARCHETYPE_BUILDERS_REL} (full — all 7 archetype builders; debug only, too tight for runtime)`);
+  } else {
+    lines.push(`//   ${ARCHETYPE_BUILDERS_REL} (shared helpers + ${includedBuilder} only)`);
+  }
+  lines.push(`// regenerate with: npm run build:min`);
+  lines.push(`// inline this file verbatim after the §0 CONFIG preamble in /create-component.`);
+  return lines.join('\n') + '\n';
 }
 
 /**
- * Split draw-engine.figma.js on the insertion-point banner:
- *
- *   ...[top half ending with `return { component: c, slots, propKeys }; }`]
- *   // ═══...═══
- *   // ↓↓↓  INLINE archetype-builders.figma.js HERE  ↓↓↓
- *   // ═══...═══
- *   // [prose explaining that archetype-builders goes here]
- *   // ═══...═══
- *   // ↑↑↑  END archetype-builders.figma.js insertion point  ↑↑↑
- *   // ═══...═══
- *   [bottom half starting with // STEP 6. DEFAULT DRAW FLOW]
- *
- * The banner comment is pure documentation — agents were supposed to delete
- * it and paste archetype-builders in its place. We do that automatically by
- * splitting on the two `↓↓↓` / `↑↑↑` sentinel lines, which are unique in the
- * source file, and dropping everything between them.
+ * Split draw-engine.figma.js on the archetype-builders insertion banner.
+ * Returns { top, bottom } where the banner block itself is discarded.
  */
 function splitDrawEngine(src) {
   const BEGIN_MARK = '// ↓↓↓  INLINE archetype-builders.figma.js HERE  ↓↓↓';
@@ -175,22 +215,17 @@ function splitDrawEngine(src) {
         '  expected both of these lines in draw-engine.figma.js:\n' +
         `    ${BEGIN_MARK}\n` +
         `    ${END_MARK}\n` +
-        '  refusing to emit create-component-engine.min.figma.js because the\n' +
-        '  split point is ambiguous. restore the banner and retry.'
+        '  refusing to emit bundled outputs because the split point is ambiguous.\n' +
+        '  restore the banner and retry.'
     );
   }
 
-  // Walk backwards from BEGIN_MARK to include the banner-open `// ═══` line
-  // in the DISCARDED chunk, so the top half ends cleanly after buildVariant's
-  // closing brace + its trailing blank line.
   const beforeBegin = src.slice(0, beginIdx);
   const topEnd = beforeBegin.lastIndexOf('// ═');
   if (topEnd < 0) {
     throw new Error('splitDrawEngine: could not locate banner-open for begin sentinel');
   }
 
-  // Walk forwards from END_MARK to include the banner-close `// ═══` line in
-  // the DISCARDED chunk, so the bottom half starts cleanly on the §6 header.
   const afterEndMark = src.indexOf('\n', endIdx) + 1;
   const bannerCloseIdx = src.indexOf('// ═', afterEndMark);
   if (bannerCloseIdx < 0) {
@@ -204,60 +239,109 @@ function splitDrawEngine(src) {
   };
 }
 
-async function buildStandalone(esbuild, srcRel) {
+/**
+ * Parse archetype-builders.figma.js into:
+ *   sharedHelpers — everything before the first `function buildXxxVariant(`
+ *   builders[name] — each `function buildXxxVariant(...)` block up to the
+ *                    next builder or EOF
+ *
+ * The parse is regex-based because the file deliberately has only top-level
+ * function declarations at column 0 — any nested `function` is indented,
+ * so `^function <name>\(` is unambiguous.
+ */
+function parseArchetypeBuilders(src) {
+  const names = Object.values(ARCHETYPE_BUILDERS);
+  const starts = [];
+  for (const name of names) {
+    const re = new RegExp('\\nfunction ' + name + '\\(');
+    const m = src.match(re);
+    if (!m) {
+      throw new Error(
+        `parseArchetypeBuilders: builder '${name}' not found at column 0 in ${ARCHETYPE_BUILDERS_REL}.\n` +
+          '  every function declared at the top of archetype-builders.figma.js must start at column 0\n' +
+          '  so this parser can delimit each block.'
+      );
+    }
+    starts.push({ name, start: m.index + 1 }); // +1 to step past the \n
+  }
+  starts.sort((a, b) => a.start - b.start);
+
+  const sharedHelpers = src.slice(0, starts[0].start);
+  const builders = {};
+  for (let i = 0; i < starts.length; i++) {
+    const { name, start } = starts[i];
+    const end = i + 1 < starts.length ? starts[i + 1].start : src.length;
+    builders[name] = src.slice(start, end);
+  }
+  return { sharedHelpers, builders };
+}
+
+async function buildStandalone(esbuild, srcRel, destRel) {
   const srcAbs = resolve(REPO_ROOT, srcRel);
-  const destAbs = resolve(REPO_ROOT, minifiedPath(srcRel));
+  const destAbs = resolve(REPO_ROOT, destRel);
   const srcText = readFileSync(srcAbs, 'utf8');
-  const peeled = await minifyScriptBody(esbuild, srcText, srcRel);
+  // Standalones keep identifier mangling OFF — they're debug artifacts, and
+  // their function names are what a developer reads when eyeballing the
+  // output. The RUNTIME bundle uses the mangled per-archetype variants.
+  const peeled = await minifyScriptBody(esbuild, srcText, srcRel, { mangle: false });
   const payload = banner(srcRel) + peeled + '\n';
   writeFileSync(destAbs, payload);
   return {
     srcRel,
-    destRel: minifiedPath(srcRel),
+    destRel,
     srcBytes: Buffer.byteLength(srcText, 'utf8'),
     destBytes: Buffer.byteLength(payload, 'utf8'),
   };
 }
 
-async function buildBundle(esbuild) {
-  const drawEngineText = readFileSync(resolve(REPO_ROOT, DRAW_ENGINE_REL), 'utf8');
-  const archetypeText = readFileSync(resolve(REPO_ROOT, ARCHETYPE_BUILDERS_REL), 'utf8');
+async function buildPerArchetype(esbuild, layout, { drawTop, drawBottom, sharedHelpers, builders }) {
+  const destRel = PER_ARCHETYPE_REL[layout];
+  if (!destRel) throw new Error(`unknown archetype layout: ${layout}`);
 
-  const { top, bottom } = splitDrawEngine(drawEngineText);
+  let includedBuilder = null;
+  let assembled;
+  if (layout === 'chip') {
+    // chip uses buildVariant (defined in draw-engine top §5.7) — no archetype-builders needed.
+    assembled = drawTop + '\n' + drawBottom;
+  } else {
+    includedBuilder = ARCHETYPE_BUILDERS[layout];
+    const builderSrc = builders[includedBuilder];
+    if (!builderSrc) throw new Error(`builder ${includedBuilder} not parsed for layout ${layout}`);
+    assembled = drawTop + '\n' + sharedHelpers + '\n' + builderSrc + '\n' + drawBottom;
+  }
 
-  // Minify each fragment independently so we don't have to hunt for split
-  // points in already-minified output. Each fragment is a valid plain-script
-  // body on its own — top ends cleanly at the `}` closing buildVariant,
-  // bottom starts cleanly at the `// STEP 6` banner, and archetype-builders
-  // is self-contained.
-  const minTop = await minifyScriptBody(esbuild, top, `${DRAW_ENGINE_REL} (top)`);
-  const minArch = await minifyScriptBody(esbuild, archetypeText, ARCHETYPE_BUILDERS_REL);
-  const minBottom = await minifyScriptBody(esbuild, bottom, `${DRAW_ENGINE_REL} (bottom)`);
+  const peeled = await minifyScriptBody(esbuild, assembled, `bundle[${layout}]`, { mangle: true });
+  const body = bundleBanner({ layout, includedBuilder }) + peeled + '\n';
+  const bodyBytes = Buffer.byteLength(body, 'utf8');
 
-  // Section headers in the emitted bundle so that if an agent opens the file
-  // to debug a runtime error, the three segments are still visually
-  // distinguishable. These are the ONLY comments preserved in the bundle —
-  // minification strips everything else.
-  const payload =
-    bundleBanner() +
-    '// --- §0..§5.7 (draw-engine top) ---\n' +
-    minTop +
-    '\n' +
-    '// --- archetype-builders (hoisted function declarations) ---\n' +
-    minArch +
-    '\n' +
-    '// --- §6.0..§6.9a (draw-engine bottom: clear-page + dispatch + doc pipeline) ---\n' +
-    minBottom +
-    '\n';
+  if (bodyBytes > HARD_LIMIT - CONFIG_HEADROOM) {
+    throw new Error(
+      `bundle[${layout}] is ${bodyBytes} bytes, exceeds budget ${HARD_LIMIT - CONFIG_HEADROOM}` +
+        ` (hard limit ${HARD_LIMIT} minus ${CONFIG_HEADROOM} reserved for agent CONFIG preamble).\n` +
+        '  Shrink one of the shared helpers or the builder itself before committing.'
+    );
+  }
 
-  writeFileSync(resolve(REPO_ROOT, BUNDLE_REL), payload);
-
+  writeFileSync(resolve(REPO_ROOT, destRel), body);
   return {
-    destRel: BUNDLE_REL,
-    topSrcBytes: Buffer.byteLength(top, 'utf8'),
-    archSrcBytes: Buffer.byteLength(archetypeText, 'utf8'),
-    bottomSrcBytes: Buffer.byteLength(bottom, 'utf8'),
-    destBytes: Buffer.byteLength(payload, 'utf8'),
+    layout,
+    destRel,
+    srcBytes: Buffer.byteLength(assembled, 'utf8'),
+    destBytes: bodyBytes,
+  };
+}
+
+async function buildFullBundle(esbuild, { drawTop, drawBottom }, archetypeSrc) {
+  const assembled = drawTop + '\n' + archetypeSrc + '\n' + drawBottom;
+  const peeled = await minifyScriptBody(esbuild, assembled, 'bundle[full]', { mangle: true });
+  const body = bundleBanner({ layout: '__ALL__' }) + peeled + '\n';
+  // No budget assertion here — the full bundle is intentionally a debug
+  // artifact and will normally exceed HARD_LIMIT - CONFIG_HEADROOM.
+  writeFileSync(resolve(REPO_ROOT, FULL_BUNDLE_REL), body);
+  return {
+    destRel: FULL_BUNDLE_REL,
+    srcBytes: Buffer.byteLength(assembled, 'utf8'),
+    destBytes: Buffer.byteLength(body, 'utf8'),
   };
 }
 
@@ -279,14 +363,17 @@ async function main() {
   const check = process.argv.includes('--check');
 
   if (check) {
-    const results = ALL_OUTPUTS.map(checkOne);
+    const results = buildCheckRows().map(checkOne);
     let failed = 0;
+    const reported = new Set();
     for (const r of results) {
-      if (r.missing) {
+      if (r.missing && !reported.has(`missing:${r.dest}`)) {
         console.error(`drift: ${r.dest} is missing. run npm run build:min`);
+        reported.add(`missing:${r.dest}`);
         failed++;
-      } else if (r.stale) {
+      } else if (r.stale && !reported.has(`stale:${r.src}:${r.dest}`)) {
         console.error(`drift: ${r.src} is newer than ${r.dest}. run npm run build:min`);
+        reported.add(`stale:${r.src}:${r.dest}`);
         failed++;
       }
     }
@@ -297,21 +384,43 @@ async function main() {
 
   const esbuild = await loadEsbuild();
 
-  for (const srcRel of STANDALONE_TEMPLATES) {
-    const r = await buildStandalone(esbuild, srcRel);
+  const drawEngineSrc = readFileSync(resolve(REPO_ROOT, DRAW_ENGINE_REL), 'utf8');
+  const archetypeSrc = readFileSync(resolve(REPO_ROOT, ARCHETYPE_BUILDERS_REL), 'utf8');
+
+  const { top: drawTop, bottom: drawBottom } = splitDrawEngine(drawEngineSrc);
+  const { sharedHelpers, builders } = parseArchetypeBuilders(archetypeSrc);
+
+  // (1) Debug-only standalones — NOT inlined by agents at runtime.
+  for (const [srcRel, destRel] of [
+    [DRAW_ENGINE_REL, DRAW_ENGINE_MIN_REL],
+    [ARCHETYPE_BUILDERS_REL, ARCHETYPE_BUILDERS_MIN_REL],
+  ]) {
+    const r = await buildStandalone(esbuild, srcRel, destRel);
     const pct = ((1 - r.destBytes / r.srcBytes) * 100).toFixed(1);
     console.log(
-      `minified ${r.srcRel}\n` +
+      `standalone (debug-only) ${r.srcRel}\n` +
         `  -> ${r.destRel} (${r.srcBytes} -> ${r.destBytes} bytes, -${pct}%)`
     );
   }
 
-  const b = await buildBundle(esbuild);
-  const srcTotal = b.topSrcBytes + b.archSrcBytes + b.bottomSrcBytes;
-  const pct = ((1 - b.destBytes / srcTotal) * 100).toFixed(1);
+  // (2) Per-archetype runtime bundles.
+  const layouts = ['chip', ...Object.keys(ARCHETYPE_BUILDERS)];
+  for (const layout of layouts) {
+    const r = await buildPerArchetype(esbuild, layout, { drawTop, drawBottom, sharedHelpers, builders });
+    const remaining = HARD_LIMIT - r.destBytes;
+    console.log(
+      `bundle[${layout}]`.padEnd(28) +
+        `${r.destBytes} bytes (${remaining} bytes of CONFIG headroom under ${HARD_LIMIT} use_figma limit)`
+    );
+  }
+
+  // (3) Full debug bundle — all archetypes in one file, too tight for runtime.
+  const full = await buildFullBundle(esbuild, { drawTop, drawBottom }, archetypeSrc);
+  const fullRemaining = HARD_LIMIT - full.destBytes;
   console.log(
-    `bundled create-component engine\n` +
-      `  -> ${b.destRel} (${srcTotal} src bytes -> ${b.destBytes} bundled bytes, -${pct}%)`
+    `bundle[full]`.padEnd(28) +
+      `${full.destBytes} bytes (${fullRemaining} bytes left vs use_figma limit — ` +
+      `${fullRemaining < CONFIG_HEADROOM ? 'DEBUG-ONLY, too tight for CONFIG' : 'runtime-safe'})`
   );
 }
 

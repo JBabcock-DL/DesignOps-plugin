@@ -667,25 +667,40 @@ Agents should prefer `Read`-ing the single `shadcn-props/{component}.json` file 
 
 ### Regenerating minified templates
 
-`/create-component`'s `use_figma` payload inlines a single **pre-bundled** plugin-API script on every run: [`templates/create-component-engine.min.figma.js`](skills/create-component/templates/create-component-engine.min.figma.js). The bundle is built from two sources (`templates/draw-engine.figma.js` + `templates/archetype-builders.figma.js`) and contains both in the correct hoisting-safe order so agents don't have to find a split point inside already-minified output at run time.
+`/create-component`'s `use_figma` payload inlines **one of eight per-archetype engine bundles** on every run, picked by `CONFIG.layout`. Each bundle pre-assembles the draw-engine + the one archetype builder it needs (plus shared helpers) into a single file that fits under the `use_figma.code` 50 000-char hard limit with 17–23 KB of headroom for the agent's §0 CONFIG preamble.
 
-The two standalone `.min` siblings (`draw-engine.min.figma.js`, `archetype-builders.min.figma.js`) are also emitted but are **debugging artifacts only** — not safe to use as a pair at runtime, because minification strips the comment marker that tells agents where to splice them together.
+| `CONFIG.layout` | Bundle file | ~size |
+|---|---|---|
+| `chip` | [`create-component-engine-chip.min.figma.js`](skills/create-component/templates/create-component-engine-chip.min.figma.js) | ~26 KB |
+| `surface-stack` | [`create-component-engine-surface-stack.min.figma.js`](skills/create-component/templates/create-component-engine-surface-stack.min.figma.js) | ~32 KB |
+| `field` | [`create-component-engine-field.min.figma.js`](skills/create-component/templates/create-component-engine-field.min.figma.js) | ~32 KB |
+| `row-item` | [`create-component-engine-row-item.min.figma.js`](skills/create-component/templates/create-component-engine-row-item.min.figma.js) | ~31 KB |
+| `tiny` | [`create-component-engine-tiny.min.figma.js`](skills/create-component/templates/create-component-engine-tiny.min.figma.js) | ~32 KB |
+| `control` | [`create-component-engine-control.min.figma.js`](skills/create-component/templates/create-component-engine-control.min.figma.js) | ~31 KB |
+| `container` | [`create-component-engine-container.min.figma.js`](skills/create-component/templates/create-component-engine-container.min.figma.js) | ~32 KB |
+| `__composes__` | [`create-component-engine-composed.min.figma.js`](skills/create-component/templates/create-component-engine-composed.min.figma.js) | ~31 KB |
+
+Three additional artifacts are committed as **debug-only siblings** — never inlined at runtime:
+
+- [`create-component-engine.min.figma.js`](skills/create-component/templates/create-component-engine.min.figma.js) — the full 7-archetype bundle (~50 KB, right at the MCP limit with no CONFIG room).
+- [`draw-engine.min.figma.js`](skills/create-component/templates/draw-engine.min.figma.js) — standalone draw-engine (identifiers preserved for readability).
+- [`archetype-builders.min.figma.js`](skills/create-component/templates/archetype-builders.min.figma.js) — standalone archetype-builders (identifiers preserved).
 
 | Script | Purpose |
 |---|---|
-| [`scripts/build-min-templates.mjs`](scripts/build-min-templates.mjs) | Minifies whitespace + syntax (esbuild, identifiers preserved) of both source templates. Emits three committed artifacts: `create-component-engine.min.figma.js` (the canonical runtime bundle) and the two standalone `.min` siblings. `--check` exits non-zero if any source is newer than any generated output. |
+| [`scripts/build-min-templates.mjs`](scripts/build-min-templates.mjs) | Splits `draw-engine.figma.js` on the archetype-builders insertion banner, parses `archetype-builders.figma.js` into per-builder blocks, and emits 11 committed artifacts: 8 per-archetype runtime bundles (identifier-mangled for size) + 1 full debug bundle + 2 standalone debug `.min` files. Refuses to write any runtime bundle larger than 40 000 bytes. `--check` exits non-zero if any source is newer than any generated output. |
 
 Typical flow after editing either source template:
 
 ```bash
 npm install                 # once, for esbuild (devDependency)
-npm run build:min           # regenerate bundle + 2 standalone .min siblings
-npm run build:min:check     # CI guard: exits 1 on stale .min outputs
+npm run build:min           # regenerate all 11 outputs
+npm run build:min:check     # CI guard: exits 1 on stale outputs
 ```
 
 The combined CI gate is `npm run verify` (runs `build:docs:check`, `build:min:check`, and `verify-cache` in sequence). `scripts/verify-cache.sh` fails the drift check if any source `.figma.js` is newer than any of its generated outputs, so a commit that forgets `npm run build:min` is caught automatically.
 
-Identifier renaming is intentionally **disabled** in the minifier because the runtime `typeof buildSurfaceStackVariant === 'function'` assertions at `draw-engine.figma.js §6.2a` / `§6.9a` resolve helpers by source name. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md) for the full contract.
+Identifier mangling is **enabled** for the per-archetype runtime bundles because the runtime `typeof buildSurfaceStackVariant === 'function'` assertions live in the same compilation unit as the declarations — esbuild renames both sides consistently. Boundary identifiers declared by the agent's §0 CONFIG preamble (`CONFIG`, `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`) appear as undeclared free variables inside the templates and are left un-renamed automatically. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md) for the full contract.
 
 ---
 

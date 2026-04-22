@@ -764,13 +764,14 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
   else if (layoutKey === 'control'  && typeof buildControlVariant      !== 'function') missingFn = 'buildControlVariant';
   else if (layoutKey === '__composes__' && typeof buildComposedVariant !== 'function') missingFn = 'buildComposedVariant';
   if (missingFn) {
+    // Normalize '__composes__' → 'composed' to match the filename convention.
+    const layoutForPath = layoutKey === '__composes__' ? 'composed' : layoutKey;
     throw new Error(
       `[create-component] CONFIG.layout='${layoutKey}' requires ${missingFn}(), but it is not defined in this script. ` +
-      `The preferred fix is to Read and inline skills/create-component/templates/create-component-engine.min.figma.js ` +
-      `verbatim after the §0 CONFIG — that pre-bundled file contains draw-engine + all archetype builders in the correct order. ` +
-      `(Legacy two-file inline is broken because minification strips the comment marker used to splice archetype-builders ` +
-      `into draw-engine.min.figma.js at runtime.) ` +
-      `See the Script-assembly order block at the top of SKILL.md.`
+      `Read and inline skills/create-component/templates/create-component-engine-${layoutForPath}.min.figma.js ` +
+      `verbatim after the §0 CONFIG — that pre-bundled file contains draw-engine + the ${missingFn} builder. ` +
+      `(The full 'create-component-engine.min.figma.js' bundle is debug-only and too tight for runtime CONFIG.) ` +
+      `See the Script-assembly order block + routing table at the top of SKILL.md.`
     );
   }
 }

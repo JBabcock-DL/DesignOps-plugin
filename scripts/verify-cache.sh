@@ -46,38 +46,64 @@ echo ""
 echo "==> checking minified-template freshness"
 STALE=0
 
-# Bundle has multiple source inputs — declare its dependency set explicitly so
-# the simple `${MIN%.min.figma.js}.figma.js` rule below skips it (it would
-# otherwise flag the bundle as an orphan because create-component-engine.figma.js
-# is not a real source file — it's a build-time synthesis).
-BUNDLE_REL="skills/create-component/templates/create-component-engine.min.figma.js"
+# Per-archetype bundles + the full bundle are all built from TWO sources
+# (draw-engine.figma.js + archetype-builders.figma.js) by scripts/build-min-
+# templates.mjs. Declare the dependency set explicitly so the simple
+# `${MIN%.min.figma.js}.figma.js` rule below skips them — otherwise they
+# would be flagged as orphans because their naming convention
+# (create-component-engine-<layout>.min.figma.js) has no matching .figma.js
+# source file.
+BUNDLE_PREFIX="skills/create-component/templates/create-component-engine"
+BUNDLES_REL=(
+  "$BUNDLE_PREFIX-chip.min.figma.js"
+  "$BUNDLE_PREFIX-surface-stack.min.figma.js"
+  "$BUNDLE_PREFIX-field.min.figma.js"
+  "$BUNDLE_PREFIX-row-item.min.figma.js"
+  "$BUNDLE_PREFIX-tiny.min.figma.js"
+  "$BUNDLE_PREFIX-control.min.figma.js"
+  "$BUNDLE_PREFIX-container.min.figma.js"
+  "$BUNDLE_PREFIX-composed.min.figma.js"
+  "$BUNDLE_PREFIX.min.figma.js"
+)
 BUNDLE_SOURCES=(
   "skills/create-component/templates/draw-engine.figma.js"
   "skills/create-component/templates/archetype-builders.figma.js"
 )
 
-BUNDLE_ABS="$REPO_ROOT/$BUNDLE_REL"
-if [[ -f "$BUNDLE_ABS" ]]; then
-  for SRC_REL in "${BUNDLE_SOURCES[@]}"; do
-    SRC_ABS="$REPO_ROOT/$SRC_REL"
-    if [[ ! -f "$SRC_ABS" ]]; then
-      echo "    warn: bundle source missing: $SRC_REL"
-      continue
-    fi
-    if [[ "$SRC_ABS" -nt "$BUNDLE_ABS" ]]; then
-      STALE=$((STALE + 1))
-      echo "    stale: $SRC_REL is newer than the bundle ($BUNDLE_REL)"
-    fi
+BUNDLE_ABS_LIST=()
+for BUNDLE_REL in "${BUNDLES_REL[@]}"; do
+  BUNDLE_ABS="$REPO_ROOT/$BUNDLE_REL"
+  BUNDLE_ABS_LIST+=("$BUNDLE_ABS")
+  if [[ -f "$BUNDLE_ABS" ]]; then
+    for SRC_REL in "${BUNDLE_SOURCES[@]}"; do
+      SRC_ABS="$REPO_ROOT/$SRC_REL"
+      if [[ ! -f "$SRC_ABS" ]]; then
+        echo "    warn: bundle source missing: $SRC_REL"
+        continue
+      fi
+      if [[ "$SRC_ABS" -nt "$BUNDLE_ABS" ]]; then
+        STALE=$((STALE + 1))
+        echo "    stale: $SRC_REL is newer than $BUNDLE_REL"
+      fi
+    done
+  else
+    STALE=$((STALE + 1))
+    echo "    missing: $BUNDLE_REL (run 'npm run build:min')"
+  fi
+done
+
+is_bundle() {
+  local candidate="$1"
+  for b in "${BUNDLE_ABS_LIST[@]}"; do
+    if [[ "$candidate" == "$b" ]]; then return 0; fi
   done
-else
-  STALE=$((STALE + 1))
-  echo "    missing: $BUNDLE_REL (canonical runtime bundle)"
-fi
+  return 1
+}
 
 while IFS= read -r -d '' MIN; do
-  # Skip the bundle — its freshness was verified above against an explicit
+  # Skip the bundles — freshness was verified above against an explicit
   # source list.
-  if [[ "$MIN" == "$BUNDLE_ABS" ]]; then
+  if is_bundle "$MIN"; then
     continue
   fi
   SRC_JS="${MIN%.min.figma.js}.figma.js"

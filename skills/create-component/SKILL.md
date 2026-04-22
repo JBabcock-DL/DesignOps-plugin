@@ -23,17 +23,32 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **MCP payloads:** Each `use_figma` invocation must pass its Plugin API script **inline** in the tool’s `code` field (built from this SKILL + committed `templates/*.figma.js` where referenced). Do **not** add throwaway `.mcp-*` / `*-payload.json` / scratch copies under the repo to stage that script — see [`AGENTS.md`](../../AGENTS.md).
 
-**🚨 Script-assembly order for Step 6 (`use_figma`):** The `code` payload MUST be assembled in this exact order or the run throws at `draw-engine.figma.js §6.2a`:
+**🚨 Script-assembly order for Step 6 (`use_figma`):** The `code` payload MUST be assembled in this exact order:
 
-1. **§0 CONFIG object** — the per-component block below (the only per-component edit surface).
-2. **`Read` and inline [`templates/create-component-engine.min.figma.js`](./templates/create-component-engine.min.figma.js) verbatim** — the **pre-bundled** engine: draw-engine top half (§§1–5.7), all seven archetype builders hoisted, draw-engine bottom half (§6.0 clear-page through §6.9a self-check). Paste immediately after the §0 CONFIG. This single file replaces the previous two-file inline (`draw-engine.min.figma.js` + `archetype-builders.min.figma.js`) — the build script splits draw-engine at the insertion marker and emits the correct ordering so agents don't have to find a split point inside already-minified output.
+1. **§0 CONFIG object** — the per-component block below (the only per-component edit surface). Includes `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, and `usesComposes` declarations (see §5.1). Typical size 1–4 KB.
+2. **`Read` and inline the per-archetype engine bundle that matches `CONFIG.layout`** (table below). Paste immediately after the §0 CONFIG.
 3. No further wrapping — §6.9a self-check is at the tail of the bundle and `return`s the payload.
 
-The previous two-file workflow is **deprecated and broken**: minification strips the `↓↓↓ INLINE archetype-builders.figma.js HERE ↓↓↓` comment marker, so there is no reliable way to find where to splice `archetype-builders.min.figma.js` into `draw-engine.min.figma.js` at agent runtime. The two standalone `.min` files are retained only as debugging artifacts and for the chip-only fast path (Button, Badge, Toggle, Kbd, Switch) — but even for chip, the bundle works identically and uses only ~3 KB more than the standalone. **Always inline the bundle.**
+| `CONFIG.layout` | Inline this file | Approximate size |
+|---|---|---|
+| `chip` | [`templates/create-component-engine-chip.min.figma.js`](./templates/create-component-engine-chip.min.figma.js) | ~26 KB |
+| `surface-stack` | [`templates/create-component-engine-surface-stack.min.figma.js`](./templates/create-component-engine-surface-stack.min.figma.js) | ~32 KB |
+| `field` | [`templates/create-component-engine-field.min.figma.js`](./templates/create-component-engine-field.min.figma.js) | ~32 KB |
+| `row-item` | [`templates/create-component-engine-row-item.min.figma.js`](./templates/create-component-engine-row-item.min.figma.js) | ~31 KB |
+| `tiny` | [`templates/create-component-engine-tiny.min.figma.js`](./templates/create-component-engine-tiny.min.figma.js) | ~32 KB |
+| `control` | [`templates/create-component-engine-control.min.figma.js`](./templates/create-component-engine-control.min.figma.js) | ~31 KB |
+| `container` | [`templates/create-component-engine-container.min.figma.js`](./templates/create-component-engine-container.min.figma.js) | ~32 KB |
+| `__composes__` | [`templates/create-component-engine-composed.min.figma.js`](./templates/create-component-engine-composed.min.figma.js) | ~31 KB |
 
-Two runtime `typeof` asserts near the tail of the bundle (one for archetype builders, one for draw-engine functions) throw with actionable messages if the bundle was truncated mid-paste. The asserts name every required function (`buildSurfaceStackVariant`, `buildPropertiesTable`, etc.) — minification preserves identifier names, so the bundle satisfies the asserts identically to the source files. If you only see `CONFIG` in this SKILL (because your `Read` truncated the file), assume Step 2 is missing. Re-`Read` `templates/create-component-engine.min.figma.js` explicitly by path — do not trust a truncated SKILL.md.
+Each bundle is pre-assembled from `draw-engine.figma.js` + the one archetype builder it needs (plus shared helpers). The full 7-archetype bundle ([`create-component-engine.min.figma.js`](./templates/create-component-engine.min.figma.js)) is committed too but is **debug-only**: it lands at ~50 KB, which is exactly the `use_figma.code` `maxLength` ceiling — no room left for CONFIG. **Never inline the full bundle at runtime.** Per-archetype bundles have 17–23 KB of CONFIG headroom each.
 
-> **Regenerating `.min` files.** Run `npm run build:min` after editing either source template (`draw-engine.figma.js` or `archetype-builders.figma.js`). The build emits three artifacts: the two standalones **and** the bundle. `scripts/verify-cache.sh` refuses to pass if any source is newer than any of its generated outputs. CI gate: `npm run verify` (runs `build:docs:check`, `build:min:check`, `verify-cache`).
+**Why per-archetype?** The MCP tool descriptor caps `use_figma.code` at 50 000 characters. A single bundle containing all seven archetype builders minifies to ~49.4 KB — technically under the limit but too tight once the agent prepends CONFIG, so submissions get rejected before they reach Figma. Each component only needs ONE archetype builder (picked by `CONFIG.layout`), so the build script emits one bundle per archetype with only that one builder inlined.
+
+Two runtime `typeof` asserts near the tail of every bundle (one for the archetype builder the bundle ships, one for draw-engine doc-pipeline helpers) throw with actionable messages if the bundle was truncated mid-paste. Minification uses identifier mangling but renames declarations and references together in the same compilation unit, so the asserts evaluate against the mangled names correctly. The four "boundary" identifiers that cross into the bundle from the agent-authored CONFIG preamble (`CONFIG`, `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`) are *referenced but never declared* inside the templates, so esbuild treats them as free variables and leaves their names intact automatically.
+
+If your `Read` of this SKILL file truncated before §0, assume Step 2 is missing. Re-`Read` the per-archetype `create-component-engine-{layout}.min.figma.js` file explicitly by path — do not trust a truncated SKILL.md.
+
+> **Regenerating bundles.** Run `npm run build:min` after editing either source template (`draw-engine.figma.js` or `archetype-builders.figma.js`). The build emits eleven artifacts: 8 per-archetype runtime bundles, the full debug bundle, and 2 standalone debug `.min.figma.js` files. The build refuses to write any per-archetype bundle larger than `HARD_LIMIT - CONFIG_HEADROOM` (40 000 bytes) so a growth regression in the source is caught at build time, not at agent run time. `scripts/verify-cache.sh` refuses to pass if any source is newer than any of its generated outputs. CI gate: `npm run verify` (runs `build:docs:check`, `build:min:check`, `verify-cache`).
 
 **Nine steps. Do not skip any.**
 
