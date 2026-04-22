@@ -45,7 +45,41 @@ rm -f /tmp/sync-cache-diff.$$
 echo ""
 echo "==> checking minified-template freshness"
 STALE=0
+
+# Bundle has multiple source inputs — declare its dependency set explicitly so
+# the simple `${MIN%.min.figma.js}.figma.js` rule below skips it (it would
+# otherwise flag the bundle as an orphan because create-component-engine.figma.js
+# is not a real source file — it's a build-time synthesis).
+BUNDLE_REL="skills/create-component/templates/create-component-engine.min.figma.js"
+BUNDLE_SOURCES=(
+  "skills/create-component/templates/draw-engine.figma.js"
+  "skills/create-component/templates/archetype-builders.figma.js"
+)
+
+BUNDLE_ABS="$REPO_ROOT/$BUNDLE_REL"
+if [[ -f "$BUNDLE_ABS" ]]; then
+  for SRC_REL in "${BUNDLE_SOURCES[@]}"; do
+    SRC_ABS="$REPO_ROOT/$SRC_REL"
+    if [[ ! -f "$SRC_ABS" ]]; then
+      echo "    warn: bundle source missing: $SRC_REL"
+      continue
+    fi
+    if [[ "$SRC_ABS" -nt "$BUNDLE_ABS" ]]; then
+      STALE=$((STALE + 1))
+      echo "    stale: $SRC_REL is newer than the bundle ($BUNDLE_REL)"
+    fi
+  done
+else
+  STALE=$((STALE + 1))
+  echo "    missing: $BUNDLE_REL (canonical runtime bundle)"
+fi
+
 while IFS= read -r -d '' MIN; do
+  # Skip the bundle — its freshness was verified above against an explicit
+  # source list.
+  if [[ "$MIN" == "$BUNDLE_ABS" ]]; then
+    continue
+  fi
   SRC_JS="${MIN%.min.figma.js}.figma.js"
   if [[ ! -f "$SRC_JS" ]]; then
     echo "    warn: orphan min file with no readable source: $MIN"

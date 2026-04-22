@@ -667,21 +667,23 @@ Agents should prefer `Read`-ing the single `shadcn-props/{component}.json` file 
 
 ### Regenerating minified templates
 
-`/create-component`'s `use_figma` payload inlines two large plugin-API scripts on every run: `templates/draw-engine.figma.js` and `templates/archetype-builders.figma.js`. Both are committed alongside a pre-built `.min.figma.js` sibling so agents inline the small variant (~40–60% savings) without running Node at runtime.
+`/create-component`'s `use_figma` payload inlines a single **pre-bundled** plugin-API script on every run: [`templates/create-component-engine.min.figma.js`](skills/create-component/templates/create-component-engine.min.figma.js). The bundle is built from two sources (`templates/draw-engine.figma.js` + `templates/archetype-builders.figma.js`) and contains both in the correct hoisting-safe order so agents don't have to find a split point inside already-minified output at run time.
+
+The two standalone `.min` siblings (`draw-engine.min.figma.js`, `archetype-builders.min.figma.js`) are also emitted but are **debugging artifacts only** — not safe to use as a pair at runtime, because minification strips the comment marker that tells agents where to splice them together.
 
 | Script | Purpose |
 |---|---|
-| [`scripts/build-min-templates.mjs`](scripts/build-min-templates.mjs) | Minifies whitespace + syntax (esbuild, identifiers preserved) of the two source templates and writes committed `.min.figma.js` siblings. `--check` fails (non-zero exit) if any source is newer than its sibling. |
+| [`scripts/build-min-templates.mjs`](scripts/build-min-templates.mjs) | Minifies whitespace + syntax (esbuild, identifiers preserved) of both source templates. Emits three committed artifacts: `create-component-engine.min.figma.js` (the canonical runtime bundle) and the two standalone `.min` siblings. `--check` exits non-zero if any source is newer than any generated output. |
 
 Typical flow after editing either source template:
 
 ```bash
 npm install                 # once, for esbuild (devDependency)
-npm run build:min           # regenerate both .min siblings
-npm run build:min:check     # CI guard: exits 1 on stale .min files
+npm run build:min           # regenerate bundle + 2 standalone .min siblings
+npm run build:min:check     # CI guard: exits 1 on stale .min outputs
 ```
 
-The combined CI gate is `npm run verify` (runs `build:docs:check`, `build:min:check`, and `verify-cache` in sequence). `scripts/verify-cache.sh` fails the drift check if any source `.figma.js` is newer than its `.min` sibling, so a commit that forgets `npm run build:min` is caught automatically.
+The combined CI gate is `npm run verify` (runs `build:docs:check`, `build:min:check`, and `verify-cache` in sequence). `scripts/verify-cache.sh` fails the drift check if any source `.figma.js` is newer than any of its generated outputs, so a commit that forgets `npm run build:min` is caught automatically.
 
 Identifier renaming is intentionally **disabled** in the minifier because the runtime `typeof buildSurfaceStackVariant === 'function'` assertions at `draw-engine.figma.js §6.2a` / `§6.9a` resolve helpers by source name. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md) for the full contract.
 

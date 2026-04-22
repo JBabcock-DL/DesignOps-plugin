@@ -766,8 +766,11 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
   if (missingFn) {
     throw new Error(
       `[create-component] CONFIG.layout='${layoutKey}' requires ${missingFn}(), but it is not defined in this script. ` +
-      `You must Read skills/create-component/templates/archetype-builders.figma.js and inline it verbatim ABOVE §6.0. ` +
-      `See the pointer block at the top of §6 in SKILL.md for the required script-assembly order.`
+      `The preferred fix is to Read and inline skills/create-component/templates/create-component-engine.min.figma.js ` +
+      `verbatim after the §0 CONFIG — that pre-bundled file contains draw-engine + all archetype builders in the correct order. ` +
+      `(Legacy two-file inline is broken because minification strips the comment marker used to splice archetype-builders ` +
+      `into draw-engine.min.figma.js at runtime.) ` +
+      `See the Script-assembly order block at the top of SKILL.md.`
     );
   }
 }
