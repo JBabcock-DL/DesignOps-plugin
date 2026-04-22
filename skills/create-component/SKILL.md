@@ -56,7 +56,10 @@ Minification uses identifier mangling but renames declarations and references to
 
 If your `Read` of this SKILL file truncated before §0, assume Steps 2 and 3 are missing. Re-`Read` [`templates/preamble.figma.js`](./templates/preamble.figma.js) **and** the per-archetype `create-component-engine-{layout}.min.figma.js` file explicitly by path — do not trust a truncated SKILL.md.
 
-**🚨 Before you submit, run a local syntax preflight (Step 5.5).** Every `use_figma` call MUST parse cleanly as an async function body. Pipe the assembled payload through [`scripts/check-payload.mjs`](../../scripts/check-payload.mjs) (or `npm run check-payload -- <path>`) **after** assembly but **before** the `use_figma` invocation. The script runs offline in ~1 second, reports `SyntaxError` with the exact line/column, and costs zero Figma round-trips. Skip this and a hand-retyped `summary` / `usageDo` / `description` string with an unescaped apostrophe will burn a full tool call to surface the same error with worse diagnostics.
+**🚨 Before you submit, run a local syntax + JSON-transport preflight (Step 5.5).** Every `use_figma` call MUST pass TWO gates locally: (1) the payload parses cleanly as an async function body, and (2) it round-trips through `JSON.stringify` → `JSON.parse` losslessly with no `\xHH` hex escapes. Pipe the assembled payload through [`scripts/check-payload.mjs`](../../scripts/check-payload.mjs) (or `npm run check-payload -- <path>`) **after** assembly but **before** the `use_figma` invocation. The script runs offline in ~1 second, reports either failure with actionable diagnostics, and costs zero Figma round-trips. Skip this and one of the two classic failure modes will burn a full tool call to surface the same error with worse diagnostics:
+
+- **Gate 1 (JS parse):** a hand-retyped `summary` / `usageDo` / `description` string with an unescaped apostrophe → `SyntaxError: expecting ')'`. Angle brackets (`<label>`) in strings are a red herring — do not chase them.
+- **Gate 2 (JSON transport):** a `\xHH` hex escape somewhere in the payload (valid JS, invalid JSON) → `Bad escaped character in JSON at position N` when MCP serializes `use_figma.code` over stdio. The committed `*.min.figma.js` bundles pin esbuild to `charset: 'utf8'` to avoid this at build time; if you see `\xHH` in a fresh bundle, the flag was dropped — restore it in `scripts/build-min-templates.mjs` per [`templates/README.md`](./templates/README.md). Hand-authored CONFIG? Use literal characters (`§`, `×`, `·`, `¬`) or `\u00HH` — never `\xHH`.
 
 **CONFIG-authoring rules — non-negotiable:**
 
@@ -66,7 +69,7 @@ If your `Read` of this SKILL file truncated before §0, assume Steps 2 and 3 are
 
 > **Regenerating bundles.** Run `npm run build:min` after editing either source template (`draw-engine.figma.js` or `archetype-builders.figma.js`). The build emits eleven artifacts: 8 per-archetype runtime bundles, the full debug bundle, and 2 standalone debug `.min.figma.js` files. The build refuses to write any per-archetype bundle larger than `HARD_LIMIT - CONFIG_HEADROOM` (40 000 bytes) so a growth regression in the source is caught at build time, not at agent run time. `scripts/verify-cache.sh` refuses to pass if any source is newer than any of its generated outputs. CI gate: `npm run verify` (runs `build:docs:check`, `build:min:check`, `verify-cache`).
 
-**Eleven steps. Do not skip any.** (Step 4.7 — pre-flight token verification — and Step 5.5 — local syntax preflight — are the two cheapest ones to forget; skipping 4.7 silently falls back to hex, skipping 5.5 burns a `use_figma` round-trip on a syntax error you could have caught in 1 second locally.)
+**Twelve steps. Do not skip any.** (Step 4.3 — peer-dep audit — catches shadcn CLI gaps like missing `class-variance-authority`; Step 4.7 — pre-flight token verification — silently falls back to hex if you skip it; Step 5.5 — local syntax preflight — burns a `use_figma` round-trip on a syntax error you could have caught in 1 second locally.)
 
 | # | Step | Tool | Required inputs | Expected outcome |
 |---|------|------|-----------------|------------------|
@@ -75,10 +78,11 @@ If your `Read` of this SKILL file truncated before §0, assume Steps 2 and 3 are
 | 3 | Initialize shadcn + wire tokens | `Shell` + `AskUserQuestion` | `components.json` presence check | `components.json` exists, `tokens.css` imported at top of `globals.css`, variable-declaration blocks removed |
 | 3b | Icon-pack bootstrap (first-time-only) | `Read` (probe) → `AskUserQuestion` (only if missing) | `designops.config.json` presence check | `ICON_PACK: { npm, import, figmaIconLibraryKey, defaultIconRef } \| null` — persisted to `designops.config.json`; skipped silently on subsequent runs. Prompts accept Figma URLs, node-ids, or component keys — parser classifies the paste, `draw-engine.figma.js §5.6` resolves at draw time. |
 | 4 | Install each component | `Shell` | `npx shadcn@latest add {component}` + `npm install {ICON_PACK.npm}` (when set, first run only) | Files written under `components/ui/`, per-component status `installed \| already_exists \| failed`; icon-pack dependency present in `package.json` |
+| 4.3 | Peer-dep audit (shadcn CLI gap guard) | `Read` + `Shell` | Just-installed component's source file + `package.json` | Any `class-variance-authority` / `clsx` / `tailwind-merge` / `@radix-ui/react-*` / `cmdk` / etc. that the component imports but `package.json` is missing gets `npm install`-ed in one batched command. Prevents `Cannot find module 'class-variance-authority'` at compile time. |
 | 4.4 | Icon-pack import rewrite (global) | `Read` / `StrReplace` (AST preferred) | `ICON_PACK.choice` + installed source files | `from 'lucide-react'` imports + JSX identifiers rewritten to match Step 3b choice (material-symbols mapped, custom specifier-swapped, lucide-react / none = no-op); pinned comment added for idempotence |
 | 4.7 | Pre-flight token-path verification | `get_variable_defs` OR `use_figma` probe | Active fileKey + staged `CONFIG` | `AVAILABLE_TOKEN_PATHS: Set<string>`; every `CONFIG.*Var` / `CONFIG.style[*].fill` / `padH` / `radius` value confirmed present. Misses → **AskUserQuestion** (never silent hex fallback). See [`conventions/07-token-paths.md`](./conventions/07-token-paths.md). |
 | 5 | Resolve Figma file key | handoff lookup → `AskUserQuestion` fallback | `templates/agent-handoff.md` frontmatter | `fileKey: string` |
-| 5.5 | Local syntax preflight | [`scripts/check-payload.mjs`](../../scripts/check-payload.mjs) (or `npm run check-payload`) | Assembled `use_figma` payload (CONFIG + preamble + engine bundle, in order) | Script exits 0 with `OK  <sourceLabel> parses as an async function body (<bytes> bytes).` If it exits 1, fix the CONFIG at the reported `line:col` and re-run — **never** submit a payload that failed preflight. |
+| 5.5 | Local syntax + JSON-transport preflight | [`scripts/check-payload.mjs`](../../scripts/check-payload.mjs) (or `npm run check-payload`) | Assembled `use_figma` payload (CONFIG + preamble + engine bundle, in order) | Script exits 0 with `OK  <sourceLabel> parses as an async function body (<bytes> bytes, JSON-safe).` If it exits 1 (JS parse failure → fix at `line:col`; JSON transport failure → fix `\xHH` / surrogate / control char), **never** submit a payload that failed preflight. |
 | 6 | Draw component → Figma | `use_figma` (one call per component) | `fileKey`, `CONFIG` block per §6, optional `ICON_PACK.figmaIconLibraryKey` + `ICON_PACK.defaultIconRef` | Return payload with `{ compSetId, compSetVariants, compSetPropertyDefinitions, firstVariantChildren, iconVariantChildren, propErrorsCount, iconSlotMode: "placeholder" \| "instance-swap", iconPackResolution: "by-key" \| "by-node-id" \| "failed:*", … }` |
 | 7 | Self-check the return payload | agent-side assertions per §9 | step 6's return JSON | Zero drift; if any assertion fails, stop and report — do not mark the component done |
 
@@ -438,6 +442,70 @@ If Step 3b produced an `ICON_PACK` block where `ICON_PACK.npm` is a non-null, np
 3. On success, record it (`installed` or `already_exists`) in the run report alongside the component rows.
 
 If `ICON_PACK.npm` is null (choice = `none`) or non-npm-shaped (custom free-form path/URL), skip the install step silently — the config block is still persisted in `designops.config.json` for later reference.
+
+### Step 4.3 — Peer-dependency audit (shadcn CLI gap guard)
+
+> **Goal:** The shadcn CLI *usually* pulls `class-variance-authority`, `clsx`, `tailwind-merge`, and the right `@radix-ui/*` primitives when it writes a component file — but not always. Fresh-init projects, Vite-based templates, and a subset of recent CLI versions sporadically emit a component with `import { cva } from "class-variance-authority"` while leaving the package out of `package.json`. Downstream build fails with `Cannot find module 'class-variance-authority'`. This step closes that gap automatically.
+
+This step runs **per just-installed component** immediately after Step 4's per-component `npx shadcn@latest add <component>` call, and **before** Step 4.4's icon-pack rewrite. Only components whose install status in Step 4 was `installed` are touched — `already_exists` and `failed` are skipped.
+
+#### 4.3.a — Parse imports from the installed source file
+
+Read `components/ui/<component>.tsx` (or the path shadcn actually wrote — trust the output of Step 4, not the default path). Collect every bare-specifier top-level `import` statement (AST walk preferred; a `grep -E "^(import |} from )"` fallback is acceptable for simple cases).
+
+#### 4.3.b — Cross-check against the known shadcn peer-dep list
+
+Drop any import whose specifier is **not** in this table. The table is deliberately narrow — only packages that shadcn itself writes into generated components belong here. If a shadcn version adds a new dep, extend this table; do **not** blindly install every third-party import the file mentions.
+
+| Import specifier | npm package | Why |
+|---|---|---|
+| `class-variance-authority` | `class-variance-authority` | `cva()` / `VariantProps<>` — used by button, badge, toggle, alert, navigation-menu, label, and every variant-driven component |
+| `clsx` | `clsx` | `cn()` utility in `lib/utils.ts` |
+| `tailwind-merge` | `tailwind-merge` | `cn()` utility in `lib/utils.ts` |
+| `@radix-ui/react-*` (any sub-path) | the matching `@radix-ui/react-*` top-level spec | Every shadcn primitive (dialog, select, accordion, …) ships a radix-ui peer. Map `@radix-ui/react-select` → `@radix-ui/react-select` verbatim — shadcn never sub-paths. |
+| `cmdk` | `cmdk` | `command` + `combobox` components |
+| `date-fns` | `date-fns` | `calendar` / `date-picker` |
+| `react-day-picker` | `react-day-picker` | `calendar` / `date-picker` |
+| `react-hook-form` | `react-hook-form` | `form` component |
+| `@hookform/resolvers` | `@hookform/resolvers` | `form` component's Zod/Yup adapters |
+| `zod` | `zod` | `form` component's schema validator |
+| `input-otp` | `input-otp` | `input-otp` component |
+| `recharts` | `recharts` | `chart` component |
+| `sonner` | `sonner` | `sonner` toast component |
+| `vaul` | `vaul` | `drawer` component |
+| `embla-carousel-react` | `embla-carousel-react` | `carousel` component |
+| `react-resizable-panels` | `react-resizable-panels` | `resizable` component |
+
+Specifiers outside this table — `react`, `react-dom`, `next/*`, `@/lib/*`, `@/components/*`, relative imports — are **never** treated as missing. They are either workspace-owned or project-level peer deps that Step 3's `npx shadcn@latest init` already handled.
+
+#### 4.3.c — Resolve missing packages
+
+For every collected `npm-package` from step 4.3.b:
+
+1. Read the project's `package.json`.
+2. If the package is already present as a `dependency`, `devDependency`, or `peerDependency`, mark it `already_present` and continue.
+3. Otherwise, add it to a per-run missing-deps set.
+
+#### 4.3.d — Install the missing set (once per component)
+
+If the missing-deps set is non-empty, install it in ONE command using the same package manager Step 4 picked (`npm` / `pnpm add` / `yarn add` / `bun add`):
+
+```bash
+# example for the label component in an npm project
+npm install class-variance-authority
+```
+
+Batch all missing packages for a single component into a single install command — do **not** loop one `npm install` per package (slow and noisy).
+
+On failure, log the error, mark the component `peer-dep-install-failed` in the run report, and **continue** to Step 4.4 — a failed peer-dep install does not abort the whole run, but the run report must surface the failing component so the designer can install by hand before re-running `/create-component`.
+
+#### 4.3.e — Idempotence
+
+This step is safe to re-run: `already_present` packages are no-ops, and the per-file import parse is deterministic. A re-run of `/create-component` against the same component will audit cleanly with zero installs on the second pass.
+
+#### 4.3.f — Why not just trust shadcn?
+
+The shadcn CLI's peer-dep resolution depends on a `registry:` entry in the component's upstream manifest. Entries drift (new components land before their deps are tagged, CLI versions cache stale registry snapshots, `--no-deps` users skip them) and the failure mode is silent at install time — you only find out when TypeScript or the bundler reports `Cannot find module`. Auditing the actual import statements in the file is a one-second O(n) check that catches every drift class without caring about the CLI's registry state.
 
 ### Step 4.4 — Icon-pack import rewrite (global)
 

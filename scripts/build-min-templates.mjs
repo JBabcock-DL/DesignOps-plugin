@@ -144,6 +144,15 @@ async function minifyScriptBody(esbuild, srcText, label, { mangle }) {
     loader: 'js',
     target: 'esnext',
     legalComments: 'none',
+    // charset: 'utf8' keeps non-ASCII characters (§, ×, ·, ¬, em-dash, etc.)
+    // literal in the output instead of escaping them as \xHH. The \xHH form is
+    // valid JavaScript but INVALID JSON — when the bundle is embedded in a JSON
+    // string argument (e.g. the MCP `use_figma.code` field), JSON.parse rejects
+    // it with "Bad escaped character in JSON". JSON strings carry literal UTF-8
+    // bytes natively, so 'utf8' is strictly better for our transport. Do NOT
+    // revert to the esbuild default ('ascii') without also adding a post-pass
+    // that converts \xHH → \u00HH. See SKILL.md §0 "MCP payloads" note.
+    charset: 'utf8',
   });
 
   let minBody = result.code.trim();

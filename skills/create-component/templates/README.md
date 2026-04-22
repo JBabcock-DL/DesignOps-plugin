@@ -56,6 +56,14 @@ The build script (`scripts/build-min-templates.mjs`) does the following for ever
 4. **Minify as a single compilation unit** with esbuild: whitespace + syntax + identifiers all minified. Identifier names are renamed consistently across the three source fragments (they live in the same compilation unit), so the runtime `typeof build<Archetype>Variant === 'function'` assertion at the bottom still passes — the name gets mangled to the same short token on both sides.
 5. **Enforce a budget** — the build refuses to write any per-archetype bundle larger than `HARD_LIMIT - CONFIG_HEADROOM` (40 000 bytes, i.e. 50 000 minus 10 000 reserved for CONFIG). A growth regression surfaces at build time, not at the agent's run time.
 
+### Why `charset: 'utf8'` is pinned
+
+esbuild's default `charset: 'ascii'` escapes every non-ASCII character in a string literal as `\xHH` (Latin-1 range) or `\uXXXX` (above 0xFF), trading 2–4 bytes of size for ASCII-safe output. Our templates use a handful of non-ASCII characters (`§` for section markers, `×` for matrix labels, `·` for separators, `¬` rarely) that land in the Latin-1 range and therefore get emitted as `\xHH`.
+
+**`\xHH` is valid JavaScript but INVALID JSON.** When an agent embeds the bundle in the `code` field of a `use_figma` MCP call, the MCP transport serializes the argument over stdio as a JSON string. `JSON.parse` on the receiving side rejects `\xHH` with `Bad escaped character in JSON at position N`, and the payload never reaches Figma.
+
+The build script pins `charset: 'utf8'` ([`scripts/build-min-templates.mjs`](../../../scripts/build-min-templates.mjs) `minifyScriptBody`) to keep these characters literal. JSON strings carry literal UTF-8 natively — transport works. Do **not** revert this flag without also adding a post-pass that rewrites `\xHH` → `\u00HH`. A failure here is caught locally by [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) (Gate 2: JSON-transport round-trip), so a regression fails SKILL.md Step 5.5 before it ever costs a Figma round-trip.
+
 ### Why identifier mangling is safe here
 
 - **Boundary identifiers** declared by step 1 (§0 CONFIG) and step 2 ([`preamble.figma.js`](./preamble.figma.js)) — `CONFIG`, `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`, `logFileKeyMismatch`, `_fileKeyObserved`, `_fileKeyMismatch` — appear in the templates as *references only*. esbuild treats undeclared references as free variables and leaves their names untouched. The mangled bundle still reads `CONFIG.variants`, `REGISTRY_COMPONENTS[spec.component]`, etc.

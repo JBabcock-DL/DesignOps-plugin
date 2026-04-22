@@ -93,6 +93,7 @@ if (!code || code.trim().length === 0) {
 // line 1 becomes the wrapper's line 2, and we subtract 1 before printing.
 const wrapped = '(async function __payload__() {\n' + code + '\n})';
 
+// ─── Gate 1: JavaScript parse ───────────────────────────────────────────
 try {
   new vm.Script(wrapped, { filename: sourceLabel, displayErrors: true });
 } catch (err) {
@@ -103,8 +104,63 @@ try {
   throw err;
 }
 
+// ─── Gate 2: JSON transport round-trip ──────────────────────────────────
+// MCP tool calls serialize the `code` argument as a JSON string over stdio.
+// JavaScript string literals accept \xHH hex escapes; JSON string literals
+// do NOT. esbuild's default `charset: 'ascii'` emits \xHH for non-ASCII
+// characters (§, ×, ·, ¬, em-dash) because it's 2 bytes shorter than \uXXXX;
+// our build uses `charset: 'utf8'` to avoid this, but a hand-authored CONFIG
+// or a third-party minifier could re-introduce the problem. A JSON round-trip
+// catches it locally before the tool call fails with "Bad escaped character
+// in JSON at position N".
+//
+// Other JSON-unsafe shapes this catches:
+//   - Lone UTF-16 surrogates (rare, but happens with emoji-in-string slicing)
+//   - Invalid UTF-8 byte sequences
+//   - U+2028 / U+2029 (valid in JSON but fatal when the JSON is then
+//     evaluated as JavaScript in some transports; we flag these separately)
+try {
+  const encoded = JSON.stringify(code);
+  const decoded = JSON.parse(encoded);
+  if (decoded !== code) {
+    console.error(`JSON-transport warning in ${sourceLabel}: round-trip modified the payload`);
+    console.error(`  original length: ${code.length}`);
+    console.error(`  round-trip length: ${decoded.length}`);
+    process.exit(1);
+  }
+} catch (err) {
+  console.error(`JSON-transport error in ${sourceLabel}: payload cannot be safely embedded in a JSON string argument (e.g. MCP use_figma.code)`);
+  console.error(`  ${err.message}`);
+  reportJsonTransportDiagnostics(code);
+  process.exit(1);
+}
+
+// Extra check: hex escapes that are valid JS but invalid JSON. JSON.stringify
+// of a JS string NEVER produces these, but the SOURCE payload may contain
+// them as literal escape sequences written into the code (e.g. an agent
+// hand-typed `'\x3C'` instead of `'<'`). When the MCP transport treats the
+// payload as a JSON string, those sequences survive as literal backslash-x
+// and blow up on the other side.
+const hexEscapeMatches = code.match(/\\x[0-9a-fA-F]{2}/g);
+if (hexEscapeMatches && hexEscapeMatches.length > 0) {
+  const unique = [...new Set(hexEscapeMatches)];
+  console.error(`JSON-transport error in ${sourceLabel}: ${hexEscapeMatches.length} \\xHH hex escape(s) in source (${unique.slice(0, 5).join(', ')}${unique.length > 5 ? ', …' : ''})`);
+  console.error(`  \\xHH is valid JavaScript but invalid JSON. When use_figma serializes the`);
+  console.error(`  'code' argument over MCP stdio, JSON.parse rejects the payload with`);
+  console.error(`  "Bad escaped character in JSON at position N".`);
+  console.error(``);
+  console.error(`  Fix options:`);
+  console.error(`    1. If this is a MINIFIED bundle: rebuild with \`npm run build:min\` —`);
+  console.error(`       our esbuild config pins \`charset: 'utf8'\`. Sources newer than`);
+  console.error(`       2024-Q2 already avoid \\xHH. If you see escapes in a fresh bundle,`);
+  console.error(`       the charset flag was dropped; restore it in scripts/build-min-templates.mjs.`);
+  console.error(`    2. If this is a HAND-AUTHORED payload: replace \\xHH with either the`);
+  console.error(`       literal character ('§', '×', '·', '¬') or the \\u00HH form.`);
+  process.exit(1);
+}
+
 const bytes = Buffer.byteLength(code, 'utf8');
-console.log(`OK  ${sourceLabel} parses as an async function body (${bytes.toLocaleString()} bytes).`);
+console.log(`OK  ${sourceLabel} parses as an async function body (${bytes.toLocaleString()} bytes, JSON-safe).`);
 process.exit(0);
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -115,16 +171,54 @@ function printUsageAndExit(code) {
   const stream = code === 0 ? console.log : console.error;
   stream(`Usage: node scripts/check-payload.mjs [<path>] [--trace] [--help]`);
   stream(``);
-  stream(`  Reads <path> (or stdin if omitted) and parses the content as an async`);
-  stream(`  function body — the same way use_figma evaluates its 'code' argument.`);
-  stream(`  Prints OK + byte count on success; SyntaxError with file:line:col on`);
-  stream(`  failure. Exit 0 / 1 / 2.`);
+  stream(`  Reads <path> (or stdin if omitted) and validates the content against`);
+  stream(`  TWO gates:`);
+  stream(`    (1) parses as an async function body — the same way use_figma`);
+  stream(`        evaluates its 'code' argument;`);
+  stream(`    (2) round-trips through JSON.stringify → JSON.parse without loss,`);
+  stream(`        and contains no \\xHH hex escapes (valid JS, invalid JSON).`);
+  stream(`  Prints OK + byte count on success; SyntaxError or JSON-transport`);
+  stream(`  error with diagnostics on failure. Exit 0 / 1 / 2.`);
   stream(``);
   stream(`  Examples:`);
   stream(`    cat payload.js | node scripts/check-payload.mjs`);
   stream(`    node scripts/check-payload.mjs /tmp/staged-button.js`);
   stream(`    npm run check-payload -- /tmp/staged-button.js`);
   process.exit(code);
+}
+
+function reportJsonTransportDiagnostics(code) {
+  // Surrogate scan: lone high or low surrogates are invalid when embedded in
+  // JSON that will be interpreted as UTF-8 by the recipient. These usually
+  // come from emoji-in-string slicing or a buggy copy-paste.
+  const lonely = [];
+  for (let i = 0; i < code.length; i++) {
+    const ch = code.charCodeAt(i);
+    if (ch >= 0xD800 && ch <= 0xDBFF) {
+      // high surrogate — must be followed by a low surrogate (0xDC00-0xDFFF)
+      const next = code.charCodeAt(i + 1);
+      if (!(next >= 0xDC00 && next <= 0xDFFF)) lonely.push({ kind: 'high', at: i });
+    } else if (ch >= 0xDC00 && ch <= 0xDFFF) {
+      // low surrogate — must be preceded by a high surrogate
+      const prev = code.charCodeAt(i - 1);
+      if (!(prev >= 0xD800 && prev <= 0xDBFF)) lonely.push({ kind: 'low', at: i });
+    }
+    if (lonely.length >= 3) break;
+  }
+  if (lonely.length) {
+    console.error(``);
+    console.error(`  Suspected cause: lone UTF-16 surrogate(s) — usually from slicing a string`);
+    console.error(`  in the middle of a multi-unit code point (emoji, CJK).`);
+    for (const s of lonely) {
+      console.error(`    ${s.kind}-surrogate at char index ${s.at}`);
+    }
+    return;
+  }
+  console.error(``);
+  console.error(`  Suspected cause: source contains a \\xHH escape, a raw control character`);
+  console.error(`  (U+0000-U+001F other than \\n / \\t), or an invalid UTF-8 byte sequence.`);
+  console.error(`  Run 'node -e "JSON.parse(JSON.stringify(require(fs).readFileSync(...).toString()))"'`);
+  console.error(`  for the full stack.`);
 }
 
 function readStdin() {
