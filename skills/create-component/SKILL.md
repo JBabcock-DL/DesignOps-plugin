@@ -23,11 +23,11 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **MCP payloads:** Each `use_figma` invocation must pass its Plugin API script **inline** in the tool’s `code` field (built from this SKILL + committed `templates/*.figma.js` where referenced). Do **not** add throwaway `.mcp-*` / `*-payload.json` / scratch copies under the repo to stage that script — see [`AGENTS.md`](../../AGENTS.md).
 
-**🚨 Script-assembly order for Step 6 (`use_figma`):** The `code` payload MUST be assembled in this exact order:
+**🚨 Script-assembly order for Step 6 (`use_figma`):** The `code` payload MUST be assembled in this exact order. Three steps — skipping any of them throws a clear, actionable error at the top of the engine bundle's preamble-presence gate.
 
-1. **§0 CONFIG object** — the per-component block below (the only per-component edit surface). Includes `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, and `usesComposes` declarations (see §5.1). Typical size 1–4 KB.
-2. **`Read` and inline the per-archetype engine bundle that matches `CONFIG.layout`** (table below). Paste immediately after the §0 CONFIG.
-3. No further wrapping — §6.9a self-check is at the tail of the bundle and `return`s the payload.
+1. **§0 CONFIG object** — the per-component block below (the only per-component edit surface). Typical size 1–4 KB.
+2. **`Read` [`templates/preamble.figma.js`](./templates/preamble.figma.js) and inline it verbatim.** ~2 KB. Declares the seven boundary identifiers the engine bundle expects already in scope: `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`, `logFileKeyMismatch`, `_fileKeyObserved`, `_fileKeyMismatch` — plus the soft fileKey-mismatch warning side-effect (see Step 5.1). Agent replaces the `ACTIVE_FILE_KEY` and `REGISTRY_COMPONENTS` literals with data from `.designops-registry.json` before submitting.
+3. **`Read` and inline the per-archetype engine bundle that matches `CONFIG.layout`** (table below). Paste immediately after the preamble. No further wrapping — §6.9a self-check is at the tail of the bundle and `return`s the payload.
 
 | `CONFIG.layout` | Inline this file | Approximate size |
 |---|---|---|
@@ -40,17 +40,33 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 | `container` | [`templates/create-component-engine-container.min.figma.js`](./templates/create-component-engine-container.min.figma.js) | ~32 KB |
 | `__composes__` | [`templates/create-component-engine-composed.min.figma.js`](./templates/create-component-engine-composed.min.figma.js) | ~31 KB |
 
-Each bundle is pre-assembled from `draw-engine.figma.js` + the one archetype builder it needs (plus shared helpers). The full 7-archetype bundle ([`create-component-engine.min.figma.js`](./templates/create-component-engine.min.figma.js)) is committed too but is **debug-only**: it lands at ~50 KB, which is exactly the `use_figma.code` `maxLength` ceiling — no room left for CONFIG. **Never inline the full bundle at runtime.** Per-archetype bundles have 17–23 KB of CONFIG headroom each.
+Each bundle is pre-assembled from `draw-engine.figma.js` + the one archetype builder it needs (plus shared helpers). The full 7-archetype bundle ([`create-component-engine.min.figma.js`](./templates/create-component-engine.min.figma.js)) is committed too but is **debug-only**: it lands at ~50 KB, which is exactly the `use_figma.code` `maxLength` ceiling — no room left for CONFIG + preamble. **Never inline the full bundle at runtime.** Per-archetype bundles have 17–23 KB of CONFIG + preamble headroom each.
 
-**Why per-archetype?** The MCP tool descriptor caps `use_figma.code` at 50 000 characters. A single bundle containing all seven archetype builders minifies to ~49.4 KB — technically under the limit but too tight once the agent prepends CONFIG, so submissions get rejected before they reach Figma. Each component only needs ONE archetype builder (picked by `CONFIG.layout`), so the build script emits one bundle per archetype with only that one builder inlined.
+**Why per-archetype?** The MCP tool descriptor caps `use_figma.code` at 50 000 characters. A single bundle containing all seven archetype builders minifies to ~49.4 KB — technically under the limit but too tight once the agent prepends CONFIG + preamble, so submissions get rejected before they reach Figma. Each component only needs ONE archetype builder (picked by `CONFIG.layout`), so the build script emits one bundle per archetype with only that one builder inlined.
 
-Two runtime `typeof` asserts near the tail of every bundle (one for the archetype builder the bundle ships, one for draw-engine doc-pipeline helpers) throw with actionable messages if the bundle was truncated mid-paste. Minification uses identifier mangling but renames declarations and references together in the same compilation unit, so the asserts evaluate against the mangled names correctly. The four "boundary" identifiers that cross into the bundle from the agent-authored CONFIG preamble (`CONFIG`, `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`) are *referenced but never declared* inside the templates, so esbuild treats them as free variables and leaves their names intact automatically.
+Three runtime `typeof` asserts at the top and tail of every bundle catch the most common payload-assembly mistakes:
 
-If your `Read` of this SKILL file truncated before §0, assume Step 2 is missing. Re-`Read` the per-archetype `create-component-engine-{layout}.min.figma.js` file explicitly by path — do not trust a truncated SKILL.md.
+| Assert | Location | Catches |
+|---|---|---|
+| **Preamble-presence gate** | top of bundle (draw-engine §0a) | missing preamble.figma.js — lists which of the 7 boundary identifiers are undefined |
+| **Archetype builder gate** | mid-bundle (§6.2a dispatch) | wrong bundle inlined for `CONFIG.layout` (e.g. `field` bundle inlined for a `surface-stack` draw) |
+| **Doc-pipeline gate** | mid-bundle (§6.2a) | truncated bundle — draw-engine missing one of `makeFrame` / `makeText` / `buildVariant` / `buildPropertiesTable` / `buildComponentSetSection` / `buildMatrix` / `buildUsageNotes` |
+
+Minification uses identifier mangling but renames declarations and references together in the same compilation unit, so the asserts evaluate against the mangled names correctly. The seven "boundary" identifiers that cross into the bundle from step 1 (CONFIG) and step 2 (preamble.figma.js) are *referenced but never declared* inside the engine templates, so esbuild treats them as free variables and leaves their names intact automatically.
+
+If your `Read` of this SKILL file truncated before §0, assume Steps 2 and 3 are missing. Re-`Read` [`templates/preamble.figma.js`](./templates/preamble.figma.js) **and** the per-archetype `create-component-engine-{layout}.min.figma.js` file explicitly by path — do not trust a truncated SKILL.md.
+
+**🚨 Before you submit, run a local syntax preflight (Step 5.5).** Every `use_figma` call MUST parse cleanly as an async function body. Pipe the assembled payload through [`scripts/check-payload.mjs`](../../scripts/check-payload.mjs) (or `npm run check-payload -- <path>`) **after** assembly but **before** the `use_figma` invocation. The script runs offline in ~1 second, reports `SyntaxError` with the exact line/column, and costs zero Figma round-trips. Skip this and a hand-retyped `summary` / `usageDo` / `description` string with an unescaped apostrophe will burn a full tool call to surface the same error with worse diagnostics.
+
+**CONFIG-authoring rules — non-negotiable:**
+
+- **Do NOT hand-retype `summary`, `properties`, `usageDo`, `usageDont`, or any other string field from [`shadcn-props/<component>.json`](./shadcn-props/).** `Read` the JSON file and inline the entry as a JS object literal (JSON is a strict subset of JavaScript, so every field is already correctly escaped). Re-typing prose is the #1 source of `SyntaxError: expecting ')'` / `Unexpected token` crashes — apostrophes in text (`doesn't`, `you're`) collide with single-quote delimiters, backticks collide with template literals, and the agent often misdiagnoses the crash as a `<label>`-HTML-tag issue and re-spirals (see the anti-pattern note at [`conventions/07-token-paths.md` § red-herrings](./conventions/07-token-paths.md) and below).
+- **Angle brackets (`<`, `>`) inside JS string literals are valid.** A `summary` field like `'Native <label> associated with a form control via htmlFor.'` is not a syntax error — do not chase it. The error is elsewhere. Run `check-payload.mjs` to find the real position.
+- **For string-field edits that can't come from shadcn-props** (variant-specific copy, custom `usageDo` beyond the defaults), prefer **double-quoted** or **template-literal** delimiters — most authored prose contains apostrophes, few contain backticks, almost none contain both.
 
 > **Regenerating bundles.** Run `npm run build:min` after editing either source template (`draw-engine.figma.js` or `archetype-builders.figma.js`). The build emits eleven artifacts: 8 per-archetype runtime bundles, the full debug bundle, and 2 standalone debug `.min.figma.js` files. The build refuses to write any per-archetype bundle larger than `HARD_LIMIT - CONFIG_HEADROOM` (40 000 bytes) so a growth regression in the source is caught at build time, not at agent run time. `scripts/verify-cache.sh` refuses to pass if any source is newer than any of its generated outputs. CI gate: `npm run verify` (runs `build:docs:check`, `build:min:check`, `verify-cache`).
 
-**Nine steps. Do not skip any.**
+**Eleven steps. Do not skip any.** (Step 4.7 — pre-flight token verification — and Step 5.5 — local syntax preflight — are the two cheapest ones to forget; skipping 4.7 silently falls back to hex, skipping 5.5 burns a `use_figma` round-trip on a syntax error you could have caught in 1 second locally.)
 
 | # | Step | Tool | Required inputs | Expected outcome |
 |---|------|------|-----------------|------------------|
@@ -60,7 +76,9 @@ If your `Read` of this SKILL file truncated before §0, assume Step 2 is missing
 | 3b | Icon-pack bootstrap (first-time-only) | `Read` (probe) → `AskUserQuestion` (only if missing) | `designops.config.json` presence check | `ICON_PACK: { npm, import, figmaIconLibraryKey, defaultIconRef } \| null` — persisted to `designops.config.json`; skipped silently on subsequent runs. Prompts accept Figma URLs, node-ids, or component keys — parser classifies the paste, `draw-engine.figma.js §5.6` resolves at draw time. |
 | 4 | Install each component | `Shell` | `npx shadcn@latest add {component}` + `npm install {ICON_PACK.npm}` (when set, first run only) | Files written under `components/ui/`, per-component status `installed \| already_exists \| failed`; icon-pack dependency present in `package.json` |
 | 4.4 | Icon-pack import rewrite (global) | `Read` / `StrReplace` (AST preferred) | `ICON_PACK.choice` + installed source files | `from 'lucide-react'` imports + JSX identifiers rewritten to match Step 3b choice (material-symbols mapped, custom specifier-swapped, lucide-react / none = no-op); pinned comment added for idempotence |
+| 4.7 | Pre-flight token-path verification | `get_variable_defs` OR `use_figma` probe | Active fileKey + staged `CONFIG` | `AVAILABLE_TOKEN_PATHS: Set<string>`; every `CONFIG.*Var` / `CONFIG.style[*].fill` / `padH` / `radius` value confirmed present. Misses → **AskUserQuestion** (never silent hex fallback). See [`conventions/07-token-paths.md`](./conventions/07-token-paths.md). |
 | 5 | Resolve Figma file key | handoff lookup → `AskUserQuestion` fallback | `templates/agent-handoff.md` frontmatter | `fileKey: string` |
+| 5.5 | Local syntax preflight | [`scripts/check-payload.mjs`](../../scripts/check-payload.mjs) (or `npm run check-payload`) | Assembled `use_figma` payload (CONFIG + preamble + engine bundle, in order) | Script exits 0 with `OK  <sourceLabel> parses as an async function body (<bytes> bytes).` If it exits 1, fix the CONFIG at the reported `line:col` and re-run — **never** submit a payload that failed preflight. |
 | 6 | Draw component → Figma | `use_figma` (one call per component) | `fileKey`, `CONFIG` block per §6, optional `ICON_PACK.figmaIconLibraryKey` + `ICON_PACK.defaultIconRef` | Return payload with `{ compSetId, compSetVariants, compSetPropertyDefinitions, firstVariantChildren, iconVariantChildren, propErrorsCount, iconSlotMode: "placeholder" \| "instance-swap", iconPackResolution: "by-key" \| "by-node-id" \| "failed:*", … }` |
 | 7 | Self-check the return payload | agent-side assertions per §9 | step 6's return JSON | Zero drift; if any assertion fails, stop and report — do not mark the component done |
 
@@ -94,6 +112,7 @@ compSetPropertyDefinitions includes
 firstVariantChildren    contains "icon-slot/leading", text, "icon-slot/trailing" in order
 iconVariantChildren     contains exactly one "icon-slot/center"  (when icon-only size is declared)
 propErrorsCount         === 0
+unresolvedTokenPaths.total === 0   (any miss means Step 4.7 was skipped or a path is wrong — see conventions/07-token-paths.md)
 ```
 
 If any row fails → surface the failure verbatim in the run report and do NOT claim the component "drawn". See §9 for the full self-check.
@@ -114,6 +133,7 @@ If any row fails → surface the failure verbatim in the run report and do NOT c
 | Icon slots + element properties spec | [`conventions/01-config-schema.md` §3.3](./conventions/01-config-schema.md) |
 | State override policy | [`conventions/04-doc-pipeline-contract.md` §13.1](./conventions/04-doc-pipeline-contract.md) |
 | Audit checklist | [`conventions/06-audit-checklist.md` §14](./conventions/06-audit-checklist.md) |
+| Token-path canonicals + pre-flight + banned strategies | [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) |
 
 ---
 
@@ -595,6 +615,62 @@ node <abs-path-to-this-skill>/resolver/validate-composes.mjs \
 - **Exit 0 with warnings** — continue; list warnings in Step 8 Notes.
 
 **Dependency expansion (resolver preview).** If `composes[]` references a child that is not in the current run list **and** has no registry entry yet (`.designops-registry.json` — see Step 5.1), call **AskUserQuestion** once per composite explaining the child must be drawn first (offer to prepend that child to this run or cancel). This mirrors the plan's Phase 3 resolver UX; until the registry exists, prefer expanding the install+draw list over failing silently.
+
+### Step 4.7 — Pre-flight token-path verification (MANDATORY, blocks Step 6)
+
+> **Goal:** Before a single `use_figma` draw, confirm that every token path in the staged `CONFIG` exists as a named variable in the active Figma file's Theme / Layout / Typography collections. This is the one step that prevents the "spiral" where the agent cycles through `color/primary`, `color/primary/default`, `--color-primary`, `bg-primary`, etc. without knowing which is right. Canonical rules: [`conventions/07-token-paths.md`](./conventions/07-token-paths.md).
+
+Runs **once per component**, after `CONFIG` is assembled (whether via Mode A at §4.5 or Mode B defaults) and **before** Step 5's registry gate.
+
+#### 4.7.a — Enumerate paths that exist in the file
+
+Pick the first option that succeeds:
+
+1. **`get_variable_defs`** (MCP tool). Call it with `fileKey = ACTIVE_FILE_KEY` and `nodeId` set to the doc frame of any previously-drawn component (found via `REGISTRY_COMPONENTS[any].nodeId`). On first-run projects with nothing drawn yet, pass the `Tokens` / `Theme` page's top frame id from `/create-design-system`'s output. Returns `{ 'color/primary/default': '#...', ... }` — keys are the authoritative paths.
+2. **`use_figma` one-liner probe** (fallback). Submit a tiny inline payload that enumerates the full variable set directly from the Plugin API:
+
+   ```js
+   const cols = figma.variables.getLocalVariableCollections();
+   const byId = Object.fromEntries(cols.map(c => [c.id, c.name]));
+   return figma.variables.getLocalVariables().map(v => ({ collection: byId[v.variableCollectionId] || null, name: v.name }));
+   ```
+
+   Use this whenever `get_variable_defs` returns a small subset (because the chosen node only references a handful of variables) and you need the full enumeration.
+
+Cache the response as `AVAILABLE_TOKEN_PATHS: Set<string>` for the entire run. Do NOT re-call per component — the variable set does not change mid-run.
+
+#### 4.7.b — Validate every CONFIG path
+
+Collect every token path referenced by the staged `CONFIG`:
+
+- Every `CONFIG.style[variant].fill`, `labelVar`, `strokeVar` (when non-null).
+- Every value in `CONFIG.padH`.
+- `CONFIG.radius`.
+- Archetype-specific paths: `CONFIG.surface.*Var`, `CONFIG.field.*Var`, `CONFIG.control.indicatorVar`, `CONFIG.control.trackOnVar` / `trackOffVar` / `thumbVar`, `CONFIG.row.*Var`.
+- Every `figmaTextStyle` / `labelStyle` name — published text styles, not variables, but the same gate applies (cross-check against `figma.getLocalTextStylesAsync()` via a second probe if you have any doubt).
+
+Compare the set against `AVAILABLE_TOKEN_PATHS`. Any miss is a blocker:
+
+- **Exact miss (path absent from file)** → call **AskUserQuestion** once per component with a single structured question: "Component `{component}` references token path `{path}` in field `{field}` but the path does not exist in the active Figma file. Closest matches: `{top 3 levenshtein}`. Pick one, paste a corrected path, or `skip` to draw with the hex fallback." Do not guess. Do not silently accept the hex fallback.
+- **Partial miss (role exists but tier missing)** → e.g. CONFIG has `color/primary` but the file has `color/primary/default`, `color/primary/content`, … . Present the role's tiers as options and let the designer pick. This is the most common case — `/create-design-system` always writes `color/<role>/<tier>` for Theme (see [`07-token-paths.md` §7.2.1](./conventions/07-token-paths.md)).
+- **Collection absent** (no `Theme` / `Layout` / `Typography` collection at all in the file) → stop and recommend the designer run `/create-design-system` first. Drawing without variables defeats the purpose of the skill.
+
+Record the verified `CONFIG` + the `AVAILABLE_TOKEN_PATHS` set with the component ready for Step 5.
+
+#### 4.7.c — Banned inference strategies
+
+Do **not** source token paths from any of the following — they are all wrong, often silently, and all of them caused the spiral this step exists to prevent:
+
+- **Past agent transcripts** (`agent-transcripts/*.jsonl`, prior `use_figma` calls, conversation history). Paths may have been wrong, belonged to a different project's file, or changed between drafts.
+- **A different Figma file** (another project's Button CONFIG, a reference screenshot, the Detroit Labs Foundations template) without re-running §4.7.a against the active file.
+- **`tokens.css`** (`--color-primary`, `--radius-md`). Those are CSS aliases — **one hop shorter** than the Figma path in most cases. Re-read [`07-token-paths.md` §7.2.1](./conventions/07-token-paths.md) when tempted.
+- **Tailwind class names** (`bg-primary`, `p-4`). Those are utilities that chain through CSS vars; they are not Figma paths. The only legitimate reverse-mapping is `resolver/resolve-classes.mjs`, consumed by Mode A at §4.5.c.
+
+If you catch yourself asking "is it `color/primary` or `color/primary/default`?" the answer is in `AVAILABLE_TOKEN_PATHS` — run §4.7.a again, do not guess.
+
+#### 4.7.d — Post-draw gate ties back to this step
+
+Step 6's `use_figma` return payload carries `unresolvedTokenPaths.total`. If §4.7 was done right, that count MUST be zero. A non-zero count means something in `CONFIG` slipped past this step — treat it as a Step 6 failure per §0.2 and §9 (S9.3), patch CONFIG, and redraw. See [`07-token-paths.md` §7.4](./conventions/07-token-paths.md).
 
 ### Step 5 — Resolve the target Figma file key + registry gate
 
@@ -1167,50 +1243,30 @@ const CONFIG = {
 // };
 // ─────────────────────────────────────────────────────────────────────────
 
-// REGISTRY PREFILL (atomic composition — Step 5.1) — agent replaces literals
-// after reading `.designops-registry.json` at repo root before each use_figma:
-//   ACTIVE_FILE_KEY     string | null   — null skips the fileKey gate
-//   REGISTRY_COMPONENTS Record<kebab, { nodeId, key, pageName, publishedAt?, version?, cvaHash? }>
-const ACTIVE_FILE_KEY = null;
-const REGISTRY_COMPONENTS = {};
-const usesComposes = Array.isArray(CONFIG.composes) && CONFIG.composes.length > 0;
+// ─────────────────────────────────────────────────────────────────────────
+// STEP 2 of the Script-assembly order:
+//   Read `skills/create-component/templates/preamble.figma.js` in full
+//   and paste it here, verbatim. That committed file declares:
+//     ACTIVE_FILE_KEY       (agent fills from .designops-registry.json)
+//     REGISTRY_COMPONENTS   (agent fills from .designops-registry.json)
+//     usesComposes
+//     logFileKeyMismatch()
+//     _fileKeyObserved
+//     _fileKeyMismatch
+//   All seven of these identifiers are referenced by the engine bundle's
+//   return-payload builder and its preamble-presence gate — do not skip
+//   this file and do not re-declare the identifiers elsewhere.
+// ─────────────────────────────────────────────────────────────────────────
 
-// fileKey gate — WARNING ONLY, NEVER THROW.
-//
-// `figma.fileKey` is unreliable as a file-identity check across several
-// common Figma scenarios — a throw here blocks legitimate draws:
-//   • Branch files — returns the branch's internal key, not the URL's.
-//   • Shared-library / team-library context — returns the library key, not
-//     the host file the designer is actually editing in.
-//   • Duplicated / unpublished files — internal key differs from the URL
-//     segment until the file is first published.
-//   • Some plugin execution contexts where the field is stubbed / empty.
-//
-// The registry uses `ACTIVE_FILE_KEY` purely for the composition mapping
-// in `REGISTRY_COMPONENTS` (Step 5.1). A mismatch is a soft warning — the
-// draw still proceeds against the currently-open Figma page. If the agent
-// was pointed at the wrong file, the mismatch warning + the "no composes
-// resolved" error at draw time will surface the problem; it's safer than
-// blocking every branch / duplicated / library-linked file outright.
-//
-// If you genuinely need a hard stop, change `logFileKeyMismatch` below.
-function logFileKeyMismatch(expected, actual) {
-  console.warn(
-    `[create-component] fileKey mismatch — registry expects "${expected}" but ` +
-      `figma.fileKey is "${actual || '(empty)'}". Continuing anyway; this is common ` +
-      'in branch / shared-library / duplicated files where figma.fileKey returns a ' +
-      'different value than the URL segment. If registry-bound composes fail to ' +
-      'resolve, delete or reset `.designops-registry.json` or open the correct file.',
-  );
-}
+// (paste contents of templates/preamble.figma.js here)
 
-const _fileKeyObserved = (typeof figma.fileKey === 'string' && figma.fileKey) || null;
-const _fileKeyMismatch =
-  ACTIVE_FILE_KEY && _fileKeyObserved && _fileKeyObserved !== ACTIVE_FILE_KEY;
-if (_fileKeyMismatch) {
-  logFileKeyMismatch(ACTIVE_FILE_KEY, _fileKeyObserved);
-}
-
+// ─────────────────────────────────────────────────────────────────────────
+// STEP 3 of the Script-assembly order:
+//   Read the per-archetype engine bundle keyed by CONFIG.layout (see the
+//   routing table at the top of this SKILL) and paste its contents here,
+//   verbatim. §6.9a return-payload builder at the tail of the bundle
+//   `return`s the payload for the skill runner.
+// ─────────────────────────────────────────────────────────────────────────
 ```
 
 ### §§1 – 6.9 — Draw engine + archetype builders (inlined from committed templates)

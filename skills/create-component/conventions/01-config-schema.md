@@ -40,6 +40,29 @@ The `/create-component` script in `SKILL.md` is split into two halves: a per-com
 | `control` | `object` _optional, required when `layout === 'control'`_ | see [`02-archetype-routing.md`](./02-archetype-routing.md) | Small primitive spec for Checkbox, Radio Group, Switch. Fields: `shape: 'checkbox'\|'radio'\|'switch'`, `size`, `indicatorVar`, plus switch extras (`width`, `height`, `trackOnVar`, `trackOffVar`, `thumbVar`). **Control variants encode `checked`/`pressed` in the variant name** so the builder renders the filled glyph. |
 | `container` | `object` _optional, required when `layout === 'container'`_ | see [`02-archetype-routing.md`](./02-archetype-routing.md) | Header + expandable panel spec for Accordion, Collapsible, Tabs, Resizable, Carousel. Fields: `kind: 'accordion'\|'tabs'`, `width`, `titleText`, `panelText`, `tabs: string[]`, `activeIndex`, `panelMinHeight`. |
 
+### String-field authoring rules (applies to `summary`, `properties[4]`, `usageDo`, `usageDont`, all `*Text` fields)
+
+String fields are the #1 source of `use_figma` `SyntaxError` failures — and when they fail, the agent typically misdiagnoses the root cause and spirals. These rules eliminate the class.
+
+**Rule 1 — Never hand-retype a string field from [`shadcn-props/<component>.json`](../shadcn-props/).** `Read` the JSON file and either (a) inline the entry as a JS object literal at the top of CONFIG (JSON is a strict subset of JS — every field is already correctly escaped), or (b) for per-field copies, paste the quoted JSON value *verbatim*, including the double-quote delimiters. Retyping prose is how apostrophes (`doesn't`, `you're`) and internal quotes collide with single-quote delimiters and produce `SyntaxError: expecting ')'`.
+
+**Rule 2 — Prefer double-quoted or template-literal delimiters for prose.** Most authored English contains apostrophes; few contain backticks; almost none contain both. A good default:
+
+```js
+// GOOD — double-quoted, apostrophes are free
+summary: "Trigger an action or navigate. Don't overload the label.",
+
+// GOOD — template literal, $ must still be escaped but apostrophes are free
+summary: `Native <label> associated with a form control via htmlFor.`,
+
+// BAD — single-quoted prose routinely collides with apostrophes
+summary: 'Native <label> that doesn't render anything else',  // ← SyntaxError on `doesn`
+```
+
+**Rule 3 — Angle brackets (`<`, `>`) inside JS string literals are valid.** A `summary` field like `"Native <label> associated with a form control via htmlFor."` is **not** a `SyntaxError`. The Figma Plugin API parser is plain JavaScript — there is no JSX context and no HTML parsing around string literals. When you see `SyntaxError: expecting ')'` after drafting a component whose `summary` references an HTML tag, **the angle brackets are a red herring** — the real issue is somewhere else (usually a quote-delimiter collision on an apostrophe). Do **not** escape to `&lt;label&gt;`; do **not** rewrite the prose. Run the preflight instead (Rule 4).
+
+**Rule 4 — Run the local syntax preflight ([`SKILL.md` §0 Step 5.5](../SKILL.md#0)) before every `use_figma` call.** `npm run check-payload -- <staged-payload>` parses the assembled payload exactly the way `use_figma` does (as an async function body) and prints the failing `line:col` in ~1 second. This is the cheapest gate in the pipeline and eliminates the "is it the angle brackets? is it the apostrophe? is it the arrow function?" spiral entirely.
+
 ### `style` entry shape
 
 ```js
@@ -53,6 +76,8 @@ style: {
   // ... one entry per variant ...
 }
 ```
+
+> **Token paths here are Figma variable names — not CSS vars, not Tailwind classes, not guesses.** Every `fill` / `labelVar` / `strokeVar` must appear verbatim in `figma.variables.getLocalVariables()` in the active file. Do **not** infer paths from past agent transcripts, from `tokens.css`, or from another project's CONFIG — re-enumerate live via `get_variable_defs` and validate per-component at `SKILL.md` Step 4.7. Full rules + the `--color-primary` vs `color/primary/default` gotcha: [`07-token-paths.md`](./07-token-paths.md).
 
 ### Axis-shape cheatsheet
 

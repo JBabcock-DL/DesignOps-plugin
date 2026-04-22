@@ -60,6 +60,57 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 
+// ── §0a. Preamble-presence gate — runs before any identifier access ────
+//
+// The engine references seven identifiers that MUST be declared upstream
+// by the agent-assembled payload, in this order:
+//
+//   1. CONFIG                  (from SKILL.md §0, per component)
+//   2. ACTIVE_FILE_KEY         (from templates/preamble.figma.js)
+//   3. REGISTRY_COMPONENTS     (from templates/preamble.figma.js)
+//   4. usesComposes            (from templates/preamble.figma.js)
+//   5. logFileKeyMismatch      (from templates/preamble.figma.js)
+//   6. _fileKeyObserved        (from templates/preamble.figma.js)
+//   7. _fileKeyMismatch        (from templates/preamble.figma.js)
+//
+// If ANY are missing — usually because the agent truncated SKILL.md past
+// §0 Quickstart and forgot to Read+inline `preamble.figma.js` between the
+// CONFIG block and this engine bundle — the draw would throw an opaque
+// `ReferenceError: X is not defined` somewhere mid-loop (most commonly in
+// the return-payload builder at §6.9a, ~1500 lines deep). That surface is
+// impossible to diagnose from the thrown error alone.
+//
+// This gate fires BEFORE anything else and lists every missing identifier
+// with an actionable recovery path. `typeof <undeclaredName>` is safe —
+// it returns 'undefined' without throwing — which is the only JS idiom
+// that lets us probe an unseen identifier.
+{
+  const preambleGate = {
+    CONFIG:                typeof CONFIG,
+    ACTIVE_FILE_KEY:       typeof ACTIVE_FILE_KEY,
+    REGISTRY_COMPONENTS:   typeof REGISTRY_COMPONENTS,
+    usesComposes:          typeof usesComposes,
+    logFileKeyMismatch:    typeof logFileKeyMismatch,
+    _fileKeyObserved:      typeof _fileKeyObserved,
+    _fileKeyMismatch:      typeof _fileKeyMismatch,
+  };
+  const missing = Object.entries(preambleGate)
+    .filter(([, t]) => t === 'undefined')
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    throw new Error(
+      `[create-component] Preamble-presence gate: missing identifier(s) [${missing.join(', ')}]. ` +
+      `Read and inline skills/create-component/templates/preamble.figma.js VERBATIM ` +
+      `between the §0 CONFIG block and this engine bundle. The preamble file declares ` +
+      `ACTIVE_FILE_KEY, REGISTRY_COMPONENTS, usesComposes, logFileKeyMismatch, ` +
+      `_fileKeyObserved, and _fileKeyMismatch in one ~60-line block. ` +
+      `See the "Script-assembly order" block at the top of SKILL.md — runtime payload is ` +
+      `CONFIG → preamble.figma.js → create-component-engine-{CONFIG.layout}.min.figma.js.`
+    );
+  }
+}
+
+
 // ── 1. Navigate to target page (must be in same call as creation) ──────
 const targetPage = figma.root.children.find(p => p.name === CONFIG.pageName)
   ?? figma.currentPage;
@@ -83,6 +134,30 @@ const getLayoutVar = name => layoutVars.find(v => v.name === name) ?? null;
 const typoCol = collections.find(c => c.name === 'Typography');
 const typoVars = typoCol ? allVars.filter(v => v.variableCollectionId === typoCol.id) : [];
 const getTypoVar = name => typoVars.find(v => v.name === name) ?? null;
+
+// ── 2.5. Unresolved-token-path collector (agent observability) ──────────
+//
+// Every call to bindColor / bindNum / readTypoString silently falls back
+// to a hex/number/default string when the requested Figma variable path is
+// not in the file. That fallback is intentional — draws should succeed even
+// against partial design systems — but it also *masks misconfigured CONFIG
+// token paths*, which is how the sign-in draw debacle happened: the agent
+// guessed at token paths, nothing resolved, and every fill landed on its
+// hex fallback while the agent thought it had bound variables.
+//
+// Fix: collect every miss here, bucket by `(kind, path)`, and surface the
+// aggregate in §6.9a's return payload so the agent sees the list the moment
+// `use_figma` returns instead of having to eyeball the drawn component.
+//
+// A miss is not a throw — downstream code still uses the fallback. The
+// payload lets the agent decide whether to patch CONFIG and redraw.
+const _unresolvedTokenMisses = []; // { kind, path, fallback, nodeName }
+function _recordUnresolved(kind, path, fallback, node) {
+  _unresolvedTokenMisses.push({
+    kind, path, fallback,
+    nodeName: (node && typeof node.name === 'string') ? node.name : null,
+  });
+}
 
 // ── 3. Read font-family names from Typography collection ─────────────────
 // We must know the actual font family name before calling loadFontAsync.
@@ -111,10 +186,14 @@ if (displayFont !== labelFont) {
 // ── 5. Binding helpers ───────────────────────────────────────────────────
 
 // Color binding: fills/strokes must use boundVariables on the paint object.
-// varName is a Theme path e.g. 'color/primary', 'color/background'.
+// varName is a Theme path e.g. 'color/primary/default', 'color/background/default'.
 // Do NOT use setBoundVariable for color — that API is for numeric fields only.
+//
+// When the Theme variable is not found we still apply the hex fallback so the
+// draw succeeds, but we also record the miss in _unresolvedTokenMisses so the
+// agent sees it in the return payload (see §2.5).
 function bindColor(node, varName, fallbackHex, target = 'fills') {
-  const variable = getColorVar(varName);
+  const variable = varName ? getColorVar(varName) : null;
   const hex = fallbackHex.replace('#', '');
   const paint = {
     type: 'SOLID',
@@ -126,6 +205,8 @@ function bindColor(node, varName, fallbackHex, target = 'fills') {
   };
   if (variable) {
     paint.boundVariables = { color: figma.variables.createVariableAlias(variable) };
+  } else if (varName) {
+    _recordUnresolved('color', varName, fallbackHex, node);
   }
   node[target] = [paint];
 }
@@ -133,11 +214,15 @@ function bindColor(node, varName, fallbackHex, target = 'fills') {
 // Spacing / radius binding: varName is a Layout path e.g. 'space/md', 'radius/md'.
 // Always set the fallback number first so the node has a valid value even if
 // the Layout collection is absent or setBoundVariable throws.
+//
+// Misses recorded into _unresolvedTokenMisses — see §2.5.
 function bindNum(node, field, varName, fallback) {
   node[field] = fallback;
-  const variable = getLayoutVar(varName);
+  const variable = varName ? getLayoutVar(varName) : null;
   if (variable) {
     try { node.setBoundVariable(field, variable); } catch (_) {}
+  } else if (varName) {
+    _recordUnresolved('num:' + field, varName, fallback, node);
   }
 }
 
@@ -317,7 +402,7 @@ const ICON_SLOT_MODE = DEFAULT_ICON_COMPONENT ? 'instance-swap' : 'placeholder';
 //
 // name:         Figma variant name — single-property 'variant=default' or
 //               cross-product 'variant=default, size=sm' (comma+space separator)
-// fillVar:      Theme path for background fill e.g. 'color/primary'
+// fillVar:      Theme path for background fill e.g. 'color/primary/default'
 // fallbackFill: hex used when Theme collection is absent
 // options:
 //   label          — text inside the component; null / '' → icon-only mode
@@ -1506,6 +1591,44 @@ const nowIso = new Date().toISOString();
 const prevReg = REGISTRY_COMPONENTS[CONFIG.component];
 const nextVersion = prevReg && typeof prevReg.version === 'number' ? prevReg.version + 1 : 1;
 
+// ── §6.9a.1 Aggregate unresolved-token misses for the return payload ────
+//
+// Bucket each `(kind, path)` combination, cap the sample list at 20 entries
+// so the payload stays small, and record the top N most-frequent misses.
+// Agent in the `use_figma` caller can assert `unresolvedTokenPaths.total === 0`
+// as a post-draw gate. A non-zero total means CONFIG is referencing paths
+// that don't exist in this Figma file's Theme/Layout/Typography collections —
+// fix CONFIG and redraw (see SKILL.md §4.7 Pre-flight token verification).
+const _unresolvedAggregated = (() => {
+  const byPathKind = new Map();
+  for (const m of _unresolvedTokenMisses) {
+    const key = m.kind + '|' + m.path;
+    if (!byPathKind.has(key)) {
+      byPathKind.set(key, {
+        kind: m.kind,
+        path: m.path,
+        count: 0,
+        fallbackSample: m.fallback,
+        firstNodeName: m.nodeName,
+      });
+    }
+    byPathKind.get(key).count++;
+  }
+  const rows = Array.from(byPathKind.values());
+  rows.sort((a, b) => b.count - a.count);
+  return {
+    total: _unresolvedTokenMisses.length,
+    uniquePaths: rows.length,
+    collectionsPresent: {
+      Theme: !!themeCol,
+      Layout: !!layoutCol,
+      Typography: !!typoCol,
+    },
+    topMisses: rows.slice(0, 20),
+    samples: _unresolvedTokenMisses.slice(0, 20),
+  };
+})();
+
 const returnPayload = {
   pageName: CONFIG.pageName,
   docRootChildren: docRoot.children.length,
@@ -1524,6 +1647,11 @@ const returnPayload = {
   iconPackDefaultKey: DEFAULT_ICON_COMPONENT ? (DEFAULT_ICON_COMPONENT.key || null) : null,
   iconPackDefaultNodeId: DEFAULT_ICON_COMPONENT ? (DEFAULT_ICON_COMPONENT.id || null) : null,
   fileKeyMismatch: _fileKeyMismatch ? { expected: ACTIVE_FILE_KEY, observed: _fileKeyObserved } : null,
+  // Agent post-draw gate: assert `unresolvedTokenPaths.total === 0`. Any
+  // non-zero means at least one CONFIG token path silently fell back to
+  // a hex/numeric default — probably a typo or a stale path from a prior
+  // design-system version. See conventions/07-token-paths.md.
+  unresolvedTokenPaths: _unresolvedAggregated,
   layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
   propsAdded,
   composedWith: usesComposes ? CONFIG.composes.map(r => r.component) : [],
@@ -1560,6 +1688,16 @@ const returnPayload = {
     `element props: ${props.length ? props.join(', ') : '(none)'}; ` +
     `composed: ${usesComposes ? returnPayload.composedWith.join('+') : '—'}.`,
   );
+  if (_unresolvedAggregated.total > 0) {
+    console.warn(
+      `[create-component] ${CONFIG.component}: ${_unresolvedAggregated.total} unresolved token ` +
+      `binding(s) across ${_unresolvedAggregated.uniquePaths} unique path(s). ` +
+      `First miss: kind='${_unresolvedAggregated.topMisses[0].kind}' path='${_unresolvedAggregated.topMisses[0].path}' ` +
+      `(x${_unresolvedAggregated.topMisses[0].count}). ` +
+      `All paths silently fell back to hex/numeric defaults — see returnPayload.unresolvedTokenPaths ` +
+      `and conventions/07-token-paths.md for recovery.`,
+    );
+  }
 }
 
 return returnPayload;

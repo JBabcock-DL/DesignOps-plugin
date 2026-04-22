@@ -11,6 +11,8 @@
     "build:min:check": "node scripts/build-min-templates.mjs --check",
     "build:props": "node scripts/build-shadcn-props.mjs",
     "build:props:check": "node scripts/build-shadcn-props.mjs --check",
+    "validate-tokens": "node scripts/validate-tokens.mjs",
+    "check-payload": "node scripts/check-payload.mjs",
     "sync-cache": "bash scripts/sync-cache.sh",
     "verify-cache": "bash scripts/verify-cache.sh",
     "build": "npm run build:props && npm run build:docs && npm run build:min",

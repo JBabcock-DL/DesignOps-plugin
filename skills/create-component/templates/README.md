@@ -4,7 +4,17 @@ Runtime JavaScript templates inlined into the `use_figma` call by `/create-compo
 
 See [`../SKILL.md`](../SKILL.md) for the canonical **Script-assembly order** table; the summary below is a quick reference only.
 
-## Which file does the agent inline?
+## Payload shape (three ordered pieces)
+
+Every `use_figma` payload is concatenated in this order. Skipping any step throws a clear `ReferenceError` at the engine bundle's preamble-presence gate (§0a).
+
+| # | Source | Size | What it contributes |
+|---|---|---|---|
+| 1 | **§0 CONFIG** (authored inline per component from SKILL.md §0) | 1–4 KB | `CONFIG` object — the only per-component edit surface |
+| 2 | **[`preamble.figma.js`](./preamble.figma.js)** (read and inlined verbatim) | ~2 KB | `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`, `logFileKeyMismatch()`, `_fileKeyObserved`, `_fileKeyMismatch` + the soft file-key mismatch warning side-effect |
+| 3 | **one per-archetype engine bundle** (picked by `CONFIG.layout`, table below) | ~26–33 KB | scaffold, token binders, archetype builder, §6 doc pipeline, §6.9a return payload |
+
+## Which file does the agent inline for step 3?
 
 One of the eight **per-archetype bundles**, picked by `CONFIG.layout`:
 
@@ -19,7 +29,7 @@ One of the eight **per-archetype bundles**, picked by `CONFIG.layout`:
 | `container` | `create-component-engine-container.min.figma.js` | ~32 KB | Accordion, Tabs, Collapsible, Resizable, … |
 | `__composes__` (filename: `composed`) | `create-component-engine-composed.min.figma.js` | ~31 KB | Any component with `CONFIG.composes[]` that instantiates other registered ComponentSets |
 
-Every per-archetype bundle leaves **17–23 KB of headroom** under `use_figma.code`'s 50 000-char ceiling for the agent's §0 CONFIG preamble.
+Every per-archetype bundle leaves **17–23 KB of headroom** under `use_figma.code`'s 50 000-char ceiling for steps 1 + 2 (§0 CONFIG + `preamble.figma.js`).
 
 ### Debug-only siblings (never inline at runtime)
 
@@ -48,7 +58,7 @@ The build script (`scripts/build-min-templates.mjs`) does the following for ever
 
 ### Why identifier mangling is safe here
 
-- **Boundary identifiers** declared by the agent's §0 CONFIG preamble (`CONFIG`, `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`) appear in the templates as *references only*. esbuild treats undeclared references as free variables and leaves their names untouched. The mangled bundle still reads `CONFIG.variants`, `REGISTRY_COMPONENTS[spec.component]`, etc.
+- **Boundary identifiers** declared by step 1 (§0 CONFIG) and step 2 ([`preamble.figma.js`](./preamble.figma.js)) — `CONFIG`, `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`, `logFileKeyMismatch`, `_fileKeyObserved`, `_fileKeyMismatch` — appear in the templates as *references only*. esbuild treats undeclared references as free variables and leaves their names untouched. The mangled bundle still reads `CONFIG.variants`, `REGISTRY_COMPONENTS[spec.component]`, etc.
 - **Cross-fragment identifiers** (e.g. `bindColor`, `labelFont`, `makeFrame`, each builder) are declared somewhere in the concatenated source and referenced elsewhere in the same source. esbuild renames declaration + all references together, keeping the lookup chain intact.
 - **No dynamic name lookups** — templates never do `globalThis['buildSurfaceStackVariant']()` or similar, so there's no hidden string-indexed access that mangling could break (verified at build time via grep).
 
