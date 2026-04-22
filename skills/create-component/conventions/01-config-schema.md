@@ -61,7 +61,7 @@ summary: 'Native <label> that doesn't render anything else',  // ← SyntaxError
 
 **Rule 3 — Angle brackets (`<`, `>`) inside JS string literals are valid.** A `summary` field like `"Native <label> associated with a form control via htmlFor."` is **not** a `SyntaxError`. The Figma Plugin API parser is plain JavaScript — there is no JSX context and no HTML parsing around string literals. When you see `SyntaxError: expecting ')'` after drafting a component whose `summary` references an HTML tag, **the angle brackets are a red herring** — the real issue is somewhere else (usually a quote-delimiter collision on an apostrophe). Do **not** escape to `&lt;label&gt;`; do **not** rewrite the prose. Run the preflight instead (Rule 4).
 
-**Rule 4 — Run the local syntax preflight ([`SKILL.md` §0 Step 5.5](../SKILL.md#0)) before every `use_figma` call.** `npm run check-payload -- <staged-payload>` parses the assembled payload exactly the way `use_figma` does (as an async function body) and prints the failing `line:col` in ~1 second. This is the cheapest gate in the pipeline and eliminates the "is it the angle brackets? is it the apostrophe? is it the arrow function?" spiral entirely.
+**Rule 4 — Run the local syntax preflight ([`EXECUTOR.md` Step 5.5](../EXECUTOR.md)) before every `use_figma` call.** `npm run check-payload -- <staged-payload>` parses the assembled payload exactly the way `use_figma` does (as an async function body) and prints the failing `line:col` in ~1 second. This is the cheapest gate in the pipeline and eliminates the "is it the angle brackets? is it the apostrophe? is it the arrow function?" spiral entirely.
 
 ### `style` entry shape
 

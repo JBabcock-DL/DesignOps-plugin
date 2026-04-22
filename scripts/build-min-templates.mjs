@@ -151,7 +151,7 @@ async function minifyScriptBody(esbuild, srcText, label, { mangle }) {
     // it with "Bad escaped character in JSON". JSON strings carry literal UTF-8
     // bytes natively, so 'utf8' is strictly better for our transport. Do NOT
     // revert to the esbuild default ('ascii') without also adding a post-pass
-    // that converts \xHH → \u00HH. See SKILL.md §0 "MCP payloads" note.
+    // that converts \xHH → \u00HH. See skills/create-component/EXECUTOR.md (MCP transport).
     charset: 'utf8',
   });
 

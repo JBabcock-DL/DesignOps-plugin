@@ -4,6 +4,20 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
+### Added / changed — Medium-reasoning agent instruction hardening (2026-04-22)
+
+- **`skills/sync-design-system/SKILL.md`** — **Router** (~155 lines) with branch table, `plan` object, non-negotiables, lazy-read rule; step bodies moved to **`skills/sync-design-system/phases/*.md`** and **`reference/token-formats.md`**, **`reference/error-guidance.md`**.
+- **`skills/create-component/EXECUTOR.md`** — Canonical **quickstart** (former §0): script assembly, `check-payload` / Step 5.5, MCP transport table, twelve-step table; repo vs marketplace mirror note in header.
+- **`skills/create-component/SKILL.md`** — **Entry** block: mandatory `Read` of `EXECUTOR.md` first; conflict rule (EXECUTOR wins assembly/transport; SKILL wins CONFIG / deep §4–§9).
+- **`skills/create-design-system/conventions/14-audit.md`** — **After canvas-bundle-runner (parent thread)** gate: explicit PASS/FAIL + minimum lites before “done.”
+- **`skills/create-design-system/SKILL.md`** — Canvas subsection: after each `canvas-bundle-runner` Task, run §14 parent gate.
+- **`AGENTS.md`** — `check-payload` ⊂ full MCP tool JSON; transport checklist → **EXECUTOR.md**; **Host matrix** (Claude Code vs Cursor).
+- **`.cursor/rules/mcp-inline-payloads.mdc`** — Short must-rules + pointer to **`AGENTS.md`** for full policy.
+- **`.cursor/rules/cursor-designops-skill-root.mdc`** — Pointer to **`AGENTS.md`** for MCP payload policy.
+- **`scripts/check-payload.mjs`** — Header / messages reference **EXECUTOR.md**; documents that passing preflight does not prove wrapper JSON completeness.
+- **`README.md`**, **`skills/create-design-system/CONVENTIONS.md`**, **`16-mcp-use-figma-workflow.md`**, create-component conventions — cross-links updated for router / EXECUTOR / §14 gate.
+- **Deferred (pending further testing):** optional trim of duplicate long MCP/canvas prose inside **`skills/create-design-system/SKILL.md`** and **`16-mcp-use-figma-workflow.md`** (plan Workstream C *optional* follow-up only — self-contained phase reads preserved for now).
+
 ### Changed — Composer / short-context MCP hardening (2026-04-22)
 
 - **`skills/create-component/SKILL.md`** — §0 *Short-context agents / MCP transport*: 50k cap, JSON completeness vs `check-payload`, no gzip/`DecompressionStream`, one-component-per-turn, long-line `Read` discipline, optional host probe; §4.7 intro stresses full variable enumeration when `get_variable_defs` is thin; §0.3 map row.

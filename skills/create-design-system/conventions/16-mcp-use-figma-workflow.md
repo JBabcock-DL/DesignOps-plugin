@@ -99,7 +99,7 @@ Other skills (`/create-component`, ad-hoc Figma edits) still call `use_figma` di
 The JavaScript runs in a **Figma plugin context** exposed by the MCP server — not necessarily a full browser or dev plugin.
 
 - **Do not rely on** `atob`, `TextDecoder`, `DecompressionStream`, or other **browser** APIs unless you have confirmed they exist in this host. If you must decode, use **small inline helpers** and still respect the **50k** `code` limit — but the preferred approach is **plain source text** from the repo (no base64-wrapped bundles).
-- **Same constraints apply to `/create-component`** when assembling large `use_figma.code` strings (CONFIG + preamble + one per-archetype `create-component-engine-*.min.figma.js`) — see [`skills/create-component/SKILL.md`](../../create-component/SKILL.md) §0 *Short-context agents / MCP transport* and the 50k cap table there.
+- **Same constraints apply to `/create-component`** when assembling large `use_figma.code` strings (CONFIG + preamble + one per-archetype `create-component-engine-*.min.figma.js`) — see [`skills/create-component/EXECUTOR.md`](../../create-component/EXECUTOR.md) *Short-context agents / MCP transport* and the 50k cap table there.
 - **Do not use** `figma.clientStorage.setAsync` / `getAsync` to stitch multi-part scripts unless you have verified support — many MCP hosts **do not** implement `clientStorage` the same way as a shipped plugin.
 
 ---
@@ -115,7 +115,7 @@ Each `use_figma` invocation should be able to run **alone**: imports from the sa
 | Topic | Where |
 |--------|--------|
 | Phase orchestration (which page, which template, `ctx` shapes) | [`phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md) |
-| §0 table/text/swatch rules | [`00-gotchas.md`](./00-gotchas.md), [`SKILL.md`](../SKILL.md) §0 |
+| §0 table/text/swatch rules | [`00-gotchas.md`](./00-gotchas.md), [`SKILL.md`](../SKILL.md) §0 (gotchas index) |
 | Repo-wide inline MCP payloads | [`AGENTS.md`](../../../AGENTS.md), [`mcp-inline-payloads.mdc`](../../../.cursor/rules/mcp-inline-payloads.mdc) |
 | Bundle regen + esbuild caveat | [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README.md), [`../scripts/bundle-canvas-mcp.mjs`](../scripts/bundle-canvas-mcp.mjs) |
 | Table redraw bundle paths + transport checklist | [`17-table-redraw-runbook.md`](./17-table-redraw-runbook.md) |

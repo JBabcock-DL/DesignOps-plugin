@@ -1,12 +1,13 @@
 # Detroit Labs DesignOps Plugin
 
-A Claude Code plugin that gives Detroit Labs designers seven skill-based commands for automating Figma design operations — scaffolding projects, building design systems, syncing tokens, adding components, linking code, localizing screens, and running accessibility audits.
+A Claude Code plugin that gives Detroit Labs designers **eight** skill-based commands for automating Figma design operations — scaffolding projects, building design systems, syncing tokens, adding components, linking code, localizing screens, running accessibility audits, and handing design context to engineering as backlog tickets.
 
-All skill logic lives in `SKILL.md` instruction files. There is no TypeScript code, no bundler, and no install script. Everything runs through the Claude Code agent using the Figma MCP connector for authentication.
+Agent-facing logic lives primarily in `SKILL.md` files, with **lazy-loaded shards** where noted (`/sync-design-system` → `phases/*.md`, `/create-component` → [`EXECUTOR.md`](skills/create-component/EXECUTOR.md) for quickstart). There is no product TypeScript UI, no app bundler, and no end-user install script beyond the plugin manifest. Everything runs through the Claude Code (or Cursor) agent using the Figma MCP connector for authentication.
 
 > **Ramping up a new agent (Claude Sonnet, Opus, future models)?** Read these two quick-reference guides before running any skill:
 >
 > - [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) — **router** to convention shards; **§0 gotchas** live in [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md). For geometry + pages + naming, read [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md); for `codeSyntax` rules, [`skills/create-design-system/conventions/02-codesyntax.md`](skills/create-design-system/conventions/02-codesyntax.md). **Do not** load every shard at session start — follow each skill’s lazy-load instructions.
+> - [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) — **first read** for `/create-component`: assembly order, `check-payload`, MCP transport / 50k cap (medium-reasoning agents). Long-form: [`skills/create-component/SKILL.md`](skills/create-component/SKILL.md).
 > - [`skills/create-component/conventions/`](skills/create-component/conventions/) — **topic-scoped** convention shards (router at [`conventions/00-overview.md`](skills/create-component/conventions/00-overview.md), legacy [`CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) kept as a §→file map). Covers the **matrix-default** 5-section layout every component uses: header + properties table + **live Component Set section (inline, editable)** + variant × state specimen matrix + Do/Don't usage notes. Per-category state axes, per-component variant rows, instance-vs-component handling, the `CONFIG` schema (including `labelStyle` bindings to published `Label/*` text styles), and a Button reference `CONFIG` live across [`01-config-schema.md`](skills/create-component/conventions/01-config-schema.md) / [`02-archetype-routing.md`](skills/create-component/conventions/02-archetype-routing.md) / [`04-doc-pipeline-contract.md`](skills/create-component/conventions/04-doc-pipeline-contract.md).
 
 ---
@@ -24,6 +25,7 @@ All skill logic lives in `SKILL.md` instruction files. There is no TypeScript co
   - [/code-connect](#code-connect)
   - [/new-language](#new-language)
   - [/accessibility-check](#accessibility-check)
+  - [/dev-handoff](#dev-handoff)
 - [Typical Workflow](#typical-workflow)
 - [Skill Chaining & Handoff Context](#skill-chaining--handoff-context)
 - [Token Architecture](#token-architecture)
@@ -68,7 +70,7 @@ Each skill is an instruction file (`SKILL.md`) that tells the Claude Code agent 
    git clone https://github.com/detroit-labs/DesignOps-plugin
    ```
 
-2. In Claude Code, open **Settings → Plugins** and add the plugin from the cloned directory. Claude Code reads `plugin.json` and registers all seven skills automatically.
+2. In Claude Code, open **Settings → Plugins** and add the plugin from the cloned directory. Claude Code discovers **eight** user-facing skills from `skills/*/SKILL.md` (plus internal helpers such as [`canvas-bundle-runner`](skills/canvas-bundle-runner/SKILL.md) for subagent canvas runs).
 
 3. Connect the Figma MCP connector in **Settings → MCP → Figma** and complete the OAuth flow with your organization Figma account.
 
@@ -171,6 +173,8 @@ No platform argument — platform mapping (Web / Android / iOS) is encoded as `c
 ### /sync-design-system
 
 Diff a local token file against the current Figma variable state and push changes in either direction.
+
+**Agent instructions:** [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) is a **router** — step bodies live under [`skills/sync-design-system/phases/`](skills/sync-design-system/phases/) and reference docs under [`skills/sync-design-system/reference/`](skills/sync-design-system/reference/). Open only the phase file for the current step (reduces context size for medium-reasoning agents).
 
 **Syntax**
 ```
@@ -341,6 +345,21 @@ Run a WCAG 2.1 AA accessibility audit on a selected Figma frame, including contr
 
 ---
 
+### /dev-handoff
+
+Hand off a Figma selection, node URL, or a short typed note to engineering as a **GitHub issue** or **Jira task**. If the ClaudeOps `/create-ticket` workflow is installed in the workspace, this skill delegates to it; otherwise it uses `gh` or the Atlassian MCP directly.
+
+**Syntax**
+```
+/dev-handoff
+/dev-handoff "Fix contrast on primary button in dark mode"
+/dev-handoff https://www.figma.com/design/...
+```
+
+**Agent instructions:** [`skills/dev-handoff/SKILL.md`](skills/dev-handoff/SKILL.md)
+
+---
+
 ## Typical Workflow
 
 A complete project setup from scratch through production-ready, code-connected components:
@@ -367,6 +386,9 @@ A complete project setup from scratch through production-ready, code-connected c
 
 # 7. Run an accessibility audit before handoff
 /accessibility-check 123:456
+
+# 8. (Optional) Open a backlog card from Figma context or a note
+/dev-handoff
 ```
 
 ---
@@ -581,11 +603,20 @@ Detroit Labs projects use a standardized three-folder hierarchy within each Figm
 │     │     ├── SKILL.md              # Orchestrator + progress checklist rules
 │     │     └── phases/               # One markdown file per `use_figma` / wrap-up phase
 │     ├── create-design-system/SKILL.md
-│     ├── sync-design-system/SKILL.md
-│     ├── create-component/SKILL.md
+│     ├── sync-design-system/
+│     │     ├── SKILL.md              # Router — lazy-load `phases/*.md`, `reference/*.md`
+│     │     ├── phases/
+│     │     └── reference/
+│     ├── create-component/
+│     │     ├── SKILL.md
+│     │     └── EXECUTOR.md           # Canonical quickstart (assembly, check-payload, transport)
 │     ├── code-connect/SKILL.md
 │     ├── new-language/SKILL.md
-│     └── accessibility-check/SKILL.md
+│     ├── accessibility-check/SKILL.md
+│     ├── dev-handoff/SKILL.md        # GitHub / Jira ticket from design context
+│     ├── canvas-bundle-runner/SKILL.md  # Subagent-only — committed canvas bundles (not a slash command)
+│     └── shared/
+│           └── pages.json            # Shared data (e.g. page lists), not a skill entry point
 ├── templates/
 │     ├── agent-handoff.md           # Skill-to-skill context transfer (file key, token CSS path, open items)
 │     └── workflow.md                # Plugin-level agent context and conventions
@@ -628,6 +659,8 @@ bash scripts/sync-cache.sh     # propagate edits into the cache
 bash scripts/verify-cache.sh   # confirm zero drift + minified-template freshness
 ```
 
+**`npm run verify` includes `verify-cache`.** If you changed anything under `skills/**` but skipped `sync-cache.sh`, verify will fail with a workspace vs cache diff — that is expected until you mirror. Run `sync-cache.sh`, then `npm run verify` again. See [`AGENTS.md`](AGENTS.md) § *Skill edits* for the same contract.
+
 Set `CLAUDE_CACHE=/path/to/labs-design-ops` if the marketplace lives outside the default location. `rsync` is preferred; when it is missing (e.g. default Windows Git Bash) the script falls back to a portable `rm -rf` + `cp -r` that emulates `rsync -a --delete`.
 
 ### Regenerating generated doc blocks
@@ -667,7 +700,7 @@ Agents should prefer `Read`-ing the single `shadcn-props/{component}.json` file 
 
 ### Regenerating minified templates
 
-`/create-component`'s `use_figma` payload inlines **one of eight per-archetype engine bundles** on every run, picked by `CONFIG.layout`. Each bundle pre-assembles the draw-engine + the one archetype builder it needs (plus shared helpers) into a single file that fits under the `use_figma.code` 50 000-char hard limit with 17–23 KB of headroom for the agent's §0 CONFIG preamble.
+`/create-component`'s `use_figma` payload inlines **one of eight per-archetype engine bundles** on every run, picked by `CONFIG.layout`. Each bundle pre-assembles the draw-engine + the one archetype builder it needs (plus shared helpers) into a single file that fits under the `use_figma.code` 50 000-char hard limit with 17–23 KB of headroom for the agent's CONFIG preamble (assembly order: [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md)).
 
 | `CONFIG.layout` | Bundle file | ~size |
 |---|---|---|
@@ -708,12 +741,15 @@ Identifier mangling is **enabled** for the per-archetype runtime bundles because
 
 This plugin is distributed internally via this Git repository. To add or modify a skill:
 
-1. Edit the corresponding `skills/<skill-name>/SKILL.md` file — the instructions are plain Markdown, no compilation required
+1. Edit the skill entry point — usually `skills/<skill-name>/SKILL.md` (plain Markdown). Some skills use lazy-loaded shards: **`/sync-design-system`** → `skills/sync-design-system/phases/*.md`; **`/create-component`** quickstart → [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md). Keep router tables and cross-links accurate when you move content between files.
 2. If adding a new skill, add an entry to `.claude-plugin/plugin.json` with the skill `name`, `description`, `path`, and `arguments` schema
 3. Update `templates/workflow.md` and this `README.md` if the change affects designer-facing behavior or conventions
 4. Test with a live Figma file using the Figma MCP connector before committing
 5. If your change touches `skills/create-component/shadcn-props/*.json`, run `npm run build:props` to regenerate `shadcn-props.json` + `_index.json`, then `npm run build:docs` so the generated blocks in `SKILL.md` stay in sync
 6. If your change touches `skills/create-component/templates/draw-engine.figma.js` or `archetype-builders.figma.js`, run `npm run build:min` so the committed `.min.figma.js` siblings stay fresh
-7. Run `bash scripts/sync-cache.sh` to push the change into the Claude marketplace cache, then `bash scripts/verify-cache.sh` to confirm zero drift (combined gate: `npm run verify`)
+7. Run `bash scripts/sync-cache.sh` to push **every** `skills/**` change into the Claude marketplace cache, then **`npm run verify`** (runs `verify-cache` among other checks). Do not assume the cache updated itself — stale cache is a common “agent ignored my edit” false alarm.
+8. After refactors that rename headings or split sections, grep for stale links (e.g. old `SKILL.md#…` anchors) so agent instructions do not point at dead fragments.
+
+**Deferred maintenance:** Optionally trimming duplicate MCP/canvas prose between `skills/create-design-system/SKILL.md` and `conventions/16-mcp-use-figma-workflow.md` (in favor of `AGENTS.md` only) is **on hold** until validated in practice — those files are intentionally self-contained for phase reads today.
 
 All Figma operations require the Figma MCP connector to be active and authenticated with an Organization-tier account. The Variables REST API write endpoint (`PUT /v1/files/:key/variables`) is the most common source of plan-tier errors — verify your account tier if `/create-design-system` or `/sync-design-system` fails with a `403`.

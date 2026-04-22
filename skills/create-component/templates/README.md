@@ -2,7 +2,7 @@
 
 Runtime JavaScript templates inlined into the `use_figma` call by `/create-component`. Agents `Read` and concatenate these files verbatim — **no editing in the `code` string**.
 
-See [`../SKILL.md`](../SKILL.md) for the canonical **Script-assembly order** table; the summary below is a quick reference only.
+See [`../EXECUTOR.md`](../EXECUTOR.md) for the canonical **Script-assembly order**; the summary below is a quick reference only.
 
 ## Payload shape (three ordered pieces)
 
@@ -10,7 +10,7 @@ Every `use_figma` payload is concatenated in this order. Skipping any step throw
 
 | # | Source | Size | What it contributes |
 |---|---|---|---|
-| 1 | **§0 CONFIG** (authored inline per component from SKILL.md §0) | 1–4 KB | `CONFIG` object — the only per-component edit surface |
+| 1 | **§0 CONFIG** (authored inline per component — shape in [`../EXECUTOR.md`](../EXECUTOR.md) + [`../conventions/01-config-schema.md`](../conventions/01-config-schema.md)) | 1–4 KB | `CONFIG` object — the only per-component edit surface |
 | 2 | **[`preamble.figma.js`](./preamble.figma.js)** (read and inlined verbatim) | ~2 KB | `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`, `logFileKeyMismatch()`, `_fileKeyObserved`, `_fileKeyMismatch` + the soft file-key mismatch warning side-effect |
 | 3 | **one per-archetype engine bundle** (picked by `CONFIG.layout`, table below) | ~26–33 KB | scaffold, token binders, archetype builder, §6 doc pipeline, §6.9a return payload |
 
@@ -62,7 +62,7 @@ esbuild's default `charset: 'ascii'` escapes every non-ASCII character in a stri
 
 **`\xHH` is valid JavaScript but INVALID JSON.** When an agent embeds the bundle in the `code` field of a `use_figma` MCP call, the MCP transport serializes the argument over stdio as a JSON string. `JSON.parse` on the receiving side rejects `\xHH` with `Bad escaped character in JSON at position N`, and the payload never reaches Figma.
 
-The build script pins `charset: 'utf8'` ([`scripts/build-min-templates.mjs`](../../../scripts/build-min-templates.mjs) `minifyScriptBody`) to keep these characters literal. JSON strings carry literal UTF-8 natively — transport works. Do **not** revert this flag without also adding a post-pass that rewrites `\xHH` → `\u00HH`. A failure here is caught locally by [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) (Gate 2: JSON-transport round-trip), so a regression fails SKILL.md Step 5.5 before it ever costs a Figma round-trip.
+The build script pins `charset: 'utf8'` ([`scripts/build-min-templates.mjs`](../../../scripts/build-min-templates.mjs) `minifyScriptBody`) to keep these characters literal. JSON strings carry literal UTF-8 natively — transport works. Do **not** revert this flag without also adding a post-pass that rewrites `\xHH` → `\u00HH`. A failure here is caught locally by [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) (Gate 2: JSON-transport round-trip), so a regression fails [`EXECUTOR.md`](../EXECUTOR.md) Step 5.5 before it ever costs a Figma round-trip.
 
 ### Why identifier mangling is safe here
 
@@ -100,7 +100,7 @@ Each per-archetype bundle ships **one** archetype builder + all shared helpers +
 ## Editing these templates
 
 1. Edit in the workspace (`c:/Users/jbabc/Documents/GitHub/DesignOps-plugin/skills/create-component/templates/...`).
-2. Keep the top-of-file section banners (`// §0`, `// §6.2a`, etc.) intact — the `typeof` assertions and the Script-assembly order block in `SKILL.md` both reference those section IDs by name. **Do not remove the two banner lines** (`↓↓↓ INLINE archetype-builders.figma.js HERE ↓↓↓` / `↑↑↑ END archetype-builders.figma.js insertion point ↑↑↑`) — the build script uses them to split draw-engine when assembling bundles; removing them causes `npm run build:min` to throw before writing anything.
+2. Keep the top-of-file section banners (`// §0`, `// §6.2a`, etc.) intact — the `typeof` assertions reference those section IDs by name; the Script-assembly order block lives in [`../EXECUTOR.md`](../EXECUTOR.md). **Do not remove the two banner lines** (`↓↓↓ INLINE archetype-builders.figma.js HERE ↓↓↓` / `↑↑↑ END archetype-builders.figma.js insertion point ↑↑↑`) — the build script uses them to split draw-engine when assembling bundles; removing them causes `npm run build:min` to throw before writing anything.
 3. Every top-level `function build<Name>Variant(` in `archetype-builders.figma.js` must start at column 0. The bundle parser splits on `\nfunction <Name>(` — nested functions are fine (they're indented), but a top-level builder whose `function` keyword isn't at column 0 will not be extracted and the build will throw for the missing builder name.
 4. Run `npm run build:min` to regenerate all eleven minified artifacts. If your edit also touches `shadcn-props.json` / `shadcn-props/*.json`, also run `node scripts/build-create-component-docs.mjs` so `SKILL.md`'s generated blocks stay in sync.
 5. Run `bash scripts/sync-cache.sh` to propagate into the `.claude` marketplace cache, then `bash scripts/verify-cache.sh` to confirm zero drift.

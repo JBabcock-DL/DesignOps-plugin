@@ -29,7 +29,7 @@
 **Fallback rule:** If `CONFIG.layout` is omitted or the dispatch encounters an unknown value, the engine falls back to `chip` and emits a `console.warn`. Never introduce a new archetype without also:
 1. Adding the builder function in [`templates/archetype-builders.figma.js`](../templates/archetype-builders.figma.js) (above the shared helpers).
 2. Extending this table **and** [`shadcn-props.schema.json`](../shadcn-props.schema.json) `layout` enum.
-3. Adding a CONFIG reference block in `SKILL.md` §0 (Mode B synthesis template).
+3. Adding a CONFIG reference block in [`SKILL.md`](../SKILL.md) §6 template (Mode B synthesis / commented example).
 4. Updating every matching entry in [`shadcn-props.json`](../shadcn-props.json) and re-running `node scripts/build-create-component-docs.mjs`.
 
 **Authoring tip.** If you can't find a row for your component, it is almost always **`surface-stack`** (for container-shaped components) or **`chip`** (for inline affordances). When in doubt, match the shadcn docs composition block — if the docs show `<Card><CardHeader/>...<CardContent/>...<CardFooter/></Card>` or similar, it's `surface-stack`.

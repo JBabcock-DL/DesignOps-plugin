@@ -31,7 +31,7 @@
 
 | Topic                              | Location |
 | ---------------------------------- | -------- |
-| `.designops-registry.json` (Figma component keys + `nodeId` map for `/create-component`, `/code-connect`, `/sync-design-system`) | [`skills/create-component/registry.schema.json`](../create-component/registry.schema.json) + [`skills/create-component/SKILL.md`](../create-component/SKILL.md) Step 5 + [`skills/create-component/resolver/merge-registry.mjs`](../create-component/resolver/merge-registry.mjs) |
+| `.designops-registry.json` (Figma component keys + `nodeId` map for `/create-component`, `/code-connect`, `/sync-design-system`) | [`skills/create-component/registry.schema.json`](../create-component/registry.schema.json) + [`skills/create-component/SKILL.md`](../create-component/SKILL.md) Step 5 + [`skills/create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) (quickstart) + [`skills/create-component/resolver/merge-registry.mjs`](../create-component/resolver/merge-registry.mjs) |
 | Full skill orchestration + §0 + per-phase load map | [`SKILL.md`](./SKILL.md) |
 | Visual language (tone, reference links, premium pillars) | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) § **A–G** |
 | Table format spec (hierarchy, columns, cells, bindings, build order) | Shards above + §0 in SKILL |
@@ -39,7 +39,7 @@
 | Theme codeSyntax table (explicit)  | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **6** + [`phases/02b-theme-codesyntax.md`](./phases/02b-theme-codesyntax.md) |
 | Typography codeSyntax rule         | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7** / **7b**        |
 | Body text variant rules            | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7b** + [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) §0 |
-| Sync redraw steps (9b, 9d, 9e)     | [`skills/sync-design-system/SKILL.md`](../sync-design-system/SKILL.md)     |
+| Sync redraw steps (9b, 9d, 9e)     | [`skills/sync-design-system/SKILL.md`](../sync-design-system/SKILL.md) (router) · canvas chain detail [`skills/sync-design-system/phases/06-axis-A-and-canvas.md`](../sync-design-system/phases/06-axis-A-and-canvas.md) · figma-only canvas [`skills/sync-design-system/phases/figma-only-path.md`](../sync-design-system/phases/figma-only-path.md) §6.figma     |
 | New-project page scaffold          | [`skills/shared/pages.json`](../shared/pages.json) + [`skills/new-project/phases/05-scaffold-pages.md`](../new-project/phases/05-scaffold-pages.md) |
 | `_Header` template                 | [`skills/new-project/phases/05b-documentation-headers.md`](../new-project/phases/05b-documentation-headers.md) |
 

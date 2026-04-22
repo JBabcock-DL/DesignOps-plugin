@@ -32,7 +32,7 @@ If you accidentally create a staging file, **delete it** before finishing; the d
 - [`skills/create-design-system/conventions/17-table-redraw-runbook.md`](skills/create-design-system/conventions/17-table-redraw-runbook.md) — bundle path matrix (15a–15c + Step 17)
 - [`skills/create-design-system/phases/07-steps15a-15c.md`](skills/create-design-system/phases/07-steps15a-15c.md) — § *Agent-driven only — no workspace scripts*
 - [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md) — Canvas (Steps 15a–17)
-- [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) — canvas redraw reliability bullet
+- [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) — router + non-negotiables; canvas chain detail [`skills/sync-design-system/phases/06-axis-A-and-canvas.md`](skills/sync-design-system/phases/06-axis-A-and-canvas.md)
 
 ### Table fidelity — all models (Sonnet, Composer, etc.)
 
@@ -59,7 +59,16 @@ If you edited the marketplace cache by accident (e.g. via an absolute path searc
 
 When installing shadcn components and drawing them to Figma, **Mode B (`synthetic-fallback`) is not always an error** — many files (e.g. `form`) have no extractable `cva()` for [`skills/create-component/resolver/extract-cva.mjs`](skills/create-component/resolver/extract-cva.mjs). **Do not** conflate “extractor exit 1” with “missing `class-variance-authority`” in a single paraphrase; read stdout JSON verbatim and follow [`skills/create-component/SKILL.md`](skills/create-component/SKILL.md) §4.5.0 and [`skills/create-component/conventions/05-code-connect.md`](skills/create-component/conventions/05-code-connect.md) §2.5.5. **Axis B** in [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) may mark a component `unresolvable` for drift diffs while `/create-component` can still draw in Mode B.
 
-**MCP transport (short-context / Composer-class agents):** Large `use_figma` payloads (~40–43K characters) must be **one complete JSON tool argument** — `Unexpected end of JSON input` usually means **truncation or invalid JSON**, not a Figma bug. Run [`scripts/check-payload.mjs`](scripts/check-payload.mjs) on the `code` string; do **not** use gzip/base64 bootstrap unless the plugin host supports **`DecompressionStream`** (often it does not — see [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md)). Prefer **one component’s** draw per assistant turn when output limits bite. Full checklist: [`skills/create-component/SKILL.md`](skills/create-component/SKILL.md) §0 — *Short-context agents / MCP transport*.
+**MCP transport (short-context / Composer-class agents):** Large `use_figma` payloads (~40–43K characters) must be **one complete JSON tool argument** — `Unexpected end of JSON input` usually means **truncation or invalid JSON**, not a Figma bug. [`scripts/check-payload.mjs`](scripts/check-payload.mjs) validates the **`code` string** only (async-function parse + JSON-safe escapes); the **entire** MCP tool-arguments object must still round-trip through `JSON.stringify` / `JSON.parse` in the host — a passing `check-payload` run does **not** prove the wrapper JSON was not truncated. Do **not** use gzip/base64 bootstrap unless the plugin host supports **`DecompressionStream`** (often it does not — see [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md)). Prefer **one component’s** draw per assistant turn when output limits bite. Full checklist: [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) — *Short-context agents / MCP transport*.
+
+### Host matrix (Claude Code vs Cursor)
+
+| Concern | Claude Code (plugin) | Cursor |
+|--------|----------------------|--------|
+| Skill / bundle paths | `${CLAUDE_PLUGIN_ROOT}` / installed plugin copy | Workspace must include plugin root — [`.cursor/rules/cursor-designops-skill-root.mdc`](.cursor/rules/cursor-designops-skill-root.mdc) |
+| Committed `.min.mcp.js` `Read` | From plugin tree | Same; ensure **Add Folder to Workspace** if the primary root is another repo |
+| Figma MCP `server` id | Host-specific | `mcps/**/SERVER_METADATA.json` → `serverIdentifier` (not necessarily `figma`) |
+| Canvas bundles (15 / 17) | Parent: `Task` → [`skills/canvas-bundle-runner/SKILL.md`](skills/canvas-bundle-runner/SKILL.md) | Same |
 
 ### IDE rule (Cursor)
 

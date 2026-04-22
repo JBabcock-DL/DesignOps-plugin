@@ -43,9 +43,14 @@
 //   - Validate token paths (see scripts/validate-tokens.mjs).
 //   - Check for missing boundary identifiers (see the preamble-presence gate
 //     at the top of draw-engine.figma.js §0a; that fires in Figma).
+//   - Prove the MCP host serialized the ENTIRE tool-arguments object. This
+//     script only checks the `code` string. `Unexpected end of JSON input` on
+//     use_figma often means the wrapper JSON was truncated or malformed — run
+//     JSON.stringify/parse on the full args object in the host when debugging.
 //
 // This is the cheapest gate in the whole pipeline — run it before every
-// `use_figma` call. SKILL.md §6.0a makes it mandatory.
+// `use_figma` call. skills/create-component/SKILL.md §6.0a makes it mandatory;
+// assembly order: skills/create-component/EXECUTOR.md.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import fs from 'node:fs';
@@ -163,7 +168,7 @@ const MCP_CODE_MAX_LENGTH = 50000;
 if (code.length > 49000) {
   console.error(
     `check-payload: warning — payload is ${code.length.toLocaleString()} JS string chars; Figma MCP use_figma.code schema maxLength is ${MCP_CODE_MAX_LENGTH.toLocaleString()}. ` +
-      `If the tool call fails or truncates, use one per-archetype engine bundle only (see skills/create-component/SKILL.md §0).`
+      `If the tool call fails or truncates, use one per-archetype engine bundle only (see skills/create-component/EXECUTOR.md).`
   );
 }
 
@@ -187,6 +192,9 @@ function printUsageAndExit(code) {
   stream(`        and contains no \\xHH hex escapes (valid JS, invalid JSON).`);
   stream(`  Prints OK + byte count on success; SyntaxError or JSON-transport`);
   stream(`  error with diagnostics on failure. Exit 0 / 1 / 2.`);
+  stream(``);
+  stream(`  Does NOT validate the full MCP tool-arguments wrapper — only this`);
+  stream(`  'code' string. Verify the complete JSON body in the host if needed.`);
   stream(``);
   stream(`  Examples:`);
   stream(`    cat payload.js | node scripts/check-payload.mjs`);

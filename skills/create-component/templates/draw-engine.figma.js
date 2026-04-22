@@ -4,7 +4,7 @@
 // Scaffold + chip archetype builder + §6 documentation pipeline for the
 // create-component skill. Agents running `create-component` MUST Read this
 // file in full (no `limit`) and inline it VERBATIM inside their `use_figma`
-// script IMMEDIATELY AFTER the §0 CONFIG block from SKILL.md and BEFORE the
+// script IMMEDIATELY AFTER the §0 CONFIG block (see EXECUTOR.md + SKILL.md §6 template) and BEFORE the
 // archetype-builders.figma.js template.
 //
 // The extraction exists because SKILL.md grew past the context-window slice
@@ -16,7 +16,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 // Required script-assembly order for a `use_figma` component draw:
 //
-//   1.  CONFIG                          — from SKILL.md §0 (per-component)
+//   1.  CONFIG                          — from EXECUTOR.md §0 (per-component)
 //   2.  THIS FILE (draw-engine)         — scaffold + chip builder + §6 flow
 //   3.  archetype-builders.figma.js     — injected at the marker inside this
 //                                         file between §§5.7 (chip) and §6.0
@@ -31,10 +31,10 @@
 // `ReferenceError` if any is missing. The runtime `typeof` asserts further
 // down in §6.2a catch accidental omissions with actionable error messages.
 //
-// Dependencies provided by the SKILL.md scaffold ABOVE the insertion point
+// Dependencies provided by the agent-assembled payload ABOVE the insertion point
 // (do not re-declare them in this file; they come from §0 CONFIG):
 //
-//   CONFIG                         — Step 0 component config (from SKILL.md)
+//   CONFIG                         — Step 0 component config (from EXECUTOR.md §0)
 //   REGISTRY_COMPONENTS            — registry map (if applicable)
 //
 // What this file provides (all hoisted, so §6.2a dispatch resolves regardless
@@ -56,7 +56,7 @@
 //
 // If you catch yourself editing anything in THIS file per-component, stop —
 // you are forking, not configuring. Extend the CONFIG schema in
-// SKILL.md §0 / conventions/01-config-schema.md §3 instead.
+// EXECUTOR.md §0 / conventions/01-config-schema.md §3 instead.
 // ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -65,7 +65,7 @@
 // The engine references seven identifiers that MUST be declared upstream
 // by the agent-assembled payload, in this order:
 //
-//   1. CONFIG                  (from SKILL.md §0, per component)
+//   1. CONFIG                  (from EXECUTOR.md §0, per component)
 //   2. ACTIVE_FILE_KEY         (from templates/preamble.figma.js)
 //   3. REGISTRY_COMPONENTS     (from templates/preamble.figma.js)
 //   4. usesComposes            (from templates/preamble.figma.js)
@@ -104,7 +104,7 @@
       `between the §0 CONFIG block and this engine bundle. The preamble file declares ` +
       `ACTIVE_FILE_KEY, REGISTRY_COMPONENTS, usesComposes, logFileKeyMismatch, ` +
       `_fileKeyObserved, and _fileKeyMismatch in one ~60-line block. ` +
-      `See the "Script-assembly order" block at the top of SKILL.md — runtime payload is ` +
+      `See the "Script-assembly order" block in skills/create-component/EXECUTOR.md — runtime payload is ` +
       `CONFIG → preamble.figma.js → create-component-engine-{CONFIG.layout}.min.figma.js.`
     );
   }
@@ -856,7 +856,7 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
       `Read and inline skills/create-component/templates/create-component-engine-${layoutForPath}.min.figma.js ` +
       `verbatim after the §0 CONFIG — that pre-bundled file contains draw-engine + the ${missingFn} builder. ` +
       `(The full 'create-component-engine.min.figma.js' bundle is debug-only and too tight for runtime CONFIG.) ` +
-      `See the Script-assembly order block + routing table at the top of SKILL.md.`
+      `See the Script-assembly order block + routing table in skills/create-component/EXECUTOR.md.`
     );
   }
 }
@@ -885,7 +885,7 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
       `[create-component] draw-engine.figma.js is missing function(s): ${missingEngineFns.join(', ')}. ` +
       `You must Read skills/create-component/templates/draw-engine.figma.js IN FULL (no limit) and inline it ` +
       `verbatim between the §0 CONFIG block and the archetype-builders.figma.js insertion point. ` +
-      `See the "Script-assembly order" block at the top of SKILL.md for the required order.`
+      `See the "Script-assembly order" block in skills/create-component/EXECUTOR.md for the required order.`
     );
   }
 }

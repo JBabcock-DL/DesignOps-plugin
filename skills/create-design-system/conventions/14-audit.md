@@ -2,6 +2,20 @@
 
 # 14. Audit checklist before committing canvas work
 
+## After canvas-bundle-runner (parent thread)
+
+When the parent delegates a style-guide redraw to [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md), the subagent returns a compact JSON summary only. **Before logging that page as done** (or telling the designer the step succeeded), the parent must:
+
+1. Emit one explicit line: **`Canvas §14 gate: PASS`** or **`Canvas §14 gate: FAIL`** (and if FAIL, which bullet below failed).
+2. Apply the **minimum lites** — if any fails, the gate is **FAIL** until fixed or re-run:
+   - **§0.5** — Header cells use **HORIZONTAL** + **FIXED/FIXED** with explicit header height (not the body VERTICAL+Hug recipe).
+   - **§0.6 / §0.2** — No table `TEXT` (including headers) may keep `textAutoResize: 'NONE'` on shipped tables.
+   - **§0.7** — Primitives color swatches: `RECTANGLE` fills bound to the row’s variable (not resolved hex only).
+   - **§0.9** — `doc/table/token-overview/platform-mapping` subtree: no stacked shadow / `effectStyleId` on the table or its rows/cells; elevation only on the outer section shell.
+   - Optionally run the **read-only** script in § *Optional machine gate* below (`badHeaderCells`, `badSwatchFills`, etc.) — empty arrays = pass for those probes.
+
+Do not treat `{ ok: true }` from the runner as proof of table fidelity without this gate. See also [`AGENTS.md`](../../../AGENTS.md) § *Table fidelity*.
+
 ## Variables & codeSyntax
 - [ ] Did I set `codeSyntax` on every variable, all three platforms (via REST API)?
 - [ ] Does every iOS `codeSyntax` use dot-separated lowercase with no camelCase segments?

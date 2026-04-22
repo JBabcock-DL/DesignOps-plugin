@@ -1,7 +1,7 @@
 
 ## Canvas documentation visual spec
 
-Agents **must read this section** before executing Steps **15a–18** and any **`use_figma`** work that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure, binding, and Dev Mode rules (**§ A–G**; see [`../../sync-design-system/SKILL.md`](../../sync-design-system/SKILL.md)).
+Agents **must read this section** before executing Steps **15a–18** and any **`use_figma`** work that draws token documentation. **`/sync-design-system`** Steps **9b–9e** must follow the **same** structure, binding, and Dev Mode rules (**§ A–G**; see [`../../sync-design-system/SKILL.md`](../../sync-design-system/SKILL.md) and canvas steps in [`../../sync-design-system/phases/06-axis-A-and-canvas.md`](../../sync-design-system/phases/06-axis-A-and-canvas.md) / [`../../sync-design-system/phases/figma-only-path.md`](../../sync-design-system/phases/figma-only-path.md) §6.figma).
 
 **How that code runs:** only via the **`use_figma` MCP tool** — inline `code` strings per call. Do **not** add throwaway workspace files (`.mcp-*`, `*-payload.json`, scratch `.js`, etc.) to hold or transport that script; see [`./07-steps15a-15c.md`](./07-steps15a-15c.md) § *Agent-driven only — no workspace scripts*.
 

@@ -17,10 +17,11 @@
 
 ## System audit — Mode A / Mode B (read order for agents)
 
-Lower-capability models should walk this list in order when debugging extraction vs draw. Authoritative behavior always defers to [`SKILL.md`](./SKILL.md) (especially §4.5.0, §4.5, §6, §8).
+Lower-capability models should walk this list in order when debugging extraction vs draw. Authoritative behavior always defers to [`SKILL.md`](./SKILL.md) (especially §4.5.0, §4.5, §6, §8). **First read:** [`EXECUTOR.md`](./EXECUTOR.md) for assembly + transport.
 
 | Layer | Path | Role |
 |------|------|------|
+| Quickstart + transport | [`EXECUTOR.md`](./EXECUTOR.md) | §0 recipe; `check-payload`; 50k / JSON gates |
 | Canonical skill | [`SKILL.md`](./SKILL.md) | Steps 1–9; reporting; `_source` tags |
 | Overview + glossary | [`conventions/00-overview.md`](./conventions/00-overview.md) | Mode A vs B vocabulary |
 | Extraction + error semantics | [`conventions/05-code-connect.md`](./conventions/05-code-connect.md) | Tier1/Tier2; §2.5.5 decision table |
@@ -49,4 +50,4 @@ When in doubt, start at [`conventions/00-overview.md`](./conventions/00-overview
 
 ## Authoritative source
 
-[`skills/create-component/SKILL.md`](./SKILL.md). When any `conventions/*.md` file disagrees with the skill, the skill wins. The skill's §0 Quickstart is the single canonical recipe; §9 Self-check is the pass/fail gate for reporting a component "drawn".
+[`skills/create-component/SKILL.md`](./SKILL.md). When any `conventions/*.md` file disagrees with the skill, the skill wins. The **§0 Quickstart** lives in [`EXECUTOR.md`](./EXECUTOR.md); **§9 Self-check** in `SKILL.md` is the pass/fail gate for reporting a component "drawn".

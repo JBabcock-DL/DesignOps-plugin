@@ -2,7 +2,7 @@
 
 > **Audience:** AI agents (Claude, Sonnet, etc.) running `/create-component`. Read the specific sub-file you need before authoring / editing a component — the router below maps each concern to the authoritative file.
 >
-> **Authoritative source:** [`skills/create-component/SKILL.md`](../SKILL.md). When any of these sub-files disagrees with the skill, the skill wins. The skill's §0 Quickstart is the single canonical recipe; §9 Self-check is the pass/fail gate for reporting a component "drawn".
+> **Authoritative source:** [`skills/create-component/SKILL.md`](../SKILL.md). When any of these sub-files disagrees with the skill, the skill wins. **Quickstart / assembly / MCP transport:** [`skills/create-component/EXECUTOR.md`](../EXECUTOR.md) (former §0). **§9 Self-check** in `SKILL.md` is the pass/fail gate for reporting a component "drawn".
 >
 > **Related:** [`skills/create-design-system/CONVENTIONS.md`](../../create-design-system/CONVENTIONS.md) (router) and [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](../../create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) — the style-guide canvas geometry this set of files reuses. **§0 gotchas:** [`skills/create-design-system/SKILL.md`](../../create-design-system/SKILL.md).
 

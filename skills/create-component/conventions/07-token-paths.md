@@ -81,7 +81,7 @@ Even after Step 4.7, a typo can slip through. The draw engine (`templates/draw-e
 }
 ```
 
-**Post-draw assertion.** Agents MUST treat `unresolvedTokenPaths.total > 0` as a hard failure of the draw, same severity as `propErrorsCount > 0` — redraw with the fixes before claiming the component "drawn." The only acceptable non-zero case is when the designer explicitly authored a `tokens.css`-less run (`TOKEN_CSS_PATH === null`), in which case the absence of Theme/Layout collections is expected and `collectionsPresent` flags surface it. SKILL.md §0.2 and §9 both include this assertion.
+**Post-draw assertion.** Agents MUST treat `unresolvedTokenPaths.total > 0` as a hard failure of the draw, same severity as `propErrorsCount > 0` — redraw with the fixes before claiming the component "drawn." The only acceptable non-zero case is when the designer explicitly authored a `tokens.css`-less run (`TOKEN_CSS_PATH === null`), in which case the absence of Theme/Layout collections is expected and `collectionsPresent` flags surface it. [`EXECUTOR.md` §0.2](./EXECUTOR.md) and [`SKILL.md` §9](./SKILL.md) both include this assertion.
 
 ## 7.5 — Tooling: local validator
 
