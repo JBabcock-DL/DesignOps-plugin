@@ -2,7 +2,7 @@
 
 **Purpose:** Single source for designing **phase-scoped config** (separate, smaller `CONFIG` slices per MCP call instead of repeating one giant object) and matching **preamble** / handoff. Grounded in `templates/draw-engine.figma.js` and `templates/preamble.figma.js` as of this doc.
 
-**Related:** `09-mcp-multi-step-doc-pipeline.md`, `04-doc-pipeline-contract.md`, `create-component-figma-runner` §1b/§1d, `../EXECUTOR.md` script order.
+**Related:** `09-mcp-multi-step-doc-pipeline.md`, `04-doc-pipeline-contract.md`, `../EXECUTOR.md` (inline phased / preassembled), `create-component-figma-slice-runner` + `13-component-draw-orchestrator` (delegated six-slice), `templates/draw-engine.figma.js` phase markers.
 
 ---
 

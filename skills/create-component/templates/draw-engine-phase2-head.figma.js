@@ -54,7 +54,7 @@ const pid = typeof __PHASE_1_COMP_SET_ID__ !== 'undefined' ? __PHASE_1_COMP_SET_
 if (!pid) {
   throw new Error(
     '[create-component] phase 2 requires __PHASE_1_COMP_SET_ID__ (ComponentSet id from phase 1). ' +
-      'See skills/create-component-figma-runner/SKILL.md (two-phase draw).',
+      'See skills/create-component/EXECUTOR.md (two-phase draw).',
   );
 }
 const loaded = await figma.getNodeByIdAsync(pid);

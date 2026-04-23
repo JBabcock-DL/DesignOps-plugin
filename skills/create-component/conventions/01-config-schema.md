@@ -4,9 +4,9 @@
 >
 > **Related**: [`00-overview.md`](./00-overview.md) (router, glossary, modes). [`02-archetype-routing.md`](./02-archetype-routing.md) (picking `CONFIG.layout`). [`03-auto-layout-invariants.md`](./03-auto-layout-invariants.md) (valid enum values). [`05-code-connect.md`](./05-code-connect.md) (Mode A class-to-token resolution that populates `CONFIG.style`).
 
-## 2 — Step 6.A handoff (`Task` → `create-component-figma-runner`)
+## 2 — Step 6.A handoff (`Task` → `create-component-figma-slice-runner`)
 
-The parent **authors** this schema in place as the opening `const CONFIG = { … };` of the draw script. For **delegated** Step 6, copy that block **verbatim** as **`configBlock`** and pass **`layout`** (= `CONFIG.layout`) plus `fileKey`, `createComponentRoot`, and registry per [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) **§0**. **`JSON.stringify(CONFIG)` is invalid** for handoff — it **drops** `applyStateOverride`, function `label`, and any other function-valued keys. If a `Task` fails or is interrupted, the parent finishes with **inline Step 6.B** using the **same** `configBlock` (no re-derivation).
+The parent **authors** this schema in place as the opening `const CONFIG = { … };` of the draw script. For **delegated** Step 6, copy that block **verbatim** as **`configBlock`** and pass **`layout`** (= `CONFIG.layout`) plus `fileKey`, `createComponentRoot`, registry, and **`handoffJson`** per [`../create-component-figma-slice-runner/SKILL.md`](../create-component-figma-slice-runner/SKILL.md) **§0** and [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md). **`JSON.stringify(CONFIG)` is invalid** for handoff — it **drops** `applyStateOverride`, function `label`, and any other function-valued keys. If a `Task` fails or is interrupted, the parent finishes with **inline Step 6.B** using the **same** `configBlock` (no re-derivation).
 
 ## 3. Component `CONFIG` schema (the ONLY thing you edit per component)
 

@@ -709,7 +709,7 @@ const GUTTER_W_VARIANT = 160;
 // and return early. 2 = doc pipeline only — skips §6.0 clear and variant
 // build; requires __PHASE_1_COMP_SET_ID__, __CC_PHASE1_PROPS_ADDED__, and
 // optionally __CC_PHASE1_UNRESOLVED__ injected before this engine. See
-// skills/create-component-figma-runner/SKILL.md.
+// skills/create-component/EXECUTOR.md (inline two-phase) + figma-slice-runner (six-slice).
 const _ccPhase = typeof __CREATE_COMPONENT_PHASE__ === 'undefined' ? 0 : __CREATE_COMPONENT_PHASE__;
 if (_ccPhase !== 0 && _ccPhase !== 1 && _ccPhase !== 2) {
   throw new Error(
@@ -922,7 +922,7 @@ if (_ccPhase === 2) {
   if (!pid) {
     throw new Error(
       '[create-component] phase 2 requires __PHASE_1_COMP_SET_ID__ (ComponentSet id from phase 1). ' +
-        'See skills/create-component-figma-runner/SKILL.md (two-phase draw).',
+        'See skills/create-component/EXECUTOR.md (inline two-phase draw).',
     );
   }
   const loaded = await figma.getNodeByIdAsync(pid);
@@ -1081,8 +1081,8 @@ if (_ccPhase === 1) {
 // 1800 wide, 80 padding on all sides, 1640 inner, y=320 below _Header.
 
 // Multistep doc pipeline (MCP): __CREATE_COMPONENT_DOC_STEP__ 1–5 runs one slice
-// per `use_figma` call; omit it for legacy single-pass doc tail (two-phase §1b
-// phase 2 or _ccPhase === 0). See conventions/09 + create-component-figma-runner §1c.
+// per `use_figma` call; omit it for single-pass doc tail (inline two-phase
+// phase 2 or _ccPhase === 0). See conventions/09 + EXECUTOR.md.
 // `build-min-templates.mjs` replaces the following two declarations with
 // `const __ccDocStep = N` (N = 1..5) when emitting *.stepN.min.figma.js so esbuild
 // drops unused doc-step branches and each MCP payload stays small.

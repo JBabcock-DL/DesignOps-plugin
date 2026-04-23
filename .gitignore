@@ -4,3 +4,6 @@ node_modules/
 # Scratch payload files agents are forbidden from committing — see AGENTS.md.
 .mcp-*
 *-payload.json
+# Local MCP / Figma tool-arg dumps from ad-hoc tests (check-use-figma-mcp-args, etc.)
+.figma-use*.json
+mcp-figma-arguments*.json

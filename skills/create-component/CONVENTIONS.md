@@ -23,6 +23,7 @@ Lower-capability models should walk this list in order when debugging extraction
 
 | Layer | Path | Role |
 |------|------|------|
+| Time-ordered phases | [`phases/`](./phases/) (`00-index` + `01`–`10`) | *When* to run each unit; **six** draw phases (`04`–`09`) for Step 6 — [`SKILL.md` *Phase execution*](./SKILL.md) |
 | Quickstart + transport | [`EXECUTOR.md`](./EXECUTOR.md) | §0 recipe; `check-payload`; 50k / JSON gates |
 | Canonical skill | [`SKILL.md`](./SKILL.md) | Steps 1–9; reporting; `_source` tags |
 | Overview + glossary | [`conventions/00-overview.md`](./conventions/00-overview.md) | Mode A vs B vocabulary |

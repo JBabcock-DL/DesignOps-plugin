@@ -8,14 +8,14 @@ This document is the **runbook** for **Step 6** when using the **canvas-bundle-s
 
 ## 1 — Fixed DAG (machine order)
 
-Run **exactly** this sequence, **in order** — do not skip, reorder, or interleave with unrelated canvas `use_figma` in the same parent turn. On any `ok: false` from a `Task`, **stop**; do not start the next slug.
+Run **exactly** this sequence, **in order** — do not skip, reorder, or interleave with unrelated canvas `use_figma` in the same parent turn. On any `ok: false` from a `Task`, **stop**; do not start the next slug. **Agent phase chapter** for each row: [`phases/04-slice-cc-variants.md`](../phases/04-slice-cc-variants.md) through [`phases/09-slice-cc-doc-finalize.md`](../phases/09-slice-cc-doc-finalize.md) (one markdown file per slug).
 
-1. `cc-variants` — variant plane (ComponentSet)
-2. `cc-doc-props` — page, header, **Properties** table (09 merged step)
-3. `cc-doc-component` — live ComponentSet into doc
-4. `cc-doc-matrix` — Variants × States matrix
-5. `cc-doc-usage` — Do / Don’t
-6. `cc-doc-finalize` — finalize + `returnPayload` for §9
+1. `cc-variants` — variant plane (ComponentSet) — [`phases/04-slice-cc-variants.md`](../phases/04-slice-cc-variants.md)
+2. `cc-doc-props` — page, header, **Properties** table (09 merged step) — [`phases/05-slice-cc-doc-props.md`](../phases/05-slice-cc-doc-props.md)
+3. `cc-doc-component` — live ComponentSet into doc — [`phases/06-slice-cc-doc-component.md`](../phases/06-slice-cc-doc-component.md)
+4. `cc-doc-matrix` — Variants × States matrix — [`phases/07-slice-cc-doc-matrix.md`](../phases/07-slice-cc-doc-matrix.md)
+5. `cc-doc-usage` — Do / Don’t — [`phases/08-slice-cc-doc-usage.md`](../phases/08-slice-cc-doc-usage.md)
+6. `cc-doc-finalize` — finalize + `returnPayload` for §9 — [`phases/09-slice-cc-doc-finalize.md`](../phases/09-slice-cc-doc-finalize.md)
 
 ---
 
@@ -38,7 +38,7 @@ Run **exactly** this sequence, **in order** — do not skip, reorder, or interle
 
 Before the first `Task`, the parent (after Steps 1–5, 4.7) has:
 
-- `fileKey`, `layout` (= `CONFIG.layout`), `createComponentRoot` (path to `skills/create-component/`), `configBlock` (verbatim `const CONFIG = { … };`), registry per [`create-component-figma-runner`](../create-component-figma-runner/SKILL.md) **§0**.
+- `fileKey`, `layout` (= `CONFIG.layout`), `createComponentRoot` (path to `skills/create-component/`), `configBlock` (verbatim `const CONFIG = { … };`), registry per [`create-component-figma-slice-runner`](../create-component-figma-slice-runner/SKILL.md) **§0**.
 
 **`layout` filename mapping:** the committed step0 file uses `create-component-engine-<name>.step0.min.figma.js` where `<name>` is `chip`, `surface-stack`, `field`, `row-item`, `tiny`, `control`, `container`, or `composed` when `CONFIG.layout === '__composes__'`.
 
@@ -64,13 +64,12 @@ Each `Task` prompt must include: `step` (slug), `fileKey`, `layout`, `createComp
 
 ## 5 — After the ladder
 
-When `cc-doc-finalize` returns `ok: true`, run **`SKILL.md` §9** and **Step 5.2** registry on **that** return payload only (same as monolithic `create-component-figma-runner` after phase 2 or after internal step 5).
+When `cc-doc-finalize` returns `ok: true`, run **`SKILL.md` §9** and **Step 5.2** registry on **that** return payload only (final slice of the six-call ladder; same assertions as a full inline two-phase or single-call run would surface on the last `use_figma` return).
 
 ---
 
 ## 6 — What this supersedes
 
-- **Default** six-call MCP transport: **six** `Task` invocations → `create-component-figma-slice-runner` (this doc), **not** one parent thread with six `Read`s of min bundles.
-- **Legacy:** a **single** `Task` → [`create-component-figma-runner`](../create-component-figma-runner/SKILL.md) with `sixStepDraw: true` (one subagent runs six internal assemblies + six `use_figma` calls) remains valid for hosts that want one delegation round trip.
+- **Only** six-call delegated MCP transport: **six** `Task` invocations → `create-component-figma-slice-runner` (this doc), **not** one parent thread with six `Read`s of min bundles. Parent **inline** / **preassembled** full-engine work stays in [`EXECUTOR.md`](../EXECUTOR.md) **§0** when `Task` is not viable.
 
 **Cross-refs:** [`16-mcp-use-figma-workflow.md`](../../create-design-system/conventions/16-mcp-use-figma-workflow.md) (canvas vs component slice), [`AGENTS.md`](../../../AGENTS.md) (session runbook).

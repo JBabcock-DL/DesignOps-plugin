@@ -196,7 +196,7 @@ function step0BundleBanner(layout, includedBuilder) {
   }
   lines.push(`// regenerate: npm run build:min`);
   lines.push(
-    `// Runner: MCP call 0 — inject __CREATE_COMPONENT_PHASE__=1 or omit (single-pass); see create-component-figma-runner §1c.`,
+    `// Min slice: MCP call 0 — inject __CREATE_COMPONENT_PHASE__=1 or omit (single-pass); see EXECUTOR.md + conventions/09.`,
   );
   return lines.join('\n') + '\n';
 }

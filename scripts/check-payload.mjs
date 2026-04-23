@@ -95,7 +95,7 @@ const stubMsg = describeStubPayload(code);
 if (stubMsg) {
   console.error(`check-payload: ${sourceLabel} — ${stubMsg}`);
   console.error(`  Some hosts emit use_figma with a stub token before assembly finishes — that parses as JS but throws ReferenceError in Figma.`);
-  console.error(`  Assemble the full script first (create-component: configBlock + preamble + engine per EXECUTOR / slice-runner §0.1 / create-component-figma-runner §1), then re-run this check.`);
+  console.error(`  Assemble the full script first (create-component: configBlock + preamble + engine per EXECUTOR / slice-runner §0.1), then re-run this check.`);
   process.exit(1);
 }
 

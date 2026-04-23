@@ -7,9 +7,20 @@ agent: general-purpose
 
 # Skill — `create-component-figma-slice-runner`
 
-You are a **single-purpose subagent** for **one** slice of the [component draw orchestrator](../create-component/conventions/13-component-draw-orchestrator.md) DAG. You **`Read`** [`preamble.figma.js`](../create-component/templates/preamble.figma.js) and **exactly one** committed `*.min.figma.js` from the **§2** map, **concatenate** with the parent’s **`configBlock`**, **phase / handoff globals** (§3), and patched preamble — same assembly order as [`create-component-figma-runner` §1](../create-component-figma-runner/SKILL.md) for that slice. You run **`check-payload`** (and `check-use-figma-mcp-args` if available), then **one** `use_figma`. You **never** `Read` a different min bundle than §2 for this `step`, and you **do not** spawn another `Task`.
+You are a **single-purpose subagent** for **one** slice of the [component draw orchestrator](../create-component/conventions/13-component-draw-orchestrator.md) DAG. This is the **only** Figma subagent for [`/create-component`](../create-component/SKILL.md) Step 6; there is not a second parallel `Task` skill. You **`Read`** [`preamble.figma.js`](../create-component/templates/preamble.figma.js) and **exactly one** committed `*.min.figma.js` from the **§2** map, **concatenate** with the parent’s **`configBlock`**, **phase / handoff globals** (§3), and patched preamble — order is **`configBlock` → `varGlobals` → preamble → engine** (§0.1). You run **`check-payload`** (and `check-use-figma-mcp-args` if available), then **one** `use_figma`. You **never** `Read` a different min bundle than §2 for this `step`, and you **do not** spawn another `Task`.
 
 **Parent** owns: Steps 1–5, 4.7, `SKILL.md` §9, registry 5.2, and **sequential** `Task` scheduling in DAG order. **This skill** owns: assembly + preflight + **one** MCP call + compact JSON return.
+
+**Phase file (read before each `Task`):** The parent should open the matching row in [`/create-component` `phases/`](../create-component/phases/00-index.md) for the current `step` — same slug order as [orchestrator §1](../create-component/conventions/13-component-draw-orchestrator.md).
+
+| `step` | Read before `Task` |
+|--------|---------------------|
+| `cc-variants` | [`phases/04-slice-cc-variants.md`](../create-component/phases/04-slice-cc-variants.md) |
+| `cc-doc-props` | [`phases/05-slice-cc-doc-props.md`](../create-component/phases/05-slice-cc-doc-props.md) |
+| `cc-doc-component` | [`phases/06-slice-cc-doc-component.md`](../create-component/phases/06-slice-cc-doc-component.md) |
+| `cc-doc-matrix` | [`phases/07-slice-cc-doc-matrix.md`](../create-component/phases/07-slice-cc-doc-matrix.md) |
+| `cc-doc-usage` | [`phases/08-slice-cc-doc-usage.md`](../create-component/phases/08-slice-cc-doc-usage.md) |
+| `cc-doc-finalize` | [`phases/09-slice-cc-doc-finalize.md`](../create-component/phases/09-slice-cc-doc-finalize.md) |
 
 ---
 
@@ -20,9 +31,9 @@ You are a **single-purpose subagent** for **one** slice of the [component draw o
 | `step` | yes | Machine slug: `cc-variants` \| `cc-doc-props` \| `cc-doc-component` \| `cc-doc-matrix` \| `cc-doc-usage` \| `cc-doc-finalize` (see **§2**). Unknown → `{ ok: false, errors: ["unknown step"] }` — do not guess. |
 | `fileKey` | yes | Figma `fileKey` for `use_figma`. |
 | `layout` | yes | Must match `CONFIG.layout` inside `configBlock` (string: `chip`, `surface-stack`, `field`, `row-item`, `tiny`, `control`, `container`, `__composes__`). |
-| `configBlock` | yes | Verbatim `const CONFIG = { … };` (Markdown-fence stripped like [runner §1 step 1](../create-component-figma-runner/SKILL.md)). **Not** JSON — functions must survive. |
+| `configBlock` | yes | Verbatim `const CONFIG = { … };` (Markdown-fence stripped per **§0.1**). **Not** JSON — functions must survive. |
 | `createComponentRoot` | yes | Folder containing `templates/preamble.figma.js` (typically `…/skills/create-component/`). |
-| `registry` | yes | As [runner §0](../create-component-figma-runner/SKILL.md) — file path to `.designops-registry.json` or `activeFileKey` + `registryComponentsJson`. |
+| `registry` | yes | **(a)** Path to project `.designops-registry.json` at the design repo root — `Read` to fill `ACTIVE_FILE_KEY` and `REGISTRY_COMPONENTS` in the preamble, **or (b)** `activeFileKey` (string or null) + `registryComponentsJson` (stringified object) if the file is unavailable. |
 | `handoffJson` | **cc-variants: optional / `{}`**; **all doc slugs: required** | JSON object; **parent-maintained** state between slices — see **§3** for what to inject. Pass as a fenced `json` block or inline JSON. |
 | `description` | no | `use_figma` description. |
 | `projectRootForShell` | no | Cwd for `npm run check-payload` if needed (DesignOps plugin root). |
@@ -33,7 +44,7 @@ You are a **single-purpose subagent** for **one** slice of the [component draw o
 
 1. **Normalize `configBlock`** — trim, strip one Markdown fence, sanity-check `layout` appears; must define `const CONFIG`.
 2. **`Read`** `{createComponentRoot}/templates/preamble.figma.js` **verbatim**.
-3. **Patch preamble** only: `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS` — same as [runner §1 steps 2–3](../create-component-figma-runner/SKILL.md).
+3. **Patch preamble** only: `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS` (see `preamble.figma.js` header for the two replaceable literals).
 4. **Resolve** `archetypeFile` from `layout` for **`cc-variants` only**:
    - `__composes__` → `composed` in the **filename**; all other `layout` values use the same spelling as the committed file (e.g. `surface-stack` → `create-component-engine-surface-stack.step0.min.figma.js`).
 5. **`Read` exactly one** engine file per **§2** for this `step` — **verbatim** min file text.
@@ -83,7 +94,7 @@ var __CREATE_COMPONENT_PHASE__ = 1;
 
 **`cc-doc-props` through `cc-doc-finalize`**
 
-Always include phase-2 variant telemetry from **`afterVariants`** (same as [runner §1b phase 2](../create-component-figma-runner/SKILL.md)):
+Always include phase-2 variant telemetry from **`afterVariants`** (same `__PHASE_1_COMP_SET_ID__` / `__CC_PHASE1_*` injection as monolithic two-phase **phase 2** in [`draw-engine.figma.js`](../create-component/templates/draw-engine.figma.js) resume path):
 
 ```text
 var __CREATE_COMPONENT_PHASE__ = 2;
@@ -142,7 +153,7 @@ On transient MCP error, **one** retry with identical `code` (same as [canvas-bun
 - **Do not** call `use_figma` before the full `code` string is assembled and `check-payload` passes.
 - **Do not** `Read` any engine file except **preamble** + the **one** path from **§2** for this `step`/`layout`.
 - **Do not** minify, trim, or “fix” the engine or preamble.
-- **Do not** use `preassembledCodePaths` here — that escape hatch is [runner §0.1](../create-component-figma-runner/SKILL.md), not this skill.
+- **Do not** use parent-built **`preassembledCodePaths`** in this `Task` — that escape hatch is **parent inline** in [`EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** (item 2b), not a second subagent skill.
 - **Do not** launch another `Task` — one level only.
 - **Do not** use this skill for **canvas** style-guide bundles — use [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md) only.
 
@@ -153,6 +164,6 @@ On transient MCP error, **one** retry with identical `code` (same as [canvas-bun
 | Topic | Where |
 |--------|--------|
 | Parent orchestrator DAG + aliases | [`../create-component/conventions/13-component-draw-orchestrator.md`](../create-component/conventions/13-component-draw-orchestrator.md) |
-| Full runner (legacy single-Task six-step / two-phase) | [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) |
+| Inline / preassembled (no `Task`) | [`../create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** |
 | `use_figma` workflow | [`../create-design-system/conventions/16-mcp-use-figma-workflow.md`](../create-design-system/conventions/16-mcp-use-figma-workflow.md) |
 | `check-payload` | [`../../scripts/check-payload.mjs`](../../scripts/check-payload.mjs) |
