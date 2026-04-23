@@ -38,7 +38,9 @@
 //   2   usage / bad CLI args
 //
 // What this does NOT do
-//   - Execute the payload (it runs purely parser / lexer).
+//   - Execute the payload (it runs purely parser / lexer), except a small
+//     pre-parse gate that rejects stub strings like PLACEHOLDER (valid syntax,
+//     fatal at runtime in Figma).
 //   - Validate Figma Plugin API usage (that happens inside Figma).
 //   - Validate token paths (see scripts/validate-tokens.mjs).
 //   - Check for missing boundary identifiers (see the preamble-presence gate
@@ -87,6 +89,14 @@ if (maybePath) {
 if (!code || code.trim().length === 0) {
   console.error(`check-payload: ${sourceLabel} is empty — nothing to parse.`);
   process.exit(2);
+}
+
+const stubMsg = describeStubPayload(code);
+if (stubMsg) {
+  console.error(`check-payload: ${sourceLabel} — ${stubMsg}`);
+  console.error(`  Some hosts emit use_figma with a stub token before assembly finishes — that parses as JS but throws ReferenceError in Figma.`);
+  console.error(`  Assemble the full script first (create-component: configBlock + preamble + engine per EXECUTOR / create-component-figma-runner §1), then re-run this check.`);
+  process.exit(1);
 }
 
 // `use_figma` wraps the `code` argument in an async IIFE. Match that by
@@ -180,6 +190,21 @@ process.exit(0);
 // ─────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────
+
+/** Whole-payload strings that are syntactically valid but never real plugin code. */
+function describeStubPayload(code) {
+  const t = code.trim();
+  if (/^PLACEHOLDER$/i.test(t)) {
+    return `code is only the identifier PLACEHOLDER (undefined at runtime — Composer / Task sometimes stubs the tool call before pasting the real script).`;
+  }
+  const stubs = ['YOUR_CODE_HERE', 'PASTE_CODE_HERE', 'TODO', 'TBD', 'FIXME'];
+  for (const s of stubs) {
+    if (new RegExp(`^${s}\\s*;?\\s*$`, 'i').test(t)) {
+      return `code is only stub token "${s}" — not assembled use_figma payload.`;
+    }
+  }
+  return null;
+}
 
 function printUsageAndExit(code) {
   const stream = code === 0 ? console.log : console.error;

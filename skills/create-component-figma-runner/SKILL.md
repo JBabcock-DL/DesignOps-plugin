@@ -94,6 +94,7 @@ Pass through any useful keys from the `use_figma` return in `raw` if needed for 
 
 ## §2 — Hard prohibitions
 
+- **Do not** call `use_figma` with **`code: PLACEHOLDER`** (or any other stub token). Some hosts **structure the tool call before the payload is pasted**, which produces `ReferenceError: PLACEHOLDER is not defined` inside Figma. **`check-payload` now rejects** those stubs — only call `use_figma` **after** the full string is concatenated and stdin-check passes.
 - **Do not** `Read` the entire [`create-component/SKILL.md`](../create-component/SKILL.md) just to get CONFIG — the parent must supply **`configBlock`** (finalized in the parent after Steps 1–5 / 4.7).
 - **Do not** invent token paths, `applyStateOverride`, or variant keys in the subagent — those are authored only in the parent (Mode A extractor + resolver or Mode B synthetic), then copied into **`configBlock`**.
 - **Do not** invent or re-type prose fields — parent must have copied from `shadcn-props` per [`EXECUTOR.md`](../create-component/EXECUTOR.md).

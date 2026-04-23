@@ -83,6 +83,21 @@ const codeField =
       ? parsed.arguments.code
       : null;
 
+if (typeof codeField === 'string') {
+  const t = codeField.trim();
+  if (/^PLACEHOLDER$/i.test(t)) {
+    console.error(`check-use-figma-mcp-args: code is stub PLACEHOLDER — assemble full script before use_figma (same gate as check-payload).`);
+    process.exit(1);
+  }
+  const stubs = ['YOUR_CODE_HERE', 'PASTE_CODE_HERE', 'TODO', 'TBD', 'FIXME'];
+  for (const s of stubs) {
+    if (new RegExp(`^${s}\\s*;?\\s*$`, 'i').test(t)) {
+      console.error(`check-use-figma-mcp-args: code is only stub "${s}".`);
+      process.exit(1);
+    }
+  }
+}
+
 const codeLength = typeof codeField === 'string' ? codeField.length : 0;
 const cap = 50_000; // Figma `use_figma.code` maxLength (see skills/EXECUTOR.md)
 
