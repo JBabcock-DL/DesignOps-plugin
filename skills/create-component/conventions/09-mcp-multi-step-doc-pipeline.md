@@ -1,10 +1,12 @@
 # MCP multi-step doc pipeline (target architecture)
 
-**Audience:** Maintainers and agents implementing [`create-component-figma-runner`](../../create-component-figma-runner/SKILL.md) + `build-min-templates.mjs`. **Canonical canvas geometry** for what each step draws stays in [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md).
+**Audience:** Maintainers and agents implementing the min-slice ladder ([`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md) + parent orchestrator [§13](./13-component-draw-orchestrator.md)) or legacy [`create-component-figma-runner`](../../create-component-figma-runner/SKILL.md) + `build-min-templates.mjs`. **Canonical canvas geometry** for what each step draws stays in [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md).
 
 **Purpose:** Keep each Figma MCP `use_figma` **`code`** payload **small and fast** by splitting work into **separate Plugin API runs**, each carrying only the helpers needed for that slice. This is **not** the same as “two phases that both upload the full engine” — each step should ship a **dedicated min bundle** (or a gated slice) so **no** call pays for unrelated sections.
 
-**Authority:** [`SKILL.md`](../SKILL.md) wins on CONFIG and §9. This file wins on **how many MCP calls** the runner makes and **what handoff** passes between them once the build emits step bundles. Until those bundles exist, [`EXECUTOR.md`](../EXECUTOR.md) documents the **interim** consolidated calls.
+**Authority:** [`SKILL.md`](../SKILL.md) wins on CONFIG and §9. This file wins on **dependency order** and **handoff** between min-slice calls. **Default transport** is the parent-orchestrated **six-`Task`** slice chain ([§13](./13-component-draw-orchestrator.md)); **legacy** two-phase / single-`Task` `sixStepDraw` is in [`../../create-component-figma-runner/SKILL.md`](../../create-component-figma-runner/SKILL.md). [`EXECUTOR.md`](../EXECUTOR.md) is the quickstart for assembly + cap.
+
+**See also** — line-level `CONFIG` / phase map, preamble deps, and shared-prefix constraints for **phase-scoped config objects:** [`10-phased-payload-research.md`](./10-phased-payload-research.md).
 
 ---
 
@@ -80,9 +82,9 @@ The **runner** (or parent, if inline) is responsible for **JSON-serializing** ha
 
 ## 4 — Runner contract (behavior)
 
-1. **Default:** When step bundles exist, [`create-component-figma-runner`](../../create-component-figma-runner/SKILL.md) runs **`use_figma` once per step** (0 → 5), **`check-payload`** (and full MCP args check if used) **per step**, merges handoff into the next assembly.
-2. **Parent thread:** Still passes only **`configBlock`** + **`layout`** + registry paths — **never** the concatenation of all step bundles.
-3. **§9:** Final assertions run on the **return payload of the last doc step** (today: phase 2; target: step 5), with the same fields as [`SKILL.md`](../SKILL.md) §9.
+1. **Default:** When step bundles exist, the **parent** runs **six** `Task`s → [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md): each subagent does **`use_figma` once** with steps **0 → 5**, **`check-payload`** (and full MCP args check if used) **per call**, and returns compact JSON; the parent **merges** the next `handoffJson`. **Legacy:** a **single** `Task` → [`create-component-figma-runner`](../../create-component-figma-runner/SKILL.md) with **`sixStepDraw: true`** performs the **same** sequence inside one subagent.
+2. **Parent thread:** Passes **`configBlock`** + **`layout`** + registry + **handoff state** — **never** `Read`s all step min bundles into the main thread.
+3. **§9:** Final assertions run on the **return payload of the last doc step** (`cc-doc-finalize` / step 5, or monolithic runner phase 2), with the same fields as [`SKILL.md`](../SKILL.md) §9.
 
 ---
 
@@ -102,6 +104,7 @@ The **runner** (or parent, if inline) is responsible for **JSON-serializing** ha
 |--------|--------|
 | Doc frame section order and naming | [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) |
 | EXECUTOR quickstart + 50k cap | [`../EXECUTOR.md`](../EXECUTOR.md) |
-| Runner orchestration | [`../../create-component-figma-runner/SKILL.md`](../../create-component-figma-runner/SKILL.md) |
+| Orchestrator (parent) + slice runner | [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md), [`../../create-component-figma-slice-runner/SKILL.md`](../../create-component-figma-slice-runner/SKILL.md) |
+| Legacy single-Task runner | [`../../create-component-figma-runner/SKILL.md`](../../create-component-figma-runner/SKILL.md) |
 | Cursor / Composer transport | [`08-cursor-composer-mcp.md`](./08-cursor-composer-mcp.md) |
 | Generic MCP workflow | [`../../create-design-system/conventions/16-mcp-use-figma-workflow.md`](../../create-design-system/conventions/16-mcp-use-figma-workflow.md) |

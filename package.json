@@ -14,12 +14,14 @@
     "validate-tokens": "node scripts/validate-tokens.mjs",
     "check-payload": "node scripts/check-payload.mjs",
     "check-use-figma-args": "node scripts/check-use-figma-mcp-args.mjs",
+    "measure-sigma": "node scripts/measure-sigma.mjs",
     "qa:step-bundles": "node scripts/qa-step-bundles.mjs",
     "qa:create-component-skill": "node scripts/qa-create-component-skill.mjs",
     "sync-cache": "bash scripts/sync-cache.sh",
     "verify-cache": "bash scripts/verify-cache.sh",
+    "verify:component-slice-map": "node scripts/verify-component-slice-map.mjs",
     "build": "npm run build:props && npm run build:docs && npm run build:min",
-    "verify": "npm run build:props:check && npm run build:docs:check && npm run build:min:check && npm run qa:step-bundles && npm run qa:create-component-skill && npm run verify-cache"
+    "verify": "npm run build:props:check && npm run build:docs:check && npm run build:min:check && npm run qa:step-bundles && npm run qa:create-component-skill && npm run verify:component-slice-map && npm run verify-cache"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

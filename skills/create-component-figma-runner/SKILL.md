@@ -1,15 +1,17 @@
 ---
 name: create-component-figma-runner
-description: Default /create-component Step 6 when Task exists — Prepend parent-authored configBlock (verbatim const CONFIG), read preamble + per-archetype engine from layout, patch registry, run check-payload, call use_figma (default two-phase §1b, optional six-step §1d via sixStepDraw, or single when twoPhaseDraw is false), return compact JSON. Parent must use Task (isolated context) so large engine strings stay out of the parent thread. Parent owns Steps 1–5, 4.7, §9 review, Step 5.2 registry; subagent owns assembly + preflight + use_figma.
+description: Legacy /create-component Step 6 single-Task runner — Prepend parent-authored configBlock (verbatim const CONFIG), read preamble + per-archetype engine from layout, patch registry, run check-payload, call use_figma (default two-phase §1b, optional six-step §1d via sixStepDraw, or single when twoPhaseDraw is false, or parent-preassembled file paths per §0.1), return compact JSON. For the default six-call ladder, prefer the parent-owned orchestrator + Task per slice in create-component-figma-slice-runner (see conventions/13). Parent must use Task (isolated context) so large engine strings stay out of the parent thread. Parent owns Steps 1–5, 4.7, §9 review, Step 5.2 registry; subagent owns assembly + preflight + use_figma (or thin Read→check→MCP when §0.1).
 argument-hint: "fileKey=…, layout=…, createComponentRoot=…, configBlock=… (verbatim const CONFIG = {…};), registry path or activeFileKey + registryJson — see SKILL §0."
 agent: general-purpose
 ---
 
 # Skill — `create-component-figma-runner`
 
-You are a **single-purpose subagent** and the **default** executor for [`/create-component`](../create-component/SKILL.md) **Step 6** whenever the parent host exposes **`Task`**. Your job is to assemble the `use_figma` **code** string (**`configBlock`** — parent-authored `const CONFIG = { … };` — then [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/) **or** the **`*.stepN.min.figma.js` ladder** per **§1d**), run **`check-payload`** (and optional full wrapper check), and call **`use_figma`**. **Default:** **twice** (§1b: phase 1 → ComponentSet; phase 2 → full doc). **`sixStepDraw: true`:** **six** calls — per-layout **`*.step0`** then shared **`create-component-engine-doc.step1`…`step5`** (see **§1d**). **`twoPhaseDraw: false`:** **one** call (legacy). Return a **compact** JSON result to the parent. You run in an **isolated** context so large `code` strings do not land in the parent thread.
+You are a **single-purpose subagent** for **legacy** [`/create-component`](../create-component/SKILL.md) **Step 6** in **one** `Task` when the parent wants **all** `use_figma` round trips inside a **single** delegation (or **two-phase** / **one-shot**). **Default six-call MCP transport** for new work: the **parent** orchestrates **six** sequential `Task`s — each loading [`create-component-figma-slice-runner`](../create-component-figma-slice-runner/SKILL.md) with one `step` slug — per [`conventions/13-component-draw-orchestrator.md`](../create-component/conventions/13-component-draw-orchestrator.md). This skill remains for **`twoPhaseDraw`** (phased full engine), **`sixStepDraw: true`** (six internal min-slice calls in one subagent), **`twoPhaseDraw: false`**, and **`preassembledCodePaths`**.
 
-**Parent threads** must **not** paste the minified engine into their own `use_figma` for that component when **`Task` is available** — they hand off structured inputs per **§0** instead. Full orchestration, **`SKILL.md` §9** assertions, and registry write-back stay in the parent; assembly + Figma call happen here. Same delegation pattern as [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md); see [`AGENTS.md`](../../AGENTS.md) § *Session runbook*.
+Your job is to assemble the `use_figma` **code** string (**`configBlock`** — parent-authored `const CONFIG = { … };` — then [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/) **or** the **`*.stepN.min.figma.js` ladder** per **§1d**), run **`check-payload`** (and optional full wrapper check), and call **`use_figma`**. **Default inside this skill:** **twice** (§1b: phase 1 → ComponentSet; phase 2 → full doc). **`sixStepDraw: true`:** **six** calls — per-layout **`*.step0`** then shared **`create-component-engine-doc.step1`…`step5`** (see **§1d** — **must** match per-step file paths and globals in [`create-component-figma-slice-runner` §2–§3](../create-component-figma-slice-runner/SKILL.md) so the two modes do not drift). **`twoPhaseDraw: false`:** **one** call (legacy). Return a **compact** JSON result to the parent. You run in an **isolated** context so large `code` strings do not land in the parent thread.
+
+**Parent threads** must **not** paste the minified engine into their own `use_figma` for that component when **`Task` is available** — they hand off structured inputs per **§0** (this runner) or per the slice runner / orchestrator instead. Full orchestration, **`SKILL.md` §9** assertions, and registry write-back stay in the parent; assembly + Figma call happen in the subagent. Same *isolated-subagent* idea as [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md); see [`AGENTS.md`](../../AGENTS.md) § *Session runbook*.
 
 ---
 
@@ -26,14 +28,34 @@ The parent must supply **all** of the following in its `Task` prompt in a **pars
 | `registry` | one of (a) or (b) | **(a)** Path to a `.designops-registry.json` at the **design project** repo root — `Read` it to fill `ACTIVE_FILE_KEY` and `REGISTRY_COMPONENTS` for the preamble, **or (b)** `activeFileKey` (string or null) + `registryComponentsJson` (stringified JSON object) inlined in the prompt if the file is not available |
 | `twoPhaseDraw` | no | **`true`** or **omitted** — run **two** `use_figma` calls (default): phase 1 builds the ComponentSet and returns early; phase 2 draws `_PageContent`, the doc frame, matrix, and usage (same min bundle both times; inject globals per **§1b**). **`false`** — legacy **one** `use_figma` with the full script in a single run. Ignored when **`sixStepDraw: true`**. |
 | `sixStepDraw` | no | **`true`** — use **§1d**: `create-component-engine-{layout}.step0.min.figma.js` then **`create-component-engine-doc.step1`…`step5.min.figma.js`** (shared) with handoff globals between calls. **`false`** or **omitted** — use **§1b** / **`twoPhaseDraw`** as above. |
+| `preassembledCodePaths` | no | If **non-empty** (array of strings), **escape hatch** when the subagent cannot fit assembly + a large `code` in one MCP arg — see **§0.1**. Ignores normal assembly from template `Read` for those steps (subagent only executes what is in each file). Still pass **`configBlock`** for layout / audit parity unless the parent and reviewer agree the first file is self-describing. |
 
 **Optional:** `description` (string) for `use_figma`; `projectRootForShell` if `npm run check-payload` must be run with `cwd` (defaults to the workspace folder that contains `package.json` with `check-payload` — usually the DesignOps plugin root).
+
+### §0.1 — `preassembledCodePaths` (parent builds, subagent only ships)
+
+**When to use:** The host rejects or truncates **`use_figma`** tool JSON around **~25–30K** (see [`conventions/08-cursor-composer-mcp.md`](../create-component/conventions/08-cursor-composer-mcp.md) — *Task subagent failures*). The **Figma 50K** `code` cap is a separate limit.
+
+**What the parent does (same bytes as inline Step 6, different owner):**
+
+1. Run the **same** concat rules as **§1** (or a checked script in the design repo) so each output file is a **valid** full `code` string: `configBlock` + optional phase / handoff globals + patched preamble + the correct `*.min.figma.js` slice for that call.
+2. Write each string to a path the subagent can **`Read`** — **OS temp** (e.g. `/tmp/…`) or a file under an **open workspace** folder. **Do not** hand-edit minified engine bodies; **do** run `check-payload` (and `check-use-figma-mcp-args` if available) on each file in the **parent** shell *before* `Task` if you want a hard gate.
+3. Start **`Task`** with a **short** prompt: `fileKey`, `layout`, `preassembledCodePaths: ["/tmp/cc-phase1.js", "/tmp/cc-phase2.js"]` (or **six** paths for **§1d**), plus **`configBlock`** and registry fields as usual. The Task prompt should **not** paste multi‑dozen‑KB `code` in Markdown.
+
+**What the subagent does:** For each path **in order**: **`Read` entire file** → `check-payload` → optional full wrapper check → `use_figma`. **Parse** each return for ids needed to build the **next** file *only if* the parent did not pre-build all files (**two common patterns**):
+
+- **A — Parent pre-writes all phases with no mid-run injection:** e.g. parent runs a script twice: (1) phase‑1 `code` only, run in Figma, capture JSON to disk; (2) script re-reads that JSON, emits phase‑2 file. Subagent may then only **`Read` + MCP** each **already-final** file.  
+- **B — Subagent assembles only the small deltas:** not preferred when assembly was the failure mode; prefer **A** or **sixStepDraw** with smaller per-step templates.
+
+**Default remains:** no `preassembledCodePaths` — the subagent assembles from `createComponentRoot` per **§1** (simpler for small bundles). Optional `description` / `projectRootForShell` in the Task prompt apply the same as **§0** (table above **§0.1**).
 
 **Legacy / avoid:** Older docs said `configJson` + `JSON.parse` in the subagent. That only works if `CONFIG` has **no** function-valued properties — not true for most real draws (`applyStateOverride`). Parents must pass **`configBlock`**, not a JSON-only transport, unless they are prototyping a tiny archetype with `applyStateOverride: () => {}` and no other functions in `CONFIG`.
 
 ---
 
 ## §1 — Assembly (exact order, same as EXECUTOR)
+
+**Branch — `preassembledCodePaths` (§0.1):** If the Task prompt provides a **non-empty** `preassembledCodePaths` array, **skip** steps 1–5 below for assembly. For **each** path, in order, **`Read`** the file as the **entire** `code` string, then run **steps 6–7** of this section (preflight + `use_figma`). The **final** `use_figma` result in the chain (same as **§1b** phase 2 or **§1d** step 5) is what the parent uses for `§9`. If the array length is **1**, treat it as a single full draw (`twoPhaseDraw: false` semantics). The parent is responsible for **all** inter-call globals living inside the pre-written files (pattern **A** in **§0.1**) or for a **second** `Task` after phase 1 JSON exists on disk.
 
 1. **Normalize `configBlock`** for assembly only (do not rewrite the object body):
    - Trim outer whitespace.
@@ -163,6 +185,8 @@ Parse phase 1’s tool return to obtain `compSetId`, `propsAdded`, and `unresolv
 
 **Optional parent field:** `sixStepDraw: true` — subagent uses **§1d** instead of default **§1b** (two calls). Omit or `false` keeps **§1b** default.
 
+**Parity with the slice runner:** The **orchestrated** path ([`conventions/13`](../create-component/conventions/13-component-draw-orchestrator.md)) uses **one `Task` per** §1d row with [`create-component-figma-slice-runner`](../create-component-figma-slice-runner/SKILL.md). A **`sixStepDraw: true`** subagent here must **`Read` the same committed paths** and inject the **same** `var` lines between `configBlock` and preamble for each call index — no alternate filenames or ad-hoc globals.
+
 ---
 
 ## §2 — Hard prohibitions
@@ -174,6 +198,7 @@ Parse phase 1’s tool return to obtain `compSetId`, `propsAdded`, and `unresolv
 - **Do not** minify, trim, or “fix” the engine or preamble — `Read` **verbatim** only.
 - **Do not** create scratch payload files **under the repo** for MCP staging; temp outside repo or stdin only.
 - **Do not** use this skill for **canvas** style-guide bundles — those use [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md) only.
+- **Do not** use this skill when the parent is already running the **orchestrated six-`Task`** path — that uses [`create-component-figma-slice-runner`](../create-component-figma-slice-runner/SKILL.md) one slice at a time; this runner is for **one** `Task` that performs **all** Figma calls internally.
 
 ---
 

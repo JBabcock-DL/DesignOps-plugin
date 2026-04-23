@@ -105,7 +105,7 @@ Scope:
 - Step 6 draw runs only for the named subset (redraws the targeted ComponentSets in place on their `↳ {Page}` pages).
 - Other Figma pages are untouched.
 
-**Transport:** Step 6 follows [`create-component/EXECUTOR.md`](../../create-component/EXECUTOR.md) — **`Task` → `create-component-figma-runner`** is the **default** when subagents exist (parent passes **`configBlock`** + **`layout`**, not JSON-only CONFIG); inline `use_figma` in the parent is the **fallback** (including failed or interrupted runner `Task`s — reuse the same `configBlock`).
+**Transport:** Step 6 follows [`create-component/EXECUTOR.md`](../../create-component/EXECUTOR.md) — **default:** **six** `Task`s → **`create-component-figma-slice-runner`** (parent `handoffJson` per [§13](../../create-component/conventions/13-component-draw-orchestrator.md)); **legacy:** one `Task` → **`create-component-figma-runner`**. Parent passes **`configBlock`** + **`layout`** (not JSON-only CONFIG); inline `use_figma` is the **fallback** (including failed or interrupted `Task`s — reuse the same `configBlock`).
 
 Log redrawn components + variant counts.
 
