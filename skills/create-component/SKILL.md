@@ -13,7 +13,7 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **Mandatory:** Before any install, assembly, or `use_figma` call, `Read` [`EXECUTOR.md`](./EXECUTOR.md) in full. It holds the canonical **§0** quickstart (script assembly order, `check-payload` gates, short-context / MCP transport table, session runbook, twelve-step table, §0.1–§0.3). This **`SKILL.md`** file is the long-form spec (§1 onward: interactive contract, CONFIG schema, §6 template, §9 assertions, supported components). If `EXECUTOR.md` and a numbered section here conflict on **assembly or transport**, **EXECUTOR.md** wins; for **CONFIG shape and draw-engine behavior**, this file wins when explicitly cited.
 
-**Step 6 default — delegated draw:** When the host exposes **`Task`** (subagent), **always** delegate Step 6 to [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) — the parent completes Steps **1–5** and **4.7**, serializes **`CONFIG`** to **`configJson`**, and passes `fileKey`, `createComponentRoot`, and registry per that skill’s **§0**. The parent does **not** inline the ~40K-char engine. **`EXECUTOR.md`** §0 *Step 6 — transport* is authoritative.
+**Step 6 default — delegated draw:** When the host exposes **`Task`** (subagent), **always** delegate Step 6 to [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) — the parent completes Steps **1–5** and **4.7**, then passes the finalized **`configBlock`** (verbatim `const CONFIG = { … };` from the §6 template, including **`applyStateOverride`** and any other function-valued keys), **`layout`** (= `CONFIG.layout`), `fileKey`, `createComponentRoot`, and registry per that skill’s **§0**. The parent does **not** inline the ~40K-char engine. **`EXECUTOR.md`** §0 *Step 6 — transport* is authoritative.
 
 **Fallback:** Inline **`use_figma`** in the parent (full §6 template below) **only** when **`Task` is unavailable** or the designer explicitly requests a single-thread draw; then the parent also runs **Step 5.5** locally.
 
@@ -684,9 +684,10 @@ For each successfully installed component, execute **Step 6** using **6.A** (def
 
 #### Step 6.A — Delegated draw (**default** when `Task` exists)
 
-1. Serialize the finalized **`CONFIG`** object (after Mode A / B selection) to a **`configJson`** string (`JSON.stringify`, ensure valid for `JSON.parse` in the subagent).
-2. Emit **`Task(subagent_type: "generalPurpose", …)`** loading [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) with **`fileKey`**, **`configJson`**, **`createComponentRoot`** (path to `skills/create-component/`), and **registry** per runner **§0**.
+1. Finalize the **`const CONFIG = { … };`** block in the §6 template (after Mode A / B selection) exactly as for the inline path — this string is **`configBlock`**. It **must** include function-valued fields such as **`applyStateOverride`** when the contract requires them; **`JSON.stringify(CONFIG)` is invalid** for handoff because it **omits** functions and silently breaks the matrix.
+2. Emit **`Task(subagent_type: "generalPurpose", …)`** loading [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) with **`fileKey`**, **`layout`** (same string as `CONFIG.layout`), **`configBlock`**, **`createComponentRoot`** (path to `skills/create-component/`), and **registry** per runner **§0**.
 3. On success, run **`§9`** self-checks against the subagent’s compact return value (and `raw` if needed). Proceed to **Step 5.2** registry write-back.
+4. If the `Task` **errors, times out, or is interrupted**, complete **Step 6.B** in the parent with the **same** `configBlock` (and the same preamble + engine assembly order as **`EXECUTOR.md`** inline) — **do not** re-invent CONFIG or re-run extraction just because delegation failed.
 
 **Do not** paste the minified `create-component-engine-*.min.figma.js` into the parent message for **6.A**.
 

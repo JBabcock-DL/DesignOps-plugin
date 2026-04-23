@@ -35,7 +35,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 - **Same session asks for style-guide tables *and* `/create-component`:** Finish **Phase A** (all Step 15a–15c + 17 via **`Task` → [`skills/canvas-bundle-runner/SKILL.md`](skills/canvas-bundle-runner/SKILL.md)** — one Task per slug; 15c = **three** sequential Tasks) **before** Phase B (one component draw at a time). **`AGENTS.md`** *Session runbook*.
 - **Parent thread must not** `Read` canvas **`.min.mcp.js`** or paste bundle text for Step 15/17 — **canvas-bundle-runner** only.
-- **`/create-component` Step 6:** **`Task` → [`skills/create-component-figma-runner/SKILL.md`](skills/create-component-figma-runner/SKILL.md)** is the **default** whenever subagents exist; parent never inlines the engine. **Fallback:** parent inline `use_figma` only if `Task` unavailable (**`EXECUTOR.md`**, **`AGENTS.md`**).
+- **`/create-component` Step 6:** **`Task` → [`skills/create-component-figma-runner/SKILL.md`](skills/create-component-figma-runner/SKILL.md)** is the **default** whenever subagents exist; parent passes **`configBlock`** (verbatim `const CONFIG = { … };`, not `JSON.stringify`) + **`layout`**; parent never inlines the engine. **Fallback:** parent inline `use_figma` only if `Task` unavailable (**`EXECUTOR.md`**, **`AGENTS.md`**).
 - **`/sync-design-system` canvas refresh (6.Canvas.9b/9d):** same **canvas-bundle-runner** rule; after each runner Task, parent runs **§14 audit** slice for that page — [`skills/create-design-system/conventions/14-audit.md`](skills/create-design-system/conventions/14-audit.md).
 
 ---
@@ -57,7 +57,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 | [`create-design-system`](skills/create-design-system/SKILL.md) | `/create-design-system` | Push tokens/variables; style-guide tables; Step 15a–c + 17 canvas bundles. |
 | [`sync-design-system`](skills/sync-design-system/SKILL.md) | `/sync-design-system` | One reconcile **A→B→C**; bundled **AskUserQuestion** decisions; figma-only / full / code-to-figma scopes. |
 | [`create-component`](skills/create-component/SKILL.md) | `/create-component` | shadcn-aligned component + **5-section doc frame**; **`EXECUTOR.md`** = assembly + 50k cap. |
-| [`create-component-figma-runner`](skills/create-component-figma-runner/SKILL.md) | **`Task` (default for Step 6)** | Subagent: preamble + engine + `check-payload` + one `use_figma`; parent runs §9 + registry. |
+| [`create-component-figma-runner`](skills/create-component-figma-runner/SKILL.md) | **`Task` (default for Step 6)** | Subagent: **`configBlock`** + preamble + engine + `check-payload` + one `use_figma`; parent runs §9 + registry. |
 | [`canvas-bundle-runner`](skills/canvas-bundle-runner/SKILL.md) | **`Task` subagent only** | Run **one** committed Step 15a / 15b / 15c-* / 17 bundle verbatim. |
 | [`code-connect`](skills/code-connect/SKILL.md) | `/code-connect` | Find/publish Code Connect mappings; often **Axis C** of sync. |
 | [`accessibility-check`](skills/accessibility-check/SKILL.md) | `/accessibility-check` | WCAG-oriented Figma frame audit. |
