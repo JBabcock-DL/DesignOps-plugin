@@ -43,7 +43,7 @@
 //   skills/create-component/templates/create-component-engine-container.min.figma.js
 //   skills/create-component/templates/create-component-engine-composed.min.figma.js  (for CONFIG.layout === '__composes__')
 //   skills/create-component/templates/create-component-engine-{layout}.step0.min.figma.js   (variant plane only — MCP ladder)
-//   skills/create-component/templates/create-component-engine-doc.step1..step5.min.figma.js (layout-agnostic phase-2 doc slices — slim + esbuild minify + terser unused strip; per-step sizes vary)
+//   skills/create-component/templates/create-component-engine-doc.step1..step6.min.figma.js (layout-agnostic phase-2 doc slices — slim + esbuild minify + terser unused strip; per-step sizes vary)
 //   skills/create-component/templates/create-component-engine.min.figma.js           (debug-only; full 7-archetype bundle, too tight for runtime)
 //   skills/create-component/templates/draw-engine.min.figma.js                       (debug-only; standalone draw-engine with no archetype builders)
 //   skills/create-component/templates/archetype-builders.min.figma.js                (debug-only; standalone archetype-builders with no draw-engine)
@@ -132,7 +132,7 @@ function stripDocSlimVariantElse(bottom) {
   return `${bottom.slice(0, a).trimEnd()}\n}\n\n${bottom.slice(afterB).trimStart()}`;
 }
 
-// Replaced for step1..step5 min bundles so __ccDocStep is a constant → esbuild DCE drops other branches.
+// Replaced for step1..step6 min bundles so __ccDocStep is a constant → esbuild DCE drops other branches.
 const DOC_STEP_RUNTIME_BLOCK = `const __ccDocStepDefault = null;
 const __ccDocStep =
   typeof __CREATE_COMPONENT_DOC_STEP__ === 'number'
@@ -162,7 +162,7 @@ function buildCheckRows() {
     rows.push({ src: DRAW_ENGINE_REL, dest: dest0 });
     rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: dest0 });
   }
-  for (let s = 1; s <= 5; s++) {
+  for (let s = 1; s <= 6; s++) {
     const dest = `${TEMPLATES_DIR}/create-component-engine-doc.step${s}.min.figma.js`;
     rows.push({ src: DRAW_ENGINE_REL, dest });
   }
@@ -207,7 +207,7 @@ function docSlimStepBanner(stepNum) {
     `// bundle: create-component-engine-doc step${stepNum} (layout-agnostic phase-2 doc slice)`,
     `// sources: ${DRAW_ENGINE_REL} only — slim top (no chip buildVariant) + slim bottom (no variant-build else) + baked __CREATE_COMPONENT_PHASE__=2; esbuild then terser (dead/unused strip)`,
     `// regenerate: npm run build:min`,
-    `// Runner: same for every CONFIG.layout — inject §1b phase-2 globals + handoff ids for steps 2–5.`,
+    `// Runner: same for every CONFIG.layout — inject §1b phase-2 globals + handoff ids for doc steps 2–6.`,
   ];
   return lines.join('\n') + '\n';
 }
@@ -259,7 +259,7 @@ function removeObsoletePerLayoutDocSteps() {
   const layouts = ['chip', ...Object.keys(ARCHETYPE_BUILDERS)];
   const dir = resolve(REPO_ROOT, TEMPLATES_DIR);
   for (const layout of layouts) {
-    for (let s = 1; s <= 5; s++) {
+    for (let s = 1; s <= 6; s++) {
       const p = resolve(dir, `create-component-engine-${layout}.step${s}.min.figma.js`);
       if (existsSync(p)) unlinkSync(p);
     }
@@ -277,7 +277,7 @@ async function buildDocSlimSteps(esbuild, drawTop, drawBottom) {
     throw new Error('buildDocSlimSteps: slim assembly lost __ccDocStep block.');
   }
   const results = [];
-  for (let stepNum = 1; stepNum <= 5; stepNum++) {
+  for (let stepNum = 1; stepNum <= 6; stepNum++) {
     let assembled = base.replace(DOC_STEP_RUNTIME_BLOCK, `const __ccDocStep = ${stepNum};`);
     assembled = `var __CREATE_COMPONENT_PHASE__=2;\n${assembled}`;
     let peeled = await minifyScriptBody(esbuild, assembled, `doc-slim-step${stepNum}`, {
@@ -644,7 +644,7 @@ async function main() {
     );
   }
 
-  // (2b) MCP ladder: step0 per layout + shared slim doc steps 1..5 (one file each).
+  // (2b) MCP ladder: step0 per layout + shared slim doc steps 1..6 (one file each).
   for (const layout of layouts) {
     const s0 = await buildStepZero(esbuild, layout, { drawTop, drawBottom, sharedHelpers, builders });
     console.log(

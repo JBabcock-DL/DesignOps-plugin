@@ -89,7 +89,7 @@ BUNDLES_REL=(
 for _LAYOUT in chip surface-stack field row-item tiny control container composed; do
   BUNDLES_REL+=( "$BUNDLE_PREFIX-${_LAYOUT}.step0.min.figma.js" )
 done
-for _S in 1 2 3 4 5; do
+for _S in 1 2 3 4 5 6; do
   BUNDLES_REL+=( "$BUNDLE_PREFIX-doc.step${_S}.min.figma.js" )
 done
 BUNDLE_SOURCES=(

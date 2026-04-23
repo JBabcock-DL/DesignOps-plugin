@@ -24,7 +24,7 @@ const ARCHETYPES = [
   'composed',
 ];
 
-const DOC_STEPS = [1, 2, 3, 4, 5];
+const DOC_STEPS = [1, 2, 3, 4, 5, 6];
 
 function rel(p) {
   return p.slice(REPO_ROOT.length + 1);

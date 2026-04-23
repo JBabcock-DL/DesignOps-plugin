@@ -59,6 +59,7 @@
 - [ ] **V** Property row order: variant props → state props → content props → a11y props → escape hatches
 - [ ] **V** Every cell's text uses `Doc/Code` or `Doc/Caption`; `textAutoResize = 'HEIGHT'`
 - [ ] **V** Properties table subtree has **no** stacked doc elevation: **`effects` empty** and **no `effectStyleId`** on the table root, `body`, and row frames (unless the `SKILL.md` §6 template was intentionally updated — default is shadowless; [`04-doc-pipeline-contract.md` §2.1](./04-doc-pipeline-contract.md#21--same-failure-modes-as-the-style-guide-what-sonnet--cursor-must-not-fix))
+- [ ] **V** Multistep ladder: **scaffold** slice uses placeholder body rows; **props** slice only **fills** cells in place — **or** single-pass uses one `buildPropertiesTable(CONFIG.properties)` ([`04-doc-pipeline-contract.md` §2.2.1](./04-doc-pipeline-contract.md#221--strict-properties-table-build-no-structural-redraw))
 
 ### Doc frame — component set section ([`04-doc-pipeline-contract.md` §3.2](./04-doc-pipeline-contract.md#32--component-set-section-layout))
 

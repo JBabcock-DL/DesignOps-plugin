@@ -61,6 +61,23 @@ When the doc frame is built across **several** Figma Plugin API runs (see [`09-m
 3. **Replace in place** — Prefer updating placeholder row text / swapping placeholder nodes over **deleting the table shell** and redrawing. Ripping out the grid mid-pipeline is how column widths and section order drift.
 4. **Same failure modes as §2.1** — Empty VERTICAL children with no text and no `minHeight` still produce **~10px rails** and **1px-tall** table bodies. Placeholders exist specifically to hold space until `CONFIG.properties` (or matrix/usage builders) run.
 
+#### 2.2.1 — Strict properties table build (no structural redraw)
+
+These are the **valid** ways to get a correct table **without** deleting and re-building the 1640px shell mid-ladder. Stray patterns tend to reflow columns or collapse the body.
+
+| Path | When | What happens |
+|------|------|----------------|
+| **A — In-place two-step (shipped multistep default)** | `CONFIG.properties` is known before any doc `use_figma` (always true in `/create-component`). | **Slice 1** (`cc-doc-scaffold` / `create-component-engine-doc.step1`): `buildPropertiesTable(placeholder rows)` — header + **`properties.length` placeholder** body rows. **Slice 2** (`cc-doc-props` / `step2`): `__ccDocFillPropertiesFromConfig()` — **only** overwrites text in existing cells. Row count and table shell are fixed for the life of the draw. See [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) §1. |
+| **B — Single `use_figma` (inline / single-pass)** | Parent runs full `draw-engine` with `__ccDocStep === null`. | **One** `buildPropertiesTable(CONFIG.properties)` with final copy in the same run as the rest of the doc frame — no separate scaffold slice. |
+| **C — Placeholder then text-only (custom)** | Any other split of “shell” and “content” across two calls. | Same as former Path B: reserved placeholder rows, then in-place text only — **no** delete/rebuild of the table root mid-ladder. |
+
+**Forbidden**
+
+- A **header-only** table in one step and **grow the body later** by appending an unpredictable number of rows if that step did not reserve row geometry (leads to collapse or a second “draw” in practice).
+- **Deleting** `doc/table/.../properties` (or the table group) and recreating it in a later slice **unless** you are intentionally resetting the whole page (same rule as “delete before drawing” in §2 — not mid-pipeline).
+
+**Authoring rule:** `N = CONFIG.properties.length` is knowable **before** any Figma call in `/create-component` — there is no reason the structural row count should change between slices.
+
 ---
 
 ## 3. The `ComponentSet` lives **inside** the doc frame as its own section

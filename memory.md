@@ -20,7 +20,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 |------|---------------------|--------|
 | 1. Scaffold Figma file | **`/new-project`** | Foundations template, Drafts; then designer moves file per skill output. |
 | 2. Variables + collections + style-guide canvas | **`/create-design-system`** | Steps 1–17; **Steps 15a–15c + 17** = committed `.min.mcp.js` bundles. |
-| 3. Draw UI components | **`/create-component`** | One component per run to completion when possible; **time order** = [`skills/create-component/phases/`](skills/create-component/phases/) (six draw phases for Step 6); **`EXECUTOR.md`** = assembly + step IDs. |
+| 3. Draw UI components | **`/create-component`** | One component per run to completion when possible; **time order** = [`skills/create-component/phases/`](skills/create-component/phases/) (seven draw slices for Step 6: variants → doc scaffold → doc fill → …); **`EXECUTOR.md`** = assembly + step IDs. |
 | 4. Reconcile drift | **`/sync-design-system`** | **Axis A → B → C** (variables → components → Code Connect); one bundled decision pass; **pre-execution validation** between axes. |
 | 5. Code Connect only (optional) | **`/code-connect`** | Often invoked from sync **Axis C**; standalone for mapping sweeps. |
 | 6. Ops / QA | **`/accessibility-check`**, **`/new-language`**, **`/dev-handoff`** | As needed. |
@@ -35,7 +35,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 - **Same session asks for style-guide tables *and* `/create-component`:** Finish **Phase A** (all Step 15a–15c + 17 via **`Task` → [`skills/canvas-bundle-runner/SKILL.md`](skills/canvas-bundle-runner/SKILL.md)** — one Task per slug; 15c = **three** sequential Tasks) **before** Phase B (one component draw at a time). **`AGENTS.md`** *Session runbook*.
 - **Parent thread must not** `Read` canvas **`.min.mcp.js`** or paste bundle text for Step 15/17 — **canvas-bundle-runner** only.
-- **`/create-component` Step 6:** **six** sequential **`Task` → [`skills/create-component-figma-slice-runner/SKILL.md`](skills/create-component-figma-slice-runner/SKILL.md)** (orchestrator + `handoffJson` per [`13`](skills/create-component/conventions/13-component-draw-orchestrator.md)) — the **only** delegated Figma subagent. **Fallback:** parent inline or preassembled `use_figma` per **`EXECUTOR.md` §0** if `Task` fails / unavailable (**`AGENTS.md`**).
+- **`/create-component` Step 6:** **seven** sequential `use_figma` slices in **parent** (assembly + `handoffJson` per [`13`](skills/create-component/conventions/13-component-draw-orchestrator.md) and [`create-component-figma-slice-runner`](skills/create-component-figma-slice-runner/SKILL.md)) — **default**; **only the parent** calls `use_figma` (MCP) unless a rare host-specific `Task` path is used on purpose. **Thin thread:** writer subagent/Shell **writes** assembled bytes to disk; parent **Read** + `use_figma`; merge returns with **`npm run merge-handoff -- <step> handoff.json return.json`** ([`merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs)) — [`EXECUTOR` §0.0](skills/create-component/EXECUTOR.md), [`08`](skills/create-component/conventions/08-cursor-composer-mcp.md).
 - **`/sync-design-system` canvas refresh (6.Canvas.9b/9d):** same **canvas-bundle-runner** rule; after each runner Task, parent runs **§14 audit** slice for that page — [`skills/create-design-system/conventions/14-audit.md`](skills/create-design-system/conventions/14-audit.md).
 
 ---
@@ -57,8 +57,8 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 | [`create-design-system`](skills/create-design-system/SKILL.md) | `/create-design-system` | Push tokens/variables; style-guide tables; Step 15a–c + 17 canvas bundles. |
 | [`sync-design-system`](skills/sync-design-system/SKILL.md) | `/sync-design-system` | One reconcile **A→B→C**; bundled **AskUserQuestion** decisions; figma-only / full / code-to-figma scopes. |
 | [`create-component`](skills/create-component/SKILL.md) | `/create-component` | shadcn-aligned component + **5-section doc frame**; **`EXECUTOR.md`** = assembly + 50k cap. |
-| [`create-component-figma-slice-runner`](skills/create-component-figma-slice-runner/SKILL.md) | **`Task` ×6 (Step 6)** | One min slice + preamble + `check-payload` + one `use_figma` per `Task`; parent merges `handoffJson`; §9 on **last** return. |
-| [`canvas-bundle-runner`](skills/canvas-bundle-runner/SKILL.md) | **`Task` subagent only** | Run **one** committed Step 15a / 15b / 15c-* / 17 bundle verbatim. |
+| [`create-component-figma-slice-runner`](skills/create-component-figma-slice-runner/SKILL.md) | **Spec (Step 6)** | Assembly order + `handoffJson`; **default:** parent `use_figma` ×7, **not** `Task` for oversized `call_mcp`. |
+| [`canvas-bundle-runner`](skills/canvas-bundle-runner/SKILL.md) | **`Task` (preferred) or [16] parent** | One committed Step 15a / 15b / 15c-* / 17 bundle verbatim; fallback if subagent cannot emit. |
 | [`code-connect`](skills/code-connect/SKILL.md) | `/code-connect` | Find/publish Code Connect mappings; often **Axis C** of sync. |
 | [`accessibility-check`](skills/accessibility-check/SKILL.md) | `/accessibility-check` | WCAG-oriented Figma frame audit. |
 | [`new-language`](skills/new-language/SKILL.md) | `/new-language` | Duplicate frame → locale page; translate text; RTL warning. |
@@ -70,10 +70,10 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 ## `/create-component` transport (50k ceiling)
 
-- **Default — six min slices (parent-orchestrated):** **six** `Task`s → slice runner — `create-component-engine-{layout}.step0.min.figma.js` then `create-component-engine-doc.step1`…`step5.min.figma.js` (one file per `use_figma`; **~14–23 KB** per min slice + CONFIG + preamble). See [13](skills/create-component/conventions/13-component-draw-orchestrator.md), [09](skills/create-component/conventions/09-mcp-multi-step-doc-pipeline.md).
-- **Inline / debug — two full-engine phased calls:** **`CONFIG`** + **`preamble.figma.js`** + **`create-component-engine-{layout}.min.figma.js`** (~32–35K per call ×2) in the **parent** per **`EXECUTOR.md`** when not using six slice `Task`s (or **one** full single-call `use_figma` with the same assembly order when a single phase is enough — still **`EXECUTOR.md` §0**).
+- **Default — seven min slices in parent:** **seven** `use_figma` invocations, assembly per slice runner — `create-component-engine-{layout}.step0.min.figma.js` then `create-component-engine-doc.step1`…`step6.min.figma.js` (step1 = Properties **scaffold**; step2 = **fill**; one file per `use_figma`). See [13](skills/create-component/conventions/13-component-draw-orchestrator.md), [09](skills/create-component/conventions/09-mcp-multi-step-doc-pipeline.md), [`EXECUTOR` §0](skills/create-component/EXECUTOR.md).
+- **Phased / one-shot in parent — two full-engine or one:** **`CONFIG`** + **`preamble.figma.js`** + **`create-component-engine-{layout}.min.figma.js`** in the **parent** per **`EXECUTOR.md`** (fewer Figma round trips than seven slices).
 - **Do not** inline **`create-component-engine.min.figma.js`** (full 7 archetypes) for a real draw — no headroom for CONFIG. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md).
-- **Sequence at orchestration:** separate **Tasks** for style-guide bundles vs **component draw**; don’t interleave in one parent turn. **Inside** Step 6, the only delegated path is **six slice `Task`s** → slice runner. See [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) *Sequential work vs one payload*.
+- **Sequence at orchestration:** separate **turns** for style-guide bundles vs **component draw**; don’t interleave in one parent turn. **Inside** Step 6, **default** = **parent** `use_figma` ×7 (or `EXECUTOR` phasing) — not `Task` for payloads subagents can’t `call_mcp`. See [08](skills/create-component/conventions/08-cursor-composer-mcp.md).
 - Validate payloads: **`npm run check-payload`**, **`npm run check-use-figma-args`** (from this repo’s `package.json`).
 
 ---

@@ -1,0 +1,11 @@
+# Phase 09 — Draw slice `cc-doc-usage` (Do / Don’t)
+
+**Maps to:** Orchestrator DAG **#6** [`13` §1](../conventions/13-component-draw-orchestrator.md); slice runner [**§2**](../../create-component-figma-slice-runner/SKILL.md) → `create-component-engine-doc.step5.min.figma.js`.
+
+**EXECUTOR:** Step **6**, **slice 6 of 7**.
+
+**Parent must:** Same handoff rules as prior doc slices; no unrelated `use_figma` in the same parent turn ([`AGENTS.md`](../../../AGENTS.md) session runbook).
+
+**If `ok: false`:** Stop.
+
+**Next:** [`10-slice-cc-doc-finalize.md`](./10-slice-cc-doc-finalize.md)

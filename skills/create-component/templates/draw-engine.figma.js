@@ -1080,11 +1080,13 @@ if (_ccPhase === 1) {
 // component page. Geometry matches /create-design-system CONVENTIONS §2:
 // 1800 wide, 80 padding on all sides, 1640 inner, y=320 below _Header.
 
-// Multistep doc pipeline (MCP): __CREATE_COMPONENT_DOC_STEP__ 1–5 runs one slice
+// Multistep doc pipeline (MCP): __CREATE_COMPONENT_DOC_STEP__ 1–6 runs one slice
 // per `use_figma` call; omit it for single-pass doc tail (inline two-phase
 // phase 2 or _ccPhase === 0). See conventions/09 + EXECUTOR.md.
+// Steps: 1 = page + header + properties table (placeholder body rows) ·
+// 2 = fill table cells from CONFIG.properties in place · 3–6 = component, matrix, usage, finalize.
 // `build-min-templates.mjs` replaces the following two declarations with
-// `const __ccDocStep = N` (N = 1..5) when emitting *.stepN.min.figma.js so esbuild
+// `const __ccDocStep = N` (N = 1..6) when emitting *.stepN.min.figma.js so esbuild
 // drops unused doc-step branches and each MCP payload stays small.
 const __ccDocStepDefault = null;
 const __ccDocStep =
@@ -1102,7 +1104,7 @@ async function __ccDocResumeFromHandoff() {
     typeof __CC_HANDOFF_DOC_ROOT_ID__ !== 'undefined' ? __CC_HANDOFF_DOC_ROOT_ID__ : null;
   if (!pcId || !drId) {
     throw new Error(
-      '[create-component] Multistep doc steps 2–5 require __CC_HANDOFF_PAGE_CONTENT_ID__ and ' +
+      '[create-component] Multistep doc steps 2–6 require __CC_HANDOFF_PAGE_CONTENT_ID__ and ' +
         '__CC_HANDOFF_DOC_ROOT_ID__ from the prior step return payload. ' +
         'See conventions/09-mcp-multi-step-doc-pipeline.md.',
     );
@@ -1371,6 +1373,44 @@ function buildPropertiesTable(rows) {
     }
   }
   return group;
+}
+
+// Placeholder body for multistep step 1 — same row count and geometry as production (§2.2.1 Path B in 04).
+function __ccPlaceholderPropertyRows() {
+  const n = (CONFIG.properties && CONFIG.properties.length) || 0;
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    rows.push([`placeholder-${i}`, '…', '…', '…', '…']);
+  }
+  return rows;
+}
+
+// Multistep step 2 only — in-place text updates, no table delete/rebuild.
+function __ccDocFillPropertiesFromConfig() {
+  const table = docRoot.findOne(
+    n => n.type === 'FRAME' && n.name === `doc/table/${CONFIG.component}/properties`,
+  );
+  if (!table) {
+    throw new Error(
+      '[create-component] doc table not found for __ccDocFillPropertiesFromConfig — expected doc/table/.../properties under docRoot',
+    );
+  }
+  const bodyRows = table.children.slice(1);
+  const want = (CONFIG.properties && CONFIG.properties.length) || 0;
+  if (bodyRows.length !== want) {
+    throw new Error(
+      `[create-component] properties table has ${bodyRows.length} body rows, CONFIG.properties has ${want} — scaffold/fill mismatch`,
+    );
+  }
+  for (let i = 0; i < want; i++) {
+    const r = CONFIG.properties[i];
+    const row = bodyRows[i];
+    for (let j = 0; j < 5; j++) {
+      const cell = row.children[j];
+      const t = cell && cell.findOne && cell.findOne(n => n.type === 'TEXT');
+      if (t) t.characters = String(r[j]);
+    }
+  }
 }
 
 function __ccDocAppendProperties() {
@@ -1894,30 +1934,35 @@ async function __ccDocDispatch() {
   }
   if (__ccDocStep === 1) {
     __ccDocPageHeader();
-    __ccDocAppendProperties();
+    docRoot.appendChild(buildPropertiesTable(__ccPlaceholderPropertyRows()));
     return __ccDocHandoffAfter(1);
   }
   if (__ccDocStep === 2) {
     await __ccDocResumeFromHandoff();
-    __ccDocAppendComponentSection();
+    __ccDocFillPropertiesFromConfig();
     return __ccDocHandoffAfter(2);
   }
   if (__ccDocStep === 3) {
     await __ccDocResumeFromHandoff();
-    __ccDocAppendMatrix();
+    __ccDocAppendComponentSection();
     return __ccDocHandoffAfter(3);
   }
   if (__ccDocStep === 4) {
     await __ccDocResumeFromHandoff();
-    __ccDocAppendUsage();
+    __ccDocAppendMatrix();
     return __ccDocHandoffAfter(4);
   }
   if (__ccDocStep === 5) {
     await __ccDocResumeFromHandoff();
+    __ccDocAppendUsage();
+    return __ccDocHandoffAfter(5);
+  }
+  if (__ccDocStep === 6) {
+    await __ccDocResumeFromHandoff();
     return __ccDocFinalizeAndReturn();
   }
   throw new Error(
-    `[create-component] __CREATE_COMPONENT_DOC_STEP__ must be 1–5 or omitted; got ${__ccDocStep}`,
+    `[create-component] __CREATE_COMPONENT_DOC_STEP__ must be 1–6 or omitted; got ${__ccDocStep}`,
   );
 }
 

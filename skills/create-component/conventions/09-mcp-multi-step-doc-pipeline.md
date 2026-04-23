@@ -4,7 +4,7 @@
 
 **Purpose:** Keep each Figma MCP `use_figma` **`code`** payload **small and fast** by splitting work into **separate Plugin API runs**, each carrying only the helpers needed for that slice. This is **not** the same as “two phases that both upload the full engine” — each step should ship a **dedicated min bundle** (or a gated slice) so **no** call pays for unrelated sections.
 
-**Authority:** [`SKILL.md`](../SKILL.md) wins on CONFIG and §9. This file wins on **dependency order** and **handoff** between min-slice calls. **Delegated transport** is **only** the parent-orchestrated **six-`Task`** slice chain ([§13](./13-component-draw-orchestrator.md)). **Parent inline** two-phase or single-call full engine — [`EXECUTOR.md`](../EXECUTOR.md) **§0** (same bytes, no second subagent skill).
+**Authority:** [`SKILL.md`](../SKILL.md) wins on CONFIG and §9. This file wins on **dependency order** and **handoff** between min-slice calls. **Default transport** is **seven** `use_figma` invocations in the **parent** ([§13](./13-component-draw-orchestrator.md) DAG, assembly per [slice runner §0.1](../create-component-figma-slice-runner/SKILL.md)) — one variant slice + **six** doc slices including **scaffold** then **table fill** before component/matrix/usage. **Do not** default to `Task` subagents for payloads they cannot `call_mcp`. **Parent** two-phase or single-call full engine — [`EXECUTOR.md`](../EXECUTOR.md) **§0** (same bytes).
 
 **See also** — line-level `CONFIG` / phase map, preamble deps, and shared-prefix constraints for **phase-scoped config objects:** [`10-phased-payload-research.md`](./10-phased-payload-research.md).
 
@@ -17,13 +17,14 @@ The **Variants × States matrix** needs live `InstanceNode`s of the ComponentSet
 | Order | Step (name) | What it does | Hard dependency |
 |------|----------------|--------------|-----------------|
 | **0** | **Variant plane** | Clear page (except `_Header`), build variant masters, `combineAsVariants`, expose `compSet`, `propsAdded`, `variantByKey` | CONFIG + preamble + archetype builder for `CONFIG.layout` |
-| **1** (shipped) | **Page + header + properties** | `_PageContent`, `docRoot`, title + summary (`§6.4`), full properties table (`§6.6`) — one MCP call in current `draw-engine` | Phase **2** globals + live `compSet` from step **0** |
-| **2** | **Component section** | Section frame + captions + **reparent** live `ComponentSet` into the doc (`§6.6B`) | Handoff: `pageContentId`, `docRootId`, `compSetId` |
-| **3** | **Variants × States matrix** | Full matrix grid + instance cells + `applyStateOverride` (`§6.7`) | Same handoff chain |
-| **4** | **Usage Do / Don’t** | Two cards (`§6.8`) | Same handoff chain |
-| **5** | **Finalize** | §6.9 checks + full skill `returnPayload` | Same handoff chain |
+| **1** (shipped) | **Scaffold: page + header + table placeholders** | `_PageContent`, `docRoot`, title + summary, properties table with **`properties.length` placeholder** rows — `doc.step1` | Phase **2** globals + `compSet` from step **0**; no `__CC_HANDOFF_*` |
+| **2** (shipped) | **Fill properties table** | In-place cell text from `CONFIG.properties` — `doc.step2` | **Handoff** from step **1** |
+| **3** | **Component section** | Section + **reparent** `ComponentSet` (`§6.6B`) | Same handoff chain |
+| **4** | **Variants × States matrix** | Matrix + `applyStateOverride` (`§6.7`) | Same handoff chain |
+| **5** | **Usage Do / Don’t** | Two cards (`§6.8`) | Same handoff chain |
+| **6** | **Finalize** | §6.9 + `returnPayload` | Same handoff chain |
 
-**Note:** The narrative “properties skeleton” vs “doc header” as **two** calls is still valid for placeholders (§1.1 / **04** §2.2); the **committed** engine merges header + table into **step 1** to match canvas order and reduce handoff surface.
+**Note:** **Steps 1–2** surface the “documentation scaffold with placeholders, then **fill the table**, then add **each** later section (component → matrix → usage → finalize)” on the canvas. Single-pass: `__ccDocStep === null` in [`04`](./04-doc-pipeline-contract.md) **§2.2.1** path B.
 
 ### 1.1 — Layout preservation (do not “grenade” the table)
 
@@ -31,7 +32,7 @@ Splitting work across calls is **not** permission to ship an empty auto-layout t
 
 **Agents and runners must:**
 
-- Keep the **properties table shell** (group + 1640px table + uppercase **header row**) from the first step that touches the doc; if data rows come later, insert **placeholder body rows** with real row geometry (`minHeight`, `textAutoResize: 'HEIGHT'`, filler like `—` or `…`) and **replace** cell content (or swap rows) when props are available — do not leave a header floating over a vacuum.
+- Keep the **properties table shell** (group + 1640px table + uppercase **header row**) from the first step that touches the doc. **Shipped multistep:** step **1** = placeholder body rows, step **2** = in-place **fill** only — see [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2.1** paths A–C. Do not leave a header floating over a vacuum.
 - Reserve **section frames** for header, component-set-group, matrix, and usage early enough that **`docRoot` child order and `itemSpacing`** match the final five-section stack; use short placeholder copy or empty titled frames with **explicit sizing hints** where the template would otherwise collapse.
 - **Never** delete and redraw the whole table mid-ladder just to “add rows” unless you are intentionally resetting the page; prefer in-place updates so column widths and bindings stay stable.
 
@@ -72,7 +73,7 @@ The **runner** (or parent, if inline) is responsible for **JSON-serializing** ha
 | Artifact | Role |
 |----------|------|
 | `create-component-engine-{layout}.step0.min.figma.js` | Per archetype — variant plane only (truncates at `__CREATE_COMPONENT_ENGINE_SPLIT_PHASE2__`). ~14–21 KB. |
-| `create-component-engine-doc.step1.min.figma.js` … **`step5`** | **Layout-agnostic** — slim phase-2 doc ladder: `stripDocSlimChipBuilder` + `stripDocSlimVariantElse` in `scripts/build-min-templates.mjs` removes chip `buildVariant`, archetype builders, and the variant-build `else` branch; **terser** (`compress.unused`) drops dead doc-step branches so sizes **vary by step** (typically **~17 KB** steps **1** / **~17.5 KB** **2–4** / **~23 KB** **5** committed bytes including banner — run `npm run qa:step-bundles` for current numbers; vs ~32–38 KB full engine). |
+| `create-component-engine-doc.step1.min.figma.js` … **`step6`** | **Layout-agnostic** — slim phase-2 doc ladder: `stripDocSlimChipBuilder` + `stripDocSlimVariantElse` in `scripts/build-min-templates.mjs` removes chip `buildVariant`, archetype builders, and the variant-build `else` branch; **terser** (`compress.unused`) drops dead doc-step branches so sizes **vary by step** (run `npm run qa:step-bundles` for current numbers; vs ~32–38 KB full engine). |
 
 **Ideal (future):** per-step size differentiation via esbuild `build` graph or hand-split helpers.
 
@@ -82,7 +83,7 @@ The **runner** (or parent, if inline) is responsible for **JSON-serializing** ha
 
 ## 4 — Runner contract (behavior)
 
-1. **Delegated path:** When step bundles exist, the **parent** runs **six** `Task`s → [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md): each subagent does **`use_figma` once** with steps **0 → 5**, **`check-payload`** (and full MCP args check if used) **per call**, and returns compact JSON; the parent **merges** the next `handoffJson`. The **only** component draw subagent is the slice runner (six sequential `Task`s) — not one parent message with six `Read`s of min bundles in the main thread.
+1. **Seven-slice path:** When step bundles exist, the **parent** runs **seven** `use_figma` invocations in DAG order, assembly per [`create-component-figma-slice-runner` §0.1 / §2](../../create-component-figma-slice-runner/SKILL.md): **cc-variants (step0)** then **doc steps 1 → 6**, **`check-payload`** (and full MCP args check if used) **per call**; the parent **merges** the next `handoffJson`. **Default:** parent carries each `use_figma` — not `Task` when the subagent cannot emit full tool args. Optional `Task` per slice only if the host is **proven** to support it.
 2. **Parent thread:** Passes **`configBlock`** + **`layout`** + registry + **handoff state** — **never** `Read`s all step min bundles into the main thread.
 3. **§9:** Final assertions run on the **return payload of the last doc step** (`cc-doc-finalize` / step 5, or the final `use_figma` in an inline run), with the same fields as [`SKILL.md`](../SKILL.md) §9.
 

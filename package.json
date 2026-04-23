@@ -14,6 +14,7 @@
     "validate-tokens": "node scripts/validate-tokens.mjs",
     "check-payload": "node scripts/check-payload.mjs",
     "check-use-figma-args": "node scripts/check-use-figma-mcp-args.mjs",
+    "merge-handoff": "node scripts/merge-create-component-handoff.mjs",
     "measure-sigma": "node scripts/measure-sigma.mjs",
     "qa:step-bundles": "node scripts/qa-step-bundles.mjs",
     "qa:create-component-skill": "node scripts/qa-create-component-skill.mjs",

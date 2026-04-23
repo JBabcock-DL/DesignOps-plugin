@@ -22,9 +22,9 @@ not **6 × (almost full engine)**. **Same total information, split across calls*
 
 ---
 
-## Why **committed** six-step σ is ~150K (research)
+## Why **committed** seven-step doc σ is ~150K (research)
 
-1. **Doc steps 1–5** are each built from the **same** slimmed `draw-engine` assembly (`buildDocSlimSteps` in [`scripts/build-min-templates.mjs`](../../../scripts/build-min-templates.mjs)): `slimTop + slimBottom` is **re-minified 5 times** with a different `__ccDocStep` constant. Terser removes **dead** branches, but each output still **embeds a large shared core** (token helpers, `makeText`, `__ccDocResumeFromHandoff`, etc.). So the **sum** of the five doc bundles **far exceeds** a single monolith — **overlap by design**, not a partition.
+1. **Doc steps 1–6** are each built from the **same** slimmed `draw-engine` assembly (`buildDocSlimSteps` in [`scripts/build-min-templates.mjs`](../../../scripts/build-min-templates.mjs)): `slimTop + slimBottom` is **re-minified 6 times** with a different `__ccDocStep` constant. Terser removes **dead** branches, but each output still **embeds a large shared core** (token helpers, `makeText`, `__ccDocResumeFromHandoff`, etc.). So the **sum** of the six doc bundles **far exceeds** a single monolith — **overlap by design**, not a partition.
 
 2. **`step0`** is a **genuine** truncation (variant plane only) — that part is closer to a **subset** of the monolith, not a duplicate of the full 36K.
 
@@ -38,7 +38,7 @@ So: **current σ ≫ 45K** reflects **redundant** bytes across steps, not a proo
 
 | Lever | What to do |
 |--------|------------|
-| **1 — Partition the engine in *source***, not by re-rolling the same file 5× | Refactor `draw-engine.figma.js` (and helpers) into **importable** units (or explicit marker regions) that **esbuild** can bundle into **6 (or N) entry points** with **disjoint** runtime roots: each `P_k` only contains the **closure** needed for that phase. **No** large shared subtree duplicated across 5 compiles. Handoff is **Figma state** (node ids) + small injected globals, not re-shipping the same helpers. |
+| **1 — Partition the engine in *source***, not by re-rolling the same file 6× | Refactor `draw-engine.figma.js` (and helpers) into **importable** units (or explicit marker regions) that **esbuild** can bundle into **6 (or N) entry points** with **disjoint** runtime roots: each `P_k` only contains the **closure** needed for that phase. **No** large shared subtree duplicated across 6 compiles. Handoff is **Figma state** (node ids) + small injected globals, not re-shipping the same helpers. |
 | **2 — Preamble once (or “thin” after call 1)** | Call 1: full or standard preamble. Calls 2–6: **micro-preamble** (only `ACTIVE_FILE_KEY`, `usesComposes` bit, and whatever the gate at §0a truly needs — target **&lt;1K**), **not** 6× the full 6K file. Saves **tens of KB** off σ. |
 | **3 — Phase-scoped `configBlock` each call** | Smaller per-phase `CONFIG` (your chain-of-skills model) shaves each string; total impact is smaller than (1) but matches “separate skills.” |
 | **4 — Independent skills / `Task` per phase** | **Orchestration** (parent, subagents) does not change σ by itself, but it **enforces** one small `code` per turn — the **payload** must be built to (1)–(3). |
@@ -46,7 +46,7 @@ So: **current σ ≫ 45K** reflects **redundant** bytes across steps, not a proo
 **Target identity (design-time check):**
 
 - Let **E** = minified engine bytes for one full per-archetype call (one compile).
-- A **partitioned** pipeline should aim for **sum of engine parts ≈ E** (plus small glue), **not** 5× a near-full **E′** doc slice + **step0**.
+- A **partitioned** pipeline should aim for **sum of engine parts ≈ E** (plus small glue), **not** 6× a near-full **E′** doc slice + **step0**.
 
 ---
 
@@ -59,7 +59,7 @@ So: **current σ ≫ 45K** reflects **redundant** bytes across steps, not a proo
 
 ## Automation
 
-- [`npm run measure-sigma`](../../../package.json) — shows how far **naive** six-step + repeated preamble is from a **partition** target.
+- [`npm run measure-sigma`](../../../package.json) — shows how far **naive** step0+doc1..6 + repeated preamble is from a **partition** target.
 - Keep using [`check-payload`](../../../scripts/check-payload.mjs) / `check-use-figma-mcp-args` on **each** assembled string.
 
 ## Cross-references

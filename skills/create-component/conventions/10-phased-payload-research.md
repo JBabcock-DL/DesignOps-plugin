@@ -40,7 +40,7 @@
 - **§6.2a** — `layoutKey` from `CONFIG.layout` and `usesComposes`
 - **Then** either: load `compSet` for `_ccPhase === 2`, or build variants from `CONFIG.variants` / `CONFIG.style` / `CONFIG.label` / …
 
-**Critical for plan:** For **`_ccPhase === 2`** (all doc work, including multistep `__ccDocStep` 1–5), the engine **does not** rebuild variants, but it **still executes** the block that defines `hasSizeAxis`, `defaultLabelText`, `layoutKey`, etc. So any phase-specific `CONFIG` for “doc only” must still supply **every key that this shared prefix reads** unless the engine is **refactored** to branch earlier or use smaller typed objects. That is the main engineering cost: **slicing CONFIG is a source + binding refactor**, not only the parent omitting keys in the string.
+**Critical for plan:** For **`_ccPhase === 2`** (all doc work, including multistep `__ccDocStep` 1–6), the engine **does not** rebuild variants, but it **still executes** the block that defines `hasSizeAxis`, `defaultLabelText`, `layoutKey`, etc. So any phase-specific `CONFIG` for “doc only” must still supply **every key that this shared prefix reads** unless the engine is **refactored** to branch earlier or use smaller typed objects. That is the main engineering cost: **slicing CONFIG is a source + binding refactor**, not only the parent omitting keys in the string.
 
 ---
 

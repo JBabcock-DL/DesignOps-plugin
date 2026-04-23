@@ -78,7 +78,7 @@ function main() {
   }
   console.log('');
   console.log(`max: ${maxBytes} bytes (${maxFile})`);
-  const docSteps = [1, 2, 3, 4, 5].map(s => ({
+  const docSteps = [1, 2, 3, 4, 5, 6].map(s => ({
     s,
     row: rows.find(r => r.name === `create-component-engine-doc.step${s}.min.figma.js`),
   }));
@@ -87,7 +87,7 @@ function main() {
     const ladder = docSteps.map(({ s, row }) => `${s}:${row.bytes}`).join(' · ');
     console.log(`doc ladder (bytes): ${ladder}`);
     console.log(
-      `step0 chip: ${s0chip.bytes} B · shared create-component-engine-doc.step1..5 (per-step sizes after terser unused strip)`,
+      `step0 chip: ${s0chip.bytes} B · shared create-component-engine-doc.step1..6 (per-step sizes after terser unused strip)`,
     );
   }
 
