@@ -240,9 +240,11 @@ function buildSurfaceStackVariant(name, fillVar, fallbackFill, {
   const c = figma.createComponent();
   c.name = name;
   c.layoutMode = 'VERTICAL';
+  c.resize(width, 1);
   c.primaryAxisSizingMode = 'AUTO';
   c.counterAxisSizingMode = 'FIXED';
-  c.resize(width, 1);
+  c.layoutSizingHorizontal = 'FIXED';
+  c.layoutSizingVertical = 'HUG';
   c.primaryAxisAlignItems = 'MIN';
   c.counterAxisAlignItems = 'MIN';
   c.paddingLeft = 0;
@@ -424,9 +426,11 @@ function buildFieldVariant(name, fillVar, fallbackFill, {
   const c = figma.createComponent();
   c.name = name;
   c.layoutMode = 'VERTICAL';
+  c.resize(width, 1);
   c.primaryAxisSizingMode = 'AUTO';
   c.counterAxisSizingMode = 'FIXED';
-  c.resize(width, 1);
+  c.layoutSizingHorizontal = 'FIXED';
+  c.layoutSizingVertical = 'HUG';
   c.primaryAxisAlignItems = 'MIN';
   c.counterAxisAlignItems = 'MIN';
   bindNum(c, 'itemSpacing', 'space/xs', 6);
@@ -443,15 +447,18 @@ function buildFieldVariant(name, fillVar, fallbackFill, {
   const fieldChrome = figma.createFrame();
   fieldChrome.name = 'field';
   fieldChrome.layoutMode = fieldType === 'textarea' ? 'VERTICAL' : 'HORIZONTAL';
-  fieldChrome.primaryAxisSizingMode = fieldType === 'textarea' ? 'FIXED' : 'FIXED';
-  fieldChrome.counterAxisSizingMode = 'FIXED';
   fieldChrome.layoutAlign = 'STRETCH';
   if (fieldType === 'textarea') {
     fieldChrome.resize(width, field.textareaMinHeight ?? 96);
+  } else {
+    fieldChrome.resize(width, fh);
+  }
+  fieldChrome.primaryAxisSizingMode = 'FIXED';
+  fieldChrome.counterAxisSizingMode = 'FIXED';
+  if (fieldType === 'textarea') {
     fieldChrome.primaryAxisAlignItems = 'MIN';
     fieldChrome.counterAxisAlignItems = 'MIN';
   } else {
-    fieldChrome.resize(width, fh);
     fieldChrome.primaryAxisAlignItems = fieldType === 'select' ? 'SPACE_BETWEEN' : 'MIN';
     fieldChrome.counterAxisAlignItems = 'CENTER';
   }
@@ -483,9 +490,9 @@ function buildFieldVariant(name, fillVar, fallbackFill, {
       const box = figma.createFrame();
       box.name = `otp-slot/${i}`;
       box.layoutMode = 'HORIZONTAL';
+      box.resize(boxW, fh);
       box.primaryAxisSizingMode = 'FIXED';
       box.counterAxisSizingMode = 'FIXED';
-      box.resize(boxW, fh);
       box.primaryAxisAlignItems = 'CENTER';
       box.counterAxisAlignItems = 'CENTER';
       bindColor(box, fillVar, fallbackFill, 'fills');
@@ -593,9 +600,11 @@ function buildRowItemVariant(name, fillVar, fallbackFill, {
   const c = figma.createComponent();
   c.name = name;
   c.layoutMode = 'HORIZONTAL';
+  c.resize(width, 1);
   c.primaryAxisSizingMode = 'FIXED';
   c.counterAxisSizingMode = 'AUTO';
-  c.resize(width, 1);
+  c.layoutSizingHorizontal = 'FIXED';
+  c.layoutSizingVertical = 'HUG';
   c.primaryAxisAlignItems = 'MIN';
   c.counterAxisAlignItems = 'CENTER';
   bindNum(c, 'paddingLeft',   padH, 12);
@@ -949,9 +958,11 @@ function buildContainerVariant(name, fillVar, fallbackFill, {
     const c = figma.createComponent();
     c.name = name;
     c.layoutMode = 'VERTICAL';
+    c.resize(width, 1);
     c.primaryAxisSizingMode = 'AUTO';
     c.counterAxisSizingMode = 'FIXED';
-    c.resize(width, 1);
+    c.layoutSizingHorizontal = 'FIXED';
+    c.layoutSizingVertical = 'HUG';
     c.primaryAxisAlignItems = 'MIN';
     c.counterAxisAlignItems = 'MIN';
     c.itemSpacing = 12;
@@ -1011,9 +1022,11 @@ function buildContainerVariant(name, fillVar, fallbackFill, {
   const c = figma.createComponent();
   c.name = name;
   c.layoutMode = 'VERTICAL';
+  c.resize(width, 1);
   c.primaryAxisSizingMode = 'AUTO';
   c.counterAxisSizingMode = 'FIXED';
-  c.resize(width, 1);
+  c.layoutSizingHorizontal = 'FIXED';
+  c.layoutSizingVertical = 'HUG';
   c.primaryAxisAlignItems = 'MIN';
   c.counterAxisAlignItems = 'MIN';
   c.itemSpacing = 0;

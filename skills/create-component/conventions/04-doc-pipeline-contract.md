@@ -165,8 +165,8 @@ doc/component/{name}/matrix                          VERTICAL · AUTO · STRETCH
     ├── matrix/size-group/{size}/label               FIXED width 60 · VERTICAL · centered · Doc/TokenName "Small" + 1px right edge stroke color/border/subtle
     └── matrix/size-group/{size}/rows                VERTICAL · AUTO · STRETCH
         └── matrix/size-group/{size}/row/{variant}   HORIZONTAL · AUTO height · minHeight 72 · bottom 1px stroke color/border/subtle (omit on last row of last size group)
-            ├── matrix/.../row/{variant}/label       FIXED width 160 · VERTICAL · center-aligned · Doc/Caption "Primary"
-            └── matrix/.../row/{variant}/cell/{state} FIXED width (§5.3) · HORIZONTAL · center + center alignment · paddingH 16 · paddingV 16 · appendChild(instance)
+            ├── matrix/.../row/{variant}/label       FIXED width 160 · VERTICAL · Hug height · minHeight 72 · layoutAlign STRETCH (in row) · Doc/Caption "Primary"
+            └── matrix/.../row/{variant}/cell/{state} FIXED width (§5.3) · HORIZONTAL · primary FIXED · counter AUTO (Hug) · minHeight 72 · center + center · paddingH/V 16 · appendChild(instance)
 ```
 
 ### 5.1 — The two-tier header
@@ -196,11 +196,13 @@ Left gutter = size-label (60) + variant-label (160) = **220**. State-cell region
 
 If there is no size axis, gutter drops to 160 and state-cell region is 1480 — split the same way.
 
-### 5.4 — Cells contain **one instance, centered**
+### 5.4 — Cells contain **one instance, centered** (height **hugs** content)
 
-Each state cell is a HORIZONTAL frame with `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: CENTER`, `paddingH: 16`, `paddingV: 16`. Child: one `InstanceNode` created from the component set, with `setProperties({ variant, size, state })` applied to the instance.
+Each state cell is a HORIZONTAL frame with **`primaryAxisSizingMode: FIXED`** (column width), **`counterAxisSizingMode: AUTO`** (Hug height), **`minHeight: 72`**, `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: CENTER`, `paddingH: 16`, `paddingV: 16`. Child: one `InstanceNode` created from the component set, with `setProperties({ variant, size, state })` applied to the instance.
 
-The instance is **not resized** — it hugs its own auto-layout. Buttons stay button-sized, inputs stay input-sized. The cell is large enough to contain any instance at its natural width without clipping.
+**Do not** use **`FIXED` / `FIXED` + explicit `height: 72`** on specimen cells — tall components (inputs with label + helper, textareas) clip or look broken. Hugging the counter axis lets the row grow with the tallest cell; `minHeight` preserves the matrix rhythm for short components.
+
+The instance is **not resized** — it hugs its own auto-layout. Buttons stay button-sized, inputs stay input-sized. The cell grows vertically to fit.
 
 If an instance would overflow its cell (e.g. a wide date-picker), increase the matrix outer width to a multiple of 1640 (2280 / 2600 / 3280) only for that component and log a note in its usage section. Do **not** shrink the instance.
 
@@ -215,7 +217,7 @@ The matrix root frame uses a 1px dashed stroke `color/border/subtle` with `dashP
 Below the matrix, render a 2-column Do / Don't grid documenting the most common usage questions. Each column is a VERTICAL stack, width 805 (1640 / 2 − 15 itemSpacing), padding 28, fill `color/background/variant`, cornerRadius 16.
 
 ```
-doc/component/{name}/usage                           HORIZONTAL · AUTO · STRETCH · itemSpacing 30
+doc/component/{name}/usage                           HORIZONTAL · primary AUTO · counter AUTO · STRETCH · itemSpacing 30
 ├── usage/do                                         VERTICAL · width 805 · padding 28 · fill color/background/variant · cornerRadius 16
 │   ├── title   Doc/TokenName "Do"  with a leading "✓ " glyph (or text-only if emoji-averse)
 │   └── bullets VERTICAL · itemSpacing 12 · each: TEXT Doc/Caption with leading "· " bullet
@@ -227,6 +229,8 @@ doc/component/{name}/usage                           HORIZONTAL · AUTO · STRET
 **Minimum content per component:** 3 "Do" bullets + 3 "Don't" bullets, pulled from the component's shadcn documentation page where possible (linked in §4 description column).
 
 If you have no sourced guidance, still render the frames with 3 placeholder bullets each so the page has its shape — designers can edit in-place. Do not skip the section.
+
+**Usage row sizing (critical):** the `usage` frame is **HORIZONTAL**, so the **counter** axis is **vertical**. `makeFrame` defaults to `resize(w, 1)` and **`counterAxisSizingMode: FIXED`** — that combination collapses the whole section to **1px tall**. The shipped `buildUsageNotes` helper must set **`counterAxisSizingMode = 'AUTO'`** (and usually `layoutSizingVertical = 'HUG'`) **after** resize. See [`03-auto-layout-invariants.md`](./03-auto-layout-invariants.md) §10.2 and create-design-system [`00-gotchas.md`](../../create-design-system/conventions/00-gotchas.md) §0.10.
 
 ---
 

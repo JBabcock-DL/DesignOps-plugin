@@ -144,3 +144,27 @@ Stroke still binds per §12 (`color/border/subtle`, Theme · Light). Gate Step 1
 `/new-project` Phase 05d wraps the platform-mapping block in `token-overview/platform-mapping` and applies `Effect/shadow-sm` **once** on that section shell. The inner `doc/table/token-overview/platform-mapping` and every descendant (`header`, `body`, `row/*`, `cell/*`) must stay flat: `effects = []` and `effectStyleId` cleared.
 
 `/create-design-system` Step 17 pre-pass must **not** assign `shadow-sm` to any frame whose path starts with `doc/table/token-overview/platform-mapping`. Style-guide tables on other pages still apply one `shadow-sm` on the `doc/table/{slug}` root per §12 / §13.
+
+## §0.10 Component masters + `/create-component` doc shells — `resize()` resets sizing modes
+
+Figma’s `node.resize(w, h)` **resets** `primaryAxisSizingMode` and `counterAxisSizingMode` on auto-layout frames to **`FIXED`**. Code that sets **`AUTO`** (Hug) **before** `resize(w, 1)` therefore ends with **both axes FIXED** and height **1** — the classic **320×1 variant** and **1640×1 usage row**. This is the same footgun as §0.1 / §10.1 in create-component; it shows up on **`COMPONENT` roots**, inner chrome frames that call `resize` after assigning modes, and **`doc/component/{name}/usage`**.
+
+**VERTICAL `COMPONENT` roots** (field, surface-stack, container, …):
+
+```js
+c.layoutMode = 'VERTICAL';
+c.resize(width, 1); // width seed; height 1 is intentional until Hug runs
+c.primaryAxisSizingMode = 'AUTO';   // Hug stack height — MUST follow resize
+c.counterAxisSizingMode = 'FIXED'; // fixed width
+// Optional but explicit for Assets / instances:
+c.layoutSizingHorizontal = 'FIXED';
+c.layoutSizingVertical = 'HUG';
+```
+
+**HORIZONTAL doc rows** (e.g. `doc/component/{name}/usage` — Do / Don’t side-by-side): primary = horizontal, **counter = vertical**. `counterAxisSizingMode = 'FIXED'` + `resize(1640, 1)` pins **height at 1px**. Use **`counterAxisSizingMode = 'AUTO'`** so the row hugs the tallest column, and set `layoutSizingVertical = 'HUG'` if Figma pins `FIXED` after `appendChild`.
+
+**Matrix specimen cells** (`matrix/.../cell/{state}`): cells are **HORIZONTAL**. **`counterAxisSizingMode = 'AUTO'`** + **`minHeight`** (e.g. 72) lets the cell **grow with tall instances** (inputs with label + helper) instead of clipping at a fixed 72px band. Keep **`primaryAxisSizingMode = 'FIXED'`** for the column width.
+
+**Inner chrome** (e.g. `field` frame): if you assign `primary`/`counter` then call `resize`, **re-assign** `FIXED`/`FIXED` **after** `resize` so dimensions and modes stay aligned.
+
+**Audit:** any `COMPONENT` or doc-section frame that should stack content but reads **`width > 40` and `height ≤ 2`** with children taller than that — open sizing: almost always **resize-before-AUTO** order or **horizontal frame** missing **counter `AUTO`**.

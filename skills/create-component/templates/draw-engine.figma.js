@@ -1104,6 +1104,7 @@ function makeFrame(name, o = {}) {
     f.strokes = [];
   }
   if (o.radius != null) f.cornerRadius = o.radius;
+  if (o.minHeight != null) f.minHeight = o.minHeight;
   return f;
 }
 
@@ -1412,18 +1413,19 @@ function buildMatrix() {
       rowsStack.appendChild(row);
 
       const vLabel = makeFrame(`row/${variant}/label`, {
-        layoutMode: 'VERTICAL', primary: 'FIXED', counter: 'FIXED',
-        width: gutterVariantW, height: 72,
+        layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED',
+        width: gutterVariantW, minHeight: 72,
         padL: 20, padR: 20, primaryAlign: 'CENTER', counterAlign: 'MIN',
       });
       row.appendChild(vLabel);
+      vLabel.layoutAlign = 'STRETCH';
       const prettyVariant = variant.charAt(0).toUpperCase() + variant.slice(1);
       vLabel.appendChild(makeText(prettyVariant, 'caption', 13, 'color/background/content-muted'));
 
       for (const st of states) {
         const cell = makeFrame(`cell/${variant}/${st.key}`, {
-          layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'FIXED',
-          width: cellW, height: 72,
+          layoutMode: 'HORIZONTAL', primary: 'FIXED', counter: 'AUTO',
+          width: cellW, minHeight: 72,
           padL: 16, padR: 16, padT: 16, padB: 16,
           primaryAlign: 'CENTER', counterAlign: 'CENTER',
         });
@@ -1449,9 +1451,11 @@ docRoot.appendChild(buildMatrix());
 
 function buildUsageNotes() {
   const row = makeFrame(`doc/component/${CONFIG.component}/usage`, {
-    layoutMode: 'HORIZONTAL', primary: 'AUTO', counter: 'FIXED', width: 1640,
+    layoutMode: 'HORIZONTAL', primary: 'AUTO', counter: 'AUTO', width: 1640,
     itemSpacing: 30, align: 'STRETCH',
   });
+  row.layoutSizingHorizontal = 'FIXED';
+  row.layoutSizingVertical = 'HUG';
   function card(titleText, glyph, bullets) {
     const c = makeFrame(`usage/${titleText.toLowerCase().replace(/[^a-z]/g, '')}`, {
       layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: 805,

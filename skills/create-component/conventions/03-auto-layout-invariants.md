@@ -47,9 +47,9 @@ Every frame you create for the matrix must follow these rules. Reuse them direct
 | `.../matrix` | VERTICAL | AUTO | FIXED (1640) | See [`04-doc-pipeline-contract.md` §5](./04-doc-pipeline-contract.md#5-variant--state-specimen-matrix) |
 | `matrix/size-group/{size}` | HORIZONTAL | AUTO | STRETCH | One block per size |
 | `matrix/.../row/{variant}` | HORIZONTAL | AUTO | STRETCH | `minHeight: 72`, `counterAxisAlignItems: CENTER` |
-| State cells | HORIZONTAL | FIXED | FIXED | `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: CENTER`, `paddingH/V: 16` |
+| State cells | HORIZONTAL | FIXED | AUTO | **`counterAxisSizingMode = 'AUTO'`** (Hug height) + **`minHeight: 72`** so tall specimens (e.g. inputs with helper text) are not clipped. Fixed **`FIXED/FIXED` + `height: 72`** was a regression. Still `primaryAxisAlignItems: CENTER`, `counterAxisAlignItems: CENTER`, `paddingH/V: 16`. |
 | Cell text nodes | — | — | — | **Always** `text.textAutoResize = 'HEIGHT'` immediately after `text.characters =`. Without this the row collapses to 10px. |
-| Row-label / size-label frames | VERTICAL | AUTO | FIXED | Center content vertically |
+| Row-label / size-label frames | VERTICAL | AUTO | FIXED | Center content vertically; **`layoutAlign = 'STRETCH'`** on the label frame inside the matrix row so it tracks row height when state cells grow. |
 
 ### 10.1 — Property-assignment ORDER matters
 
@@ -64,3 +64,9 @@ f.counterAxisSizingMode = 'FIXED';
 ```
 
 The same rule applies to `resizeWithoutConstraints` — resize first, then sizing modes. This is the #1 cause of the "whole doc frame renders as a thin horizontal sliver" bug.
+
+### 10.2 — `COMPONENT` roots and horizontal usage rows (Sonnet-class regression)
+
+- **Never** set Hug (`AUTO`) on a **`COMPONENT`** or frame and then call **`resize(w, 1)`** without re-applying sizing modes **after** the resize. The variant master becomes **w×1** while children still paint — same symptom as style-guide §0.10 in [`create-design-system/conventions/00-gotchas.md`](../../create-design-system/conventions/00-gotchas.md).
+- **`doc/component/{name}/usage`** is **HORIZONTAL**: use **`counterAxisSizingMode = 'AUTO'`** (not `FIXED`) so vertical space follows the Do / Don’t cards. See [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) §6.
+- **Matrix state cells:** Hug height on the **counter** axis (`AUTO`) + **`minHeight`**; see table row **State cells** above.

@@ -31,7 +31,7 @@ When this skill needs designer input (component list, Figma file key, shadcn ini
 - **`/create-design-system` run first** — Token variable bindings in Figma come from the `Theme`, `Layout`, and `Typography` collections. The CSS token file (`tokens.css`) written by `/create-design-system` must also exist in the local project — this is what components import for their CSS custom properties. If the file is absent, components are drawn to canvas with hardcoded fallback values and a warning is reported.
 - **Active Figma file open** — The agent needs a target Figma file key. This is taken from the handoff context (`plugin/templates/agent-handoff.md`) or prompted from the designer.
 - **Figma MCP connector authenticated** — All canvas writes use `mcp__claude_ai_Figma__*` tools. No separate PAT setup required.
-- **`use_figma` discipline** — Load **figma-use** before every `use_figma` call (workspace / connector rule). Prefer **editing the committed §6 template** over reauthoring layout from memory; component doc pages share the same **resize / Hug / `textAutoResize`** footguns as style-guide tables — see **create-design-system `SKILL.md` §0.1–§0.2** and [`conventions/03-auto-layout-invariants.md`](./conventions/03-auto-layout-invariants.md).
+- **`use_figma` discipline** — Load **figma-use** before every `use_figma` call (workspace / connector rule). Prefer **editing the committed §6 template** over reauthoring layout from memory; component doc pages share the same **resize / Hug / `textAutoResize`** footguns as style-guide tables — see **create-design-system `SKILL.md` §0.1–§0.2** and **§0.10** (`resize` resets modes; `usage` row; matrix cells) and [`conventions/03-auto-layout-invariants.md`](./conventions/03-auto-layout-invariants.md) §10–10.2.
 
 ---
 

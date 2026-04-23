@@ -52,6 +52,7 @@ Full rules + code live in [`conventions/00-gotchas.md`](./conventions/00-gotchas
 - **§0.7** Primitives swatch `RECTANGLE`s bind `fills[0]` to the row's `Primitives` COLOR variable via `setBoundVariableForPaint` — reassigning the return value.
 - **§0.8** TOC `band-strip/*` TEXT: do **not** apply blanket §0.2 full-width resize. Keep `textAutoResize: 'WIDTH_AND_HEIGHT'` so the count chip hugs.
 - **§0.9** `doc/table/token-overview/platform-mapping` and descendants carry **no** `effectStyleId` — one `shadow-sm` lives on the enclosing section shell only.
+- **§0.10** **`resize()` resets sizing modes** — never set Hug on a `COMPONENT` / doc shell then `resize(w, 1)` without re-applying `primary`/`counter` after. **HORIZONTAL** `usage` rows need **counter `AUTO`**. Matrix specimen cells: **counter `AUTO`** + **`minHeight`**. → [`00-gotchas.md`](./conventions/00-gotchas.md) §0.10; `/create-component` [`03-auto-layout-invariants.md`](../create-component/conventions/03-auto-layout-invariants.md) §10.2.
 
 Incident history (which Figma files failed and why) is in [`CHANGELOG.md`](./CHANGELOG.md) — not a runtime read.
 
