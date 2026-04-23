@@ -31,7 +31,9 @@ if [[ ! -d "$DEST" ]]; then
 fi
 
 echo "==> diffing $SRC against $DEST"
-if diff -rq --exclude='.DS_Store' "$SRC" "$DEST" > /tmp/sync-cache-diff.$$ 2>&1; then
+# --strip-trailing-cr: on Windows, working tree may be CRLF while a copied
+# cache is LF; content is the same. GNU diff 3.4+ (Git Bash) supports this.
+if diff -rq --strip-trailing-cr --exclude='.DS_Store' "$SRC" "$DEST" > /tmp/sync-cache-diff.$$ 2>&1; then
   echo "    workspace and cache are in sync"
 else
   STATUS=1
