@@ -152,6 +152,11 @@ const getTypoVar = name => typoVars.find(v => v.name === name) ?? null;
 // A miss is not a throw — downstream code still uses the fallback. The
 // payload lets the agent decide whether to patch CONFIG and redraw.
 const _unresolvedTokenMisses = []; // { kind, path, fallback, nodeName }
+// Two-phase draw (optional): phase 2 prepends __CC_PHASE1_UNRESOLVED__ so
+// bindColor misses from phase 1 still appear in the final §6.9a aggregate.
+if (typeof __CC_PHASE1_UNRESOLVED__ !== 'undefined' && Array.isArray(__CC_PHASE1_UNRESOLVED__)) {
+  for (const m of __CC_PHASE1_UNRESOLVED__) _unresolvedTokenMisses.push(m);
+}
 function _recordUnresolved(kind, path, fallback, node) {
   _unresolvedTokenMisses.push({
     kind, path, fallback,
@@ -697,12 +702,28 @@ const DOC_FRAME_WIDTH  = 1640;
 const GUTTER_W_SIZE    = 60;
 const GUTTER_W_VARIANT = 160;
 
+// --- Two-phase draw (optional MCP chunking) -------------------------------
+// Omitted or 0 = single `use_figma` (legacy). 1 = build ComponentSet only
+// and return early. 2 = doc pipeline only — skips §6.0 clear and variant
+// build; requires __PHASE_1_COMP_SET_ID__, __CC_PHASE1_PROPS_ADDED__, and
+// optionally __CC_PHASE1_UNRESOLVED__ injected before this engine. See
+// skills/create-component-figma-runner/SKILL.md.
+const _ccPhase = typeof __CREATE_COMPONENT_PHASE__ === 'undefined' ? 0 : __CREATE_COMPONENT_PHASE__;
+if (_ccPhase !== 0 && _ccPhase !== 1 && _ccPhase !== 2) {
+  throw new Error(
+    `[create-component] __CREATE_COMPONENT_PHASE__ must be 0, 1, 2, or omitted; got ${_ccPhase}`,
+  );
+}
+
 // --- 6.0  Clear page (except _Header) -----------------------------------
 // Wipe EVERYTHING except _Header — orphan ComponentSets, half-drawn doc
 // frames, abandoned variant components from a prior failed run.
+// Phase 2 must NOT clear — the ComponentSet from phase 1 still lives here.
 
-for (const node of [...figma.currentPage.children]) {
-  if (node.name !== '_Header') node.remove();
+if (_ccPhase !== 2) {
+  for (const node of [...figma.currentPage.children]) {
+    if (node.name !== '_Header') node.remove();
+  }
 }
 
 // --- 6.1  Resolve published Doc/* text styles + makeText ----------------
@@ -890,118 +911,161 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
   }
 }
 
-const variantData = [];
-for (const v of CONFIG.variants) {
-  for (const s of sizeList) {
-    const st = CONFIG.style[v];
-    if (!st) throw new Error(`CONFIG.style missing entry for variant '${v}'`);
-    const name = s === null ? `variant=${v}` : `variant=${v}, size=${s}`;
-    const label = typeof CONFIG.label === 'function'
-      ? CONFIG.label(s, v)
-      : (CONFIG.label ?? CONFIG.title);
-    const padH  = (s !== null && CONFIG.padH?.[s]) || padFallback;
-    const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
+let compSet;
+let propsAdded;
+const variantByKey = {};
 
-    let built;
-    switch (layoutKey) {
-      case '__composes__':
-        built = buildComposedVariant(name, st.fill, st.fallback, {
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, padV: 'space/xs',
-        });
-        break;
-      case 'surface-stack':
-        built = buildSurfaceStackVariant(name, st.fill, st.fallback, {
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH,
-          sizeKey: s, propLabelText: defaultLabelText,
-        });
-        break;
-      case 'field':
-        built = buildFieldVariant(name, st.fill, st.fallback, {
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
-        });
-        break;
-      case 'row-item':
-        built = buildRowItemVariant(name, st.fill, st.fallback, {
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
-        });
-        break;
-      case 'tiny':
-        built = buildTinyVariant(name, st.fill, st.fallback, {
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
-        });
-        break;
-      case 'container':
-        built = buildContainerVariant(name, st.fill, st.fallback, {
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
-        });
-        break;
-      case 'control':
-        built = buildControlVariant(name, st.fill, st.fallback, {
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
-        });
-        break;
-      case 'chip':
-      default:
-        if (layoutKey !== 'chip') {
-          console.warn(`[create-component] Unknown CONFIG.layout='${layoutKey}' for '${CONFIG.component}' — falling back to 'chip'. See §6.0 routing table.`);
-        }
-        built = buildVariant(name, st.fill, st.fallback, {
-          label,
-          labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH,
-          labelStyleName,
-          leadingSlot: leadingGlobal, trailingSlot: trailingGlobal, iconSlotSize,
-          addLabelProp: !!cp.label,
-          addLeadingProp:  !!cp.leadingIcon  && leadingGlobal,
-          addTrailingProp: !!cp.trailingIcon && trailingGlobal,
-          propLabelText: defaultLabelText,
-        });
-        break;
+if (_ccPhase === 2) {
+  const pid = typeof __PHASE_1_COMP_SET_ID__ !== 'undefined' ? __PHASE_1_COMP_SET_ID__ : null;
+  if (!pid) {
+    throw new Error(
+      '[create-component] phase 2 requires __PHASE_1_COMP_SET_ID__ (ComponentSet id from phase 1). ' +
+        'See skills/create-component-figma-runner/SKILL.md (two-phase draw).',
+    );
+  }
+  const loaded = await figma.getNodeByIdAsync(pid);
+  if (!loaded || loaded.type !== 'COMPONENT_SET') {
+    throw new Error(
+      `[create-component] phase 2: node '${pid}' is not a COMPONENT_SET (got ${loaded ? loaded.type : 'null'})`,
+    );
+  }
+  compSet = loaded;
+  if (
+    typeof __CC_PHASE1_PROPS_ADDED__ === 'undefined' ||
+    __CC_PHASE1_PROPS_ADDED__ === null ||
+    typeof __CC_PHASE1_PROPS_ADDED__ !== 'object'
+  ) {
+    throw new Error(
+      '[create-component] phase 2 requires __CC_PHASE1_PROPS_ADDED__ from phase 1 return payload',
+    );
+  }
+  propsAdded = __CC_PHASE1_PROPS_ADDED__;
+  for (const node of compSet.children) {
+    const parts = node.name.split(', ').reduce((acc, kv) => {
+      const [k, val] = kv.split('=');
+      acc[k] = val;
+      return acc;
+    }, {});
+    const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+    variantByKey[key] = node;
+  }
+} else {
+  const variantData = [];
+  for (const v of CONFIG.variants) {
+    for (const s of sizeList) {
+      const st = CONFIG.style[v];
+      if (!st) throw new Error(`CONFIG.style missing entry for variant '${v}'`);
+      const name = s === null ? `variant=${v}` : `variant=${v}, size=${s}`;
+      const label = typeof CONFIG.label === 'function'
+        ? CONFIG.label(s, v)
+        : (CONFIG.label ?? CONFIG.title);
+      const padH  = (s !== null && CONFIG.padH?.[s]) || padFallback;
+      const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
+
+      let built;
+      switch (layoutKey) {
+        case '__composes__':
+          built = buildComposedVariant(name, st.fill, st.fallback, {
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, padV: 'space/xs',
+          });
+          break;
+        case 'surface-stack':
+          built = buildSurfaceStackVariant(name, st.fill, st.fallback, {
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH,
+            sizeKey: s, propLabelText: defaultLabelText,
+          });
+          break;
+        case 'field':
+          built = buildFieldVariant(name, st.fill, st.fallback, {
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+          });
+          break;
+        case 'row-item':
+          built = buildRowItemVariant(name, st.fill, st.fallback, {
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+          });
+          break;
+        case 'tiny':
+          built = buildTinyVariant(name, st.fill, st.fallback, {
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+          });
+          break;
+        case 'container':
+          built = buildContainerVariant(name, st.fill, st.fallback, {
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+          });
+          break;
+        case 'control':
+          built = buildControlVariant(name, st.fill, st.fallback, {
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH, sizeKey: s,
+          });
+          break;
+        case 'chip':
+        default:
+          if (layoutKey !== 'chip') {
+            console.warn(`[create-component] Unknown CONFIG.layout='${layoutKey}' for '${CONFIG.component}' — falling back to 'chip'. See §6.0 routing table.`);
+          }
+          built = buildVariant(name, st.fill, st.fallback, {
+            label,
+            labelVar: st.labelVar, strokeVar: st.strokeVar, radiusVar, padH,
+            labelStyleName,
+            leadingSlot: leadingGlobal, trailingSlot: trailingGlobal, iconSlotSize,
+            addLabelProp: !!cp.label,
+            addLeadingProp:  !!cp.leadingIcon  && leadingGlobal,
+            addTrailingProp: !!cp.trailingIcon && trailingGlobal,
+            propLabelText: defaultLabelText,
+          });
+          break;
+      }
+      variantData.push(built);
     }
-    variantData.push(built);
+  }
+  let cx = 0;
+  for (const d of variantData) { d.component.x = cx; d.component.y = 0; cx += (d.component.width || 120) + 16; }
+
+  compSet = figma.combineAsVariants(variantData.map(d => d.component), figma.currentPage);
+  compSet.name = `${CONFIG.title} — ComponentSet`;
+
+  propsAdded = (() => {
+    const agg = {};
+    for (const d of variantData) {
+      for (const key of Object.keys(d.propKeys || {})) {
+        agg[key] = true;
+      }
+    }
+    agg.label        = agg.label        || false;
+    agg.leadingIcon  = agg.leadingIcon  || false;
+    agg.trailingIcon = agg.trailingIcon || false;
+    return agg;
+  })();
+
+  for (const node of compSet.children) {
+    const parts = node.name.split(', ').reduce((acc, kv) => {
+      const [k, val] = kv.split('=');
+      acc[k] = val;
+      return acc;
+    }, {});
+    const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+    variantByKey[key] = node;
   }
 }
-// Pre-position so combineAsVariants doesn't stack at (0,0)
-let cx = 0;
-for (const d of variantData) { d.component.x = cx; d.component.y = 0; cx += (d.component.width || 120) + 16; }
 
-const compSet = figma.combineAsVariants(variantData.map(d => d.component), figma.currentPage);
-compSet.name = `${CONFIG.title} — ComponentSet`;
+if (_ccPhase === 1) {
+  return {
+    ok: true,
+    phase: 1,
+    compSetId: compSet.id,
+    compSetName: compSet.name,
+    compSetKey: compSet.key,
+    propsAdded,
+    unresolvedTokenMisses: _unresolvedTokenMisses.slice(),
+    layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
+  };
+}
 
-// Roll up the per-variant propKeys for the final reporting log.
-// Archetype-aware: every key any builder ever added across all variants
-// flips to true here. Chip reports {label, leadingIcon, trailingIcon};
-// surface-stack adds {title, description, actionSlot, footer}; field adds
-// {placeholder, helper}; row-item adds {shortcut}; etc.
-const propsAdded = (() => {
-  const agg = {};
-  for (const d of variantData) {
-    for (const key of Object.keys(d.propKeys || {})) {
-      agg[key] = true;
-    }
-  }
-  // Ensure chip's canonical three keys are always present for back-compat
-  // with downstream reporting that reads these specifically.
-  agg.label        = agg.label        || false;
-  agg.leadingIcon  = agg.leadingIcon  || false;
-  agg.trailingIcon = agg.trailingIcon || false;
-  return agg;
-})();
 // The ComponentSet is NOT parked off-canvas. It's reparented into the doc
 // frame as its own section later (§6.5.5) so designers can see and edit
 // the live variants in place, with all matrix instances updating from it.
-
-// Index the variant components so the matrix can createInstance() per cell.
-// Key shape: "variant|size" (or just "variant" when no size axis).
-const variantByKey = {};
-for (const node of compSet.children) {
-  const parts = node.name.split(', ').reduce((acc, kv) => {
-    const [k, val] = kv.split('=');
-    acc[k] = val;
-    return acc;
-  }, {});
-  const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
-  variantByKey[key] = node;
-}
 
 // --- 6.3  _PageContent scaffold + doc frame root ------------------------
 // _PageContent is the shared outer container used by EVERY style-guide and

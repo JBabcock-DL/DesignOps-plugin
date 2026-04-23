@@ -702,7 +702,7 @@ Agents should prefer `Read`-ing the single `shadcn-props/{component}.json` file 
 
 ### Regenerating minified templates
 
-`/create-component`'s `use_figma` payload inlines **one of eight per-archetype engine bundles** on every run, picked by `CONFIG.layout`. Each bundle pre-assembles the draw-engine + the one archetype builder it needs (plus shared helpers) into a single file that fits under the `use_figma.code` 50 000-char hard limit with 17–23 KB of headroom for the agent's CONFIG preamble (assembly order: [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md)).
+`/create-component`'s `use_figma` payload inlines **one of eight per-archetype engine bundles** on every run, picked by `CONFIG.layout`. Each bundle pre-assembles the draw-engine + the one archetype builder it needs (plus shared helpers) into a single file that fits under the `use_figma.code` 50 000-char hard limit with 17–23 KB of headroom for the agent's CONFIG preamble (assembly order: [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md)). The **default** [`create-component-figma-runner`](skills/create-component-figma-runner/SKILL.md) issues **two** such calls per component (phased draw); one call remains available via **`twoPhaseDraw: false`**.
 
 | `CONFIG.layout` | Bundle file | ~size |
 |---|---|---|

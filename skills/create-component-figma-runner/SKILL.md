@@ -1,13 +1,13 @@
 ---
 name: create-component-figma-runner
-description: Default /create-component Step 6 when Task exists — Prepend parent-authored configBlock (verbatim const CONFIG), read preamble + per-archetype engine from layout, patch registry, run check-payload, call use_figma once, return compact JSON. Parent must use Task (isolated context) so ~40K-char engine never lands in the parent thread. Parent owns Steps 1–5, 4.7, §9 review, Step 5.2 registry; subagent owns assembly + preflight + one use_figma only.
+description: Default /create-component Step 6 when Task exists — Prepend parent-authored configBlock (verbatim const CONFIG), read preamble + per-archetype engine from layout, patch registry, run check-payload, call use_figma twice by default (phased variant build then doc pipeline) or once when twoPhaseDraw is false, return compact JSON. Parent must use Task (isolated context) so ~40K-char engine never lands in the parent thread. Parent owns Steps 1–5, 4.7, §9 review, Step 5.2 registry; subagent owns assembly + preflight + use_figma.
 argument-hint: "fileKey=…, layout=…, createComponentRoot=…, configBlock=… (verbatim const CONFIG = {…};), registry path or activeFileKey + registryJson — see SKILL §0."
 agent: general-purpose
 ---
 
 # Skill — `create-component-figma-runner`
 
-You are a **single-purpose subagent** and the **default** executor for [`/create-component`](../create-component/SKILL.md) **Step 6** whenever the parent host exposes **`Task`**. Your job is to assemble the `use_figma` **code** string (**`configBlock`** — parent-authored `const CONFIG = { … };` — then [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/)), run **`check-payload`** (and optional full wrapper check), call **`use_figma` once**, and return a **compact** JSON result to the parent. You run in an **isolated** context so the parent thread never emits the full ~40K-character `code` in its own message.
+You are a **single-purpose subagent** and the **default** executor for [`/create-component`](../create-component/SKILL.md) **Step 6** whenever the parent host exposes **`Task`**. Your job is to assemble the `use_figma` **code** string (**`configBlock`** — parent-authored `const CONFIG = { … };` — then [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/)), run **`check-payload`** (and optional full wrapper check), and call **`use_figma`** **twice by default** (phase 1 → ComponentSet; phase 2 → doc frame, matrix, usage — see **§1b**). If the parent sets **`twoPhaseDraw: false`**, use **one** `use_figma` (legacy single script). Return a **compact** JSON result to the parent. You run in an **isolated** context so the parent thread never emits the full ~40K-character `code` in its own message.
 
 **Parent threads** must **not** paste the minified engine into their own `use_figma` for that component when **`Task` is available** — they hand off structured inputs per **§0** instead. Full orchestration, **`SKILL.md` §9** assertions, and registry write-back stay in the parent; assembly + Figma call happen here. Same delegation pattern as [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md); see [`AGENTS.md`](../../AGENTS.md) § *Session runbook*.
 
@@ -24,6 +24,7 @@ The parent must supply **all** of the following in its `Task` prompt in a **pars
 | `configBlock` | yes | **Verbatim JavaScript** for Step 6’s first segment: the full `const CONFIG = { … };` statement the parent would paste ahead of the preamble on the **inline** path — **byte-for-byte the same** as [`create-component/SKILL.md`](../create-component/SKILL.md) / [`EXECUTOR.md`](../create-component/EXECUTOR.md) after Mode A / B. Must include function-valued keys the engine needs (`applyStateOverride`, and `label` when it is a function). **`JSON.stringify(CONFIG)` is wrong here** — it **drops** functions and breaks matrix state behavior. Put `configBlock` in the Task prompt inside a Markdown fenced code block labeled `js`, or as another clearly delimited multiline string. |
 | `createComponentRoot` | yes | Path to the folder that contains `templates/preamble.figma.js` (e.g. repo `skills/create-component/`) so you can `Read` the preamble and the correct `create-component-engine-{layout}.min.figma.js` |
 | `registry` | one of (a) or (b) | **(a)** Path to a `.designops-registry.json` at the **design project** repo root — `Read` it to fill `ACTIVE_FILE_KEY` and `REGISTRY_COMPONENTS` for the preamble, **or (b)** `activeFileKey` (string or null) + `registryComponentsJson` (stringified JSON object) inlined in the prompt if the file is not available |
+| `twoPhaseDraw` | no | **`true`** or **omitted** — run **two** `use_figma` calls (default): phase 1 builds the ComponentSet and returns early; phase 2 draws `_PageContent`, the doc frame, matrix, and usage (same min bundle both times; inject globals per **§1b**). **`false`** — legacy **one** `use_figma` with the full script in a single run. Parents rarely need to pass this field unless forcing single-call for debugging. |
 
 **Optional:** `description` (string) for `use_figma`; `projectRootForShell` if `npm run check-payload` must be run with `cwd` (defaults to the workspace folder that contains `package.json` with `check-payload` — usually the DesignOps plugin root).
 
@@ -59,13 +60,13 @@ The parent must supply **all** of the following in its `Task` prompt in a **pars
 | `container` | `create-component-engine-container.min.figma.js` |
 | `__composes__` | `create-component-engine-composed.min.figma.js` |
 
-5. **Concatenate** in order: **`configBlock`** (from step 1) + newline + preamble (replaced) + minified engine string. **No** other text before/after. This is the `code` string for `use_figma`.
+5. **Concatenate** in order: **`configBlock`** (from step 1) + newline + **phase globals** when two-phase is active (see **§1b** — default) + preamble (replaced) + minified engine string. **No** other text before/after. This is the `code` string for `use_figma`. When **`twoPhaseDraw: false`**, omit phase globals entirely.
 
 6. **Preflight** — in order:
    - Pipe the concatenated `code` to `node {pluginRoot}/scripts/check-payload.mjs` (stdin) **or** write **only** to a temp path **outside the repo** (e.g. OS temp) and pass the path — **do not** commit `*.mcp-*` or `*-payload.json` under the repo (see [`AGENTS.md`](../../AGENTS.md)).
    - If the plugin has [`scripts/check-use-figma-mcp-args.mjs`](../../scripts/check-use-figma-mcp-args.mjs), build the object `{ "fileKey": "...", "code": "<full string>", "description": "...", "skillNames": "figma-use,create-component" }` and pipe it to that script, or use the host’s `call_mcp_tool` only after both gates pass.
 
-7. **Call `use_figma`** with `fileKey`, `code` (full assembled string), `description`, and `skillNames: "figma-use,create-component-figma-runner"`.
+7. **Call `use_figma`** with `fileKey`, `code` (full assembled string), `description`, and `skillNames: "figma-use,create-component-figma-runner"`. **Unless `twoPhaseDraw: false`:** after phase 1 returns, assemble phase 2 `code` (step 5 with **§1b** phase-2 globals + same preamble + same engine), re-run step 6, then call `use_figma` again.
 
 8. **Return** to the parent a **compact** JSON object (last message of the Task):
 
@@ -89,6 +90,33 @@ On failure:
 ```
 
 Pass through any useful keys from the `use_figma` return in `raw` if needed for parent `§9` checks.
+
+When two-phase mode is active (**default**), the **final** return must match the shape above using the **phase 2** `use_figma` result (full `returnPayload`). You may include `phase1` (the phase 1 object) under `raw` for debugging. **`§9` in the parent** applies only to that phase-2 payload (`unresolvedTokenPaths`, `registryEntry`, etc.).
+
+---
+
+## §1b — Two-phase globals (default; skip entirely when `twoPhaseDraw: false`)
+
+Insert **after** normalized `configBlock` and **before** the preamble, as **valid JavaScript** lines (not inside the CONFIG object).
+
+**Phase 1** — force early return after the ComponentSet exists:
+
+```js
+var __CREATE_COMPONENT_PHASE__ = 1;
+```
+
+**Phase 2** — skip page clear and variant build; reload the ComponentSet and merge token-miss telemetry from phase 1:
+
+```js
+var __CREATE_COMPONENT_PHASE__ = 2;
+var __PHASE_1_COMP_SET_ID__ = "<compSetId from phase 1>";
+var __CC_PHASE1_PROPS_ADDED__ = <JSON.parse-compatible literal of propsAdded>;
+var __CC_PHASE1_UNRESOLVED__ = <JSON.parse-compatible literal of unresolvedTokenMisses array>;
+```
+
+Build these literals with `JSON.stringify` in the subagent so quoting is safe. If phase 1 returned an empty `unresolvedTokenMisses`, use `[]`.
+
+Parse phase 1’s tool return to obtain `compSetId`, `propsAdded`, and `unresolvedTokenMisses`. If the MCP wraps the payload, unwrap to the object the engine `return`ed.
 
 ---
 
