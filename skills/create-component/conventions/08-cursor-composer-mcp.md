@@ -110,7 +110,7 @@ Before drawing, confirm **all** of the following:
 
 1. Parent completes Steps **1–5** and **4.7**; finalizes **`configBlock`** (verbatim `const CONFIG = { … };`, not `JSON.stringify` — functions like `applyStateOverride` must survive) and **`layout`**.
 
-2. **Default — seven `use_figma` invocations in the parent**, each assembled per [`create-component-figma-slice-runner` §0.1 / §2](../../create-component-figma-slice-runner/SKILL.md): `step` (`cc-variants` … `cc-doc-finalize`), `fileKey`, `layout`, `configBlock`, `createComponentRoot`, `registry`, and `handoffJson` per [slice runner **§0**](../../create-component-figma-slice-runner/SKILL.md) and [orchestrator **§4**](../13-component-draw-orchestrator.md). Run [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) before each submit. Parent runs [`SKILL.md` §9](../SKILL.md) on the **last** slice’s return + registry.
+2. **Default — seven `use_figma` invocations in the parent**, each assembled per [`create-component-figma-slice-runner` §0.1 / §2](../../create-component-figma-slice-runner/SKILL.md): `step` (`cc-doc-scaffold` → `cc-variants` → … → `cc-doc-finalize`), `fileKey`, `layout`, `configBlock`, `createComponentRoot`, `registry`, and `handoffJson` per [slice runner **§0**](../../create-component-figma-slice-runner/SKILL.md) and [orchestrator **§4**](../13-component-draw-orchestrator.md). Run [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) before each submit. Parent runs [`SKILL.md` §9](../SKILL.md) on the **last** slice’s return + registry.
 
 3. **Optional** — `Task` → slice runner **per slug** when the subagent is **proven** to pass full `call_mcp` for that slice. **If not**, stay in the parent; do not retry failed `Task` for transport.
 
@@ -119,10 +119,12 @@ Before drawing, confirm **all** of the following:
 ```mermaid
 flowchart LR
   parent[Parent Steps 1 to 5]
-  u0[use_figma cc-variants]
+  u0[use_figma cc-doc-scaffold]
+  u1[use_figma cc-variants]
   u5[use_figma cc-doc-finalize]
   parent --> u0
-  u0 --> u5
+  u0 --> u1
+  u1 --> u5
 ```
 
 *(Seven sequential `use_figma` calls in production; diagram shows first and last for brevity.)*

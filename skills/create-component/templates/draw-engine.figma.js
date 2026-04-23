@@ -705,11 +705,12 @@ const GUTTER_W_SIZE    = 60;
 const GUTTER_W_VARIANT = 160;
 
 // --- Two-phase draw (optional MCP chunking) -------------------------------
-// Omitted or 0 = single `use_figma` (legacy). 1 = build ComponentSet only
-// and return early. 2 = doc pipeline only — skips §6.0 clear and variant
-// build; requires __PHASE_1_COMP_SET_ID__, __CC_PHASE1_PROPS_ADDED__, and
-// optionally __CC_PHASE1_UNRESOLVED__ injected before this engine. See
-// skills/create-component/EXECUTOR.md (inline two-phase) + figma-slice-runner (six-slice).
+// Omitted or 0 = single `use_figma` (legacy). 1 = build variant COMPONENTs into
+// a staging frame only and return early (no ComponentSet yet). 2 = doc pipeline
+// only — skips §6.0 clear and variant build; doc step 1 may run with **no** variants
+// yet (scaffold-first MCP ladder); later steps need __PHASE_1_VARIANT_HOLDER_ID__
+// or __CC_HANDOFF_COMP_SET_ID__ (after doc component step), __CC_PHASE1_PROPS_ADDED__,
+// optionally __CC_PHASE1_UNRESOLVED__. See EXECUTOR.md + figma-slice-runner.
 const _ccPhase = typeof __CREATE_COMPONENT_PHASE__ === 'undefined' ? 0 : __CREATE_COMPONENT_PHASE__;
 if (_ccPhase !== 0 && _ccPhase !== 1 && _ccPhase !== 2) {
   throw new Error(
@@ -720,11 +721,26 @@ if (_ccPhase !== 0 && _ccPhase !== 1 && _ccPhase !== 2) {
 // --- 6.0  Clear page (except _Header) -----------------------------------
 // Wipe EVERYTHING except _Header — orphan ComponentSets, half-drawn doc
 // frames, abandoned variant components from a prior failed run.
-// Phase 2 must NOT clear — the ComponentSet from phase 1 still lives here.
+// Phase 2 must NOT clear — variant staging frame / ComponentSet from prior slices still lives here.
+// Scaffold-first MCP ladder: phase 1 (`cc-variants`) runs after `cc-doc-scaffold` and must keep
+// `_PageContent` — inject __CC_HANDOFF_PAGE_CONTENT_ID__ / __CC_HANDOFF_DOC_ROOT_ID__ from handoff.
 
 if (_ccPhase !== 2) {
-  for (const node of [...figma.currentPage.children]) {
-    if (node.name !== '_Header') node.remove();
+  const preservePageDoc =
+    _ccPhase === 1 &&
+    typeof __CC_HANDOFF_PAGE_CONTENT_ID__ !== 'undefined' &&
+    __CC_HANDOFF_PAGE_CONTENT_ID__ &&
+    typeof __CC_HANDOFF_DOC_ROOT_ID__ !== 'undefined' &&
+    __CC_HANDOFF_DOC_ROOT_ID__;
+  if (preservePageDoc) {
+    for (const node of [...figma.currentPage.children]) {
+      if (node.name === '_Header' || node.name === '_PageContent') continue;
+      node.remove();
+    }
+  } else {
+    for (const node of [...figma.currentPage.children]) {
+      if (node.name !== '_Header') node.remove();
+    }
   }
 }
 
@@ -914,25 +930,29 @@ if (_ccPhase !== 1) {
 }
 
 let compSet;
+let variantBuildHolder = null;
 let propsAdded;
 let variantByKey = {};
 
 if (_ccPhase === 2) {
-  const pid = typeof __PHASE_1_COMP_SET_ID__ !== 'undefined' ? __PHASE_1_COMP_SET_ID__ : null;
-  if (!pid) {
-    throw new Error(
-      '[create-component] phase 2 requires __PHASE_1_COMP_SET_ID__ (ComponentSet id from phase 1). ' +
-        'See skills/create-component/EXECUTOR.md (inline two-phase draw).',
-    );
-  }
-  const loaded = await figma.getNodeByIdAsync(pid);
-  if (!loaded || loaded.type !== 'COMPONENT_SET') {
-    throw new Error(
-      `[create-component] phase 2: node '${pid}' is not a COMPONENT_SET (got ${loaded ? loaded.type : 'null'})`,
-    );
-  }
-  compSet = loaded;
-  if (
+  const compSetHandoff =
+    typeof __CC_HANDOFF_COMP_SET_ID__ !== 'undefined' ? __CC_HANDOFF_COMP_SET_ID__ : null;
+  const variantHid =
+    typeof __PHASE_1_VARIANT_HOLDER_ID__ !== 'undefined' ? __PHASE_1_VARIANT_HOLDER_ID__ : null;
+  const docStepProbe =
+    typeof __CREATE_COMPONENT_DOC_STEP__ === 'number' ? __CREATE_COMPONENT_DOC_STEP__ : null;
+  variantByKey = {};
+  compSet = null;
+  variantBuildHolder = null;
+  if (docStepProbe === 1 && !compSetHandoff && !variantHid) {
+    propsAdded =
+      typeof __CC_PHASE1_PROPS_ADDED__ !== 'undefined' &&
+      __CC_PHASE1_PROPS_ADDED__ !== null &&
+      typeof __CC_PHASE1_PROPS_ADDED__ === 'object'
+        ? __CC_PHASE1_PROPS_ADDED__
+        : {};
+    // Scaffold-first: doc shell only — variants arrive in the next `cc-variants` slice.
+  } else if (
     typeof __CC_PHASE1_PROPS_ADDED__ === 'undefined' ||
     __CC_PHASE1_PROPS_ADDED__ === null ||
     typeof __CC_PHASE1_PROPS_ADDED__ !== 'object'
@@ -940,16 +960,51 @@ if (_ccPhase === 2) {
     throw new Error(
       '[create-component] phase 2 requires __CC_PHASE1_PROPS_ADDED__ from phase 1 return payload',
     );
+  } else {
+    propsAdded = __CC_PHASE1_PROPS_ADDED__;
   }
-  propsAdded = __CC_PHASE1_PROPS_ADDED__;
-  for (const node of compSet.children) {
-    const parts = node.name.split(', ').reduce((acc, kv) => {
-      const [k, val] = kv.split('=');
-      acc[k] = val;
-      return acc;
-    }, {});
-    const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
-    variantByKey[key] = node;
+  if (docStepProbe === 1 && !compSetHandoff && !variantHid) {
+    // variantByKey / compSet stay empty until `cc-variants` merges.
+  } else if (compSetHandoff) {
+    const loaded = await figma.getNodeByIdAsync(compSetHandoff);
+    if (!loaded || loaded.type !== 'COMPONENT_SET') {
+      throw new Error(
+        `[create-component] phase 2: node '${compSetHandoff}' is not a COMPONENT_SET (got ${loaded ? loaded.type : 'null'})`,
+      );
+    }
+    compSet = loaded;
+    for (const node of compSet.children) {
+      const parts = node.name.split(', ').reduce((acc, kv) => {
+        const [k, val] = kv.split('=');
+        acc[k] = val;
+        return acc;
+      }, {});
+      const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+      variantByKey[key] = node;
+    }
+  } else if (variantHid) {
+    const holder = await figma.getNodeByIdAsync(variantHid);
+    if (!holder || holder.type !== 'FRAME') {
+      throw new Error(
+        `[create-component] phase 2: variant holder '${variantHid}' missing or not a FRAME (got ${holder ? holder.type : 'null'})`,
+      );
+    }
+    variantBuildHolder = holder;
+    for (const node of holder.children) {
+      if (node.type !== 'COMPONENT') continue;
+      const parts = node.name.split(', ').reduce((acc, kv) => {
+        const [k, val] = kv.split('=');
+        acc[k] = val;
+        return acc;
+      }, {});
+      const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+      variantByKey[key] = node;
+    }
+  } else {
+    throw new Error(
+      '[create-component] phase 2 requires __CC_HANDOFF_COMP_SET_ID__ (after doc slice 2 / `cc-doc-component`) or ' +
+        '__PHASE_1_VARIANT_HOLDER_ID__ (staging frame from `cc-variants`), or doc step 1 with no variants yet. See EXECUTOR.md.',
+    );
   }
 // __CC_DOC_SLIM_OMIT_VARIANT_ELSE_BEGIN__
 } else {
@@ -1023,11 +1078,18 @@ if (_ccPhase === 2) {
       variantData.push(built);
     }
   }
+  variantBuildHolder = figma.createFrame();
+  variantBuildHolder.name = `_ccVariantBuild/${CONFIG.component}`;
+  figma.currentPage.appendChild(variantBuildHolder);
+  variantBuildHolder.visible = false;
   let cx = 0;
-  for (const d of variantData) { d.component.x = cx; d.component.y = 0; cx += (d.component.width || 120) + 16; }
-
-  compSet = figma.combineAsVariants(variantData.map(d => d.component), figma.currentPage);
-  compSet.name = `${CONFIG.title} — ComponentSet`;
+  for (const d of variantData) {
+    d.component.x = cx;
+    d.component.y = 0;
+    variantBuildHolder.appendChild(d.component);
+    cx += (d.component.width || 120) + 16;
+  }
+  compSet = null;
 
   propsAdded = (() => {
     const agg = {};
@@ -1042,7 +1104,9 @@ if (_ccPhase === 2) {
     return agg;
   })();
 
-  for (const node of compSet.children) {
+  variantByKey = {};
+  for (const node of variantBuildHolder.children) {
+    if (node.type !== 'COMPONENT') continue;
     const parts = node.name.split(', ').reduce((acc, kv) => {
       const [k, val] = kv.split('=');
       acc[k] = val;
@@ -1055,12 +1119,13 @@ if (_ccPhase === 2) {
 // __CC_DOC_SLIM_OMIT_VARIANT_ELSE_END__
 
 if (_ccPhase === 1) {
+  if (!variantBuildHolder) {
+    throw new Error('[create-component] phase 1: variant staging frame missing — internal draw-engine error');
+  }
   return {
     ok: true,
     phase: 1,
-    compSetId: compSet.id,
-    compSetName: compSet.name,
-    compSetKey: compSet.key,
+    variantHolderId: variantBuildHolder.id,
     propsAdded,
     unresolvedTokenMisses: _unresolvedTokenMisses.slice(),
     layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
@@ -1083,8 +1148,9 @@ if (_ccPhase === 1) {
 // Multistep doc pipeline (MCP): __CREATE_COMPONENT_DOC_STEP__ 1–6 runs one slice
 // per `use_figma` call; omit it for single-pass doc tail (inline two-phase
 // phase 2 or _ccPhase === 0). See conventions/09 + EXECUTOR.md.
-// Steps: 1 = page + header + properties table (placeholder body rows) ·
-// 2 = fill table cells from CONFIG.properties in place · 3–6 = component, matrix, usage, finalize.
+// Steps: 1 = page + header + properties table (placeholder body rows) + dashed reserves ·
+// 2 = component section (combine + reparent) · 3 = fill table cells from CONFIG.properties in place ·
+// 4–6 = matrix, usage, finalize.
 // `build-min-templates.mjs` replaces the following two declarations with
 // `const __ccDocStep = N` (N = 1..6) when emitting *.stepN.min.figma.js so esbuild
 // drops unused doc-step branches and each MCP payload stays small.
@@ -1119,24 +1185,10 @@ async function __ccDocResumeFromHandoff() {
   }
   pageContent = pc;
   docRoot = dr;
-  const pid =
-    typeof __PHASE_1_COMP_SET_ID__ !== 'undefined'
-      ? __PHASE_1_COMP_SET_ID__
-      : typeof __CC_HANDOFF_COMP_SET_ID__ !== 'undefined'
-        ? __CC_HANDOFF_COMP_SET_ID__
-        : null;
-  if (!pid) {
-    throw new Error(
-      '[create-component] resume: set __PHASE_1_COMP_SET_ID__ or __CC_HANDOFF_COMP_SET_ID__',
-    );
-  }
-  const loaded = await figma.getNodeByIdAsync(pid);
-  if (!loaded || loaded.type !== 'COMPONENT_SET') {
-    throw new Error(
-      `[create-component] resume: node '${pid}' is not a COMPONENT_SET (got ${loaded ? loaded.type : 'null'})`,
-    );
-  }
-  compSet = loaded;
+  const compSetHandoff =
+    typeof __CC_HANDOFF_COMP_SET_ID__ !== 'undefined' ? __CC_HANDOFF_COMP_SET_ID__ : null;
+  const variantHid =
+    typeof __PHASE_1_VARIANT_HOLDER_ID__ !== 'undefined' ? __PHASE_1_VARIANT_HOLDER_ID__ : null;
   if (
     typeof __CC_PHASE1_PROPS_ADDED__ === 'undefined' ||
     __CC_PHASE1_PROPS_ADDED__ === null ||
@@ -1146,14 +1198,47 @@ async function __ccDocResumeFromHandoff() {
   }
   propsAdded = __CC_PHASE1_PROPS_ADDED__;
   variantByKey = {};
-  for (const node of compSet.children) {
-    const parts = node.name.split(', ').reduce((acc, kv) => {
-      const [k, val] = kv.split('=');
-      acc[k] = val;
-      return acc;
-    }, {});
-    const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
-    variantByKey[key] = node;
+  compSet = null;
+  variantBuildHolder = null;
+  if (compSetHandoff) {
+    const loaded = await figma.getNodeByIdAsync(compSetHandoff);
+    if (!loaded || loaded.type !== 'COMPONENT_SET') {
+      throw new Error(
+        `[create-component] resume: node '${compSetHandoff}' is not a COMPONENT_SET (got ${loaded ? loaded.type : 'null'})`,
+      );
+    }
+    compSet = loaded;
+    for (const node of compSet.children) {
+      const parts = node.name.split(', ').reduce((acc, kv) => {
+        const [k, val] = kv.split('=');
+        acc[k] = val;
+        return acc;
+      }, {});
+      const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+      variantByKey[key] = node;
+    }
+  } else if (variantHid) {
+    const holder = await figma.getNodeByIdAsync(variantHid);
+    if (!holder || holder.type !== 'FRAME') {
+      throw new Error(
+        `[create-component] resume: variant holder '${variantHid}' missing or not a FRAME (got ${holder ? holder.type : 'null'})`,
+      );
+    }
+    variantBuildHolder = holder;
+    for (const node of holder.children) {
+      if (node.type !== 'COMPONENT') continue;
+      const parts = node.name.split(', ').reduce((acc, kv) => {
+        const [k, val] = kv.split('=');
+        acc[k] = val;
+        return acc;
+      }, {});
+      const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+      variantByKey[key] = node;
+    }
+  } else {
+    throw new Error(
+      '[create-component] resume: set __CC_HANDOFF_COMP_SET_ID__ (after doc slice 2 / `cc-doc-component`) or __PHASE_1_VARIANT_HOLDER_ID__',
+    );
   }
 }
 
@@ -1385,6 +1470,64 @@ function __ccPlaceholderPropertyRows() {
   return rows;
 }
 
+// Multistep doc step 1 only — visible dashed frames reserve vertical space for
+// §6.6B / §6.7 / §6.8 until slices 3–5 replace them in place (same child index).
+// Without these, designers only see header + Properties while later slices are
+// pending; ComponentSet can also sit orphaned on the page if a run aborts early.
+function __ccScaffoldPlaceholderFrame(slug, caption) {
+  const f = makeFrame(`doc/scaffold-placeholder/${CONFIG.component}/${slug}`, {
+    layoutMode: 'VERTICAL',
+    primary: 'AUTO',
+    counter: 'FIXED',
+    width: DOC_FRAME_WIDTH,
+    minHeight: slug === 'component-set' ? 140 : slug === 'matrix' ? 220 : 180,
+    padL: 24,
+    padR: 24,
+    padT: 20,
+    padB: 20,
+    itemSpacing: 8,
+    align: 'STRETCH',
+    strokeVar: 'color/border/subtle',
+    strokeWeight: 1,
+    dashed: true,
+    radius: 12,
+  });
+  const t = makeText(caption, 'caption', 13, 'color/background/content-muted');
+  t.resize(DOC_FRAME_WIDTH - 48, 1);
+  t.textAutoResize = 'HEIGHT';
+  f.appendChild(t);
+  return f;
+}
+
+function __ccDocAppendScaffoldPlaceholders() {
+  docRoot.appendChild(__ccScaffoldPlaceholderFrame(
+    'component-set',
+    'Scaffold — Component (filled when cc-doc-component runs, doc step 2)',
+  ));
+  docRoot.appendChild(__ccScaffoldPlaceholderFrame(
+    'matrix',
+    'Scaffold — Variants × States matrix (slice 4)',
+  ));
+  docRoot.appendChild(__ccScaffoldPlaceholderFrame(
+    'usage',
+    'Scaffold — Do / Don\u2019t usage (slice 5)',
+  ));
+}
+
+/** Replace a step-1 dashed placeholder if present; otherwise append (single-pass doc). */
+async function __ccDocInsertOrReplaceSection(scaffoldSlug, buildSection) {
+  const phName = `doc/scaffold-placeholder/${CONFIG.component}/${scaffoldSlug}`;
+  const ph = docRoot.findOne(n => n.type === 'FRAME' && n.name === phName);
+  const section = await buildSection();
+  if (ph) {
+    const idx = ph.parent.children.indexOf(ph);
+    ph.remove();
+    docRoot.insertChild(idx, section);
+  } else {
+    docRoot.appendChild(section);
+  }
+}
+
 // Multistep step 2 only — in-place text updates, no table delete/rebuild.
 function __ccDocFillPropertiesFromConfig() {
   const table = docRoot.findOne(
@@ -1432,7 +1575,7 @@ function __ccDocAppendProperties() {
 // panel. Every cell in the matrix below is an instance of a child of
 // this ComponentSet, so a single edit here propagates everywhere.
 
-function buildComponentSetSection() {
+async function buildComponentSetSection() {
   const section = makeFrame(`doc/component/${CONFIG.component}/component-set-group`, {
     layoutMode: 'VERTICAL', primary: 'AUTO', counter: 'FIXED', width: DOC_FRAME_WIDTH,
     itemSpacing: 12, align: 'STRETCH',
@@ -1448,6 +1591,40 @@ function buildComponentSetSection() {
   );
   scap.resize(DOC_FRAME_WIDTH, 1); scap.textAutoResize = 'HEIGHT';
   section.appendChild(scap);
+
+  let holder = variantBuildHolder;
+  if (!holder || !holder.parent) {
+    const hid =
+      typeof __PHASE_1_VARIANT_HOLDER_ID__ !== 'undefined' ? __PHASE_1_VARIANT_HOLDER_ID__ : null;
+    if (!hid) {
+      throw new Error('[create-component] §6.6B: variant holder missing — expected deferred combine at scaffold');
+    }
+    holder = await figma.getNodeByIdAsync(hid);
+    if (!holder || holder.type !== 'FRAME') {
+      throw new Error(
+        `[create-component] §6.6B: variant holder '${hid}' missing or not a FRAME (got ${holder ? holder.type : 'null'})`,
+      );
+    }
+  }
+  const comps = holder.children.filter(n => n.type === 'COMPONENT');
+  if (!comps.length) {
+    throw new Error('[create-component] §6.6B: variant holder has no COMPONENT children');
+  }
+  compSet = figma.combineAsVariants(comps, section);
+  compSet.name = `${CONFIG.title} — ComponentSet`;
+  holder.remove();
+  variantBuildHolder = null;
+
+  variantByKey = {};
+  for (const node of compSet.children) {
+    const parts = node.name.split(', ').reduce((acc, kv) => {
+      const [k, val] = kv.split('=');
+      acc[k] = val;
+      return acc;
+    }, {});
+    const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+    variantByKey[key] = node;
+  }
 
   // Configure the ComponentSet itself as a horizontal-WRAP auto-layout
   // grid so every variant is visible at a glance and the group
@@ -1477,13 +1654,11 @@ function buildComponentSetSection() {
   compSet.dashPattern  = [6, 4];
   compSet.cornerRadius = 16;
 
-  // Reparent from figma.currentPage into this section (preserves node identity)
-  section.appendChild(compSet);
   return section;
 }
 
-function __ccDocAppendComponentSection() {
-  docRoot.appendChild(buildComponentSetSection());
+async function __ccDocAppendComponentSection() {
+  await __ccDocInsertOrReplaceSection('component-set', buildComponentSetSection);
 }
 
 // --- 6.7  Variant × State matrix (conventions/04-doc-pipeline-contract.md §5) --------------------
@@ -1639,8 +1814,8 @@ function buildMatrix() {
   return group;
 }
 
-function __ccDocAppendMatrix() {
-  docRoot.appendChild(buildMatrix());
+async function __ccDocAppendMatrix() {
+  await __ccDocInsertOrReplaceSection('matrix', buildMatrix);
 }
 
 // --- 6.8  Usage notes — Do / Don't cards (conventions/04-doc-pipeline-contract.md §6) ------------
@@ -1677,23 +1852,26 @@ function buildUsageNotes() {
   return row;
 }
 
-function __ccDocAppendUsage() {
-  docRoot.appendChild(buildUsageNotes());
+async function __ccDocAppendUsage() {
+  await __ccDocInsertOrReplaceSection('usage', buildUsageNotes);
 }
 
 function __ccDocHandoffAfter(step) {
-  return {
+  const o = {
     ok: true,
     docStep: step,
     pageContentId: pageContent.id,
     docRootId: docRoot.id,
-    compSetId: compSet.id,
-    compSetName: compSet.name,
-    compSetKey: compSet.key,
     propsAdded,
     unresolvedTokenMisses: _unresolvedTokenMisses.slice(),
     layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
   };
+  if (compSet) {
+    o.compSetId = compSet.id;
+    o.compSetName = compSet.name;
+    o.compSetKey = compSet.key;
+  }
+  return o;
 }
 
 // --- 6.9  Self-validate + reveal ---------------------------------------
@@ -1926,35 +2104,38 @@ const returnPayload = {
 async function __ccDocDispatch() {
   if (__ccDocStep === null) {
     __ccDocPageHeader();
-    __ccDocAppendProperties();
-    __ccDocAppendComponentSection();
-    __ccDocAppendMatrix();
-    __ccDocAppendUsage();
+    docRoot.appendChild(buildPropertiesTable(__ccPlaceholderPropertyRows()));
+    __ccDocAppendScaffoldPlaceholders();
+    await __ccDocAppendComponentSection();
+    __ccDocFillPropertiesFromConfig();
+    await __ccDocAppendMatrix();
+    await __ccDocAppendUsage();
     return __ccDocFinalizeAndReturn();
   }
   if (__ccDocStep === 1) {
     __ccDocPageHeader();
     docRoot.appendChild(buildPropertiesTable(__ccPlaceholderPropertyRows()));
+    __ccDocAppendScaffoldPlaceholders();
     return __ccDocHandoffAfter(1);
   }
   if (__ccDocStep === 2) {
     await __ccDocResumeFromHandoff();
-    __ccDocFillPropertiesFromConfig();
+    await __ccDocAppendComponentSection();
     return __ccDocHandoffAfter(2);
   }
   if (__ccDocStep === 3) {
     await __ccDocResumeFromHandoff();
-    __ccDocAppendComponentSection();
+    __ccDocFillPropertiesFromConfig();
     return __ccDocHandoffAfter(3);
   }
   if (__ccDocStep === 4) {
     await __ccDocResumeFromHandoff();
-    __ccDocAppendMatrix();
+    await __ccDocAppendMatrix();
     return __ccDocHandoffAfter(4);
   }
   if (__ccDocStep === 5) {
     await __ccDocResumeFromHandoff();
-    __ccDocAppendUsage();
+    await __ccDocAppendUsage();
     return __ccDocHandoffAfter(5);
   }
   if (__ccDocStep === 6) {

@@ -8,4 +8,4 @@
 
 **Exit when:** `fileKey` is set; `REGISTRY_COMPONENTS` / `ACTIVE_FILE_KEY` are read or defaulted per SKILL; any **composes** child ordering / AskUserQuestion flows from SKILL are satisfied.
 
-**Next:** first draw slice — [`04-slice-cc-variants.md`](./04-slice-cc-variants.md)
+**Next:** first draw slice — [`04-slice-cc-doc-scaffold.md`](./04-slice-cc-doc-scaffold.md)

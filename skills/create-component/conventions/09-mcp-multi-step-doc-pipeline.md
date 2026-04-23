@@ -4,7 +4,7 @@
 
 **Purpose:** Keep each Figma MCP `use_figma` **`code`** payload **small and fast** by splitting work into **separate Plugin API runs**, each carrying only the helpers needed for that slice. This is **not** the same as “two phases that both upload the full engine” — each step should ship a **dedicated min bundle** (or a gated slice) so **no** call pays for unrelated sections.
 
-**Authority:** [`SKILL.md`](../SKILL.md) wins on CONFIG and §9. This file wins on **dependency order** and **handoff** between min-slice calls. **Default transport** is **seven** `use_figma` invocations in the **parent** ([§13](./13-component-draw-orchestrator.md) DAG, assembly per [slice runner §0.1](../create-component-figma-slice-runner/SKILL.md)) — one variant slice + **six** doc slices including **scaffold** then **table fill** before component/matrix/usage. **Do not** default to `Task` subagents for payloads they cannot `call_mcp`. **Parent** two-phase or single-call full engine — [`EXECUTOR.md`](../EXECUTOR.md) **§0** (same bytes).
+**Authority:** [`SKILL.md`](../SKILL.md) wins on CONFIG and §9. This file wins on **dependency order** and **handoff** between min-slice calls. **Default transport** is **seven** `use_figma` invocations in the **parent** ([§13](./13-component-draw-orchestrator.md) DAG, assembly per [slice runner §0.1](../create-component-figma-slice-runner/SKILL.md)) — one variant slice + **six** doc slices including **scaffold**, then **component into doc**, then **table fill**, then matrix/usage/finalize. **Do not** default to `Task` subagents for payloads they cannot `call_mcp`. **Parent** two-phase or single-call full engine — [`EXECUTOR.md`](../EXECUTOR.md) **§0** (same bytes).
 
 **See also** — line-level `CONFIG` / phase map, preamble deps, and shared-prefix constraints for **phase-scoped config objects:** [`10-phased-payload-research.md`](./10-phased-payload-research.md).
 
@@ -17,14 +17,14 @@ The **Variants × States matrix** needs live `InstanceNode`s of the ComponentSet
 | Order | Step (name) | What it does | Hard dependency |
 |------|----------------|--------------|-----------------|
 | **0** | **Variant plane** | Clear page (except `_Header`), build variant masters, `combineAsVariants`, expose `compSet`, `propsAdded`, `variantByKey` | CONFIG + preamble + archetype builder for `CONFIG.layout` |
-| **1** (shipped) | **Scaffold: page + header + table placeholders** | `_PageContent`, `docRoot`, title + summary, properties table with **`properties.length` placeholder** rows — `doc.step1` | Phase **2** globals + `compSet` from step **0**; no `__CC_HANDOFF_*` |
-| **2** (shipped) | **Fill properties table** | In-place cell text from `CONFIG.properties` — `doc.step2` | **Handoff** from step **1** |
-| **3** | **Component section** | Section + **reparent** `ComponentSet` (`§6.6B`) | Same handoff chain |
+| **1** (shipped) | **Scaffold: page + header + table placeholders** | `_PageContent`, `docRoot`, title + summary, properties table with **`properties.length` placeholder** rows + dashed reserves — `doc.step1` | Phase **2** globals + `compSet` from step **0**; no `__CC_HANDOFF_*` |
+| **2** (shipped) | **Component section** | Section + **reparent** `ComponentSet` (`§6.6B`) — `doc.step2` | **Handoff** from step **1** + variant plane |
+| **3** (shipped) | **Fill properties table** | In-place cell text from `CONFIG.properties` — `doc.step3` | Same handoff chain (after step **2**, `compSetId` is in `doc`) |
 | **4** | **Variants × States matrix** | Matrix + `applyStateOverride` (`§6.7`) | Same handoff chain |
 | **5** | **Usage Do / Don’t** | Two cards (`§6.8`) | Same handoff chain |
 | **6** | **Finalize** | §6.9 + `returnPayload` | Same handoff chain |
 
-**Note:** **Steps 1–2** surface the “documentation scaffold with placeholders, then **fill the table**, then add **each** later section (component → matrix → usage → finalize)” on the canvas. Single-pass: `__ccDocStep === null` in [`04`](./04-doc-pipeline-contract.md) **§2.2.1** path B.
+**Note:** **Steps 1–3** surface the “documentation scaffold with placeholders, then **live ComponentSet**, then **fill the table**, then **each** later section (matrix → usage → finalize)” on the canvas. Single-pass: `__ccDocStep === null` in [`04`](./04-doc-pipeline-contract.md) **§2.2.1** path B.
 
 ### 1.1 — Layout preservation (do not “grenade” the table)
 
@@ -32,7 +32,7 @@ Splitting work across calls is **not** permission to ship an empty auto-layout t
 
 **Agents and runners must:**
 
-- Keep the **properties table shell** (group + 1640px table + uppercase **header row**) from the first step that touches the doc. **Shipped multistep:** step **1** = placeholder body rows, step **2** = in-place **fill** only — see [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2.1** paths A–C. Do not leave a header floating over a vacuum.
+- Keep the **properties table shell** (group + 1640px table + uppercase **header row**) from the first step that touches the doc. **Shipped multistep:** step **1** = placeholder body rows, step **2** = **component** section, step **3** = in-place **fill** only — see [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2.1** paths A–C. Do not leave a header floating over a vacuum.
 - Reserve **section frames** for header, component-set-group, matrix, and usage early enough that **`docRoot` child order and `itemSpacing`** match the final five-section stack; use short placeholder copy or empty titled frames with **explicit sizing hints** where the template would otherwise collapse.
 - **Never** delete and redraw the whole table mid-ladder just to “add rows” unless you are intentionally resetting the page; prefer in-place updates so column widths and bindings stay stable.
 

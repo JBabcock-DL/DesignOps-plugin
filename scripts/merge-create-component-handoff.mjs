@@ -10,7 +10,7 @@
 // Usage
 //   node scripts/merge-create-component-handoff.mjs <step> <handoff.json> <figma-return.json>
 //
-//   <step>        cc-variants | cc-doc-scaffold | cc-doc-props | cc-doc-component |
+//   <step>        cc-doc-scaffold | cc-variants | cc-doc-component | cc-doc-props |
 //                 cc-doc-matrix | cc-doc-usage | cc-doc-finalize
 //   handoff.json  path to existing JSON (will be read, merged, written)
 //   figma-return  JSON file: either the object returned from use_figma, or
@@ -74,15 +74,15 @@ if (typeof handoff !== "object" || handoff === null || Array.isArray(handoff)) {
 const payload = retWrapper?.raw && typeof retWrapper.raw === "object" ? retWrapper.raw : retWrapper;
 
 if (step === "cc-variants") {
-  const compSetId = payload?.compSetId;
-  if (typeof compSetId !== "string" || !compSetId.length) {
+  const variantHolderId = payload?.variantHolderId;
+  if (typeof variantHolderId !== "string" || !variantHolderId.length) {
     console.error(
-      "merge-create-component-handoff: cc-variants return missing compSetId (string). Refusing to clobber afterVariants.",
+      "merge-create-component-handoff: cc-variants return missing variantHolderId (string). Refusing to clobber afterVariants.",
     );
     process.exit(1);
   }
   handoff.afterVariants = {
-    compSetId,
+    variantHolderId,
     propsAdded: payload.propsAdded && typeof payload.propsAdded === "object" ? payload.propsAdded : {},
     unresolvedTokenMisses: Array.isArray(payload.unresolvedTokenMisses) ? payload.unresolvedTokenMisses : [],
   };
@@ -93,19 +93,21 @@ if (step === "cc-variants") {
   const missing = [];
   if (typeof pageContentId !== "string" || !pageContentId.length) missing.push("pageContentId");
   if (typeof docRootId !== "string" || !docRootId.length) missing.push("docRootId");
-  if (typeof compSetId !== "string" || !compSetId.length) missing.push("compSetId");
   if (missing.length) {
     console.error(
       `merge-create-component-handoff: doc slice return missing: ${missing.join(", ")}. Refusing to write partial handoff.doc.`,
     );
     process.exit(1);
   }
+  const prevDoc = handoff.doc && typeof handoff.doc === "object" ? handoff.doc : {};
   handoff.doc = {
-    ...(handoff.doc && typeof handoff.doc === "object" ? handoff.doc : {}),
+    ...prevDoc,
     pageContentId,
     docRootId,
-    compSetId,
   };
+  if (typeof compSetId === "string" && compSetId.length) {
+    handoff.doc.compSetId = compSetId;
+  }
 }
 
 try {

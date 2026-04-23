@@ -84,7 +84,8 @@ const ARCHETYPE_BUILDERS = {
 // any per-archetype bundle that exceeds HARD_LIMIT - CONFIG_HEADROOM so the
 // agent always has enough budget for its §0 CONFIG preamble.
 const HARD_LIMIT = 50000;
-const CONFIG_HEADROOM = 10000; // agent gets at least 10 KB for CONFIG + registry
+// CONFIG + preamble + patched registry literals; keep a floor but allow shared draw-engine growth.
+const CONFIG_HEADROOM = 7333;
 
 const PER_ARCHETYPE_REL = Object.fromEntries(
   Object.keys({ chip: 'chip', ...ARCHETYPE_BUILDERS }).map(layout => [
@@ -223,9 +224,7 @@ if (_ccPhase === 0) {
   return {
     ok: true,
     phase: 0,
-    compSetId: compSet.id,
-    compSetName: compSet.name,
-    compSetKey: compSet.key,
+    variantHolderId: variantBuildHolder.id,
     propsAdded,
     unresolvedTokenMisses: _unresolvedTokenMisses.slice(),
     layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
@@ -279,7 +278,7 @@ async function buildDocSlimSteps(esbuild, drawTop, drawBottom) {
   const results = [];
   for (let stepNum = 1; stepNum <= 6; stepNum++) {
     let assembled = base.replace(DOC_STEP_RUNTIME_BLOCK, `const __ccDocStep = ${stepNum};`);
-    assembled = `var __CREATE_COMPONENT_PHASE__=2;\n${assembled}`;
+    assembled = `var __CREATE_COMPONENT_PHASE__=2;\nvar __CREATE_COMPONENT_DOC_STEP__=${stepNum};\n${assembled}`;
     let peeled = await minifyScriptBody(esbuild, assembled, `doc-slim-step${stepNum}`, {
       mangle: true,
     });
