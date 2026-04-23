@@ -98,13 +98,14 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 | Component draw | [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) | Then `SKILL.md` sections as needed. |
 | Sync reconcile | [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) router | **One** [`phases/*.md`](skills/sync-design-system/phases/) for current step. |
 | MCP / bundles / Cursor roots | [`AGENTS.md`](AGENTS.md) | [`16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md) when debugging transport. |
+| Cursor + Composer; Step 6 `use_figma` pain | [`08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) | Then [`AGENTS.md`](AGENTS.md) if policy detail needed. |
 
 ---
 
 ## Host notes
 
 - **Claude Code:** Figma MCP connector; **`CLAUDE.md`** → this file; optional **`.claude/settings.json`** for permissions / paths.
-- **Cursor:** Workspace must include plugin root (or cache) so `skills/...` resolves; MCP **server** id from **`mcps/**/SERVER_METADATA.json`**; rules **`.cursor/rules/*.mdc`**.
+- **Cursor:** Workspace must include plugin root (or cache) so `skills/...` resolves; MCP **server** id from **`mcps/**/SERVER_METADATA.json`**; rules **`.cursor/rules/*.mdc`**. **Step 6 / Composer / large `use_figma` payload:** [preflight + `Task` + fallbacks](skills/create-component/conventions/08-cursor-composer-mcp.md).
 
 ---
 
