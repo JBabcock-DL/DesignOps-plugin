@@ -60,7 +60,9 @@ Do **not** improvise a parallel "generator" that ignores the templates — the t
 
 ## Non-canvas `use_figma` calls
 
-Other skills (`/create-component`, ad-hoc Figma edits) still call `use_figma` directly from the parent thread with inline `code` built per the transport table below. The subagent-delegation rule applies **only** to the committed canvas bundles under [`../canvas-templates/bundles/`](../canvas-templates/bundles/) — those are the large, redundant payloads that were bloating context. A one-off 2k-char script for a single node edit stays inline in the parent.
+Other skills (`/create-component`, ad-hoc Figma edits) may call `use_figma` from the **parent** with inline `code` **or**, on short-context / Composer-class hosts, delegate **assembly +** `use_figma` to [`../../create-component-figma-runner/SKILL.md`](../../create-component-figma-runner/SKILL.md) (one `Task` per component after the parent has built `configJson` and run install / 4.7). The subagent `Read`s [`create-component/templates/preamble.figma.js`](../create-component/templates/preamble.figma.js) and one per-archetype [`create-component-engine-*.min.figma.js`](../create-component/templates/) file and calls `use_figma` — same strings as a direct run, but the parent never emits the full ~40K-char `code` in its own message.
+
+The subagent-delegation rule for **style-guide** work applies **only** to the committed canvas bundles under [`../canvas-templates/bundles/`](../canvas-templates/bundles/) (use [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md) for those). **Do not** use `create-component-figma-runner` for 15a–c / 17 tables. A one-off 2k-char script for a single node edit stays inline in the parent.
 
 ---
 
@@ -70,6 +72,7 @@ Other skills (`/create-component`, ad-hoc Figma edits) still call `use_figma` di
 |----------|-----------|--------|
 | **1 — Canvas bundles (Step 15 / 17)** | **Delegate to [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent.** | Parent never `Read`s the bundle. |
 | **2 — Non-canvas inline** | Build plain Figma Plugin API JS in the parent thread and pass as inline `code`. | Bounded by the shipping schema cap (~50k chars). Follow the `figma-use` skill when tool docs require. |
+| **2b — `/create-component` (optional subagent)** | **Delegate to [`create-component-figma-runner`](../../create-component-figma-runner/SKILL.md)** (one `Task` per component) after the parent has `configJson` + preflight. | Parent never **outputs** the full `code` string; same Figma result as row 2. |
 | **Fallback (debug only)** | Editor **`Read`** the committed `.min.mcp.js` and pass **verbatim** as inline `code` from the parent. | Use only when the runner subagent can't reach the MCP and the parent must escalate. Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
 | **Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
 | **Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema — only inline `code` exists. |

@@ -45,8 +45,9 @@
 //     at the top of draw-engine.figma.js §0a; that fires in Figma).
 //   - Prove the MCP host serialized the ENTIRE tool-arguments object. This
 //     script only checks the `code` string. `Unexpected end of JSON input` on
-//     use_figma often means the wrapper JSON was truncated or malformed — run
-//     JSON.stringify/parse on the full args object in the host when debugging.
+//     use_figma often means the wrapper JSON was truncated or malformed — use
+//     `scripts/check-use-figma-mcp-args.mjs` on the full JSON tool-arguments
+//     object (stdin or file) when debugging.
 //
 // This is the cheapest gate in the whole pipeline — run it before every
 // `use_figma` call. skills/create-component/SKILL.md §6.0a makes it mandatory;

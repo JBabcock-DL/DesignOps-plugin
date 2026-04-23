@@ -13,6 +13,7 @@
     "build:props:check": "node scripts/build-shadcn-props.mjs --check",
     "validate-tokens": "node scripts/validate-tokens.mjs",
     "check-payload": "node scripts/check-payload.mjs",
+    "check-use-figma-args": "node scripts/check-use-figma-mcp-args.mjs",
     "sync-cache": "bash scripts/sync-cache.sh",
     "verify-cache": "bash scripts/verify-cache.sh",
     "build": "npm run build:props && npm run build:docs && npm run build:min",
