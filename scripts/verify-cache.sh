@@ -86,6 +86,12 @@ BUNDLES_REL=(
   "$BUNDLE_PREFIX-composed.min.figma.js"
   "$BUNDLE_PREFIX.min.figma.js"
 )
+for _LAYOUT in chip surface-stack field row-item tiny control container composed; do
+  BUNDLES_REL+=( "$BUNDLE_PREFIX-${_LAYOUT}.step0.min.figma.js" )
+done
+for _S in 1 2 3 4 5; do
+  BUNDLES_REL+=( "$BUNDLE_PREFIX-doc.step${_S}.min.figma.js" )
+done
 BUNDLE_SOURCES=(
   "skills/create-component/templates/draw-engine.figma.js"
   "skills/create-component/templates/archetype-builders.figma.js"
@@ -97,6 +103,10 @@ for BUNDLE_REL in "${BUNDLES_REL[@]}"; do
   BUNDLE_ABS_LIST+=("$BUNDLE_ABS")
   if [[ -f "$BUNDLE_ABS" ]]; then
     for SRC_REL in "${BUNDLE_SOURCES[@]}"; do
+      # Shared doc ladder slices omit archetype-builders — only draw-engine matters.
+      if [[ "$BUNDLE_REL" == *-doc.step*.min.figma.js ]] && [[ "$SRC_REL" == *archetype-builders* ]]; then
+        continue
+      fi
       SRC_ABS="$REPO_ROOT/$SRC_REL"
       if [[ ! -f "$SRC_ABS" ]]; then
         echo "    warn: bundle source missing: $SRC_REL"

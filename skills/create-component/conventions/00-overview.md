@@ -20,6 +20,7 @@ This folder replaces the single-file `CONVENTIONS.md` (~940 lines) that used to 
 | Gating a component as "drawn to canvas"; running the audit checklist before surfacing a run summary | [`06-audit-checklist.md`](./06-audit-checklist.md) |
 | Writing / validating any `fill`, `labelVar`, `strokeVar`, `padH`, `radius`, or `*Var` path on a `CONFIG`; avoiding the `--color-primary` vs `color/primary/default` spiral | [`07-token-paths.md`](./07-token-paths.md) |
 | **Cursor** + **Composer-class** (or short-output) hosts: Step 6 `use_figma` preflight, `Task` + runner, fallbacks, symptoms | [`08-cursor-composer-mcp.md`](./08-cursor-composer-mcp.md) |
+| **Multi-call Step 6:** splitting variant build vs doc into **many** small MCP payloads (table shell → header → component tile → matrix → usage) + handoff ids | [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) |
 
 ## Two sources of truth (Mode A vs Mode B)
 

@@ -14,9 +14,9 @@
 
 1. **Orchestration (session / chat)** — **Do** break work up **sequentially**: finish each **style-guide** `canvas-bundle-runner` `Task` on its own; run **`create-component-figma-runner` once per component**; avoid one parent turn that chains unrelated large Figma calls. Tables, bundles, and component draws are **different jobs** — schedule them as **separate** steps. The parent should only pass a small **`configBlock`** + paths into the component runner, not re-assemble the minified engine in chat.
 
-2. **Shipped component draw (Step 6 engine)** — The pipeline always runs **header → Properties → ComponentSet → matrix → usage** in order. **Default transport:** [`create-component-figma-runner`](../../create-component-figma-runner/SKILL.md) issues **two** MCP `use_figma` calls with the **same** ~40–43K `code` string shape each time (CONFIG + preamble + one archetype bundle): **phase 1** builds the ComponentSet and returns; **phase 2** injects `__PHASE_1_COMP_SET_ID__` + `__CC_PHASE1_PROPS_ADDED__` + `__CC_PHASE1_UNRESOLVED__` and draws the doc frame only (**§1b**). **`twoPhaseDraw: false`** opts into **one** legacy call for the full script in a single run.
+2. **Shipped component draw (Step 6 engine)** — On canvas, sections still appear in dependency order (Properties table, header, live ComponentSet tile, matrix, usage — see [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md)). **Target MCP transport:** **several** `use_figma` calls with **small, different** payloads — e.g. table skeleton + headers, then doc header, then component section, then Variants × States, then Do/Don’t — each call carrying only the code needed for that slice; see [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) and runner [**§1c**](../../create-component-figma-runner/SKILL.md). **Interim:** the runner may still use **two** calls (**§1b**: ComponentSet build, then doc tail with injected ids) or one legacy full script (`twoPhaseDraw: false`). **Anti-pattern:** uploading the **same** full engine blob on every call when the goal is small, fast steps.
 
-**Anti-pattern:** Parent agents writing `/tmp/*.json`, shell-piping, or re-reading giant strings to “transport” the engine — that bypasses the runner and repeats a known failure mode. If `Task` aborts, **retry the runner** or use the documented **inline** fallback per [`../EXECUTOR.md`](../EXECUTOR.md). Use the runner’s documented **`twoPhaseDraw`** for chunking — do not splice or trim the minified engine ad hoc.
+**Anti-pattern:** Parent agents writing `/tmp/*.json`, shell-piping, or re-reading giant strings to “transport” the engine — that bypasses the runner and repeats a known failure mode. If `Task` aborts, **retry the runner** or use the documented **inline** fallback per [`../EXECUTOR.md`](../EXECUTOR.md). Follow the runner’s **§1b / §1c** chunking — do not splice or trim minified engines ad hoc outside the build pipeline.
 
 ---
 
@@ -47,7 +47,7 @@ Before drawing, confirm **all** of the following:
 
 2. **One `Task` per component** with subagent type that loads [`create-component-figma-runner`](../../create-component-figma-runner/SKILL.md): pass `fileKey`, `layout`, `configBlock`, `createComponentRoot` (path to `skills/create-component/`), and `registry` per runner **§0** (omit `twoPhaseDraw` for the default **two** phased `use_figma` calls).
 
-3. Subagent: `Read` preamble + one `create-component-engine-{layout}.min.figma.js`, concatenate, run [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) (and full-wrapper check if `check-use-figma-mcp-args` is used), then **`use_figma` twice by default** (phase 1 → phase 2 per runner **§1b**). Parent runs [`SKILL.md` §9](../SKILL.md) on the **phase-2** compact return + registry.
+3. Subagent: `Read` preamble + the **appropriate** min bundle(s) per runner **§1b** / **§1c** (interim: often two calls; target: one bundle per doc step), run [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) (and full-wrapper check if `check-use-figma-mcp-args` is used), then **`use_figma`** once per orchestrated step. Parent runs [`SKILL.md` §9](../SKILL.md) on the **final** step’s compact return + registry.
 
 **If `Task` is missing, flaky, or times out in your Cursor build** — use Phase 3 fallbacks; do not assume the runner is unavailable “only when misconfigured.”
 
@@ -55,11 +55,11 @@ Before drawing, confirm **all** of the following:
 flowchart LR
   parent[Parent Steps 1 to 5]
   taskNode[Task create-component-figma-runner]
-  mcp1[use_figma phase 1]
-  mcp2[use_figma phase 2]
+  mcp0[use_figma step 0 variants]
+  mcpN[use_figma steps 1 to N doc]
   parent --> taskNode
-  taskNode --> mcp1
-  mcp1 --> mcp2
+  taskNode --> mcp0
+  mcp0 --> mcpN
 ```
 
 ---

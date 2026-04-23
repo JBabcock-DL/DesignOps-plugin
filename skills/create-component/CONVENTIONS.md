@@ -14,6 +14,8 @@
 | [`conventions/05-code-connect.md`](./conventions/05-code-connect.md) | Mode A extraction · class-to-token resolution · Code Connect integration (§2.5, §3.4) |
 | [`conventions/06-audit-checklist.md`](./conventions/06-audit-checklist.md) | MA.* + S9.* audit checklist · authoritative-rule index (§14, §15) |
 | [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) | Token path canonicals · Step 4.7 pre-flight · banned inference strategies |
+| [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) | Cursor / Composer Step 6 transport · `Task` + runner |
+| [`conventions/09-mcp-multi-step-doc-pipeline.md`](./conventions/09-mcp-multi-step-doc-pipeline.md) | Six-call ladder · per-layout `*.step0` + shared `create-component-engine-doc.step1..5` · **§1.1** placeholders |
 
 ## System audit — Mode A / Mode B (read order for agents)
 

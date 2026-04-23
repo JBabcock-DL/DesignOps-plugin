@@ -430,6 +430,7 @@ const ICON_SLOT_MODE = DEFAULT_ICON_COMPONENT ? 'instance-swap' : 'placeholder';
 // add `async` to this function and DO NOT insert `await figma.getLocal*
 // *Async()` calls inside it — the correct fetch site is §5.5, above the
 // function declaration. See the §5.5 comment block for the full rule.
+// __CC_DOC_SLIM_OMIT_CHIP_BUILDER_START__
 function buildVariant(name, fillVar, fallbackFill, {
   label            = null,
   labelVar         = 'color/background/content',
@@ -639,6 +640,7 @@ function buildVariant(name, fillVar, fallbackFill, {
   figma.currentPage.appendChild(c);
   return { component: c, slots, propKeys };
 }
+// __CC_DOC_SLIM_OMIT_CHIP_BUILDER_END__
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -860,7 +862,8 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
 //
 // `typeof <undeclaredName>` is guaranteed-safe in JS — it returns
 // 'undefined' without throwing. We rely on that to probe presence.
-{
+// Phase 2 doc-only bundles omit archetype builders — variant masters already exist.
+if (_ccPhase !== 2) {
   let missingFn = null;
   if (layoutKey === 'surface-stack' && typeof buildSurfaceStackVariant !== 'function') missingFn = 'buildSurfaceStackVariant';
   else if (layoutKey === 'field'    && typeof buildFieldVariant        !== 'function') missingFn = 'buildFieldVariant';
@@ -883,21 +886,20 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
 }
 
 // 🚨 ASSERT — draw-engine template itself provides every doc-pipeline helper.
-// This is a belt-and-suspenders regression guard: if a future edit accidentally
-// removes or renames one of these functions, the failure surfaces here with
-// an actionable message instead of a downstream ReferenceError mid-draw.
-// It also catches the (rare) case where an agent inlined archetype-builders
-// but forgot the surrounding draw-engine template.
-{
+// Phase 1 (MCP split bundle) returns before `makeFrame` / `buildPropertiesTable`
+// exist — skip this assert when `_ccPhase === 1` only.
+if (_ccPhase !== 1) {
   const requiredEngineFns = {
     makeFrame,
     makeText,
-    buildVariant,
     buildPropertiesTable,
     buildComponentSetSection,
     buildMatrix,
     buildUsageNotes,
   };
+  if (_ccPhase !== 2) {
+    requiredEngineFns.buildVariant = buildVariant;
+  }
   const missingEngineFns = Object.entries(requiredEngineFns)
     .filter(([, fn]) => typeof fn !== 'function')
     .map(([name]) => name);
@@ -913,7 +915,7 @@ const layoutKey = usesComposes ? '__composes__' : (CONFIG.layout || 'chip');
 
 let compSet;
 let propsAdded;
-const variantByKey = {};
+let variantByKey = {};
 
 if (_ccPhase === 2) {
   const pid = typeof __PHASE_1_COMP_SET_ID__ !== 'undefined' ? __PHASE_1_COMP_SET_ID__ : null;
@@ -949,6 +951,7 @@ if (_ccPhase === 2) {
     const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
     variantByKey[key] = node;
   }
+// __CC_DOC_SLIM_OMIT_VARIANT_ELSE_BEGIN__
 } else {
   const variantData = [];
   for (const v of CONFIG.variants) {
@@ -1049,6 +1052,7 @@ if (_ccPhase === 2) {
     variantByKey[key] = node;
   }
 }
+// __CC_DOC_SLIM_OMIT_VARIANT_ELSE_END__
 
 if (_ccPhase === 1) {
   return {
@@ -1063,6 +1067,10 @@ if (_ccPhase === 1) {
   };
 }
 
+// __CREATE_COMPONENT_ENGINE_SPLIT_PHASE2__
+// build-min-templates.mjs cuts here for the phase-2-only min bundle (doc pipeline
+// tail). Phase 1 bundle omits everything below this line. See EXECUTOR.md §0.
+
 // The ComponentSet is NOT parked off-canvas. It's reparented into the doc
 // frame as its own section later (§6.5.5) so designers can see and edit
 // the live variants in place, with all matrix instances updating from it.
@@ -1072,54 +1080,131 @@ if (_ccPhase === 1) {
 // component page. Geometry matches /create-design-system CONVENTIONS §2:
 // 1800 wide, 80 padding on all sides, 1640 inner, y=320 below _Header.
 
-const pageContent = figma.createFrame();
-pageContent.name = '_PageContent';
-pageContent.layoutMode = 'VERTICAL';
-// resize FIRST so it doesn't reset the sizing modes we're about to set
-pageContent.resize(1800, 1);
-pageContent.primaryAxisSizingMode = 'AUTO';
-pageContent.counterAxisSizingMode = 'FIXED';
-pageContent.paddingTop    = 80;
-pageContent.paddingBottom = 80;
-pageContent.paddingLeft   = 80;
-pageContent.paddingRight  = 80;
-pageContent.itemSpacing   = 48;
-pageContent.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
-pageContent.x = 0;
-pageContent.y = 320;
-figma.currentPage.appendChild(pageContent);
+// Multistep doc pipeline (MCP): __CREATE_COMPONENT_DOC_STEP__ 1–5 runs one slice
+// per `use_figma` call; omit it for legacy single-pass doc tail (two-phase §1b
+// phase 2 or _ccPhase === 0). See conventions/09 + create-component-figma-runner §1c.
+// `build-min-templates.mjs` replaces the following two declarations with
+// `const __ccDocStep = N` (N = 1..5) when emitting *.stepN.min.figma.js so esbuild
+// drops unused doc-step branches and each MCP payload stays small.
+const __ccDocStepDefault = null;
+const __ccDocStep =
+  typeof __CREATE_COMPONENT_DOC_STEP__ === 'number'
+    ? __CREATE_COMPONENT_DOC_STEP__
+    : __ccDocStepDefault;
 
-const docRoot = figma.createFrame();
-docRoot.name = `doc/component/${CONFIG.component}`;
-docRoot.layoutMode = 'VERTICAL';
-docRoot.resize(DOC_FRAME_WIDTH, 1);
-docRoot.primaryAxisSizingMode = 'AUTO';
-docRoot.counterAxisSizingMode = 'FIXED';
-docRoot.layoutAlign = 'STRETCH';
-docRoot.itemSpacing = 48;
-docRoot.fills = [];
-pageContent.appendChild(docRoot);
+let pageContent;
+let docRoot;
 
-// --- 6.4  Header (title + summary) -------------------------------------
+async function __ccDocResumeFromHandoff() {
+  const pcId =
+    typeof __CC_HANDOFF_PAGE_CONTENT_ID__ !== 'undefined' ? __CC_HANDOFF_PAGE_CONTENT_ID__ : null;
+  const drId =
+    typeof __CC_HANDOFF_DOC_ROOT_ID__ !== 'undefined' ? __CC_HANDOFF_DOC_ROOT_ID__ : null;
+  if (!pcId || !drId) {
+    throw new Error(
+      '[create-component] Multistep doc steps 2–5 require __CC_HANDOFF_PAGE_CONTENT_ID__ and ' +
+        '__CC_HANDOFF_DOC_ROOT_ID__ from the prior step return payload. ' +
+        'See conventions/09-mcp-multi-step-doc-pipeline.md.',
+    );
+  }
+  const pc = await figma.getNodeByIdAsync(pcId);
+  const dr = await figma.getNodeByIdAsync(drId);
+  if (!pc || pc.type !== 'FRAME') {
+    throw new Error(`[create-component] resume: _PageContent '${pcId}' missing or not a FRAME`);
+  }
+  if (!dr || dr.type !== 'FRAME') {
+    throw new Error(`[create-component] resume: docRoot '${drId}' missing or not a FRAME`);
+  }
+  pageContent = pc;
+  docRoot = dr;
+  const pid =
+    typeof __PHASE_1_COMP_SET_ID__ !== 'undefined'
+      ? __PHASE_1_COMP_SET_ID__
+      : typeof __CC_HANDOFF_COMP_SET_ID__ !== 'undefined'
+        ? __CC_HANDOFF_COMP_SET_ID__
+        : null;
+  if (!pid) {
+    throw new Error(
+      '[create-component] resume: set __PHASE_1_COMP_SET_ID__ or __CC_HANDOFF_COMP_SET_ID__',
+    );
+  }
+  const loaded = await figma.getNodeByIdAsync(pid);
+  if (!loaded || loaded.type !== 'COMPONENT_SET') {
+    throw new Error(
+      `[create-component] resume: node '${pid}' is not a COMPONENT_SET (got ${loaded ? loaded.type : 'null'})`,
+    );
+  }
+  compSet = loaded;
+  if (
+    typeof __CC_PHASE1_PROPS_ADDED__ === 'undefined' ||
+    __CC_PHASE1_PROPS_ADDED__ === null ||
+    typeof __CC_PHASE1_PROPS_ADDED__ !== 'object'
+  ) {
+    throw new Error('[create-component] resume: __CC_PHASE1_PROPS_ADDED__ object required');
+  }
+  propsAdded = __CC_PHASE1_PROPS_ADDED__;
+  variantByKey = {};
+  for (const node of compSet.children) {
+    const parts = node.name.split(', ').reduce((acc, kv) => {
+      const [k, val] = kv.split('=');
+      acc[k] = val;
+      return acc;
+    }, {});
+    const key = hasSizeAxis ? `${parts.variant}|${parts.size}` : parts.variant;
+    variantByKey[key] = node;
+  }
+}
 
-const header = figma.createFrame();
-header.name = `doc/component/${CONFIG.component}/header`;
-header.layoutMode = 'VERTICAL';
-header.resize(DOC_FRAME_WIDTH, 1);
-header.primaryAxisSizingMode = 'AUTO';
-header.counterAxisSizingMode = 'FIXED';
-header.layoutAlign = 'STRETCH';
-header.itemSpacing = 12;
-header.fills = [];
-docRoot.appendChild(header);
+function __ccDocPageHeader() {
+  pageContent = figma.createFrame();
+  pageContent.name = '_PageContent';
+  pageContent.layoutMode = 'VERTICAL';
+  // resize FIRST so it doesn't reset the sizing modes we're about to set
+  pageContent.resize(1800, 1);
+  pageContent.primaryAxisSizingMode = 'AUTO';
+  pageContent.counterAxisSizingMode = 'FIXED';
+  pageContent.paddingTop    = 80;
+  pageContent.paddingBottom = 80;
+  pageContent.paddingLeft   = 80;
+  pageContent.paddingRight  = 80;
+  pageContent.itemSpacing   = 48;
+  pageContent.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
+  pageContent.x = 0;
+  pageContent.y = 320;
+  figma.currentPage.appendChild(pageContent);
 
-const title = makeText(CONFIG.title, 'section', 32);
-bindColor(title, 'color/background/content', '#0a0a0a', 'fills');
-header.appendChild(title);
+  docRoot = figma.createFrame();
+  docRoot.name = `doc/component/${CONFIG.component}`;
+  docRoot.layoutMode = 'VERTICAL';
+  docRoot.resize(DOC_FRAME_WIDTH, 1);
+  docRoot.primaryAxisSizingMode = 'AUTO';
+  docRoot.counterAxisSizingMode = 'FIXED';
+  docRoot.layoutAlign = 'STRETCH';
+  docRoot.itemSpacing = 48;
+  docRoot.fills = [];
+  pageContent.appendChild(docRoot);
 
-const summary = makeText(CONFIG.summary, 'caption', 14);
-bindColor(summary, 'color/background/content-muted', '#6b7280', 'fills');
-header.appendChild(summary);
+  // --- 6.4  Header (title + summary) -------------------------------------
+
+  const header = figma.createFrame();
+  header.name = `doc/component/${CONFIG.component}/header`;
+  header.layoutMode = 'VERTICAL';
+  header.resize(DOC_FRAME_WIDTH, 1);
+  header.primaryAxisSizingMode = 'AUTO';
+  header.counterAxisSizingMode = 'FIXED';
+  header.layoutAlign = 'STRETCH';
+  header.itemSpacing = 12;
+  header.fills = [];
+  docRoot.appendChild(header);
+
+  const title = makeText(CONFIG.title, 'section', 32);
+  bindColor(title, 'color/background/content', '#0a0a0a', 'fills');
+  header.appendChild(title);
+
+  const summary = makeText(CONFIG.summary, 'caption', 14);
+  bindColor(summary, 'color/background/content-muted', '#6b7280', 'fills');
+  header.appendChild(summary);
+}
 
 // --- 6.5  makeFrame helper + hexToRgb -----------------------------------
 // Centralized frame factory — every doc frame uses this. Prevents the
@@ -1288,7 +1373,9 @@ function buildPropertiesTable(rows) {
   return group;
 }
 
-docRoot.appendChild(buildPropertiesTable(CONFIG.properties));
+function __ccDocAppendProperties() {
+  docRoot.appendChild(buildPropertiesTable(CONFIG.properties));
+}
 
 // --- 6.6B  Component Set section — the LIVE, editable ComponentSet ------
 // Designers need the raw ComponentSet somewhere visible inside the doc
@@ -1354,7 +1441,10 @@ function buildComponentSetSection() {
   section.appendChild(compSet);
   return section;
 }
-docRoot.appendChild(buildComponentSetSection());
+
+function __ccDocAppendComponentSection() {
+  docRoot.appendChild(buildComponentSetSection());
+}
 
 // --- 6.7  Variant × State matrix (conventions/04-doc-pipeline-contract.md §5) --------------------
 // Rows = variants, Columns = states, vertically stacked by size.
@@ -1508,7 +1598,10 @@ function buildMatrix() {
   }
   return group;
 }
-docRoot.appendChild(buildMatrix());
+
+function __ccDocAppendMatrix() {
+  docRoot.appendChild(buildMatrix());
+}
 
 // --- 6.8  Usage notes — Do / Don't cards (conventions/04-doc-pipeline-contract.md §6) ------------
 // Reads CONFIG.usageDo and CONFIG.usageDont.
@@ -1543,23 +1636,42 @@ function buildUsageNotes() {
   row.appendChild(card("Don't", '✕', CONFIG.usageDont));
   return row;
 }
-docRoot.appendChild(buildUsageNotes());
+
+function __ccDocAppendUsage() {
+  docRoot.appendChild(buildUsageNotes());
+}
+
+function __ccDocHandoffAfter(step) {
+  return {
+    ok: true,
+    docStep: step,
+    pageContentId: pageContent.id,
+    docRootId: docRoot.id,
+    compSetId: compSet.id,
+    compSetName: compSet.name,
+    compSetKey: compSet.key,
+    propsAdded,
+    unresolvedTokenMisses: _unresolvedTokenMisses.slice(),
+    layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
+  };
+}
 
 // --- 6.9  Self-validate + reveal ---------------------------------------
 
-if (docRoot.children.length < 5) {
-  throw new Error(`Matrix draw incomplete: docRoot has ${docRoot.children.length} children, expected 5 (header, properties, component-set, matrix, usage).`);
-}
-if (docRoot.children.length > 5) {
+function __ccDocFinalizeAndReturn() {
+  if (docRoot.children.length < 5) {
+    throw new Error(`Matrix draw incomplete: docRoot has ${docRoot.children.length} children, expected 5 (header, properties, component-set, matrix, usage).`);
+  }
+  if (docRoot.children.length > 5) {
   // A builder forked the doc pipeline and added extra sections (e.g. a
   // bespoke "Size variants" strip). Only §§6.4 / 6.6 / 6.6B / 6.7 / 6.8
   // are allowed to append direct children to docRoot.
   const extraNames = docRoot.children.slice(5).map(n => n.name).join(', ');
-  throw new Error(`Doc pipeline was forked: docRoot has ${docRoot.children.length} children (expected exactly 5). Extra frames: ${extraNames}. Remove bespoke doc rendering from your archetype builder — §§6.6–6.8 are archetype-agnostic.`);
-}
-if (pageContent.height < 500) {
-  throw new Error(`_PageContent collapsed to height ${pageContent.height}. Likely a text node is missing textAutoResize = 'HEIGHT'.`);
-}
+    throw new Error(`Doc pipeline was forked: docRoot has ${docRoot.children.length} children (expected exactly 5). Extra frames: ${extraNames}. Remove bespoke doc rendering from your archetype builder — §§6.6–6.8 are archetype-agnostic.`);
+  }
+  if (pageContent.height < 500) {
+    throw new Error(`_PageContent collapsed to height ${pageContent.height}. Likely a text node is missing textAutoResize = 'HEIGHT'.`);
+  }
 
 // --- 6.9a  Doc-pipeline integrity checks -------------------------------
 // Detect the Card-regression signature: mixed-case table headers,
@@ -1768,4 +1880,45 @@ const returnPayload = {
   }
 }
 
-return returnPayload;
+  return returnPayload;
+}
+
+async function __ccDocDispatch() {
+  if (__ccDocStep === null) {
+    __ccDocPageHeader();
+    __ccDocAppendProperties();
+    __ccDocAppendComponentSection();
+    __ccDocAppendMatrix();
+    __ccDocAppendUsage();
+    return __ccDocFinalizeAndReturn();
+  }
+  if (__ccDocStep === 1) {
+    __ccDocPageHeader();
+    __ccDocAppendProperties();
+    return __ccDocHandoffAfter(1);
+  }
+  if (__ccDocStep === 2) {
+    await __ccDocResumeFromHandoff();
+    __ccDocAppendComponentSection();
+    return __ccDocHandoffAfter(2);
+  }
+  if (__ccDocStep === 3) {
+    await __ccDocResumeFromHandoff();
+    __ccDocAppendMatrix();
+    return __ccDocHandoffAfter(3);
+  }
+  if (__ccDocStep === 4) {
+    await __ccDocResumeFromHandoff();
+    __ccDocAppendUsage();
+    return __ccDocHandoffAfter(4);
+  }
+  if (__ccDocStep === 5) {
+    await __ccDocResumeFromHandoff();
+    return __ccDocFinalizeAndReturn();
+  }
+  throw new Error(
+    `[create-component] __CREATE_COMPONENT_DOC_STEP__ must be 1–5 or omitted; got ${__ccDocStep}`,
+  );
+}
+
+return await __ccDocDispatch();

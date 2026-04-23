@@ -70,9 +70,10 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 ## `/create-component` transport (50k ceiling)
 
-- Runtime = **`CONFIG`** + **`preamble.figma.js`** + **exactly one** **`create-component-engine-{layout}.min.figma.js`** (~32–35K).
+- **One-call legacy:** **`CONFIG`** + **`preamble.figma.js`** + **`create-component-engine-{layout}.min.figma.js`** (~32–35K full per-archetype engine).
+- **Six-call ladder (`sixStepDraw: true`):** **`create-component-engine-{layout}.step0.min.figma.js`** (~chip / phase-1 slice) then shared **`create-component-engine-doc.step1`…`step5.min.figma.js`** (slim phase-2 — no `buildVariant` / archetype builders / variant-build `else`; **~17–23 KB** committed min files depending on step after esbuild + terser). See [`skills/create-component/conventions/09-mcp-multi-step-doc-pipeline.md`](skills/create-component/conventions/09-mcp-multi-step-doc-pipeline.md).
 - **Do not** inline **`create-component-engine.min.figma.js`** (full 7 archetypes) for a real draw — no headroom for CONFIG. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md).
-- **Sequence at orchestration:** separate **Tasks** for style-guide bundles vs **one runner Task per component**; don’t mix in one parent turn. **Inside** Step 6 the runner **defaults to two** phased `use_figma` calls (ComponentSet, then doc); **`twoPhaseDraw: false`** uses one legacy call. See [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) *Sequential work vs one payload*.
+- **Sequence at orchestration:** separate **Tasks** for style-guide bundles vs **one runner Task per component**; don’t mix in one parent turn. **Inside** Step 6 the runner **defaults to two** phased `use_figma` calls (ComponentSet, then doc); **`twoPhaseDraw: false`** uses one legacy call; **`sixStepDraw: true`** uses step0 + five doc slices. See [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) *Sequential work vs one payload*.
 - Validate payloads: **`npm run check-payload`**, **`npm run check-use-figma-args`** (from this repo’s `package.json`).
 
 ---
@@ -83,7 +84,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 |--------|----------------|
 | After editing **`draw-engine.figma.js`** or **`archetype-builders.figma.js`** | `npm run build:min` |
 | After edits that affect generated SKILL blocks | `npm run build:docs` |
-| Before merge / CI expectation | `npm run verify` (props + docs + min + **verify-cache**) |
+| Before merge / CI expectation | `npm run verify` (props + docs + min + step/doc bundle QA + **verify-cache**) — `qa:create-component-skill` runs **`check-payload` on all 24** `*.min.figma.js` engine artifacts |
 | Mirror **`skills/`** + repo-root **`CLAUDE.md`**, **`memory.md`**, **`AGENTS.md`** to local Claude marketplace | `npm run sync-cache` / `bash scripts/sync-cache.sh` |
 | Canonical tree | **`skills/**`** in **this** repo; cache under **`~/.claude/plugins/.../labs-design-ops/skills`** must match — **`AGENTS.md`** § Skill edits |
 

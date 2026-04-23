@@ -50,6 +50,17 @@ The **§6 `use_figma` template in [`SKILL.md`](../SKILL.md)** already bakes in t
 
 **After the full tree is built**, if **`_PageContent`** or **`doc/component/{name}`** reads as clipped or too short, re-assert vertical Hug per **create-design-system `SKILL.md` §0.1** (Figma sometimes pins **`layoutSizingVertical: 'FIXED'`** after **`appendChild`**).
 
+### 2.2 — Phased / multi-call draws — preserve space; use placeholders
+
+When the doc frame is built across **several** Figma Plugin API runs (see [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md)), agents **must not** leave empty shells that **collapse** in auto-layout — that destroys table width, header/body alignment, and the visual contract designers expect.
+
+**Rules:**
+
+1. **Keep canonical geometry first** — `_PageContent`, `doc/component/{name}` at **1640px** inner width, **five section slots** in the final order (header → properties → component-set-group → matrix → usage). If a section’s real content is not ready yet, still create the **frame node** (correct `name`, `layoutMode`, `layoutAlign: 'STRETCH'`, `itemSpacing`) so siblings and gutters match §1–§2.
+2. **Properties table** — Always ship the **full chrome**: `doc/table-group/...` wrapper, **`doc/table/...` at 1640px**, **header row** with uppercase columns and `color/background/variant` fill (§4). If body rows are filled in a later step, step 1 must still insert **placeholder body rows** — not an empty body — using the **same** row/cell auto-layout as production (`minHeight` per §4, `textAutoResize: 'HEIGHT'`, centered counter-axis). Use neutral filler text (`—`, `…`, or `Pending`) in cells until real copy replaces it; **do not** rely on zero-height empty frames.
+3. **Replace in place** — Prefer updating placeholder row text / swapping placeholder nodes over **deleting the table shell** and redrawing. Ripping out the grid mid-pipeline is how column widths and section order drift.
+4. **Same failure modes as §2.1** — Empty VERTICAL children with no text and no `minHeight` still produce **~10px rails** and **1px-tall** table bodies. Placeholders exist specifically to hold space until `CONFIG.properties` (or matrix/usage builders) run.
+
 ---
 
 ## 3. The `ComponentSet` lives **inside** the doc frame as its own section

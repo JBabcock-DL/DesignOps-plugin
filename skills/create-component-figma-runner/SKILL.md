@@ -1,13 +1,13 @@
 ---
 name: create-component-figma-runner
-description: Default /create-component Step 6 when Task exists — Prepend parent-authored configBlock (verbatim const CONFIG), read preamble + per-archetype engine from layout, patch registry, run check-payload, call use_figma twice by default (phased variant build then doc pipeline) or once when twoPhaseDraw is false, return compact JSON. Parent must use Task (isolated context) so ~40K-char engine never lands in the parent thread. Parent owns Steps 1–5, 4.7, §9 review, Step 5.2 registry; subagent owns assembly + preflight + use_figma.
+description: Default /create-component Step 6 when Task exists — Prepend parent-authored configBlock (verbatim const CONFIG), read preamble + per-archetype engine from layout, patch registry, run check-payload, call use_figma (default two-phase §1b, optional six-step §1d via sixStepDraw, or single when twoPhaseDraw is false), return compact JSON. Parent must use Task (isolated context) so large engine strings stay out of the parent thread. Parent owns Steps 1–5, 4.7, §9 review, Step 5.2 registry; subagent owns assembly + preflight + use_figma.
 argument-hint: "fileKey=…, layout=…, createComponentRoot=…, configBlock=… (verbatim const CONFIG = {…};), registry path or activeFileKey + registryJson — see SKILL §0."
 agent: general-purpose
 ---
 
 # Skill — `create-component-figma-runner`
 
-You are a **single-purpose subagent** and the **default** executor for [`/create-component`](../create-component/SKILL.md) **Step 6** whenever the parent host exposes **`Task`**. Your job is to assemble the `use_figma` **code** string (**`configBlock`** — parent-authored `const CONFIG = { … };` — then [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/)), run **`check-payload`** (and optional full wrapper check), and call **`use_figma`** **twice by default** (phase 1 → ComponentSet; phase 2 → doc frame, matrix, usage — see **§1b**). If the parent sets **`twoPhaseDraw: false`**, use **one** `use_figma` (legacy single script). Return a **compact** JSON result to the parent. You run in an **isolated** context so the parent thread never emits the full ~40K-character `code` in its own message.
+You are a **single-purpose subagent** and the **default** executor for [`/create-component`](../create-component/SKILL.md) **Step 6** whenever the parent host exposes **`Task`**. Your job is to assemble the `use_figma` **code** string (**`configBlock`** — parent-authored `const CONFIG = { … };` — then [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/) **or** the **`*.stepN.min.figma.js` ladder** per **§1d**), run **`check-payload`** (and optional full wrapper check), and call **`use_figma`**. **Default:** **twice** (§1b: phase 1 → ComponentSet; phase 2 → full doc). **`sixStepDraw: true`:** **six** calls — per-layout **`*.step0`** then shared **`create-component-engine-doc.step1`…`step5`** (see **§1d**). **`twoPhaseDraw: false`:** **one** call (legacy). Return a **compact** JSON result to the parent. You run in an **isolated** context so large `code` strings do not land in the parent thread.
 
 **Parent threads** must **not** paste the minified engine into their own `use_figma` for that component when **`Task` is available** — they hand off structured inputs per **§0** instead. Full orchestration, **`SKILL.md` §9** assertions, and registry write-back stay in the parent; assembly + Figma call happen here. Same delegation pattern as [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md); see [`AGENTS.md`](../../AGENTS.md) § *Session runbook*.
 
@@ -24,7 +24,8 @@ The parent must supply **all** of the following in its `Task` prompt in a **pars
 | `configBlock` | yes | **Verbatim JavaScript** for Step 6’s first segment: the full `const CONFIG = { … };` statement the parent would paste ahead of the preamble on the **inline** path — **byte-for-byte the same** as [`create-component/SKILL.md`](../create-component/SKILL.md) / [`EXECUTOR.md`](../create-component/EXECUTOR.md) after Mode A / B. Must include function-valued keys the engine needs (`applyStateOverride`, and `label` when it is a function). **`JSON.stringify(CONFIG)` is wrong here** — it **drops** functions and breaks matrix state behavior. Put `configBlock` in the Task prompt inside a Markdown fenced code block labeled `js`, or as another clearly delimited multiline string. |
 | `createComponentRoot` | yes | Path to the folder that contains `templates/preamble.figma.js` (e.g. repo `skills/create-component/`) so you can `Read` the preamble and the correct `create-component-engine-{layout}.min.figma.js` |
 | `registry` | one of (a) or (b) | **(a)** Path to a `.designops-registry.json` at the **design project** repo root — `Read` it to fill `ACTIVE_FILE_KEY` and `REGISTRY_COMPONENTS` for the preamble, **or (b)** `activeFileKey` (string or null) + `registryComponentsJson` (stringified JSON object) inlined in the prompt if the file is not available |
-| `twoPhaseDraw` | no | **`true`** or **omitted** — run **two** `use_figma` calls (default): phase 1 builds the ComponentSet and returns early; phase 2 draws `_PageContent`, the doc frame, matrix, and usage (same min bundle both times; inject globals per **§1b**). **`false`** — legacy **one** `use_figma` with the full script in a single run. Parents rarely need to pass this field unless forcing single-call for debugging. |
+| `twoPhaseDraw` | no | **`true`** or **omitted** — run **two** `use_figma` calls (default): phase 1 builds the ComponentSet and returns early; phase 2 draws `_PageContent`, the doc frame, matrix, and usage (same min bundle both times; inject globals per **§1b**). **`false`** — legacy **one** `use_figma` with the full script in a single run. Ignored when **`sixStepDraw: true`**. |
+| `sixStepDraw` | no | **`true`** — use **§1d**: `create-component-engine-{layout}.step0.min.figma.js` then **`create-component-engine-doc.step1`…`step5.min.figma.js`** (shared) with handoff globals between calls. **`false`** or **omitted** — use **§1b** / **`twoPhaseDraw`** as above. |
 
 **Optional:** `description` (string) for `use_figma`; `projectRootForShell` if `npm run check-payload` must be run with `cwd` (defaults to the workspace folder that contains `package.json` with `check-payload` — usually the DesignOps plugin root).
 
@@ -47,9 +48,9 @@ The parent must supply **all** of the following in its `Task` prompt in a **pars
    - `const REGISTRY_COMPONENTS = {};` → `const REGISTRY_COMPONENTS = <JSON of object>;`  
    **Values** must come from the registry `Read` (field names per existing [`create-component` flow](../create-component/SKILL.md) Step 5.1) or from `activeFileKey` + `registryComponentsJson`.
 
-4. **`Read`** one file only for the engine under `templates/`. Map the prompt’s **`layout`** field to filename (must match [`EXECUTOR.md`](../create-component/EXECUTOR.md) per-archetype table and the `layout` property inside `configBlock`):
+4. **`Read`** the engine under `templates/`. Map the prompt’s **`layout`** field to the basename (must match [`EXECUTOR.md`](../create-component/EXECUTOR.md) and `configBlock.layout`):
 
-| `layout` (prompt field) | `templates/` file |
+| `layout` (prompt field) | `templates/` file (single-call / §1b phase 2) |
 |-------------------------|-------------------|
 | `chip` | `create-component-engine-chip.min.figma.js` |
 | `surface-stack` | `create-component-engine-surface-stack.min.figma.js` |
@@ -60,7 +61,9 @@ The parent must supply **all** of the following in its `Task` prompt in a **pars
 | `container` | `create-component-engine-container.min.figma.js` |
 | `__composes__` | `create-component-engine-composed.min.figma.js` |
 
-5. **Concatenate** in order: **`configBlock`** (from step 1) + newline + **phase globals** when two-phase is active (see **§1b** — default) + preamble (replaced) + minified engine string. **No** other text before/after. This is the `code` string for `use_figma`. When **`twoPhaseDraw: false`**, omit phase globals entirely.
+When **`sixStepDraw: true`**, **`Read`** `create-component-engine-{layout}.step0.min.figma.js` then `create-component-engine-doc.step1.min.figma.js` … `create-component-engine-doc.step5.min.figma.js` — see **§1d**.
+
+5. **Concatenate** in order: **`configBlock`** (from step 1) + newline + **phase / handoff globals** (see **§1b** or **§1d**) + preamble (replaced) + minified engine string. **No** other text before/after. This is the `code` string for `use_figma`. When **`twoPhaseDraw: false`**, omit phase globals entirely. When **`sixStepDraw: true`**, follow **§1d** per call (step 0 uses §1b phase-1 globals only; steps 1–5 use phase-2 + handoff ids).
 
 6. **Preflight** — in order:
    - Pipe the concatenated `code` to `node {pluginRoot}/scripts/check-payload.mjs` (stdin) **or** write **only** to a temp path **outside the repo** (e.g. OS temp) and pass the path — **do not** commit `*.mcp-*` or `*-payload.json` under the repo (see [`AGENTS.md`](../../AGENTS.md)).
@@ -120,6 +123,48 @@ Parse phase 1’s tool return to obtain `compSetId`, `propsAdded`, and `unresolv
 
 ---
 
+## §1c — Target: multi-call doc ladder (small payload per `use_figma`)
+
+**Goal:** Avoid shipping one **large** script per call. The **intended** runner flow (once `build-min-templates.mjs` emits step bundles) is **one MCP call per slice**, for example:
+
+| Call | Slice (example names) | Payload focus |
+|------|------------------------|---------------|
+| **0** | Variant plane | Clear page, archetype builders, `combineAsVariants`, early return with `compSetId` / `propsAdded` / misses |
+| **1** (shipped) | Page + header + properties table | `_PageContent`, `docRoot`, title/summary, full `buildPropertiesTable` — matches `draw-engine` §6.3–6.6 (header + table are one call, not two) |
+| **2** | Component section | Reparent live ComponentSet into doc (`§6.6B`) |
+| **3** | Variants × States | Matrix + `applyStateOverride` (`§6.7`) |
+| **4** | Usage | Do / Don’t cards (`§6.8`) |
+| **5** | Finalize | §6.9 checks + full `returnPayload` (no new frames) |
+
+**Dependency:** Matrix (**3**) needs the ComponentSet from **0** and reparenting from **2** — see the DAG in [`conventions/09-mcp-multi-step-doc-pipeline.md`](../create-component/conventions/09-mcp-multi-step-doc-pipeline.md).
+
+**Handoff:** Each call `return`s compact ids; the runner injects them into the next assembly — see **§1d**.
+
+**Layout:** Multi-step runs must **not** ship empty table bodies or skip placeholder rows — that collapses auto-layout and breaks the 1640px doc contract. Follow [`conventions/09-mcp-multi-step-doc-pipeline.md`](../create-component/conventions/09-mcp-multi-step-doc-pipeline.md) §1.1 and [`04-doc-pipeline-contract.md`](../create-component/conventions/04-doc-pipeline-contract.md) §2.2.
+
+**Bridge:** **§1b** two-phase (same full engine twice) and **`twoPhaseDraw: false`** remain supported for debugging and hosts that cannot sequence six calls. Prefer **§1d** when you need the smallest **first** MCP payload (`*.step0` ≈ 14–20 KB vs ~32 KB full).
+
+---
+
+## §1d — Six-call ladder (committed `*.stepN.min.figma.js`)
+
+`npm run build:min` emits **step 0 per layout** and **one shared doc bundle per doc step**:
+
+| Call | `Read` under `{createComponentRoot}/templates/` | Phase / globals (after `configBlock` + patched preamble) |
+|------|--------------------------------------------------|-----------------------------------------------------------|
+| **0** | `create-component-engine-{layout}.step0.min.figma.js` | `var __CREATE_COMPONENT_PHASE__ = 1;` (optional — bundle also returns when `_ccPhase === 0`); `return` includes `compSetId`, `propsAdded`, `unresolvedTokenMisses`. |
+| **1** | `create-component-engine-doc.step1.min.figma.js` | **Layout-agnostic** slim phase-2 slice (smallest doc file — typically **~17 KB** committed; esbuild + terser unused strip) — no `buildVariant`, no archetype builders, no variant-build `else`. Baked `__CREATE_COMPONENT_PHASE__ = 2` **plus** inject §1b phase-2 literals: `__PHASE_1_COMP_SET_ID__`, `__CC_PHASE1_PROPS_ADDED__`, `__CC_PHASE1_UNRESOLVED__`. Handoff return: `pageContentId`, `docRootId`, `compSetId`, … |
+| **2** | `create-component-engine-doc.step2.min.figma.js` | Same phase-2 literals **and** `__CC_HANDOFF_PAGE_CONTENT_ID__`, `__CC_HANDOFF_DOC_ROOT_ID__` (and `__PHASE_1_COMP_SET_ID__` or `__CC_HANDOFF_COMP_SET_ID__`). |
+| **3** | `create-component-engine-doc.step3.min.figma.js` | Refresh handoff ids from step **2**’s return. |
+| **4** | `create-component-engine-doc.step4.min.figma.js` | Refresh handoff ids from step **3**’s return. |
+| **5** | `create-component-engine-doc.step5.min.figma.js` | Refresh handoff ids from step **4**’s return; final payload matches §9 / phase-2 shape. |
+
+**Note:** `doc.step1`…`doc.step5` share the **same slim source shape** (no chip `buildVariant`, no archetype builders, no variant-build `else`); each file bakes a different `__ccDocStep` constant. After esbuild minify, **terser** removes functions only used from dead branches, so **step 1** is smaller than **steps 2–4**, and **step 5** (finalize + §9 payload) is the largest — see `npm run qa:step-bundles` for exact committed byte sizes.
+
+**Optional parent field:** `sixStepDraw: true` — subagent uses **§1d** instead of default **§1b** (two calls). Omit or `false` keeps **§1b** default.
+
+---
+
 ## §2 — Hard prohibitions
 
 - **Do not** call `use_figma` with **`code: PLACEHOLDER`** (or any other stub token). Some hosts **structure the tool call before the payload is pasted**, which produces `ReferenceError: PLACEHOLDER is not defined` inside Figma. **`check-payload` now rejects** those stubs — only call `use_figma` **after** the full string is concatenated and stdin-check passes.
@@ -148,3 +193,4 @@ Read once `mcps/**/SERVER_METADATA.json` in the workspace → `serverIdentifier`
 | Figma `use_figma` workflow | [`create-design-system/conventions/16-mcp-use-figma-workflow.md`](../create-design-system/conventions/16-mcp-use-figma-workflow.md) |
 | check-payload | [`scripts/check-payload.mjs`](../../scripts/check-payload.mjs) |
 | Full tool-args JSON | [`scripts/check-use-figma-mcp-args.mjs`](../../scripts/check-use-figma-mcp-args.mjs) |
+| Multi-step MCP ladder (target) | [`conventions/09-mcp-multi-step-doc-pipeline.md`](../create-component/conventions/09-mcp-multi-step-doc-pipeline.md) |

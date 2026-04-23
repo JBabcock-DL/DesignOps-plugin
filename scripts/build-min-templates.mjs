@@ -42,6 +42,8 @@
 //   skills/create-component/templates/create-component-engine-control.min.figma.js
 //   skills/create-component/templates/create-component-engine-container.min.figma.js
 //   skills/create-component/templates/create-component-engine-composed.min.figma.js  (for CONFIG.layout === '__composes__')
+//   skills/create-component/templates/create-component-engine-{layout}.step0.min.figma.js   (variant plane only — MCP ladder)
+//   skills/create-component/templates/create-component-engine-doc.step1..step5.min.figma.js (layout-agnostic phase-2 doc slices — slim + esbuild minify + terser unused strip; per-step sizes vary)
 //   skills/create-component/templates/create-component-engine.min.figma.js           (debug-only; full 7-archetype bundle, too tight for runtime)
 //   skills/create-component/templates/draw-engine.min.figma.js                       (debug-only; standalone draw-engine with no archetype builders)
 //   skills/create-component/templates/archetype-builders.min.figma.js                (debug-only; standalone archetype-builders with no draw-engine)
@@ -53,9 +55,10 @@
 // `verify-cache.sh` invokes --check to ensure committed .min artifacts stay
 // in sync with their sources.
 
-import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { minify as terserMinify } from 'terser';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -93,6 +96,53 @@ const FULL_BUNDLE_REL = `${TEMPLATES_DIR}/create-component-engine.min.figma.js`;
 const DRAW_ENGINE_MIN_REL = `${TEMPLATES_DIR}/draw-engine.min.figma.js`;
 const ARCHETYPE_BUILDERS_MIN_REL = `${TEMPLATES_DIR}/archetype-builders.min.figma.js`;
 
+const SPLIT_PHASE2_MARK = '// __CREATE_COMPONENT_ENGINE_SPLIT_PHASE2__';
+
+const OMIT_CHIP_START = '// __CC_DOC_SLIM_OMIT_CHIP_BUILDER_START__';
+const OMIT_CHIP_END = '// __CC_DOC_SLIM_OMIT_CHIP_BUILDER_END__';
+const OMIT_ELSE_BEGIN = '// __CC_DOC_SLIM_OMIT_VARIANT_ELSE_BEGIN__';
+const OMIT_ELSE_END = '// __CC_DOC_SLIM_OMIT_VARIANT_ELSE_END__';
+
+function lineEndAfter(src, fromIdx) {
+  const nl = src.indexOf('\n', fromIdx);
+  return nl === -1 ? src.length : nl + 1;
+}
+
+function stripDocSlimChipBuilder(top) {
+  const s = top.indexOf(OMIT_CHIP_START);
+  const e = top.indexOf(OMIT_CHIP_END);
+  if (s < 0 || e < 0) {
+    throw new Error(
+      `stripDocSlimChipBuilder: missing ${OMIT_CHIP_START} or ${OMIT_CHIP_END} in draw-engine top.`,
+    );
+  }
+  const afterE = lineEndAfter(top, e);
+  return `${top.slice(0, s).trimEnd()}\n\n${top.slice(afterE).trimStart()}`;
+}
+
+function stripDocSlimVariantElse(bottom) {
+  const a = bottom.indexOf(OMIT_ELSE_BEGIN);
+  const b = bottom.indexOf(OMIT_ELSE_END);
+  if (a < 0 || b < 0) {
+    throw new Error(
+      `stripDocSlimVariantElse: missing ${OMIT_ELSE_BEGIN} or ${OMIT_ELSE_END} in draw-engine bottom.`,
+    );
+  }
+  const afterB = lineEndAfter(bottom, b);
+  return `${bottom.slice(0, a).trimEnd()}\n}\n\n${bottom.slice(afterB).trimStart()}`;
+}
+
+// Replaced for step1..step5 min bundles so __ccDocStep is a constant → esbuild DCE drops other branches.
+const DOC_STEP_RUNTIME_BLOCK = `const __ccDocStepDefault = null;
+const __ccDocStep =
+  typeof __CREATE_COMPONENT_DOC_STEP__ === 'number'
+    ? __CREATE_COMPONENT_DOC_STEP__
+    : __ccDocStepDefault;`;
+
+function assembledIncludesDocStepBlock(s) {
+  return s.includes(DOC_STEP_RUNTIME_BLOCK);
+}
+
 // Every committed artifact the build produces — used by --check. Per-archetype
 // bundles depend on BOTH sources, so each is tracked as two rows.
 function buildCheckRows() {
@@ -106,11 +156,146 @@ function buildCheckRows() {
     // cross-bundle contracts.
     rows.push({ src: ARCHETYPE_BUILDERS_REL, dest });
   }
+  const layouts = ['chip', ...Object.keys(ARCHETYPE_BUILDERS)];
+  for (const layout of layouts) {
+    const dest0 = `${TEMPLATES_DIR}/create-component-engine-${layout}.step0.min.figma.js`;
+    rows.push({ src: DRAW_ENGINE_REL, dest: dest0 });
+    rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: dest0 });
+  }
+  for (let s = 1; s <= 5; s++) {
+    const dest = `${TEMPLATES_DIR}/create-component-engine-doc.step${s}.min.figma.js`;
+    rows.push({ src: DRAW_ENGINE_REL, dest });
+  }
   rows.push({ src: DRAW_ENGINE_REL, dest: FULL_BUNDLE_REL });
   rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: FULL_BUNDLE_REL });
   rows.push({ src: DRAW_ENGINE_REL, dest: DRAW_ENGINE_MIN_REL });
   rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: ARCHETYPE_BUILDERS_MIN_REL });
   return rows;
+}
+
+function sliceStep0Bottom(drawBottom) {
+  const idx = drawBottom.indexOf(SPLIT_PHASE2_MARK);
+  if (idx < 0) {
+    throw new Error(
+      `sliceStep0Bottom: missing ${SPLIT_PHASE2_MARK} in draw-engine bottom — cannot emit step0 bundles.`,
+    );
+  }
+  return drawBottom.slice(0, idx).trimEnd() + '\n';
+}
+
+function step0BundleBanner(layout, includedBuilder) {
+  const lines = [
+    `// GENERATED by scripts/build-min-templates.mjs — do not edit by hand.`,
+    `// bundle: create-component-engine step0 variants-only (${layout})`,
+    `// sources: ${DRAW_ENGINE_REL} (truncated before ${SPLIT_PHASE2_MARK})`,
+  ];
+  if (layout === 'chip') {
+    lines.push(`//   (no archetype-builders — chip layout)`);
+  } else {
+    lines.push(`//   ${ARCHETYPE_BUILDERS_REL} (shared helpers + ${includedBuilder})`);
+  }
+  lines.push(`// regenerate: npm run build:min`);
+  lines.push(
+    `// Runner: MCP call 0 — inject __CREATE_COMPONENT_PHASE__=1 or omit (single-pass); see create-component-figma-runner §1c.`,
+  );
+  return lines.join('\n') + '\n';
+}
+
+function docSlimStepBanner(stepNum) {
+  const lines = [
+    `// GENERATED by scripts/build-min-templates.mjs — do not edit by hand.`,
+    `// bundle: create-component-engine-doc step${stepNum} (layout-agnostic phase-2 doc slice)`,
+    `// sources: ${DRAW_ENGINE_REL} only — slim top (no chip buildVariant) + slim bottom (no variant-build else) + baked __CREATE_COMPONENT_PHASE__=2; esbuild then terser (dead/unused strip)`,
+    `// regenerate: npm run build:min`,
+    `// Runner: same for every CONFIG.layout — inject §1b phase-2 globals + handoff ids for steps 2–5.`,
+  ];
+  return lines.join('\n') + '\n';
+}
+
+async function buildStepZero(esbuild, layout, { drawTop, drawBottom, sharedHelpers, builders }) {
+  const destRel = `${TEMPLATES_DIR}/create-component-engine-${layout}.step0.min.figma.js`;
+  const step0Bottom = sliceStep0Bottom(drawBottom);
+  // Full draw-engine continues to the doc tail when _ccPhase === 0. This bundle
+  // truncates before the doc tail, so without this guard a legacy _ccPhase 0 run
+  // would fall off the end after building variants. Mirror phase-1 return shape.
+  const step0Phase0Return = `
+if (_ccPhase === 0) {
+  return {
+    ok: true,
+    phase: 0,
+    compSetId: compSet.id,
+    compSetName: compSet.name,
+    compSetKey: compSet.key,
+    propsAdded,
+    unresolvedTokenMisses: _unresolvedTokenMisses.slice(),
+    layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
+  };
+}
+`;
+  let includedBuilder = null;
+  let assembled;
+  if (layout === 'chip') {
+    assembled = drawTop + '\n' + step0Bottom + step0Phase0Return;
+  } else {
+    includedBuilder = ARCHETYPE_BUILDERS[layout];
+    const builderSrc = builders[includedBuilder];
+    if (!builderSrc) throw new Error(`builder ${includedBuilder} not parsed for layout ${layout}`);
+    assembled = drawTop + '\n' + sharedHelpers + '\n' + builderSrc + '\n' + step0Bottom + step0Phase0Return;
+  }
+
+  const peeled = await minifyScriptBody(esbuild, assembled, `step0[${layout}]`, { mangle: true });
+  const body = step0BundleBanner(layout, includedBuilder) + peeled + '\n';
+  const bodyBytes = Buffer.byteLength(body, 'utf8');
+  if (bodyBytes > HARD_LIMIT - CONFIG_HEADROOM) {
+    throw new Error(
+      `step0[${layout}] is ${bodyBytes} bytes, exceeds budget ${HARD_LIMIT - CONFIG_HEADROOM}`,
+    );
+  }
+  writeFileSync(resolve(REPO_ROOT, destRel), body);
+  return { layout, step: 0, destRel, destBytes: bodyBytes };
+}
+
+function removeObsoletePerLayoutDocSteps() {
+  const layouts = ['chip', ...Object.keys(ARCHETYPE_BUILDERS)];
+  const dir = resolve(REPO_ROOT, TEMPLATES_DIR);
+  for (const layout of layouts) {
+    for (let s = 1; s <= 5; s++) {
+      const p = resolve(dir, `create-component-engine-${layout}.step${s}.min.figma.js`);
+      if (existsSync(p)) unlinkSync(p);
+    }
+  }
+}
+
+async function buildDocSlimSteps(esbuild, drawTop, drawBottom) {
+  if (!assembledIncludesDocStepBlock(drawBottom)) {
+    throw new Error('buildDocSlimSteps: draw-engine bottom missing __ccDocStep block.');
+  }
+  const slimTop = stripDocSlimChipBuilder(drawTop);
+  const slimBottom = stripDocSlimVariantElse(drawBottom);
+  let base = `${slimTop}\n${slimBottom}`;
+  if (!assembledIncludesDocStepBlock(base)) {
+    throw new Error('buildDocSlimSteps: slim assembly lost __ccDocStep block.');
+  }
+  const results = [];
+  for (let stepNum = 1; stepNum <= 5; stepNum++) {
+    let assembled = base.replace(DOC_STEP_RUNTIME_BLOCK, `const __ccDocStep = ${stepNum};`);
+    assembled = `var __CREATE_COMPONENT_PHASE__=2;\n${assembled}`;
+    let peeled = await minifyScriptBody(esbuild, assembled, `doc-slim-step${stepNum}`, {
+      mangle: true,
+    });
+    peeled = await terserDeadStripAsyncBody(peeled, `doc-slim-step${stepNum}`);
+    const destRel = `${TEMPLATES_DIR}/create-component-engine-doc.step${stepNum}.min.figma.js`;
+    const body = docSlimStepBanner(stepNum) + peeled + '\n';
+    const bodyBytes = Buffer.byteLength(body, 'utf8');
+    if (bodyBytes > HARD_LIMIT - CONFIG_HEADROOM) {
+      throw new Error(
+        `create-component-engine-doc.step${stepNum} is ${bodyBytes} bytes, exceeds budget ${HARD_LIMIT - CONFIG_HEADROOM}`,
+      );
+    }
+    writeFileSync(resolve(REPO_ROOT, destRel), body);
+    results.push({ step: stepNum, destRel, destBytes: bodyBytes });
+  }
+  return results;
 }
 
 async function loadEsbuild() {
@@ -126,6 +311,62 @@ async function loadEsbuild() {
   }
 }
 
+const ASYNC_IIFE_WRAP_OPEN = '(async()=>{';
+const ASYNC_IIFE_WRAP_CLOSE = '})();';
+
+/** Peel the async IIFE wrapper esbuild/terser emit around a Figma script body. */
+function peelAsyncIifeWrapper(minBody, label) {
+  let peeled = minBody.trim();
+  if (peeled.endsWith(';')) peeled = peeled.slice(0, -1);
+
+  const WRAP_PREFIXES = ['(async()=>{', '(async () => {'];
+  const WRAP_SUFFIXES = ['})()', '})();'];
+
+  const matchedPrefix = WRAP_PREFIXES.find(p => peeled.startsWith(p));
+  if (!matchedPrefix) {
+    throw new Error(
+      `minify wrapper not found in output for ${label} — cannot safely strip.\n` +
+        `first 80 chars: ${peeled.slice(0, 80)}`
+    );
+  }
+  peeled = peeled.slice(matchedPrefix.length);
+  const matchedSuffix = WRAP_SUFFIXES.find(s => peeled.endsWith(s));
+  if (!matchedSuffix) {
+    throw new Error(
+      `minify wrapper close not found in output for ${label} — cannot safely strip.\n` +
+        `last 80 chars: ${peeled.slice(-80)}`
+    );
+  }
+  peeled = peeled.slice(0, peeled.length - matchedSuffix.length);
+  return peeled;
+}
+
+/**
+ * Second pass for doc-step bundles: esbuild.transform does not eliminate
+ * functions only referenced from dead `__ccDocStep` branches. Terser
+ * compress.unused removes them. Input/output are the same shape as
+ * minifyScriptBody — a peelable async-IIFE body (no outer wrapper).
+ */
+async function terserDeadStripAsyncBody(esbuildPeeledBody, label) {
+  const wrapped = `${ASYNC_IIFE_WRAP_OPEN}\n${esbuildPeeledBody}\n${ASYNC_IIFE_WRAP_CLOSE}`;
+  const result = await terserMinify(wrapped, {
+    compress: {
+      passes: 3,
+      dead_code: true,
+      unused: true,
+    },
+    mangle: true,
+    format: {
+      ascii_only: false,
+      comments: false,
+    },
+  });
+  if (result.error) {
+    throw new Error(`terser (${label}): ${result.error}`);
+  }
+  return peelAsyncIifeWrapper(result.code || '', label);
+}
+
 /**
  * Minify a plain-script body that uses top-level `await` and/or top-level
  * `return` (both legal inside Figma's implicit async IIFE, but not at ES
@@ -133,9 +374,7 @@ async function loadEsbuild() {
  * peels the wrapper so the output is still an inline-able script body.
  */
 async function minifyScriptBody(esbuild, srcText, label, { mangle }) {
-  const WRAP_OPEN = '(async()=>{';
-  const WRAP_CLOSE = '})();';
-  const wrapped = `${WRAP_OPEN}\n${srcText}\n${WRAP_CLOSE}`;
+  const wrapped = `${ASYNC_IIFE_WRAP_OPEN}\n${srcText}\n${ASYNC_IIFE_WRAP_CLOSE}`;
 
   const result = await esbuild.transform(wrapped, {
     minifyWhitespace: true,
@@ -158,27 +397,7 @@ async function minifyScriptBody(esbuild, srcText, label, { mangle }) {
   let minBody = result.code.trim();
   if (minBody.endsWith(';')) minBody = minBody.slice(0, -1);
 
-  const WRAP_PREFIXES = ['(async()=>{', '(async () => {'];
-  const WRAP_SUFFIXES = ['})()', '})();'];
-
-  let peeled = minBody;
-  const matchedPrefix = WRAP_PREFIXES.find(p => peeled.startsWith(p));
-  if (!matchedPrefix) {
-    throw new Error(
-      `minify wrapper not found in output for ${label} — cannot safely strip.\n` +
-        `first 80 chars: ${peeled.slice(0, 80)}`
-    );
-  }
-  peeled = peeled.slice(matchedPrefix.length);
-  const matchedSuffix = WRAP_SUFFIXES.find(s => peeled.endsWith(s));
-  if (!matchedSuffix) {
-    throw new Error(
-      `minify wrapper close not found in output for ${label} — cannot safely strip.\n` +
-        `last 80 chars: ${peeled.slice(-80)}`
-    );
-  }
-  peeled = peeled.slice(0, peeled.length - matchedSuffix.length);
-  return peeled;
+  return peelAsyncIifeWrapper(minBody, label);
 }
 
 function banner(sourceRel) {
@@ -399,6 +618,8 @@ async function main() {
   const { top: drawTop, bottom: drawBottom } = splitDrawEngine(drawEngineSrc);
   const { sharedHelpers, builders } = parseArchetypeBuilders(archetypeSrc);
 
+  removeObsoletePerLayoutDocSteps();
+
   // (1) Debug-only standalones — NOT inlined by agents at runtime.
   for (const [srcRel, destRel] of [
     [DRAW_ENGINE_REL, DRAW_ENGINE_MIN_REL],
@@ -420,6 +641,22 @@ async function main() {
     console.log(
       `bundle[${layout}]`.padEnd(28) +
         `${r.destBytes} bytes (${remaining} bytes of CONFIG headroom under ${HARD_LIMIT} use_figma limit)`
+    );
+  }
+
+  // (2b) MCP ladder: step0 per layout + shared slim doc steps 1..5 (one file each).
+  for (const layout of layouts) {
+    const s0 = await buildStepZero(esbuild, layout, { drawTop, drawBottom, sharedHelpers, builders });
+    console.log(
+      `step0[${layout}]`.padEnd(28) +
+        `${s0.destBytes} bytes (${HARD_LIMIT - s0.destBytes} headroom vs ${HARD_LIMIT})`,
+    );
+  }
+  const docSlim = await buildDocSlimSteps(esbuild, drawTop, drawBottom);
+  for (const r of docSlim) {
+    console.log(
+      `doc.step${r.step}`.padEnd(28) +
+        `${r.destBytes} bytes (${HARD_LIMIT - r.destBytes} headroom vs ${HARD_LIMIT})`,
     );
   }
 
