@@ -45,6 +45,25 @@ fi
 rm -f /tmp/sync-cache-diff.$$
 
 echo ""
+echo "==> diffing project bootstrap files (repo root vs cache root)"
+for f in CLAUDE.md memory.md AGENTS.md; do
+  if [[ ! -f "$REPO_ROOT/$f" ]]; then
+    continue
+  fi
+  if [[ ! -f "$CACHE/$f" ]]; then
+    echo "    missing in cache: $CACHE/$f"
+    echo "    run 'bash scripts/sync-cache.sh' to resolve."
+    STATUS=1
+    continue
+  fi
+  if ! diff -q --strip-trailing-cr "$REPO_ROOT/$f" "$CACHE/$f" > /dev/null 2>&1; then
+    STATUS=1
+    echo "    DRIFT DETECTED: $f (repo vs $CACHE/$f)"
+    echo "    run 'bash scripts/sync-cache.sh' to resolve."
+  fi
+done
+
+echo ""
 echo "==> checking minified-template freshness"
 STALE=0
 

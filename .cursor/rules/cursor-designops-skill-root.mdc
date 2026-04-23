@@ -20,6 +20,7 @@ Claude Code resolves `skills/create-design-system/...` from **`${CLAUDE_PLUGIN_R
 
 ## Agent behavior
 
+- When this workspace includes the **DesignOps-plugin** repo root (the folder that contains **`memory.md`**, **`CLAUDE.md`**, and **`skills/`**), **read [`memory.md`](../../memory.md) early** for workflow routing and token discipline — then [`AGENTS.md`](../../AGENTS.md) for full MCP/subagent policy. Do **not** wait for the user to ask.
 - Before **`Read`** on a `.min.mcp.js` bundle, ensure the path resolves from **some** workspace folder. If it fails from the primary root, use the path under the added **plugin** folder, or ask the user to **Add Folder to Workspace** for that directory.
 - Do **not** assume Cursor can read Claude’s plugin tree without it being in the workspace.
 

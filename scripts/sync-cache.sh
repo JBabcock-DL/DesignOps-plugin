@@ -44,3 +44,14 @@ else
   FILE_COUNT=$(find "$SRC" -type f ! -name '.DS_Store' | wc -l | tr -d ' ')
   echo "synced $FILE_COUNT files (via cp fallback) to $DEST"
 fi
+
+# Project bootstrap files live at repo root; Claude Code loads CLAUDE.md from the
+# plugin / project directory. Mirror them to the marketplace cache root so a
+# session opened on ~/.claude/plugins/.../labs-design-ops gets the same context
+# as a git clone of this repository.
+for f in CLAUDE.md memory.md AGENTS.md; do
+  if [[ -f "$REPO_ROOT/$f" ]]; then
+    cp "$REPO_ROOT/$f" "$CACHE/$f"
+  fi
+done
+echo "synced CLAUDE.md, memory.md, AGENTS.md (if present) to $CACHE"

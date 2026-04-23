@@ -13,7 +13,9 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **Mandatory:** Before any install, assembly, or `use_figma` call, `Read` [`EXECUTOR.md`](./EXECUTOR.md) in full. It holds the canonical **§0** quickstart (script assembly order, `check-payload` gates, short-context / MCP transport table, session runbook, twelve-step table, §0.1–§0.3). This **`SKILL.md`** file is the long-form spec (§1 onward: interactive contract, CONFIG schema, §6 template, §9 assertions, supported components). If `EXECUTOR.md` and a numbered section here conflict on **assembly or transport**, **EXECUTOR.md** wins; for **CONFIG shape and draw-engine behavior**, this file wins when explicitly cited.
 
-**Optional (Cursor / Composer-class hosts):** When the full assembled `code` is at risk of truncation in the parent thread, delegate Step 6 to [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) via `Task` — the parent still performs Steps 1–5.5 and passes `fileKey`, `configJson`, `createComponentRoot`, and registry inputs per that skill’s **§0**.
+**Step 6 default — delegated draw:** When the host exposes **`Task`** (subagent), **always** delegate Step 6 to [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) — the parent completes Steps **1–5** and **4.7**, serializes **`CONFIG`** to **`configJson`**, and passes `fileKey`, `createComponentRoot`, and registry per that skill’s **§0**. The parent does **not** inline the ~40K-char engine. **`EXECUTOR.md`** §0 *Step 6 — transport* is authoritative.
+
+**Fallback:** Inline **`use_figma`** in the parent (full §6 template below) **only** when **`Task` is unavailable** or the designer explicitly requests a single-thread draw; then the parent also runs **Step 5.5** locally.
 
 > **Before you draw anything, read** [`conventions/00-overview.md`](./conventions/00-overview.md) — the entry point to the topic-scoped convention shards (auto-layout enums, doc pipeline, code-connect, audit checklist) that agents (Sonnet, Haiku, future Claude versions) can load to match the house style on the first pass. The shards document canvas geometry, the matrix-default layout, the properties table, state / variant / size axes, the `Doc/*` text styles, and the audit checklist. Every rule in this SKILL should round-trip with those files; if they ever disagree, **this SKILL is authoritative** and the matching `conventions/*.md` shard must be updated. The legacy [`CONVENTIONS.md`](./CONVENTIONS.md) is now a thin router / legacy section-ID map — follow its links to the shard.
 
@@ -670,7 +672,7 @@ After each component's `use_figma` returns **and** §9 self-check passes, merge 
 >
 > Mode A and Mode B share the exact same draw engine below the CONFIG block — the only variable is who wrote CONFIG (the extractor vs the agent). Never hand-author a CONFIG in Mode A; if you feel the urge to, the extractor or the class resolver has a bug and the fix is to report the `unresolvedClasses` entries in Step 8, not to patch CONFIG by hand.
 >
-> **Critical rule:** Every component's page navigation, creation, and all variable bindings must happen inside a **single `use_figma` call**. Each call runs in an isolated plugin context — page state set in one call does NOT carry over to the next call.
+> **Critical rule:** Every component's page navigation, creation, and all variable bindings must happen inside a **single `use_figma` call** (whether that call is made by the **subagent** or the **parent**). Each call runs in an isolated plugin context — page state set in one call does NOT carry over to the next call.
 >
 > **Default layout = matrix.** Every component — single-state, single-variant, or full cross-product — renders into a **Variant × State specimen matrix** inside a documentation frame that also carries a properties/types table and Do/Don't usage notes. The flat wrapping "grid of variants" output from earlier revisions of this skill is **deprecated**. See [`conventions/04-doc-pipeline-contract.md`](./conventions/04-doc-pipeline-contract.md) for the full spec and [`conventions/06-audit-checklist.md`](./conventions/06-audit-checklist.md) for the audit checklist.
 >
@@ -678,7 +680,19 @@ After each component's `use_figma` returns **and** §9 self-check passes, merge 
 
 > **Migration (Phase 6 — opt-in):** rewriting legacy flat-shape composites to instance stacks in place (`--migrate-to-instances`) is specified in [`plans/create-component_atomic-composition.plan.md`](../../plans/create-component_atomic-composition.plan.md) §7. The §6 template below covers **new draws and full redraws**; run the migration flow only after that plan's pre-migration audit when a file already has inbound references.
 
-For each successfully installed component, make **one `use_figma` call** using the complete template below.
+For each successfully installed component, execute **Step 6** using **6.A** (default) or **6.B** (fallback).
+
+#### Step 6.A — Delegated draw (**default** when `Task` exists)
+
+1. Serialize the finalized **`CONFIG`** object (after Mode A / B selection) to a **`configJson`** string (`JSON.stringify`, ensure valid for `JSON.parse` in the subagent).
+2. Emit **`Task(subagent_type: "generalPurpose", …)`** loading [`../create-component-figma-runner/SKILL.md`](../create-component-figma-runner/SKILL.md) with **`fileKey`**, **`configJson`**, **`createComponentRoot`** (path to `skills/create-component/`), and **registry** per runner **§0**.
+3. On success, run **`§9`** self-checks against the subagent’s compact return value (and `raw` if needed). Proceed to **Step 5.2** registry write-back.
+
+**Do not** paste the minified `create-component-engine-*.min.figma.js` into the parent message for **6.A**.
+
+#### Step 6.B — Inline `use_figma` (**fallback**)
+
+When **6.A** is not available, make **one `use_figma` call** per component using the complete template below (parent assembles CONFIG + preamble + engine per **`EXECUTOR.md`** inline order and runs **Step 5.5** before submit).
 
 **Component → Page routing** (pick the row for your component and use it as `CONFIG.pageName`):
 

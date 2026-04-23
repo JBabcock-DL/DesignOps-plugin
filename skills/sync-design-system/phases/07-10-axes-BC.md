@@ -105,6 +105,8 @@ Scope:
 - Step 6 draw runs only for the named subset (redraws the targeted ComponentSets in place on their `↳ {Page}` pages).
 - Other Figma pages are untouched.
 
+**Transport:** Step 6 follows [`create-component/EXECUTOR.md`](../../create-component/EXECUTOR.md) — **`Task` → `create-component-figma-runner`** is the **default** when subagents exist; inline `use_figma` in the parent is the **fallback**.
+
 Log redrawn components + variant counts.
 
 For **composition drift** items (`B.*.composition.*`), prefer scoping `/create-component --components=<composite>` after every referenced child atom is healthy in the registry; use `--migrate-to-instances` only when the composite page is still on the **flat** specimen layout and the designer explicitly chose migration over a full redraw.

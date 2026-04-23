@@ -2,6 +2,10 @@
 
 These notes apply to **any** AI agent or automation working in this repository (Cursor, Claude Code, CI bots with repo access, etc.).
 
+**Token-light index:** [`memory.md`](memory.md) — compact checklist and links; use this for quick orientation, then open sections below or linked skills when needed.
+
+**Claude Code:** [`CLAUDE.md`](CLAUDE.md) is the project bootstrap file; it instructs the agent to load **`memory.md`** and **`AGENTS.md`** automatically — the user should not need to repeat that per session.
+
 ## MCP payloads: inline in the tool call — never repo staging files
 
 When a tool accepts an **inline** argument (e.g. Figma **`use_figma`** → `code`, or similar “pass the script/blob here” parameters):
@@ -23,7 +27,7 @@ When a single user request covers **both** style-guide table canvas work **and**
 - **Phase A — Tables (unchanged):** Run `/create-design-system` Step 15a–15c and Step 17 as documented — **one** [`canvas-bundle-runner`](skills/canvas-bundle-runner/SKILL.md) `Task` per slug, **three** sequential `Task`s for 15c, then audit. Do **not** change [`canvas-templates/`](skills/create-design-system/canvas-templates/) geometry, [`conventions/14-audit.md`](skills/create-design-system/conventions/14-audit.md) rules, or bundle layout to “optimize” this — the split is **orchestration only**.
 - **Phase B — Components:** Run `/create-component` **one component at a time** to completion (install + preflight + **one** `use_figma` + registry / reporting for that component) before starting the next, across **as many assistant turns as needed** — see [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) *Session / output limits*.
 
-**Optional (Composer-class / Cursor):** After the parent has built `CONFIG` and completed Step 4.7 for **one** component, delegate the **assembly +** `use_figma` to [`skills/create-component-figma-runner/SKILL.md`](skills/create-component-figma-runner/SKILL.md) via `Task` so the parent thread never materializes the full ~40K-char `code` string. The parent still owns shadcn install, `configJson`, and registry; the subagent `Read`s preamble + one engine `*.min.figma.js` and calls Figma. Full tables + canvas bundles **do not** use this runner — they use `canvas-bundle-runner` only.
+**`/create-component` Step 6 (default):** When **`Task`** (subagent) is available, the parent **must** delegate **assembly +** `use_figma` to [`skills/create-component-figma-runner/SKILL.md`](skills/create-component-figma-runner/SKILL.md) **per component** after Steps **1–5** and **4.7** — the parent passes `fileKey`, `configJson`, `createComponentRoot`, and registry; it **must not** paste the ~40K-char engine into the parent thread. The subagent runs `check-payload` and calls Figma. **`Fallback`** — inline `use_figma` in the parent **only** when `Task` is unavailable or the designer explicitly requests a single-thread draw; see [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) §0. Style-guide canvas bundles **still** use **`canvas-bundle-runner` only** — never this runner for Step 15/17.
 
 ### Canvas bundles — subagent delegation (Step 15 / Step 17)
 
@@ -56,13 +60,14 @@ This repo (`DesignOps-plugin/`) is the **canonical source** for every skill unde
 **Rule for any agent editing a skill:**
 
 1. Edit the file under `skills/<skill>/…` in this repo **first**. That's the version that gets committed and shipped.
-2. After the edit settles, mirror the exact same file to the marketplace cache:
+2. Run **`bash scripts/sync-cache.sh`** (or `npm run sync-cache`) to mirror **`skills/**`** and the repo-root bootstrap files **`CLAUDE.md`**, **`memory.md`**, **`AGENTS.md`** into the local marketplace folder. **`npm run verify`** (or `verify-cache`) diffs both **`skills/`** and those three files against the cache.
+3. Legacy / manual mirror — only if you must copy a single skill file without running the script:
    ```
    cp skills/<skill>/<file> ~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/skills/<skill>/<file>
    ```
-   (Use whatever path form the host OS requires — e.g. `C:/Users/<user>/.claude/plugins/...` on Windows.)
-3. `diff` the two afterwards and expect a clean exit (`FILES IN SYNC`). Never leave the two copies drifted.
-4. Only the repo copy gets committed; the marketplace cache is local-machine state and is not tracked by this repo.
+   (Use whatever path form the host OS requires — e.g. `C:/Users/<user>/.claude/plugins/...` on Windows.) Also copy **`CLAUDE.md`**, **`memory.md`**, and **`AGENTS.md`** from the repo root to the same **`labs-design-ops/`** directory if you changed them.
+4. `diff` or `npm run verify` afterwards and expect a clean exit. Never leave the two trees drifted.
+5. Only the repo copy gets committed; the marketplace cache is local-machine state and is not tracked by this repo.
 
 If you edited the marketplace cache by accident (e.g. via an absolute path search), copy it back to the repo copy instead of re-doing the edits by hand, then re-verify with `diff`. Do **not** treat the cache as authoritative when reconciling.
 

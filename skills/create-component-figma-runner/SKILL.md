@@ -1,15 +1,15 @@
 ---
 name: create-component-figma-runner
-description: Run a single pre-assembled /create-component Figma draw — Read preamble + per-archetype engine, merge CONFIG and registry, call use_figma once, return compact JSON. Use ONLY inside a Task subagent (isolated context) so ~40K-char `code` and MCP assembly stay out of the parent thread — recommended for Cursor / Composer-class hosts. Parent owns shadcn install, CONFIG authoring, 4.7 token checks, and Step 5.2 registry; this subagent owns assembly + one use_figma only.
+description: Default /create-component Step 6 when Task exists — Read preamble + per-archetype engine, merge CONFIG and registry, run check-payload, call use_figma once, return compact JSON. Parent must use Task (isolated context) so ~40K-char code never lands in the parent thread. Parent owns Steps 1–5, 4.7, §9 review, Step 5.2 registry; subagent owns assembly + preflight + one use_figma only.
 argument-hint: "fileKey=…, createComponentRoot=…, configJson=…, registry project path or pass activeFileKey + registryJson — see SKILL §0."
 agent: general-purpose
 ---
 
 # Skill — `create-component-figma-runner`
 
-You are a **single-purpose subagent**. Your job is to assemble the [`/create-component`](../create-component/SKILL.md) `use_figma` **code** string (CONFIG + [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/)), run preflight, call **`use_figma` once**, and return a **compact** JSON result to the parent. You run in an **isolated** context so the parent thread (especially short-output hosts) does not emit the full ~40K-character `code` in one assistant message.
+You are a **single-purpose subagent** and the **default** executor for [`/create-component`](../create-component/SKILL.md) **Step 6** whenever the parent host exposes **`Task`**. Your job is to assemble the `use_figma` **code** string (CONFIG + [`preamble.figma.js`](../create-component/templates/preamble.figma.js) + one [`create-component-engine-{layout}.min.figma.js`](../create-component/templates/)), run **`check-payload`** (and optional full wrapper check), call **`use_figma` once**, and return a **compact** JSON result to the parent. You run in an **isolated** context so the parent thread never emits the full ~40K-character `code` in its own message.
 
-**Parent threads** that invoke you must **not** paste the minified engine into their own `use_figma` call for that component — they hand off the structured inputs to you instead. Full orchestration, registry write-back, and `§9` assertions can stay in the parent; assembly + Figma call happen here. Rationale: same pattern as [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md), [`AGENTS.md`](../../AGENTS.md) § *Session runbook*.
+**Parent threads** must **not** paste the minified engine into their own `use_figma` for that component when **`Task` is available** — they hand off structured inputs per **§0** instead. Full orchestration, **`SKILL.md` §9** assertions, and registry write-back stay in the parent; assembly + Figma call happen here. Same delegation pattern as [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md); see [`AGENTS.md`](../../AGENTS.md) § *Session runbook*.
 
 ---
 
