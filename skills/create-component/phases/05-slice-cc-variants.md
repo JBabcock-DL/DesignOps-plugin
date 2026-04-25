@@ -1,3 +1,5 @@
+> **Resume from `phase-state.json`:** read [`13` §4](../conventions/13-component-draw-orchestrator.md); use on-disk `handoff.json` and `nextSlug`.
+
 # Phase 05 — Draw slice `cc-variants` (variant plane)
 
 **Maps to:** Orchestrator DAG **#2** [`13` §1](../conventions/13-component-draw-orchestrator.md); [`create-component-figma-slice-runner` §2](../../create-component-figma-slice-runner/SKILL.md) row `cc-variants` → `create-component-engine-<archetype>.step0.min.figma.js`.

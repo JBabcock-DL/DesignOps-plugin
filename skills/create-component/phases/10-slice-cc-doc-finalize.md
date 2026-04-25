@@ -1,3 +1,5 @@
+> **Resume from `phase-state.json`:** read [`13` §4](../conventions/13-component-draw-orchestrator.md); use on-disk `handoff.json` and `nextSlug`.
+
 # Phase 10 — Finalize draw + closeout (last `use_figma`, then §9 / registry / reporting)
 
 **Rule:** Complete **Part A** (the MCP slice) to `ok: true` and merge handoff if needed, **then** complete **Part B** in the same phase — do not start another component or skip to reporting until both parts are done.

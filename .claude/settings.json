@@ -5,7 +5,11 @@
       "Read(//c/Users/jbabc/.claude/**)",
       "WebSearch",
       "WebFetch(domain:developers.figma.com)",
-      "mcp__claude_ai_Figma__get_screenshot"
+      "mcp__claude_ai_Figma__get_screenshot",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(echo '{\"doc\":{\"pageContentId\":\"100:1\",\"docRootId\":\"100:2\"}}')",
+      "Bash(node scripts/assemble-slice.mjs --step cc-variants --layout chip --config-block /tmp/cc-test/btn.config.js --registry /tmp/cc-test/registry.json --handoff /tmp/cc-test/handoff_with_doc.json --file-key ABC123 --out /tmp/cc-test/variants.code.js)",
+      "Bash(wc -c)"
     ],
     "additionalDirectories": [
       "~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/.claude-plugin",

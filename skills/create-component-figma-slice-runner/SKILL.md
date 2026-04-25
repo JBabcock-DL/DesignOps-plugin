@@ -50,7 +50,7 @@ You **`Read`** [`preamble.figma.js`](../create-component/templates/preamble.figm
 ## §0.1 — Assembly order (identical to runner §1, one slice)
 
 1. **Normalize `configBlock`** — trim, strip one Markdown fence, sanity-check `layout` appears; must define `const CONFIG`.
-2. **`Read`** `{createComponentRoot}/templates/preamble.figma.js` **verbatim**.
+2. **`Read`** `{createComponentRoot}/templates/preamble.runtime.figma.js` **verbatim** (generated; ~1.3 kB — same identifiers as the human-edited `preamble.figma.js`). If missing, `npm run build:min` in the plugin root. For one-command assembly, run **`npm run assemble-slice`** from the plugin repo (concatenates config + `varGlobals` + patched preamble + engine, then `check-payload` / optional `check-use-figma-mcp-args` — see script header). When editing the preamble, change **`preamble.figma.js`** only; never hand-edit the runtime file.
 3. **Patch preamble** only: `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS` (see `preamble.figma.js` header for the two replaceable literals).
 4. **Resolve** `archetypeFile` from `layout` for **`cc-variants` only**:
    - `__composes__` → `composed` in the **filename**; all other `layout` values use the same spelling as the committed file (e.g. `surface-stack` → `create-component-engine-surface-stack.step0.min.figma.js`).
@@ -67,7 +67,7 @@ You **`Read`** [`preamble.figma.js`](../create-component/templates/preamble.figm
 
 ## §2 — Bundle map (only `templates/` files you may `Read` for the engine)
 
-Paths are under `{createComponentRoot}/templates/`. The **preamble** is always `preamble.figma.js` (not minified) — that is a **separate** `Read` from the table below (§0.1 allows preamble + one engine file).
+Paths are under `{createComponentRoot}/templates/`. The **preamble** for MCP runs is `preamble.runtime.figma.js` (see §0.1); the table below lists **engine** `Read`s. Humans edit `preamble.figma.js`; `npm run build:min` emits the runtime file.
 
 | `step` | Engine file (one `Read`) |
 |--------|--------------------------|

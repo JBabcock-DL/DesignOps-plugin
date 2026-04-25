@@ -66,6 +66,11 @@ const TEMPLATES_DIR = 'skills/create-component/templates';
 
 const DRAW_ENGINE_REL = `${TEMPLATES_DIR}/draw-engine.figma.js`;
 const ARCHETYPE_BUILDERS_REL = `${TEMPLATES_DIR}/archetype-builders.figma.js`;
+const PREAMBLE_REL = `${TEMPLATES_DIR}/preamble.figma.js`;
+const PREAMBLE_RUNTIME_REL = `${TEMPLATES_DIR}/preamble.runtime.figma.js`;
+// Plan / AGENTS: single-line header only — edit `preamble.figma.js`, then `npm run build:min`
+const PREAMBLE_RUNTIME_HEADER =
+  `// preamble.runtime.figma.js — generated; edit preamble.figma.js + npm run build:min\n`;
 
 // CONFIG.layout value → builder function name that handles it.
 // 'composed' is the filename-safe spelling of CONFIG.layout === '__composes__'.
@@ -141,8 +146,115 @@ const __ccDocStep =
     : __ccDocStepDefault;`;
 
 function assembledIncludesDocStepBlock(s) {
-  return s.includes(DOC_STEP_RUNTIME_BLOCK);
+  // draw-engine.figma.js may be CRLF on Windows; DOC_STEP_RUNTIME_BLOCK is LF-only.
+  return s.replace(/\r\n/g, '\n').includes(DOC_STEP_RUNTIME_BLOCK);
 }
+
+/**
+ * Strip comments from JavaScript source without an AST parser.
+ * Handles: block comments (/* *\/), line comments (//), template literals,
+ * and regular strings. Safe for preamble.figma.js which has no regex literals.
+ *
+ * We do NOT use esbuild minifySyntax here because it constant-folds
+ * `const ACTIVE_FILE_KEY = null` → inlines `null` everywhere → dead-code-
+ * eliminates `if (false)` → drops `logFileKeyMismatch` declaration →
+ * preamble-presence gate in draw-engine §0a reports the identifier missing.
+ * Plain comment-stripping + whitespace collapse avoids the problem entirely
+ * and still reduces preamble.figma.js from ~6 kB to ~1.5 kB.
+ */
+function stripJsComments(src) {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    // Template literal
+    if (src[i] === '`') {
+      const start = i++;
+      while (i < src.length && src[i] !== '`') {
+        if (src[i] === '\\') i++; // skip escape
+        i++;
+      }
+      out += src.slice(start, ++i);
+      continue;
+    }
+    // Single-quoted string
+    if (src[i] === "'") {
+      const start = i++;
+      while (i < src.length && src[i] !== "'") {
+        if (src[i] === '\\') i++;
+        i++;
+      }
+      out += src.slice(start, ++i);
+      continue;
+    }
+    // Double-quoted string
+    if (src[i] === '"') {
+      const start = i++;
+      while (i < src.length && src[i] !== '"') {
+        if (src[i] === '\\') i++;
+        i++;
+      }
+      out += src.slice(start, ++i);
+      continue;
+    }
+    // Block comment
+    if (src[i] === '/' && src[i + 1] === '*') {
+      i += 2;
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++;
+      i += 2; // skip closing */
+      out += ' '; // replace with a space to avoid joining tokens
+      continue;
+    }
+    // Line comment
+    if (src[i] === '/' && src[i + 1] === '/') {
+      while (i < src.length && src[i] !== '\n') i++;
+      continue;
+    }
+    out += src[i++];
+  }
+  // Collapse runs of blank lines to a single blank line, trim
+  return out.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/**
+ * Emit a comment-stripped twin of preamble.figma.js (~6 kB → ~1.5 kB).
+ * All seven boundary identifier names are preserved exactly; no esbuild
+ * constant-folding is applied (see stripJsComments for the reason).
+ * Saves ~4.5 kB per slice × 7 slices = ~31 kB per component draw, keeping
+ * assembled MCP wrapper JSON under the Composer-class host transport cap (~28 kB).
+ */
+function buildRuntimePreamble() {
+  const src = readFileSync(resolve(REPO_ROOT, PREAMBLE_REL), 'utf8');
+  const stripped = stripJsComments(src);
+  const body = PREAMBLE_RUNTIME_HEADER + stripped + '\n';
+  const bodyBytes = Buffer.byteLength(body, 'utf8');
+
+  // Guard: all seven boundary identifiers must survive minification.
+  const REQUIRED_IDENTS = [
+    'ACTIVE_FILE_KEY', 'REGISTRY_COMPONENTS', 'usesComposes',
+    'logFileKeyMismatch', '_fileKeyObserved', '_fileKeyMismatch',
+  ];
+  for (const name of REQUIRED_IDENTS) {
+    if (!body.includes(name)) {
+      throw new Error(
+        `buildRuntimePreamble: identifier '${name}' missing from minified output — ` +
+        `esbuild may have renamed or removed it. Use mangle:false and check the source.`,
+      );
+    }
+  }
+
+  if (bodyBytes > 2000) {
+    console.warn(
+      `buildRuntimePreamble: output is ${bodyBytes} bytes (target ≤ 2000). ` +
+      `Consider trimming comments in preamble.figma.js.`,
+    );
+  }
+
+  writeFileSync(resolve(REPO_ROOT, PREAMBLE_RUNTIME_REL), body);
+  const srcBytes = Buffer.byteLength(src, 'utf8');
+  const saving = srcBytes - bodyBytes;
+  return { destRel: PREAMBLE_RUNTIME_REL, srcBytes, destBytes: bodyBytes, saving };
+}
+
 
 // Every committed artifact the build produces — used by --check. Per-archetype
 // bundles depend on BOTH sources, so each is tracked as two rows.
@@ -171,6 +283,7 @@ function buildCheckRows() {
   rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: FULL_BUNDLE_REL });
   rows.push({ src: DRAW_ENGINE_REL, dest: DRAW_ENGINE_MIN_REL });
   rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: ARCHETYPE_BUILDERS_MIN_REL });
+  rows.push({ src: PREAMBLE_REL, dest: PREAMBLE_RUNTIME_REL });
   return rows;
 }
 
@@ -203,14 +316,11 @@ function step0BundleBanner(layout, includedBuilder) {
 }
 
 function docSlimStepBanner(stepNum) {
-  const lines = [
-    `// GENERATED by scripts/build-min-templates.mjs — do not edit by hand.`,
-    `// bundle: create-component-engine-doc step${stepNum} (layout-agnostic phase-2 doc slice)`,
-    `// sources: ${DRAW_ENGINE_REL} only — slim top (no chip buildVariant) + slim bottom (no variant-build else) + baked __CREATE_COMPONENT_PHASE__=2; esbuild then terser (dead/unused strip)`,
-    `// regenerate: npm run build:min`,
-    `// Runner: same for every CONFIG.layout — inject §1b phase-2 globals + handoff ids for doc steps 2–6.`,
-  ];
-  return lines.join('\n') + '\n';
+  // step6 is the transport long pole — omit a banner to win headroom (see qa-step-bundles wrapper sim).
+  if (stepNum === 6) {
+    return '';
+  }
+  return `// create-component-engine-doc.step${stepNum}.min.figma.js — npm run build:min\n`;
 }
 
 async function buildStepZero(esbuild, layout, { drawTop, drawBottom, sharedHelpers, builders }) {
@@ -283,6 +393,18 @@ async function buildDocSlimSteps(esbuild, drawTop, drawBottom) {
       mangle: true,
     });
     peeled = await terserDeadStripAsyncBody(peeled, `doc-slim-step${stepNum}`);
+    if (stepNum === 6) {
+      const wrapped = `${ASYNC_IIFE_WRAP_OPEN}\n${peeled}\n${ASYNC_IIFE_WRAP_CLOSE}`;
+      const t6 = await terserMinify(wrapped, {
+        compress: { passes: 5, dead_code: true, unused: true, unsafe: true },
+        mangle: true,
+        format: { ascii_only: false, comments: false },
+      });
+      if (t6.error) {
+        throw new Error(`terser (doc6-unsafe): ${t6.error}`);
+      }
+      peeled = peelAsyncIifeWrapper(t6.code || '', 'doc-slim-step6-unsafe');
+    }
     const destRel = `${TEMPLATES_DIR}/create-component-engine-doc.step${stepNum}.min.figma.js`;
     const body = docSlimStepBanner(stepNum) + peeled + '\n';
     const bodyBytes = Buffer.byteLength(body, 'utf8');
@@ -350,7 +472,7 @@ async function terserDeadStripAsyncBody(esbuildPeeledBody, label) {
   const wrapped = `${ASYNC_IIFE_WRAP_OPEN}\n${esbuildPeeledBody}\n${ASYNC_IIFE_WRAP_CLOSE}`;
   const result = await terserMinify(wrapped, {
     compress: {
-      passes: 3,
+      passes: 5,
       dead_code: true,
       unused: true,
     },
@@ -631,6 +753,14 @@ async function main() {
         `  -> ${r.destRel} (${r.srcBytes} -> ${r.destBytes} bytes, -${pct}%)`
     );
   }
+
+  // (1b) Runtime preamble — stripped twin of preamble.figma.js for MCP transport.
+  const preambleResult = buildRuntimePreamble();
+  const pct = ((1 - preambleResult.destBytes / preambleResult.srcBytes) * 100).toFixed(1);
+  console.log(
+    `preamble.runtime`.padEnd(28) +
+    `${preambleResult.destBytes} bytes (was ${preambleResult.srcBytes}, -${pct}%; saves ${preambleResult.saving}B per slice × 7 = ${preambleResult.saving * 7}B per draw)`,
+  );
 
   // (2) Per-archetype runtime bundles.
   const layouts = ['chip', ...Object.keys(ARCHETYPE_BUILDERS)];

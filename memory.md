@@ -97,7 +97,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 | Style-guide / variables | [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) | Only the phase + convention shard for the current step. |
 | Geometry / pages / doc styles | [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) | As skill directs. |
 | Gotchas / §0 index | [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md) §0 + [`00-gotchas.md`](skills/create-design-system/conventions/00-gotchas.md) | §0.10 for resize/component/usage/matrix. |
-| Component draw | [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) | Then `SKILL.md` sections as needed. |
+| Component draw | **Composer / short context:** [`skills/create-component/COMPOSER.md`](skills/create-component/COMPOSER.md) · **else** [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) | Then `SKILL.md` sections as needed (§9, registry). |
 | Sync reconcile | [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) router | **One** [`phases/*.md`](skills/sync-design-system/phases/) for current step. |
 | MCP / bundles / Cursor roots | [`AGENTS.md`](AGENTS.md) | [`16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md) when debugging transport. |
 | Cursor + Composer; Step 6 `use_figma` pain | [`08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) | Then [`AGENTS.md`](AGENTS.md) if policy detail needed. |

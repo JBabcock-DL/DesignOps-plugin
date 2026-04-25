@@ -1,3 +1,5 @@
+> **Resume from `phase-state.json`:** read [`13` §4](../conventions/13-component-draw-orchestrator.md); use on-disk `handoff.json` and `nextSlug`.
+
 # Phase 07 — Draw slice `cc-doc-props` (fill **Properties** table from `CONFIG.properties`)
 
 **Maps to:** Orchestrator DAG **#4** [`13` §1](../conventions/13-component-draw-orchestrator.md); slice runner [**§2**](../../create-component-figma-slice-runner/SKILL.md) → `create-component-engine-doc.step3.min.figma.js`.

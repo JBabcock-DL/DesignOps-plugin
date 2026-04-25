@@ -58,6 +58,8 @@ Each slice (parent assembly or optional `Task` prompt) must have: `step` (slug),
 
 `handoffJson` is **the parent’s** serialized state; the slice runner only **injects** it as globals. Start with the empty object **`{}` before** `cc-doc-scaffold` (first draw slice).
 
+**Checkpoint (`phase-state.json` — default next to `handoff.json` on disk):** After each successful slice, run [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) — it writes **`phase-state.json`** with `nextSlug`, `completedSlugs`, `lastCodeSha256`, and `lastSliceOk` for resuming without chat context. The merge script **rejects** out-of-DAG or duplicate step merges (exits 13 / 14). If `nextSlug` is non-null, the agent can continue from that slice using the on-disk `handoff.json` plus `Read` the matching phase file (see [`phases/04`](../phases/04-slice-cc-doc-scaffold.md)–`10` resume lines). After `cc-doc-finalize`, `nextSlug` is `null`.
+
 **After `cc-doc-scaffold` succeeds,** copy `pageContentId`, `docRootId` (and any other doc anchors from the return) into `handoffJson.doc`.
 
 **After `cc-variants` succeeds** (second draw slice), copy from the `use_figma` return into `handoffJson.afterVariants` at minimum:

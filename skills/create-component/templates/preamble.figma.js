@@ -1,5 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// create-component / preamble.figma.js
+// create-component / preamble.figma.js  (HUMAN-READABLE SOURCE)
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENTS: use `preamble.runtime.figma.js` (same folder, ~1.3 kB, auto-generated)
+// instead of this file in every `use_figma` payload. It has all comments stripped
+// so the assembled MCP wrapper JSON stays under the Composer-class host transport
+// cap (~28 kB). Run `npm run build:min` to regenerate the runtime twin.
+// This source file is the edit target — never edit preamble.runtime.figma.js by hand.
 // ═══════════════════════════════════════════════════════════════════════════
 // Canonical preamble that MUST sit between the per-component §0 CONFIG
 // block and the per-archetype engine bundle in every `use_figma` payload.

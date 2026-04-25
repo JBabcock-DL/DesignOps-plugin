@@ -7,34 +7,47 @@
 // MCP transport is unchanged: only the parent calls `use_figma`. This file only
 // updates parent-maintained handoff state between slices (see conventions/13).
 //
+// Also updates phase-state.json next to handoff (or at optional path) for
+// mid-draw resume — see 13 §4 and phases 04–10.
+//
 // Usage
-//   node scripts/merge-create-component-handoff.mjs <step> <handoff.json> <figma-return.json>
+//   node scripts/merge-create-component-handoff.mjs <step> <handoff.json> <figma-return.json> [phase-state.json]
 //
 //   <step>        cc-doc-scaffold | cc-variants | cc-doc-component | cc-doc-props |
 //                 cc-doc-matrix | cc-doc-usage | cc-doc-finalize
 //   handoff.json  path to existing JSON (will be read, merged, written)
 //   figma-return  JSON file: either the object returned from use_figma, or
 //                 { "raw": { ... } } (slice-runner shape)
+//   phase-state   optional; default = dirname(handoff)/phase-state.json
 //
-// Exit: 0 ok, 1 usage/merge error, 2 missing/invalid file
+// Exit: 0 ok, 1 usage/merge error, 2 missing/invalid file, 13 DAG order, 14 duplicate step
 
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { dirname, resolve, join } from "node:path";
 
-const STEPS = new Set([
-  "cc-variants",
+const SLUG_ORDER = [
   "cc-doc-scaffold",
-  "cc-doc-props",
+  "cc-variants",
   "cc-doc-component",
+  "cc-doc-props",
   "cc-doc-matrix",
   "cc-doc-usage",
   "cc-doc-finalize",
-]);
+];
+
+const STEPS = new Set(SLUG_ORDER);
+
+function pred(slug) {
+  const i = SLUG_ORDER.indexOf(slug);
+  if (i <= 0) return null;
+  return SLUG_ORDER[i - 1];
+}
 
 const args = process.argv.slice(2);
-if (args.length !== 3 || args.includes("-h") || args.includes("--help")) {
-  console.error(`Usage: node scripts/merge-create-component-handoff.mjs <step> <handoff.json> <figma-return.json>
+if (args.length < 3 || args.length > 4 || args.includes("-h") || args.includes("--help")) {
+  console.error(`Usage: node scripts/merge-create-component-handoff.mjs <step> <handoff.json> <figma-return.json> [phase-state.json]
 Steps: ${[...STEPS].join(" | ")}`);
   process.exit(2);
 }
@@ -42,6 +55,9 @@ Steps: ${[...STEPS].join(" | ")}`);
 const step = args[0];
 const handoffPath = resolve(args[1]);
 const returnPath = resolve(args[2]);
+const phaseStatePath = args[3]
+  ? resolve(args[3])
+  : join(dirname(handoffPath), "phase-state.json");
 if (!STEPS.has(step)) {
   console.error(`merge-create-component-handoff: unknown step "${step}"`);
   process.exit(1);
@@ -68,6 +84,47 @@ try {
 
 if (typeof handoff !== "object" || handoff === null || Array.isArray(handoff)) {
   handoff = {};
+}
+
+let phaseState = null;
+if (existsSync(phaseStatePath)) {
+  try {
+    const raw = await readFile(phaseStatePath, "utf8");
+    phaseState = JSON.parse(raw);
+  } catch (e) {
+    console.error(`merge-create-component-handoff: phase-state parse: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+if (phaseState && phaseState.lastSliceOk === step) {
+  console.error(
+    `merge-create-component-handoff: ${step} already recorded as lastSliceOk in ${phaseStatePath} (duplicate merge)`,
+  );
+  process.exit(14);
+}
+
+const needPrev = pred(step);
+if (needPrev === null) {
+  if (step !== "cc-doc-scaffold") {
+    console.error(`merge-create-component-handoff: first draw slice must be cc-doc-scaffold, got ${step}`);
+    process.exit(13);
+  }
+  if (phaseState && Array.isArray(phaseState.completedSlugs) && phaseState.completedSlugs.length > 0) {
+    console.error(
+      "merge-create-component-handoff: phase-state shows progress but merge requests cc-doc-scaffold — " +
+        "refusing to clobber. Delete phase-state.json to restart or merge the correct next step.",
+    );
+    process.exit(13);
+  }
+} else {
+  if (!phaseState || phaseState.lastSliceOk !== needPrev) {
+    console.error(
+      `merge-create-component-handoff: DAG order violation — need lastSliceOk=${needPrev} before ${step}, ` +
+        `got ${phaseState ? JSON.stringify(phaseState.lastSliceOk) : "no phase-state"}.`,
+    );
+    process.exit(13);
+  }
 }
 
 /** Figma return payload (or raw inner object). */
@@ -110,11 +167,42 @@ if (step === "cc-variants") {
   }
 }
 
+const handoffJson = JSON.stringify(handoff, null, 2) + "\n";
+const lastCodeSha256 = createHash("sha256").update(handoffJson, "utf8").digest("hex");
+
+let component = null;
+if (typeof handoff.component === "string") {
+  component = handoff.component;
+} else if (typeof handoff.__createComponentName === "string") {
+  component = handoff.__createComponentName;
+}
+
+const idx = SLUG_ORDER.indexOf(step);
+const nextSlug = idx >= 0 && idx < SLUG_ORDER.length - 1 ? SLUG_ORDER[idx + 1] : null;
+const completedSlugs = SLUG_ORDER.slice(0, idx + 1);
+
+const nextPhase = {
+  component: component ?? (phaseState && phaseState.component) ?? null,
+  fileKey: (phaseState && phaseState.fileKey) ?? (typeof handoff.fileKey === "string" ? handoff.fileKey : null),
+  lastSliceOk: step,
+  nextSlug,
+  completedSlugs,
+  lastCodeSha256,
+  lastUpdated: new Date().toISOString(),
+};
+
 try {
-  await writeFile(handoffPath, JSON.stringify(handoff, null, 2) + "\n", "utf8");
+  await writeFile(handoffPath, handoffJson, "utf8");
 } catch (e) {
   console.error(`merge-create-component-handoff: write: ${e.message}`);
   process.exit(1);
 }
+try {
+  await writeFile(phaseStatePath, JSON.stringify(nextPhase, null, 2) + "\n", "utf8");
+} catch (e) {
+  console.error(`merge-create-component-handoff: phase-state write: ${e.message}`);
+  process.exit(1);
+}
 
 console.log(`OK  merged ${step} into ${handoffPath}`);
+console.log(`    phase-state → ${phaseStatePath}  next=${nextSlug ?? "null"}`);
