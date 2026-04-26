@@ -10,11 +10,29 @@
       "Bash(echo '{\"doc\":{\"pageContentId\":\"100:1\",\"docRootId\":\"100:2\"}}')",
       "Bash(node scripts/assemble-slice.mjs --step cc-variants --layout chip --config-block /tmp/cc-test/btn.config.js --registry /tmp/cc-test/registry.json --handoff /tmp/cc-test/handoff_with_doc.json --file-key ABC123 --out /tmp/cc-test/variants.code.js)",
       "Bash(wc -c)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Read(//c/Users/jbabc/Documents/GitHub/figtest/**)",
+      "Read(//c/Users/jbabc/Documents/GitHub/figtest/src//**)",
+      "Read(//c/Users/jbabc/Documents/GitHub/figtest/components/ui/**)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({...p.dependencies,...p.devDependencies,...\\(p.peerDependencies||{}\\)}, null, 2\\)\\)\")",
+      "Bash(npx tsx *)",
+      "Bash(echo \"EXIT:$?\")",
+      "mcp__claude_ai_Figma__use_figma",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-variants handoff.json return.json)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-scaffold handoff.json scaffold-return.json)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-component --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-component.js)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-component handoff.json return.json)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-props --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-props.js)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-props handoff.json return.json)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-matrix --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-matrix.js)"
     ],
     "additionalDirectories": [
       "~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/.claude-plugin",
-      "C:\\Users\\jbabc\\.claude\\plugins\\marketplaces\\local-desktop-app-uploads\\labs-design-ops\\skills\\new-project"
+      "C:\\Users\\jbabc\\.claude\\plugins\\marketplaces\\local-desktop-app-uploads\\labs-design-ops\\skills\\new-project",
+      "c:\\Users\\jbabc\\Documents\\GitHub\\figtest"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "figma"
+  ]
 }
