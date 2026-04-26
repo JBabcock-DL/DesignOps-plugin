@@ -56,9 +56,9 @@ You **`Read`** [`preamble.figma.js`](../create-component/templates/preamble.figm
    - `__composes__` → `composed` in the **filename**; all other `layout` values use the same spelling as the committed file (e.g. `surface-stack` → `create-component-engine-surface-stack.step0.min.figma.js`).
 5. **`Read` exactly one** engine file per **§2** for this `step` — **verbatim** min file text.
 6. **Build** `varGlobals` per **§3** from `handoffJson` and `step`.
-7. **Concatenate** (no other bytes): `configBlock` + newline + `varGlobals` + newline + **patched preamble** + min engine string.
+7. **Concatenate** (no other bytes): `configBlock` + newline + `varGlobals` + newline + **patched preamble** + min engine string. **The concatenated string is the plugin code as-is.** Do **not** wrap it in `fetch`, base64, custom UTF-8 decode, `new AsyncFunction(code)()`, gzip bootstrap, or any other "loader." The Figma plugin host executes the `code` argument directly; the absence of `fetch` / `atob` / `TextDecoder` / `DecompressionStream` in the sandbox is **not** a problem to solve — those APIs are not needed on this path. See [`../create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** *Gzip / base64 / `fetch` / `AsyncFunction` wrappers*.
 8. **Preflight** — pipe `code` to `node scripts/check-payload.mjs` (stdin) from `projectRootForShell` or plugin root; then `check-use-figma-mcp-args` if present.
-9. **Call** `use_figma` with `fileKey`, `code`, `description`, `skillNames: "figma-use,create-component-figma-slice-runner"`.
+9. **Call** `use_figma` with `fileKey`, `code`, `description`, `skillNames: "figma-use,create-component-figma-slice-runner"` — `code` is the **verbatim** concatenated string from step 7, **not** a wrapper around it.
 10. **Return** compact JSON (**§4**). Resolve Figma MCP id via one `mcps/**/SERVER_METADATA.json` if needed (same as [canvas-bundle-runner §1](../canvas-bundle-runner/SKILL.md)).
 
 **Scratch files:** do **not** write `*.mcp-*` or `*-payload.json` **under the DesignOps plugin repo** — stdin or OS temp only ([`AGENTS.md`](../../AGENTS.md)). Design consumer repos may use script output paths for parent `use_figma` per `EXECUTOR.md`.
