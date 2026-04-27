@@ -4,6 +4,35 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
+### Added — local Figma MCP file proxy (optional transport)
+
+- **[`tools/mcp-figma-file-proxy/`](tools/mcp-figma-file-proxy/)** — stdio MCP server (`use_figma_from_mcp_args_file`), path allowlist, `check-use-figma-mcp-args`, forward to Figma remote HTTP MCP; **`npm test`** in package; **`docs/research/mcp-figma-proxy-auth-spike.md`**, **`env.example`**. Root script **`npm run mcp:figma-proxy`**. Docs: **`AGENTS.md`**, **`skills/create-component/EXECUTOR.md`**, **`conventions/08-cursor-composer-mcp.md`**, **`docs/mcp-transport-cursor-fallback.md`**, **[`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md) §6.4** (Tier 4 implemented), **`docs/research/mcp-large-payload-transport-2026.md`** (gzip default still out; proxy Phase 3).
+- Gzip+base64 default in **`scripts/assemble-slice.mjs`** — **not** added; see research note above and **`EXECUTOR.md`**.
+
+### Updated — MCP research compile + solution ideation (2026-04-27)
+
+- **[`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md)** — Compiles 2026-04-27 spike: parent E2E at **5k / 10k** `code` (recorded `maxProvenSize` **10,279** B in sibling `figTest` draw dir), blockers for **25k** in one agent `call_mcp` (not Figma 50k cap), new **section 6 — Solution ideation** (tiers, decision matrix, next steps). Stakeholder row refreshed.
+- **[`docs/research/mcp-transport-closure-report.md`](docs/research/mcp-transport-closure-report.md)**, **[`docs/research/mcp-large-payload-transport-2026.md`](docs/research/mcp-large-payload-transport-2026.md)** — Aligned with the same measurements and cross-links to §6 in the solution architecture doc.
+
+### Changed — `probe-parent-transport.mjs` (2026-04-27)
+
+- **`--file-key`** — Optional Figma file key for emit mode; use a real file so the plugin can return `ok: true` with `observedCodeBytes`, not only transport-level errors with `PROBE_NO_FIGMA_FILE_REQUIRED`.
+
+### Added — MCP transport solution architecture handoff (2026-04-27)
+
+- **[`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md)** — Full research roll-up for SA: hypotheses, measured table, default architecture, pivot triggers, stakeholder matrix, 25k “last box” status (manual Composer capstone if agent cannot embed full args in one `call_mcp_tool`). Linked from [mcp-large-payload-transport-2026.md](docs/research/mcp-large-payload-transport-2026.md) and [mcp-transport-closure-report.md](docs/research/mcp-transport-closure-report.md).
+
+### Added — MCP transport closure report (2026-04-27)
+
+- **[`docs/research/mcp-transport-closure-report.md`](docs/research/mcp-transport-closure-report.md)** — Goal, hypothesis, measured results, remaining manual 25k parent step, **continue vs pivot** recommendation; cross-link from [mcp-large-payload-transport-2026.md](docs/research/mcp-large-payload-transport-2026.md).
+
+### Added — `use_figma` transport research and fallbacks (2026-04-27)
+
+- **`docs/research/mcp-large-payload-transport-2026.md`** — Phase 0–5: probe results, Cursor `@file` / CLI notes, gzip policy, file-proxy go/no-go, cross-links to `AGENTS` / `EXECUTOR` / `08`.
+- **`docs/mcp-transport-cursor-fallback.md`** — What to do when model/host JSON fails before Figma.
+- **`tools/mcp-figma-file-proxy/README.md`** — Optional future proxy; documents why chaining into Cursor’s Figma session is not supported out of the box.
+- **`AGENTS.md`**, **`skills/create-component/EXECUTOR.md`**, **`skills/create-component/conventions/08-cursor-composer-mcp.md`** — Pointers to the research and fallback docs.
+
 ### Fixed — README matches full plugin surface (2026-04-22)
 
 - **`README.md`** — Documents all **eight** user-facing slash commands (adds **`/dev-handoff`**), updates install copy, **Typical Workflow** step 8, and **Plugin File Structure** (`sync-design-system` shards, **`EXECUTOR.md`**, **`canvas-bundle-runner`**, **`shared/`**).

@@ -28,6 +28,8 @@
 //                   (default 25000; legal range 1000..49000).
 //   --out PATH      write MCP args JSON here (default: stdout).
 //   --description   override the use_figma description (default includes size).
+//   --file-key K    Figma file key to target (default: PROBE_NO_FIGMA_FILE_REQUIRED for transport-only;
+//                   use a real file key to run the no-op in an accessible file and get ok:true from the plugin).
 //
 // After parent runs call_mcp and observes ok:true, RECORD the result:
 //
@@ -50,7 +52,7 @@ const args = process.argv.slice(2);
 if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
   console.error(
     `Usage:\n` +
-    `  node scripts/probe-parent-transport.mjs --size N [--out args.json] [--description text]\n` +
+    `  node scripts/probe-parent-transport.mjs --size N [--out args.json] [--file-key <key>] [--description text]\n` +
     `  node scripts/probe-parent-transport.mjs --record --size N --observed-bytes M --target <draw-dir>\n` +
     `\nDefault size: 25000 bytes (slightly above typical doc-step). Range: 1000..49000.\n`,
   );
@@ -63,6 +65,7 @@ let outPath = null;
 let description = null;
 let observedBytes = null;
 let target = null;
+let fileKey = 'PROBE_NO_FIGMA_FILE_REQUIRED';
 
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -70,6 +73,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--size') size = parseInt(args[++i], 10);
   else if (a === '--out') outPath = args[++i];
   else if (a === '--description') description = args[++i];
+  else if (a === '--file-key' || a === '--fileKey') fileKey = args[++i];
   else if (a === '--observed-bytes') observedBytes = parseInt(args[++i], 10);
   else if (a === '--target') target = args[++i];
   else { console.error(`probe-parent-transport: unknown arg: ${a}`); process.exit(1); }
@@ -134,11 +138,9 @@ if (remaining > 0) {
 code += FOOTER;
 
 const mcpArgs = {
-  fileKey: 'PROBE_NO_FIGMA_FILE_REQUIRED',
-  // ↑ Many MCP hosts don't validate the fileKey shape until the plugin runs.
-  // The synthetic code never touches `figma.*` so the fileKey is informational.
-  // If your host rejects unknown keys, pass --description with a real fileKey
-  // and re-emit; the body is still synthetic.
+  fileKey,
+  // Default PROBE key: Figma may reject the file; transport-only proof. With --file-key, the
+  // same synthetic `return` runs in your file (requires access) for end-to-end ok:true.
   code,
   description: description || `probe-parent-transport: ${size}B synthetic payload — verify parent call_mcp carries this.`,
   skillNames: 'figma-use',

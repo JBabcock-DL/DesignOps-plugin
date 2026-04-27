@@ -42,7 +42,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 ## Non-negotiables (Figma + layout)
 
-- **MCP:** Inline **`use_figma`** `code` in the tool call — **no** repo scratch files to stage payloads. **Exception:** committed paths skills name explicitly (`*.min.mcp.js`, etc.). **`AGENTS.md`**.
+- **MCP:** Inline **`use_figma`** `code` in the tool call — **no** repo scratch files to stage payloads. **Exception:** committed paths skills name explicitly (`*.min.mcp.js`, etc.). **Optional:** user-registered [`tools/mcp-figma-file-proxy`](tools/mcp-figma-file-proxy/README.md) (`mcpArgsPath` on disk). **`AGENTS.md`**.
 - **`resize()`** resets auto-layout sizing to **FIXED**. Order: **`resize` → then** set `primaryAxisSizingMode` / `counterAxisSizingMode`. **VERTICAL** component roots: avoid 1px-tall masters. **HORIZONTAL** rows (e.g. doc **usage**): **counter axis = vertical** — use **`AUTO`** so height is not pinned at 1px. [**§0.10**](skills/create-design-system/conventions/00-gotchas.md).
 - **Matrix specimen cells:** **counter `AUTO`** + **`minHeight`** — not only fixed 72px. [`skills/create-component/conventions/03-auto-layout-invariants.md`](skills/create-component/conventions/03-auto-layout-invariants.md) §10–10.2.
 - **Style-guide tables:** header vs body cell recipes differ; **§0.5–0.7** gotchas + **§14 audit** before “done.” [`skills/create-design-system/conventions/00-gotchas.md`](skills/create-design-system/conventions/00-gotchas.md).
