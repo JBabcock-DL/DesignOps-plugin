@@ -24,6 +24,7 @@ Claude Code resolves `skills/create-design-system/...` from **`${CLAUDE_PLUGIN_R
 - If the active model is Composer-class or a known short-output host, route **`/create-component` Step 6** to [`skills/create-component/COMPOSER.md`](../../skills/create-component/COMPOSER.md) first instead of reading the full `SKILL.md` surface; still honor [`AGENTS.md`](../../AGENTS.md) and **`EXECUTOR.md`** for policy detail when needed.
 - Before **`Read`** on a `.min.mcp.js` bundle, ensure the path resolves from **some** workspace folder. If it fails from the primary root, use the path under the added **plugin** folder, or ask the user to **Add Folder to Workspace** for that directory.
 - Do **not** assume Cursor can read Claude’s plugin tree without it being in the workspace.
+- When the workspace includes a **consumer design repo** (not this plugin) plus the plugin, avoid unbounded **`**/*`** `Glob` or full-tree listings — they often time out; prefer **`package.json`**, `src/`, and other known entry paths or shallow `list_dir`.
 
 Detail: `skills/create-design-system/conventions/16-mcp-use-figma-workflow.md` (Source root — Cursor).
 

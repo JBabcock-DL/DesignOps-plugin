@@ -21,8 +21,12 @@
 //   phase-state   optional; default = dirname(handoff)/phase-state.json
 //
 // Exit: 0 ok, 1 usage/merge error, 2 missing/invalid file, 13 DAG order, 14 duplicate step
+//
+// Ordering: run this script **after** the Figma return file is flushed to disk (e.g. do not
+// shell-merge in the same message as a chat `Write` to that path until the write has
+// completed; chained `Write` then `run_terminal_cmd` in one assistant turn is fine).
 
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, access } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, resolve, join } from "node:path";
@@ -38,6 +42,35 @@ const SLUG_ORDER = [
 ];
 
 const STEPS = new Set(SLUG_ORDER);
+
+const FILE_WAIT_RETRIES = 3;
+const FILE_WAIT_MS = 100;
+
+function sleep(ms) {
+  return new Promise((resolveFn) => setTimeout(resolveFn, ms));
+}
+
+/** Handovers after parallel `Write` in the same process can see ENOENT momentarily (Windows/FS). */
+async function waitForFilePresent(path, label) {
+  let lastErr;
+  for (let i = 0; i < FILE_WAIT_RETRIES; i++) {
+    try {
+      await access(path);
+      return;
+    } catch (e) {
+      lastErr = e;
+      if (e?.code && e.code !== "ENOENT") {
+        console.error(`merge-create-component-handoff: ${label} not accessible: ${e.message} — ${path}`);
+        process.exit(2);
+      }
+      if (i < FILE_WAIT_RETRIES - 1) await sleep(FILE_WAIT_MS);
+    }
+  }
+  console.error(
+    `merge-create-component-handoff: missing file after ${FILE_WAIT_RETRIES} attempts: ${label} — ${path} (${lastErr?.code ?? lastErr})`,
+  );
+  process.exit(2);
+}
 
 function pred(slug) {
   const i = SLUG_ORDER.indexOf(slug);
@@ -62,10 +95,8 @@ if (!STEPS.has(step)) {
   console.error(`merge-create-component-handoff: unknown step "${step}"`);
   process.exit(1);
 }
-if (!existsSync(handoffPath) || !existsSync(returnPath)) {
-  console.error("merge-create-component-handoff: handoff or return file missing");
-  process.exit(2);
-}
+await waitForFilePresent(handoffPath, "handoff.json");
+await waitForFilePresent(returnPath, "figma return");
 
 let handoff;
 let retWrapper;

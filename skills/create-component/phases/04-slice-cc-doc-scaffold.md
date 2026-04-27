@@ -1,4 +1,4 @@
-> **Resume from `phase-state.json`:** read [`13` §4](../conventions/13-component-draw-orchestrator.md); use on-disk `handoff.json` and `nextSlug` (default path: `dirname(handoff.json)/phase-state.json`).
+> **Resume from `phase-state.json`:** read [`13` §4](../conventions/13-component-draw-orchestrator.md); use on-disk `handoff.json` and `nextSlug` (default path: `dirname(handoff.json)/phase-state.json`). If using `Task` for Step 6, **one `Task` per machine slug** only; the **parent** merges `handoff.json` between tasks ([`13` §5.1](../conventions/13-component-draw-orchestrator.md)).
 
 # Phase 04 — Draw slice `cc-doc-scaffold` (page, header, Properties table **shell** with placeholder rows)
 

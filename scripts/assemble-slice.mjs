@@ -23,6 +23,10 @@
 //     [--emit-mcp-args <output-mcp-args.json>] \
 //     [--plugin-root <path>]  # override create-component skill root (default: auto-detect)
 //
+// Canonical on-disk name for JSON written by --emit-mcp-args: `mcp-<step-slug>.json` in the
+// design repo (e.g. `mcp-cc-doc-props.json`). Do not introduce parallel ad hoc names
+// (`mcp-invoke-use-figma.json`, etc.) in the same folder.
+//
 // Exit codes:
 //   0  ok
 //   1  bad CLI args

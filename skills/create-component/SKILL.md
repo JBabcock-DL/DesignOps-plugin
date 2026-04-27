@@ -1397,6 +1397,8 @@ After all components have been processed, call **AskUserQuestion**: "Run `/code-
 
 ### Step 8 — Report results
 
+**On-disk handoff / phase-state:** If the run used `merge-create-component-handoff.mjs` and `phase-state.json`, cross-check: **`completedSlugs` length and `nextSlug` must match** how many merge runs actually happened. If you skipped merges or hand-edited state, say so in **Notes** — do not claim a full seven-slice closeout when `handoff.json` and `phase-state.json` (or the merge count) are out of sync, and do not invent `lastCodeSha256` ([`13` §4](conventions/13-component-draw-orchestrator.md), [`10` Part B](phases/10-slice-cc-doc-finalize.md)).
+
 Output a summary table:
 
 | Component | Installed | Source | Drawn to Canvas | Matrix (variants × states × sizes) | Icon slots | Element props | Notes |

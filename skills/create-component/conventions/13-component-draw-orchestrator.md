@@ -78,6 +78,11 @@ Each slice (parent assembly or optional `Task` prompt) must have: `step` (slug),
 
 When `cc-doc-finalize` returns `ok: true`, run **`SKILL.md` §9** and **Step 5.2** registry on **that** return payload only (final slice; same assertions as a full inline two-phase or single-call run would surface on the last `use_figma` return). **Procedure** is **Part B** of [`phases/10-slice-cc-doc-finalize.md`](../phases/10-slice-cc-doc-finalize.md) — same phase file as the finalize slice; finish Part A before Part B.
 
+### 5.1 — One machine slug, one Figma call, one optional `Task` (never batch doc legs)
+
+- **One** machine `step` = **one** `use_figma` = **one** Figma return (and one writer output / merge if you merge after each call). **Do not** put **`cc-doc-props`**, **`cc-doc-matrix`**, **`cc-doc-usage`**, and **`cc-doc-finalize`** into a **single** `Task` prompt to “save turns” — you lose a clear per-slice success trail and on-disk return files.
+- If you use **`Task`** for any slice, use **at most one `Task` per slug**; the **parent** runs [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) and advances `handoffJson` **between** tasks. Never nest `Task` inside `Task` for the same draw ladder. See [`08-cursor-composer-mcp.md`](./08-cursor-composer-mcp.md) **§D.1** (writer subagent) and [`../EXECUTOR.md`](../EXECUTOR.md) **§0** (parent / preassembled fallbacks).
+
 ---
 
 ## 6 — What this supersedes

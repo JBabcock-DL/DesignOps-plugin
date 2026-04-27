@@ -62,6 +62,15 @@ Cache the result as `AVAILABLE_TOKEN_PATHS: Set<string>` for the duration of the
 
 SKILL.md Step 4.7 bundles this into a single required gate.
 
+### 7.3.1 — Cursor: thin or empty `get_variable_defs` (do not thrash on `nodeId`)
+
+If **`get_variable_defs`** returns **`{}`**, a tiny map, or errors (wrong / stale `nodeId`, wrong `fileKey`, or a node that does not reference enough variables):
+
+1. **Do not** loop over random registry node ids or many probe `nodeId` values in hope of a fuller map.
+2. Run **exactly one** **§7.3** *option 2* **`use_figma`** one-liner: `getLocalVariableCollections` / `getLocalVariables` (and map to `{ collection, name }` or `name` only) so the active file is enumerated once. Use that as `AVAILABLE_TOKEN_PATHS` for the rest of the run.
+
+After that single enumeration, continue Step 4.7 validation; do not go back to thin `get_variable_defs` unless the file or target changes.
+
 ## 7.4 — The draw-engine tells you when you're wrong
 
 Even after Step 4.7, a typo can slip through. The draw engine (`templates/draw-engine.figma.js §2.5`) intercepts every `bindColor` / `bindNum` call and collects unresolved paths. The `use_figma` return payload surfaces them as:

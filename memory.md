@@ -27,7 +27,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 **Handoff file:** `/new-project` → `/create-design-system` can write **`templates/agent-handoff.md`** locally (paths, file key). Other skills may read/update it — see [`README.md`](README.md) *Skill Chaining*.
 
-**Design project artifacts (consumer repo):** e.g. **`tokens.css`**, **`tokens.json`**, **`.designops-registry.json`** for `/create-component` registry — not necessarily in *this* plugin repo.
+**Design project artifacts (consumer repo):** e.g. **`tokens.css`**, **`tokens.json`**, **`.designops-registry.json`** for `/create-component` registry — not necessarily in *this* plugin repo. When exploring a **design / consumer** repo, avoid unbounded **`**/*`** `Glob` / full-tree scans; use known paths (`package.json`, `src/`, `templates/agent-handoff.md`) or one-level directory listing.
 
 ---
 

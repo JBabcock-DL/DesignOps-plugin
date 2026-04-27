@@ -9,9 +9,32 @@
 //     "publishedAt": "2026-04-18T12:00:00.000Z", "version": 2, "cvaHash": "…", "composedChildVersions": { "toggle": 1 } }
 //
 // If the registry file is missing, it is created with `{ fileKey, components: {} }` from entry.fileKey.
+//
+// entry.json: brief retry on first ENOENT (same ordering race as merge-create-component-handoff).
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+
+const ENTRY_WAIT_RETRIES = 3;
+const ENTRY_WAIT_MS = 100;
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function readEntryWithRetry(entryPath) {
+  let lastErr;
+  for (let i = 0; i < ENTRY_WAIT_RETRIES; i++) {
+    try {
+      return await readFile(entryPath, 'utf8');
+    } catch (e) {
+      lastErr = e;
+      if (e?.code !== 'ENOENT' || i === ENTRY_WAIT_RETRIES - 1) throw e;
+      await sleep(ENTRY_WAIT_MS);
+    }
+  }
+  throw lastErr;
+}
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -23,7 +46,7 @@ async function main() {
   }
   const regPath = resolve(argv[0]);
   const entryPath = resolve(argv[1]);
-  const raw = await readFile(entryPath, 'utf8');
+  const raw = await readEntryWithRetry(entryPath);
   const incoming = JSON.parse(raw);
   const {
     fileKey,
