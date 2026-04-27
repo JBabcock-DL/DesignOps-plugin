@@ -34,9 +34,19 @@
 //   3  missing/unreadable input file
 //  10  check-payload failed (assembled code has a JS syntax error)
 //  11  check-use-figma-mcp-args failed (MCP wrapper JSON invalid)
+//  17  non-canonical sibling files detected in --emit-mcp-args dir
+//      (e.g. figma-slices/invoke-*.json, mcp-invoke-*.json, .mcp-args-*.json).
+//      Remove them and retry; do not coexist with parallel naming schemes.
+//
+// Optional flags:
+//   --skip-check                  skip the check-payload + check-use-figma-mcp-args passes
+//                                 (for the rare debug case; otherwise they always run).
+//   --skip-noncanonical-guard     skip the non-canonical sibling check (escape hatch
+//                                 if a design repo legitimately has unrelated *.json
+//                                 files matching the anti-patterns; document why).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -74,13 +84,20 @@ const VALID_STEPS = new Set(Object.keys(STEP_ENGINE_MAP));
 const VALID_LAYOUTS = new Set(Object.keys(LAYOUT_TO_ARCHETYPE));
 
 // ── CLI argument parsing ──────────────────────────────────────────────────
+// Boolean (no-arg) flags. Anything not in this set consumes the next argv slot.
+const BOOL_FLAGS = new Set(['skip-check', 'skip-noncanonical-guard']);
+
 function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
-      args[key] = argv[++i] ?? '';
+      if (BOOL_FLAGS.has(key)) {
+        args[key] = true;
+      } else {
+        args[key] = argv[++i] ?? '';
+      }
     }
   }
   return args;
@@ -109,6 +126,8 @@ const fileKey      = rawArgs['file-key'];
 const outPath      = rawArgs['out'];
 const description  = rawArgs['description'] || `create-component step=${step} layout=${layout}`;
 const mcpArgsPath  = rawArgs['emit-mcp-args'];
+const skipCheck    = rawArgs['skip-check'] === true;
+const skipNonCanonicalGuard = rawArgs['skip-noncanonical-guard'] === true;
 // Auto-detect plugin root: directory containing skills/create-component/
 const pluginRoot   = rawArgs['plugin-root'] ?? REPO_ROOT;
 
@@ -278,7 +297,7 @@ const code = [configBlock, varGlobals, patchedPreamble, engineSrc].join('\n');
 
 // ── Run check-payload ─────────────────────────────────────────────────────
 const checkPayloadScript = join(REPO_ROOT, 'scripts', 'check-payload.mjs');
-if (existsSync(checkPayloadScript)) {
+if (!skipCheck && existsSync(checkPayloadScript)) {
   const cpResult = spawnSync(
     process.execPath,
     [checkPayloadScript],
@@ -301,11 +320,64 @@ const mcpArgs = { fileKey, code, description, skillNames: 'figma-use,create-comp
 const mcpArgsJson = JSON.stringify(mcpArgs);
 const wrapperBytes = Buffer.byteLength(mcpArgsJson, 'utf8');
 
+// ── 1b. Non-canonical sibling guard ──────────────────────────────────────
+// Refuses to coexist with parallel naming schemes for the same step. The
+// figtest dir today has both `mcp-cc-doc-scaffold.json` AND
+// `figma-slices/invoke-cc-doc-scaffold.json` for the same slug — whichever
+// the next agent reads first wins, and there's no way to know which is
+// current. Hard-fail here eliminates the ambiguity.
+function findNonCanonicalSlices(targetMcpPath) {
+  const dir = dirname(resolve(targetMcpPath));
+  const offenders = [];
+  // Patterns considered non-canonical (canonical is `mcp-<slug>.json`):
+  //   `mcp-invoke-*.json`, `.mcp-args-*.json`, `figma-slices/invoke-*.json`,
+  //   `figma-slices/mcp-invoke-*.json`
+  const dirAntiRe = /^(mcp-invoke-.+\.json|\.mcp-args-.+\.json)$/;
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    entries = [];
+  }
+  for (const name of entries) {
+    if (dirAntiRe.test(name)) offenders.push(join(dir, name));
+  }
+  // Also scan the conventional `figma-slices/` subdir for any invoke-*.json.
+  const slicesDir = join(dir, 'figma-slices');
+  try {
+    if (statSync(slicesDir).isDirectory()) {
+      const subAntiRe = /^(invoke-.+\.json|mcp-invoke-.+\.json)$/;
+      for (const name of readdirSync(slicesDir)) {
+        if (subAntiRe.test(name)) offenders.push(join(slicesDir, name));
+      }
+    }
+  } catch {
+    // no subdir → nothing to scan
+  }
+  return offenders;
+}
+
+if (mcpArgsPath && !skipNonCanonicalGuard) {
+  const offenders = findNonCanonicalSlices(mcpArgsPath);
+  if (offenders.length > 0) {
+    console.error(
+      'assemble-slice: non-canonical slice files detected (canonical is `mcp-<slug>.json`):',
+    );
+    for (const p of offenders) console.error(`  - ${p}`);
+    console.error(
+      '\nRemove these and retry. They cause silent corruption when an agent picks the\n' +
+      'wrong file. If a non-create-component tool legitimately writes one of these names,\n' +
+      'pass --skip-noncanonical-guard and document why in the run log.',
+    );
+    process.exit(17);
+  }
+}
+
 if (mcpArgsPath) {
   writeFileSync(resolve(mcpArgsPath), mcpArgsJson, 'utf8');
 
   const checkArgsScript = join(REPO_ROOT, 'scripts', 'check-use-figma-mcp-args.mjs');
-  if (existsSync(checkArgsScript)) {
+  if (!skipCheck && existsSync(checkArgsScript)) {
     const caResult = spawnSync(
       process.execPath,
       [checkArgsScript],

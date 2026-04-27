@@ -83,6 +83,40 @@ When `cc-doc-finalize` returns `ok: true`, run **`SKILL.md` §9** and **Step 5.2
 - **One** machine `step` = **one** `use_figma` = **one** Figma return (and one writer output / merge if you merge after each call). **Do not** put **`cc-doc-props`**, **`cc-doc-matrix`**, **`cc-doc-usage`**, and **`cc-doc-finalize`** into a **single** `Task` prompt to “save turns” — you lose a clear per-slice success trail and on-disk return files.
 - If you use **`Task`** for any slice, use **at most one `Task` per slug**; the **parent** runs [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) and advances `handoffJson` **between** tasks. Never nest `Task` inside `Task` for the same draw ladder. See [`08-cursor-composer-mcp.md`](./08-cursor-composer-mcp.md) **§D.1** (writer subagent) and [`../EXECUTOR.md`](../EXECUTOR.md) **§0** (parent / preassembled fallbacks).
 
+### 5.2 — Atomic write+merge with `finalize-slice` (recommended Step 6 finalizer)
+
+After the parent's `call_mcp` returns, prefer a single command over a manual `Write` then `merge-create-component-handoff` chain:
+
+```bash
+echo '<return-json>' | node scripts/finalize-slice.mjs <slug> handoff.json
+```
+
+[`scripts/finalize-slice.mjs`](../../../scripts/finalize-slice.mjs) writes `return-<slug>.json` next to `handoff.json` (canonical name), waits for the file system to flush, then runs the merge with the full DAG / consistency / schema checks. Saves one tool call per slice (×7 slices = **7 fewer round trips per draw**).
+
+For larger returns (>~32 KB on Windows shells), prefer pipe-from-stdin or write the file first and pass `--return-path`. See the script header for all flags.
+
+### 5.3 — Recovering a broken ladder
+
+If a session crashes mid-draw or someone reset `handoff.json={}` after returns existed, run:
+
+```bash
+node scripts/resume-handoff.mjs <draw-dir>
+```
+
+[`scripts/resume-handoff.mjs`](../../../scripts/resume-handoff.mjs) inspects `handoff.json` + `phase-state.json` + sibling `return-<slug>.json` files, validates DAG contiguity, replays missing merges in order, and prints `next slug: <slug>`. Use `--dry-run` first to preview.
+
+The merge script's own consistency check (exit 15) emits this same command in its remediation message.
+
+### 5.4 — `phase-state.json` schema
+
+[`schema/phase-state.schema.json`](./schema/phase-state.schema.json) is the canonical structure (validated on every merge — exit 18 on violation). Notable rules:
+
+- `lastCodeSha256` must be `null` or a 64-char lowercase hex SHA-256. **Placeholder strings like `"pending"` are rejected** — do not hand-fill the field; let the merge script set it.
+- `completedSlugs` must be a contiguous prefix of [`SLUG_ORDER`](../../../scripts/merge-create-component-handoff.mjs) ending at `lastSliceOk`.
+- `nextSlug` is cross-validated against `lastSliceOk` (must equal `SLUG_ORDER[indexOf(lastSliceOk) + 1]` or `null` at terminal).
+
+If you see exit 18, the file was hand-edited or written by a non-conforming script. Delete it and re-run [`resume-handoff`](../../../scripts/resume-handoff.mjs) to rebuild from the on-disk return files.
+
 ---
 
 ## 6 — What this supersedes

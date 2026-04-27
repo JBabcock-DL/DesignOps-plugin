@@ -422,3 +422,19 @@ applyStateOverride: (instance, stateKey, ctx) => {
 #### 13.1.c — What about per-state bound tokens?
 
 If a design system author has already published `color/primary/hover`, `color/primary/pressed`, etc. as Theme variables, they are still exposed for manual use (custom illustrations, bespoke states) — but they are **not** consumed by `applyStateOverride` in the default pipeline. Introducing a token-swap path would make the matrix's behavior dependent on token presence, which violates the determinism goal above. If a future component genuinely needs token-swapped states, add a new `CONFIG` knob (e.g. `stateTokens: { hover: 'color/primary/hover', ... }`) rather than mutating `applyStateOverride`.
+
+---
+
+## 14 — Mid-draw resume state (`phase-state.json`)
+
+The merge script writes `phase-state.json` next to `handoff.json` after every Step 6 slice; this is the canonical mid-draw resume state.
+
+Schema (validated on every merge — exit 18 on violation): [`schema/phase-state.schema.json`](./schema/phase-state.schema.json). Hand-rolled validator lives alongside [`scripts/merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) (`validatePhaseStateSchema`).
+
+Notable rules:
+
+- `lastCodeSha256` is `null` (no merge yet) or a 64-char lowercase hex SHA-256. **Placeholder strings like `"pending"` are rejected.** Do not hand-fill it.
+- `completedSlugs` must be a contiguous prefix of `SLUG_ORDER` ending at `lastSliceOk` — the merge script enforces this.
+- `nextSlug` must equal `SLUG_ORDER[indexOf(lastSliceOk) + 1]`, or `null` after `cc-doc-finalize`.
+
+When recovering a broken ladder (handoff reset, missing merges), use [`scripts/resume-handoff.mjs`](../../../scripts/resume-handoff.mjs) — see [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md) §5.3.

@@ -153,7 +153,34 @@ unresolvedTokenPaths.total === 0   (any miss means Step 4.7 was skipped or a pat
 
 If any row fails → surface the failure verbatim in the run report and do NOT claim the component "drawn". See `SKILL.md` §9 for the full self-check.
 
-### §0.3 — Deep-section map
+### §0.3 — When `use_figma` returns `undefined` (silent return)
+
+**Symptom.** A `use_figma` / `call_mcp` call comes back with no error, no transport failure, and no MCP error code — but the return value is `undefined`, an empty object, or a payload with `ok: undefined`. Common in **doc slices 1–6** (every Step 6 slice except `cc-variants`) when the engine bundle has a regression.
+
+**First check (60 seconds, before anything else).** Tail the relevant min bundle and look for an explicit top-level `return` near the end:
+
+```bash
+tail -c 200 skills/create-component/templates/create-component-engine-doc.step1.min.figma.js
+```
+
+Healthy tail ends with `return await async function(){...}()}()` — the `return` keyword is visible. If the tail is just `}()}()` with **no** `return` keyword, the engine has regressed: terser elided the top-level return when minifying. The fix lives in `ensureBodyReturnsValue` inside [`scripts/build-min-templates.mjs`](../../scripts/build-min-templates.mjs); regenerate and resync:
+
+```bash
+npm run build:min && bash scripts/sync-cache.sh
+```
+
+Then retry the slice **once** with parent `call_mcp`.
+
+**What NOT to do.** These are the moves that wasted hours in past failed sessions — do not repeat them when you see a silent return:
+
+- Do **not** start writing a recovery markdown plan (e.g. `RADIO-DRAW.md`) instead of fixing the engine.
+- Do **not** switch to `Task` subagents — silent return is not a transport problem; the parent's `call_mcp` already worked.
+- Do **not** start composing manual probe payloads by hand. If you do need to enumerate the page after recovery, run [`scripts/probe-page.mjs`](../../scripts/probe-page.mjs) — one command, parent `call_mcp`s the emitted args.
+- Do **not** retry blindly more than once.
+
+**If the bundle tail looks correct** (explicit `return` is present): re-run the slice exactly once with parent `call_mcp`, no Task subagent, no payload changes. Still `undefined` → escalate to the user with the exact slice slug, fileKey, and the bundle tail you observed. Do not improvise further.
+
+### §0.4 — Deep-section map
 
 | Topic | Section |
 |-------|---------|

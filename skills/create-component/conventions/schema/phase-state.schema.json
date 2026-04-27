@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://designops-plugin.local/schema/phase-state.schema.json",
+  "title": "phase-state.json",
+  "description": "Mid-draw resume state written by scripts/merge-create-component-handoff.mjs after each Step 6 slice. Validated on read by mergeOne(); violations exit 18. Hand-rolled validator lives in validatePhaseStateSchema (same file). Keep this file and the validator in sync.",
+  "type": "object",
+  "required": ["lastSliceOk", "completedSlugs", "nextSlug", "lastCodeSha256"],
+  "additionalProperties": true,
+  "properties": {
+    "component": {
+      "type": ["string", "null"],
+      "description": "shadcn component name (e.g. 'checkbox'). Carried forward; not enforced beyond type."
+    },
+    "fileKey": {
+      "type": ["string", "null"],
+      "description": "Figma file key for the draw target."
+    },
+    "lastSliceOk": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "cc-doc-scaffold",
+        "cc-variants",
+        "cc-doc-component",
+        "cc-doc-props",
+        "cc-doc-matrix",
+        "cc-doc-usage",
+        "cc-doc-finalize"
+      ],
+      "description": "Slug of the last slice whose merge succeeded. null = no slices merged yet."
+    },
+    "nextSlug": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "cc-doc-scaffold",
+        "cc-variants",
+        "cc-doc-component",
+        "cc-doc-props",
+        "cc-doc-matrix",
+        "cc-doc-usage",
+        "cc-doc-finalize"
+      ],
+      "description": "Slug of the next slice to run. Cross-validated to equal SLUG_ORDER[indexOf(lastSliceOk)+1] or null at terminal."
+    },
+    "completedSlugs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "cc-doc-scaffold",
+          "cc-variants",
+          "cc-doc-component",
+          "cc-doc-props",
+          "cc-doc-matrix",
+          "cc-doc-usage",
+          "cc-doc-finalize"
+        ]
+      },
+      "description": "Contiguous prefix of SLUG_ORDER ending at lastSliceOk. Must not contain placeholders."
+    },
+    "lastCodeSha256": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 (64 lowercase hex) of the canonical handoff.json after the last merge. Placeholder strings (e.g. 'pending', '...') are rejected — use null if no merge has run yet."
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
