@@ -7,7 +7,11 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 ### Changed — `/create-component` Step 6: granular scaffold (docs alignment)
 
 - **10** machine slugs in [`scripts/merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs) `SLUG_ORDER`: four first-class **`cc-doc-scaffold-*`** sub-slugs before **`cc-variants`**, then the existing doc ladder through **`cc-doc-finalize`**.
-- Normative and operator docs updated for the new flow: [`skills/create-component/conventions/13-component-draw-orchestrator.md`](skills/create-component/conventions/13-component-draw-orchestrator.md), phase **04**, [`16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md), [`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md), [`docs/research/plan-A-granular-use-figma-steps.md`](docs/research/plan-A-granular-use-figma-steps.md), [`README.md`](README.md) (min-template section), research closure report, [`10-phased-payload-research.md`](skills/create-component/conventions/10-phased-payload-research.md), [`17-scaffold-sub-slice-states.md`](skills/create-component/conventions/17-scaffold-sub-slice-states.md), [`12-sigma-budget-mcp.md`](skills/create-component/conventions/12-sigma-budget-mcp.md), [`sync-design-system/phases/07-10-axes-BC.md`](skills/sync-design-system/phases/07-10-axes-BC.md). **`.claude/settings.json`** merge example step → `cc-doc-scaffold-shell`.
+- Normative and operator docs updated for the new flow: [`skills/create-component/conventions/13-component-draw-orchestrator.md`](skills/create-component/conventions/13-component-draw-orchestrator.md), phase **04**, [`16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md), [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md), [`README.md`](README.md) (min-template section), [`10-phased-payload-research.md`](skills/create-component/conventions/10-phased-payload-research.md), [`17-scaffold-sub-slice-states.md`](skills/create-component/conventions/17-scaffold-sub-slice-states.md), [`12-sigma-budget-mcp.md`](skills/create-component/conventions/12-sigma-budget-mcp.md), [`sync-design-system/phases/07-10-axes-BC.md`](skills/sync-design-system/phases/07-10-axes-BC.md). **`.claude/settings.json`** merge example step → `cc-doc-scaffold-shell`.
+
+### Removed — redundant MCP research under `docs/research/`
+
+- Deleted spin-off **closure report**, **large-payload phase log**, **Plan A pre-ship plan**, and the extra copy of the **solution architecture** that lived under `docs/research/`. **Single canonical write-up:** [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) (moved to `docs/`). Links updated in **`AGENTS.md`**, **`EXECUTOR`**, **[`08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md)**, [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md).
 
 ### Removed — local Figma MCP file proxy (stdio package)
 
@@ -15,8 +19,8 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ### Updated — MCP research compile + solution ideation (2026-04-27)
 
-- **[`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md)** — Compiles 2026-04-27 spike: parent E2E at **5k / 10k** `code` (recorded `maxProvenSize` **10,279** B in sibling `figTest` draw dir), blockers for **25k** in one agent `call_mcp` (not Figma 50k cap), new **section 6 — Solution ideation** (tiers, decision matrix, next steps). Stakeholder row refreshed.
-- **[`docs/research/mcp-transport-closure-report.md`](docs/research/mcp-transport-closure-report.md)**, **[`docs/research/mcp-large-payload-transport-2026.md`](docs/research/mcp-large-payload-transport-2026.md)** — Aligned with the same measurements and cross-links to §6 in the solution architecture doc.
+- **[`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md)** — Compiles 2026-04-27 spike: parent E2E at **5k / 10k** `code` (recorded `maxProvenSize` **10,279** B in sibling `figTest` draw dir), blockers for **25k** in one agent `call_mcp` (not Figma 50k cap), new **section 6 — Solution ideation** (tiers, decision matrix, next steps). Stakeholder row refreshed. *(2026-04-28: path moved to `docs/`; subsidiary research files under `docs/research/` later removed — see [Unreleased].)*
+- **Earlier spin-off docs** (`mcp-transport-closure-report`, `mcp-large-payload-transport-2026`) — *removed 2026-04-28*; content consolidated into the solution architecture doc.
 
 ### Changed — `probe-parent-transport.mjs` (2026-04-27)
 
@@ -24,15 +28,15 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ### Added — MCP transport solution architecture handoff (2026-04-27)
 
-- **[`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md)** — Full research roll-up for SA: hypotheses, measured table, default architecture, pivot triggers, stakeholder matrix, 25k “last box” status (manual Composer capstone if agent cannot embed full args in one `call_mcp_tool`). Linked from [mcp-large-payload-transport-2026.md](docs/research/mcp-large-payload-transport-2026.md) and [mcp-transport-closure-report.md](docs/research/mcp-transport-closure-report.md).
+- **[`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md)** — Full research roll-up for SA: hypotheses, measured table, default architecture, pivot triggers, stakeholder matrix, 25k “last box” status (manual Composer capstone if agent cannot embed full args in one `call_mcp_tool`). *(Path was `docs/research/…` until 2026-04-28.)*
 
-### Added — MCP transport closure report (2026-04-27)
+### Added — MCP transport closure report (2026-04-27) — *file removed 2026-04-28*
 
-- **[`docs/research/mcp-transport-closure-report.md`](docs/research/mcp-transport-closure-report.md)** — Goal, hypothesis, measured results, remaining manual 25k parent step, **continue vs pivot** recommendation; cross-link from [mcp-large-payload-transport-2026.md](docs/research/mcp-large-payload-transport-2026.md).
+- *Superseded; narrative in [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) **§4–5**, **§7**.*
 
-### Added — `use_figma` transport research and fallbacks (2026-04-27)
+### Added — `use_figma` transport research and fallbacks (2026-04-27) — *large-payload log removed 2026-04-28*
 
-- **`docs/research/mcp-large-payload-transport-2026.md`** — Phase 0–5: probe results, Cursor `@file` / CLI notes, gzip policy, file-proxy go/no-go, cross-links to `AGENTS` / `EXECUTOR` / `08`.
+- ~~**`docs/research/mcp-large-payload-transport-2026.md`**~~ — *Phase log removed; measurements and decisions live in [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md).*
 - **`docs/mcp-transport-cursor-fallback.md`** — What to do when model/host JSON fails before Figma.
 - **`AGENTS.md`**, **`skills/create-component/EXECUTOR.md`**, **`skills/create-component/conventions/08-cursor-composer-mcp.md`** — Pointers to the research and fallback docs.
 

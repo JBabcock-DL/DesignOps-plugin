@@ -75,6 +75,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 - **Do not** inline **`create-component-engine.min.figma.js`** (full 7 archetypes) for a real draw — no headroom for CONFIG. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md).
 - **Sequence at orchestration:** separate **turns** for style-guide bundles vs **component draw**; don’t interleave in one parent turn. **Inside** Step 6, **default** = **parent** `use_figma` ×10 (or `EXECUTOR` phasing) — not `Task` for payloads subagents can’t `call_mcp`. See [08](skills/create-component/conventions/08-cursor-composer-mcp.md).
 - Validate payloads: **`npm run check-payload`**, **`npm run check-use-figma-args`** (from this repo’s `package.json`).
+- **Measured host context (25k, σ, gzip experiments):** [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) — reference only; policy stays in [`AGENTS.md`](AGENTS.md) and [13](skills/create-component/conventions/13-component-draw-orchestrator.md).
 
 ---
 

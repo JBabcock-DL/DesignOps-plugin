@@ -108,7 +108,7 @@ The Figma schema allows **`code` up to 50,000 characters** per call ([`16-mcp-us
 
 ### G — Large-payload transport research (2026) — not a second transport
 
-- **@file in chat vs. tool args:** Attaching a file in Cursor chat is **not** the same as Figma’s inline `code` string. The official Figma `use_figma` schema has no `codeWorkspacePath`. Do not assume `@path` indirection in tool parameters until a host documents it — see [`docs/research/mcp-large-payload-transport-2026.md`](../../../docs/research/mcp-large-payload-transport-2026.md).
+- **@file in chat vs. tool args:** Attaching a file in Cursor chat is **not** the same as Figma’s inline `code` string. The official Figma `use_figma` schema has no `codeWorkspacePath`. Do not assume `@path` indirection in tool parameters until a host documents it — see [`docs/mcp-transport-solution-architecture-2026.md`](../../../docs/mcp-transport-solution-architecture-2026.md) **§2–3** and [`AGENTS.md`](../../../AGENTS.md).
 - **Fallbacks** (validate → parent `Read` → probe → model hop) — [`docs/mcp-transport-cursor-fallback.md`](../../../docs/mcp-transport-cursor-fallback.md).
 - **Gzip + base64** in the plugin VM remains out of default assembly unless [`AGENTS.md`](../../../AGENTS.md) and measured plugin behavior say otherwise; this file’s *Anti-pattern — sandbox* paragraph stays normative for slice assembly.
 

@@ -32,7 +32,7 @@
 >
 > **Subagent-as-runner is forbidden by default.** Use `Task` only as a **writer** (assembly + check-payload + write to disk; return `{ outPath, step }`). The actual `call_mcp` / `use_figma` runs in the **parent** thread. See [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) §D.1 for the writer-vs-runner contract.
 >
-> **Transport research (Apr 2026):** see [`docs/research/mcp-large-payload-transport-2026.md`](../../docs/research/mcp-large-payload-transport-2026.md) and fallback order [`docs/mcp-transport-cursor-fallback.md`](../../docs/mcp-transport-cursor-fallback.md) when JSON/tool-arg limits (not Figma) are suspected.
+> **Transport (measured 2026):** see [`docs/mcp-transport-solution-architecture-2026.md`](../../docs/mcp-transport-solution-architecture-2026.md) and fallback order [`docs/mcp-transport-cursor-fallback.md`](../../docs/mcp-transport-cursor-fallback.md) when JSON/tool-arg limits (not Figma) are suspected.
 
 ### §0.0 — Context optimization (MCP: **parent** only; does not change who calls `use_figma`)
 

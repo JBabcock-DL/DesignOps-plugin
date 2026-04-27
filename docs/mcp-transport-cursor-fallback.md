@@ -1,6 +1,6 @@
 # Cursor — large `use_figma` transport fallback
 
-When `call_mcp` / `use_figma` fails with **JSON parse / truncated** errors (or the model cannot materialize one full tool call), use this order. Full research: [`docs/research/mcp-large-payload-transport-2026.md`](research/mcp-large-payload-transport-2026.md).
+When `call_mcp` / `use_figma` fails with **JSON parse / truncated** errors (or the model cannot materialize one full tool call), use this order. **Background** (measured limits, 25k capstone, gzip/proxy): [`docs/mcp-transport-solution-architecture-2026.md`](mcp-transport-solution-architecture-2026.md).
 
 1. **Validate on disk** — `npm run check-payload -- <assembled.js>` and `npm run check-use-figma-args -- <mcp-args.json>` (or pipe the exact JSON you will send). A passing check does not prove the **host** did not truncate the wrapper; it rules out obvious string/JSON errors.
 

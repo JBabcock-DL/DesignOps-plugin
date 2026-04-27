@@ -93,7 +93,7 @@ When installing shadcn components and drawing them to Figma, **Mode B (`syntheti
 
 **If the parent cannot embed `code` in one `call_mcp` turn:** prefer **writer subagent** (assemble + `check-payload` + write to the **design repo**; return short path metadata only) + **parent** `Read` + `use_figma` over a **runner** subagent that runs many irrelevant tools before MCP — see [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) **§D.1**.
 
-**Large `use_figma` transport (research, Apr 2026):** Cursor @-mentions for files in **chat** are not documented as a substitute for inline `code` in the Figma MCP tool. Empirical notes, Phase 0–5 spikes, file-proxy go/no-go, and gzip policy: [`docs/research/mcp-large-payload-transport-2026.md`](docs/research/mcp-large-payload-transport-2026.md). If the model/host truncates tool JSON, use [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md) before changing assembly defaults.
+**Large `use_figma` transport (measured 2026):** Cursor @-mentions for files in **chat** are not documented as a substitute for inline `code` in the Figma MCP tool. **Full write-up** (probes, 25k “last box,” gzip/proxy go/no-go, op-interpreter size tactics): [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md). If the model/host truncates tool JSON, use [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md) before changing assembly defaults.
 
 ### Host matrix (Claude Code vs Cursor)
 
