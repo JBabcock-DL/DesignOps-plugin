@@ -4,6 +4,13 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
+### Added — buildable Figma invoke (file on disk → Desktop MCP, no LLM payload)
+
+- **[`.cursor/rules/agent-run-designops-commands.mdc`](.cursor/rules/agent-run-designops-commands.mdc)** — Agents run plugin **`node`/`npm`** steps in-terminal by default; **`COMPOSER.md`**, **`memory.md`**, **`AGENTS.md`**, **`CLAUDE.md`**, **`cursor-designops-skill-root.mdc`** updated.
+- **[`docs/buildable-figma-payload-path.md`](docs/buildable-figma-payload-path.md)** — Run `use_figma` from a Node client that reads assembled JSON; primary target **Figma Desktop** MCP URL (Dev Mode). Remote `mcp.figma.com` still needs OAuth in a custom client.
+- **[`scripts/figma-mcp-invoke-from-file.mjs`](scripts/figma-mcp-invoke-from-file.mjs)** and **`npm run figma:mcp-invoke`** — Streamable HTTP via `@modelcontextprotocol/sdk`; **`--dry-run`**, **`--help`**, **`--tool-name`**. **`scripts/qa-figma-mcp-invoke.mjs`** + **`npm run qa:figma-mcp-invoke`** wired into **`npm run verify`**. **`skills/create-component/COMPOSER.md`** and **`scripts/assemble-slice.mjs`** header cite the path.
+- Cross-links from [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) §6.8, [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md), [`memory.md`](memory.md).
+
 ### Changed — `/create-component` Step 6: granular scaffold (docs alignment)
 
 - **10** machine slugs in [`scripts/merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs) `SLUG_ORDER`: four first-class **`cc-doc-scaffold-*`** sub-slugs before **`cc-variants`**, then the existing doc ladder through **`cc-doc-finalize`**.

@@ -2,6 +2,12 @@
 
 **Authority:** This file wins for Composer-class. Period.
 
+## Agent execution (automation)
+
+- **Run** every `node scripts/…` and `npm run …` step here yourself (shell from the **DesignOps-plugin** repo root). Do not tell the user to copy-paste commands unless you are blocked (e.g. `FIGMA_DESKTOP_MCP_URL` not set for path **4b**, or interactive auth).
+- **`--emit-mcp-args`:** use it when taking path **4b** so `figma:mcp-invoke` has a file to read.
+- **4b order:** `npm run figma:mcp-invoke -- --dry-run --file <mcp-json>` then, with URL in env, `npm run figma:mcp-invoke -- --file <same>`. Cursor: [`.cursor/rules/agent-run-designops-commands.mdc`](../../.cursor/rules/agent-run-designops-commands.mdc).
+
 ## One-time setup
 
 - **Cursor `Add Folder to Workspace`** for the DesignOps plugin root (see `.cursor/rules/cursor-designops-skill-root.mdc`).
@@ -18,8 +24,12 @@
    cc-doc-scaffold-shell → cc-doc-scaffold-header → cc-doc-scaffold-table →
    cc-doc-scaffold-placeholders → cc-variants → cc-doc-component → cc-doc-props →
    cc-doc-matrix → cc-doc-usage → cc-doc-finalize
-3. node scripts/assemble-slice.mjs --step <slug> --layout <layout> --config-block <path> --registry <path> --handoff <path> --file-key <fileKey> --out <slice.code.js>
-4. # Call use_figma in the parent with the assembled code from --out
+3. node scripts/assemble-slice.mjs ... [--emit-mcp-args <draw/mcp-<slug>.json>]
+4a. **IDE path:** Call `use_figma` in the parent with the assembled code from `--out` (or `Read` the emit JSON and call MCP).
+4b. **Desktop MCP path (no huge tool arg in chat):** Figma Desktop → Dev Mode → MCP on → copy URL. Then:
+    `FIGMA_DESKTOP_MCP_URL="…" npm run figma:mcp-invoke -- --file draw/mcp-<slug>.json`
+    Preflight only: `npm run figma:mcp-invoke -- --dry-run --file draw/mcp-<slug>.json`
+    See [`docs/buildable-figma-payload-path.md`](../../docs/buildable-figma-payload-path.md).
 5. node scripts/merge-create-component-handoff.mjs <slug> handoff.json return.json
 ```
 
@@ -29,7 +39,7 @@
 
 1. Re-read `phase-state.json` for `nextSlug` and the on-disk `handoff.json`.
 2. If `assemble-slice.mjs` exits **10** or **11** (`check-payload` / `check-use-figma-mcp-args`), fix the assembled code or MCP args before retrying.
-3. If `use_figma` returns truncation or `Unexpected end of JSON input`, halt — do not retry the same shape; use a host that can pass the full tool-arguments JSON, or reduce payload size in source templates.
+3. If `use_figma` returns truncation or `Unexpected end of JSON input`, halt — do not retry the same shape; use a host that can pass the full tool-arguments JSON, **or** run [`npm run figma:mcp-invoke`](../../docs/buildable-figma-payload-path.md) against Figma Desktop MCP with `--emit-mcp-args`, **or** reduce payload size in source templates.
 4. Escalate to a higher-capacity model for that single `use_figma` call if needed.
 
 ## Hard prohibitions

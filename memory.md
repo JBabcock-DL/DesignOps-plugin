@@ -33,10 +33,22 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 ## Session choreography (token + MCP safety)
 
+- **Run plugin commands in-agent:** When work uses this repo’s **`scripts/`** or **`npm run`** entries (`assemble-slice`, `merge-handoff`, `figma:mcp-invoke`, `verify`, etc.), **execute** them via the environment shell from the plugin root; do not default to “run this yourself” unless missing env (e.g. `FIGMA_DESKTOP_MCP_URL`) or an interactive gate blocks automation. Cursor: [`.cursor/rules/agent-run-designops-commands.mdc`](.cursor/rules/agent-run-designops-commands.mdc).
 - **Same session asks for style-guide tables *and* `/create-component`:** Finish **Phase A** (all Step 15a–15c + 17 via **`Task` → [`skills/canvas-bundle-runner/SKILL.md`](skills/canvas-bundle-runner/SKILL.md)** — one Task per slug; 15c = **three** sequential Tasks) **before** Phase B (one component draw at a time). **`AGENTS.md`** *Session runbook*.
 - **Parent thread must not** `Read` canvas **`.min.mcp.js`** or paste bundle text for Step 15/17 — **canvas-bundle-runner** only.
 - **`/create-component` Step 6:** default **`node scripts/assemble-slice.mjs …`** (no flag) uses **`generate-ops`**: tuple ops + op-interpreter for **scaffold sub-slugs** (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`), and delegates to the same committed `*.min.figma.js` engines for the other slugs. **`--legacy-bundles`** reads those min files directly (not for scaffold sub-slugs). See [`EXECUTOR.md`](skills/create-component/EXECUTOR.md).
 - **`/sync-design-system` canvas refresh (6.Canvas.9b/9d):** same **canvas-bundle-runner** rule; after each runner Task, parent runs **§14 audit** slice for that page — [`skills/create-design-system/conventions/14-audit.md`](skills/create-design-system/conventions/14-audit.md).
+
+---
+
+## MCP anti-spiral (agents)
+
+**System thesis:** Ending **constant looping** on large `use_figma` calls needs a **host-side** fix: **file-backed or chunked tool arguments**, so the model is not the only pipe for huge JSON. **Until Cursor/MCP/Figma ship that**, this repo’s job is **one decision tree** (classify the failure → measure → act from existing runbooks) and **refusing speculative layers** — no new runners, proxies, or payload formats “just in case.” Transport detail, vendor checklist, and **buildable Desktop MCP invoker:** [docs/mcp-transport-solution-architecture-2026.md](docs/mcp-transport-solution-architecture-2026.md) sections 6.7–6.8; [docs/buildable-figma-payload-path.md](docs/buildable-figma-payload-path.md).
+
+1. **Classify first** — Truncated tool JSON / `Unexpected end of JSON` → host or model re-emission of the wrapper, not “Figma broke.” Figma `ok: false` → file/plugin/access. Wrong frames or overlap → canvas geometry or handoff ids (often **before** transport).
+2. **Measure once, then act** — Run `check-payload` / `check-use-figma-args` on the bytes you actually send; use `probe-parent-transport.mjs` before claiming a parent limit. Do not add a new runner pattern to “work around” an unproven cap.
+3. **Prefer de-looping over new machinery** — Smaller slice or more `use_figma` rounds; or **writer → file in design repo → parent `Read` → one `use_figma`** ([`08`](skills/create-component/conventions/08-cursor-composer-mcp.md) D.1). Avoid proxy MCP, gzip/bootstrap, and extra `Task` roles unless a doc explicitly promotes them after measurement.
+4. **Op-interpreter + tuple ops** — A **wire-size** path ([`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) section 6.0), not a second orchestration stack. Monolith parity fixes (e.g. same page clears / handoff targets) belong in the interpreter or generator so **one** pipeline stays correct.
 
 ---
 
@@ -75,7 +87,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 - **Do not** inline **`create-component-engine.min.figma.js`** (full 7 archetypes) for a real draw — no headroom for CONFIG. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md).
 - **Sequence at orchestration:** separate **turns** for style-guide bundles vs **component draw**; don’t interleave in one parent turn. **Inside** Step 6, **default** = **parent** `use_figma` ×10 (or `EXECUTOR` phasing) — not `Task` for payloads subagents can’t `call_mcp`. See [08](skills/create-component/conventions/08-cursor-composer-mcp.md).
 - Validate payloads: **`npm run check-payload`**, **`npm run check-use-figma-args`** (from this repo’s `package.json`).
-- **Measured host context (25k, σ, gzip experiments):** [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) — reference only; policy stays in [`AGENTS.md`](AGENTS.md) and [13](skills/create-component/conventions/13-component-draw-orchestrator.md).
+- **Measured host context (25k, σ, gzip experiments) and deeper protocol fixes (file-backed / chunked tool args):** [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) — reference only (see section 6.7 for vendor-level options); policy stays in [`AGENTS.md`](AGENTS.md) and [13](skills/create-component/conventions/13-component-draw-orchestrator.md).
 
 ---
 

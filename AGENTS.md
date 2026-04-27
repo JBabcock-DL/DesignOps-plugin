@@ -4,7 +4,11 @@ These notes apply to **any** AI agent or automation working in this repository (
 
 **Token-light index:** [`memory.md`](memory.md) — compact checklist and links; use this for quick orientation, then open sections below or linked skills when needed.
 
+**MCP spirals (retries, new runners, invented limits):** Stop and follow [`memory.md` — MCP anti-spiral](memory.md#mcp-anti-spiral-agents) (**system thesis:** host-side file/chunked tool args vs one decision tree here; no speculative machinery). **Deeper fixes** (who must ship file-backed or chunked args): [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) (section 6.7).
+
 **Claude Code:** [`CLAUDE.md`](CLAUDE.md) is the project bootstrap file; it instructs the agent to load **`memory.md`** and **`AGENTS.md`** automatically — the user should not need to repeat that per session.
+
+**Agents run plugin CLI:** Documented **`node scripts/…`** and **`npm run …`** steps (e.g. `assemble-slice`, `merge-handoff`, `figma:mcp-invoke`, `verify`) are **executed by the agent** from the DesignOps-plugin root unless blocked (missing env such as `FIGMA_DESKTOP_MCP_URL`, sandbox/network, or interactive auth). Cursor: [`.cursor/rules/agent-run-designops-commands.mdc`](.cursor/rules/agent-run-designops-commands.mdc).
 
 ## 🚨 Stop confabulating "parent transport limits" before delegating to subagents
 
@@ -93,7 +97,7 @@ When installing shadcn components and drawing them to Figma, **Mode B (`syntheti
 
 **If the parent cannot embed `code` in one `call_mcp` turn:** prefer **writer subagent** (assemble + `check-payload` + write to the **design repo**; return short path metadata only) + **parent** `Read` + `use_figma` over a **runner** subagent that runs many irrelevant tools before MCP — see [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) **§D.1**.
 
-**Large `use_figma` transport (measured 2026):** Cursor @-mentions for files in **chat** are not documented as a substitute for inline `code` in the Figma MCP tool. **Full write-up** (probes, 25k “last box,” gzip/proxy go/no-go, op-interpreter size tactics): [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md). If the model/host truncates tool JSON, use [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md) before changing assembly defaults.
+**Large `use_figma` transport (measured 2026):** Cursor @-mentions for files in **chat** are not documented as a substitute for inline `code` in the Figma MCP tool. **Full write-up** (probes, 25k “last box,” gzip/proxy go/no-go, op-interpreter size tactics): [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md). If the model/host truncates tool JSON, use [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md) before changing assembly defaults. **Buildable bypass (no `codeFile` schema):** Figma **Desktop** MCP URL + [`docs/buildable-figma-payload-path.md`](docs/buildable-figma-payload-path.md) — `npm run figma:mcp-invoke` reads assembled JSON from disk so the agent can issue a **short** `run_terminal_cmd` line.
 
 ### Host matrix (Claude Code vs Cursor)
 

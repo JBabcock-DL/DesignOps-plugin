@@ -236,6 +236,51 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 4. Track **Cursor** / **Figma** public roadmap for **large tool args**; link back here when something ships.  
 5. Revisit **Tier 4** only if Figma documents a **supported** way for a non-catalog client to obtain OAuth access tokens for `mcp.figma.com` **or** adds file-backed `use_figma` in the **IDE** (see Tier 2).
 
+### 6.7 Deeper fix — what removes the model-in-the-middle bottleneck
+
+This section is the **durable / host-side** answer aligned with **[`memory.md`](../memory.md) — MCP anti-spiral, system thesis:** repo work stays a **single decision tree** and **no speculative layers** until file-backed or chunked tool args exist.
+
+The recurring “MCP spiral” is rarely **Figma’s ~50k `code` schema cap**. It is usually **(B):** the **assistant** must **re-emit** the full `call_mcp` JSON (large `code` string inside), and **that** path hits **output token limits, truncation, or copy errors** long before Figma sees the bytes. Repo-side tactics (more slices, op-interpreter, writer → file → parent `Read`) **narrow** the blob or **change who holds** the bytes; they do not change the protocol.
+
+**Fix classes, strongest first (protocol / product):**
+
+| Class | Idea | Who ships it | Removes spiral if… |
+|--------|------|----------------|---------------------|
+| **H1 — File-backed or handle-backed args** | MCP tool schema allows `codePath`, `codeRef`, or opaque **blob id**; the **IDE or MCP client** reads bytes from disk/workspace and forwards **full** JSON to Figma **without** the model concatenating a 25k string in chat. | **Cursor (or MCP spec) + Figma** agreeing on shape, allowlist, max size, encoding | The model only passes a **short** path or id; truncation in the assistant message no longer maps to broken `code`. |
+| **H2 — Chunked `use_figma` (session)** | e.g. `use_figma_init` → N × `use_figma_append` → `use_figma_exec`; server-side reassembly before plugin. | **Figma MCP** (and host support for multi-call sequence) | Each assistant message stays small; total script size can exceed per-message limits. |
+| **H3 — Native “run tool from workspace file”** | IDE feature: “invoke tool with arguments loaded from `*.json`” (no LLM body). | **IDE** | Same as H1 for local workflows; CI-friendly. |
+| **H4 — Non-LLM MCP caller** | Script or action uses the **same** OAuth-connected Figma MCP stack but **never** routes payload through a model. | **Team automation** | Proves transport; does not fix agent UX unless paired with H1–H3. |
+
+**Dependencies:** H1 and H2 need **coordinated** changes. A file path in tool args is **unsafe** without an allowlist (workspace root, no traversal, max bytes, optional hash). Chunking needs **idempotency** and **timeouts** so half-sent scripts cannot run.
+
+**What DesignOps-plugin does until then (no spiral):**
+
+1. **[`memory.md`](../memory.md) — MCP anti-spiral:** classify error → measure → prefer smaller wire or writer + parent `Read`; forbid new runner types on speculation.
+2. **Tier 0–1 in this doc:** op-interpreter / tuple ops, extra slugs, consumer **assemble → stable path → parent `Read` + one `use_figma`** (sections 6.0 and 6.1 above).
+3. **Track vendor roadmaps:** Cursor MCP / Composer large-args behavior; Figma MCP changelog for payload or chunking — link or cite here when a product ships H1-class support.
+
+**Research prompts for owners (copy-paste):**
+
+- **Cursor / MCP:** Is there (or will there be) a supported way to pass **large tool arguments** without embedding the full string in the model message (file URI, attachment id, multi-part tool call)?
+- **Figma:** Would the official MCP accept **chunked** `code` assembly or an optional **`codeFile`** scoped to the connected workspace, with documented security limits?
+
+### 6.8 How to implement host-side tool args (concrete checklist)
+
+**Spec note:** MCP tools take **JSON arguments** per `inputSchema`; there is **no** standard “automatic file-backed parameter.” Host-side relief means the **client and/or server** move bytes **without** the model emitting the full `code` string.
+
+**Blocked by today’s connector:** The official Figma **`use_figma`** tool expects **inline** `code` (schema `maxLength` 50000) and typically sets **`additionalProperties: false`**, so a DesignOps-only convention like `codePath` **cannot** be honored until **Figma** (and Cursor’s packaged connector) ships new schema + server logic.
+
+| Track | Who implements | Work |
+|--------|----------------|------|
+| **A — Optional `codeFile` / workspace path on `use_figma`** | **Figma** (MCP server + bridge) | Extend tool schema: `code` **xor** `codeFile` (or `codeUri` with strict scheme). Server reads file from **allowlisted roots** only (no `..`, cap size to plugin limit, optional hash). Same execution path as today’s `code` string after read. |
+| **B — Client-side hydration** | **Cursor** (or any MCP client) | Before `tools/call`, expand a **documented** indirection (short path, blob id, or attachment) into full `arguments` so the **model** never re-types 25k+ characters. Requires product API + docs; not solvable inside this repo alone. |
+| **C — Chunked session API** | **Figma** + possibly client | e.g. `use_figma_session_open` → `…_append` × N → `…_execute`. Server buffers until execute; enforce TTL, idempotency, max total size vs 50k plugin cap. |
+| **D — Until A/B/C** | **DesignOps / consumer** | `assemble-slice` → file on disk; **parent `Read` + one `use_figma`**; or **non-LLM** MCP client where your org has a supported token path ([§6.4](#64-tier-4--stand-alone-mcp--proxy-high-cost--not-shipped)). |
+
+**Suggested MVP:** **Track A** on Figma’s official MCP (smallest conceptual change: one read on the server, model sends only a short path). **Track B** helps any large tool arg, not only Figma, but depends on Cursor’s roadmap.
+
+**Track E — No schema change, you own the client:** See **[`docs/buildable-figma-payload-path.md`](buildable-figma-payload-path.md)** — Figma **Desktop** MCP URL + `npm run figma:mcp-invoke` (reads JSON from disk; model can run a **short** shell command).
+
 ---
 
 ## 7. Stakeholder matrix
@@ -260,3 +305,7 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 | 2026-04-28 (d) | Link to plan-A from §6.0.2 (file since **removed** — see 2026-04-28 (f)). |
 | 2026-04-28 (e) | **§6.0.2** hard constraints + **§7** stakeholder row: **10-slice** ladder (four scaffold + rest); endnote — Plan A first-class sub-slugs **shipped** in repo runbooks. |
 | 2026-04-28 (f) | **Doc cleanup:** removed `docs/research/*` spin-offs; **this file** is the only long-form MCP transport write-up; path is `docs/mcp-transport-solution-architecture-2026.md`. §4.1 and §6.0.1 cross-links updated. |
+| 2026-04-27 (g) | **§6.7** — Deeper fix: H1–H4 (file-backed / chunked / IDE / non-LLM caller), dependencies, DesignOps stance until vendors ship; owner research prompts. **`AGENTS.md`** cross-link to anti-spiral + §6.7. |
+| 2026-04-27 (h) | §6.7 lead: explicit link to `memory.md` system thesis (one tree, no speculative layers until host-side args). |
+| 2026-04-27 (i) | **§6.8** — Implementation checklist for host-side tool args (Figma `codeFile`, Cursor hydration, chunked session, repo stopgap). |
+| 2026-04-27 (j) | **§6.8** — Track E: link to **`docs/buildable-figma-payload-path.md`** (Desktop MCP + `figma:mcp-invoke`). |

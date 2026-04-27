@@ -1,0 +1,16 @@
+---
+description: Agents execute DesignOps plugin npm/node scripts via the terminal; do not offload runnable steps to the user unless blocked
+alwaysApply: true
+---
+
+# Run DesignOps commands in-agent
+
+When this workspace includes the **DesignOps-plugin** root (`memory.md`, `skills/`, `scripts/`) **and** the task uses those assets (e.g. `/create-component`, `assemble-slice`, `merge-handoff`, `figma:mcp-invoke`, `build-config-block`, `probe-parent-transport`, `npm run verify`):
+
+1. **Execute** the documented `node scripts/…` and `npm run …` steps yourself (IDE terminal / agent shell), from the **plugin repo root** — `cd` there first if the chat’s primary folder is a consumer app (multi-root: use the folder that contains `package.json` with `figma:mcp-invoke`).
+2. **Do not** reply with only “run this in your terminal” when you can run the same command non-interactively. After a failure, diagnose stderr, fix, and retry.
+3. **Exceptions (ask or stop):** missing secrets (`FIGMA_DESKTOP_MCP_URL` for Desktop MCP invoke), interactive browser OAuth you cannot complete, destructive confirmations, or commands that need network the sandbox blocks — then state the blocker and the exact command for the user.
+
+**`/create-component` (Composer):** follow [`skills/create-component/COMPOSER.md`](../../skills/create-component/COMPOSER.md) — run `build-config-block`, `assemble-slice` (with `--emit-mcp-args` when using file invoke), `npm run figma:mcp-invoke -- --dry-run` then invoke when URL is available, and `merge-handoff` in order without hand-waving.
+
+Canonical policy: [`AGENTS.md`](../../AGENTS.md), [`memory.md`](../../memory.md).

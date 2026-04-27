@@ -29,3 +29,5 @@ Claude Code resolves `skills/create-design-system/...` from **`${CLAUDE_PLUGIN_R
 Detail: `skills/create-design-system/conventions/16-mcp-use-figma-workflow.md` (Source root — Cursor).
 
 **MCP inline payloads / canvas subagent rules:** see [`AGENTS.md`](../../AGENTS.md) (canonical); [`.cursor/rules/mcp-inline-payloads.mdc`](mcp-inline-payloads.mdc) is the short Cursor form.
+
+**Agents run plugin scripts:** [`.cursor/rules/agent-run-designops-commands.mdc`](agent-run-designops-commands.mdc) — execute `assemble-slice`, `merge-handoff`, `figma:mcp-invoke`, etc., in-agent; do not hand steps back to the user when the shell can run them.

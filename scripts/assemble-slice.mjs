@@ -26,6 +26,8 @@
 // Canonical on-disk name for JSON written by --emit-mcp-args: `mcp-<step-slug>.json` in the
 // design repo (e.g. `mcp-cc-doc-props.json`). Do not introduce parallel ad hoc names
 // (`mcp-invoke-use-figma.json`, etc.) in the same folder.
+// After writing, optional non-IDE run: FIGMA_DESKTOP_MCP_URL=<url> npm run figma:mcp-invoke -- --file <that.json>
+// Preflight without Figma: npm run figma:mcp-invoke -- --dry-run --file <that.json>
 //
 // Exit codes:
 //   0  ok
