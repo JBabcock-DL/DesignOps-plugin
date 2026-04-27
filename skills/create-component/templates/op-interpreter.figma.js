@@ -303,6 +303,19 @@ function normalizeOp(raw) {
  */
 async function __ccRunOps(ops) {
   const refs = Object.create(null);
+  // Fresh scaffold shell (no handoff yet): mirror draw-engine §6.0 — keep `_Header` only.
+  // Without this, `/new-project` pages already have `_PageContent` at y=320; shell would
+  // append a *second* `_PageContent` and `findOne('_PageContent')` would return the *template*
+  // frame (wrong ids / overlap with the black `_Header`). Continuation slices always set
+  // __CC_HANDOFF_DOC_ROOT_ID__ from the prior merge.
+  const hasHandoffDocRoot =
+    typeof __CC_HANDOFF_DOC_ROOT_ID__ === 'string' && __CC_HANDOFF_DOC_ROOT_ID__.length > 0;
+  if (!hasHandoffDocRoot) {
+    for (const node of [...figma.currentPage.children]) {
+      if (node.name === '_Header') continue;
+      node.remove();
+    }
+  }
   // Continuation scaffold sub-slices: parent ids from merge handoff (same symbolic keys 'pc' / 'dr' as first slice)
   if (typeof __CC_HANDOFF_DOC_ROOT_ID__ === 'string' && __CC_HANDOFF_DOC_ROOT_ID__.length) {
     const dr = await figma.getNodeByIdAsync(__CC_HANDOFF_DOC_ROOT_ID__);
