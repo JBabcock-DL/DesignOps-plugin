@@ -898,7 +898,7 @@ function buildControlVariant(name, fillVar, fallbackFill, {
   c.primaryAxisAlignItems = 'CENTER';
   c.counterAxisAlignItems = 'CENTER';
   const cornerTok = shape === 'radio' ? 'radius/full' : radiusVar;
-  const cornerFallback = shape === 'radio' ? sz / 2 : 3;
+  const cornerFallback = shape === 'radio' ? sz / 2 : 2;
   if (checked) {
     bindColor(c, fillVar ?? 'color/primary/default', fallbackFill ?? '#1a1a1a', 'fills');
   } else {
@@ -920,8 +920,16 @@ function buildControlVariant(name, fillVar, fallbackFill, {
         .forEach(fn => bindNum(dot, fn, 'radius/full', dotSz / 2));
       c.appendChild(dot);
     } else {
-      const check = makeSampleText('✓', null, control.indicatorVar ?? 'color/primary/content', Math.round(sz * 0.7), 'Medium');
-      check.name = 'checkbox/check';
+      // shadcn Checkbox uses Lucide <CheckIcon> — use icon slot so DEFAULT_ICON_COMPONENT wires correctly
+      const iconSz = Math.round(sz * 0.75);
+      const check = makeIconSlotShared('checkbox/check-icon', iconSz);
+      check.name = 'checkbox/check-icon';
+      // tint the check to the indicator color
+      if (check.type !== 'INSTANCE') {
+        bindColor(check, control.indicatorVar ?? 'color/primary/content', '#ffffff', 'strokes');
+      } else {
+        bindColor(check, control.indicatorVar ?? 'color/primary/content', '#ffffff', 'fills');
+      }
       c.appendChild(check);
     }
   }

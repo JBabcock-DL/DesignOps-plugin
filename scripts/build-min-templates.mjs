@@ -404,6 +404,7 @@ async function buildDocSlimSteps(esbuild, drawTop, drawBottom) {
         throw new Error(`terser (doc6-unsafe): ${t6.error}`);
       }
       peeled = peelAsyncIifeWrapper(t6.code || '', 'doc-slim-step6-unsafe');
+      peeled = ensureBodyReturnsValue(peeled, 'doc-slim-step6-unsafe');
     }
     const destRel = `${TEMPLATES_DIR}/create-component-engine-doc.step${stepNum}.min.figma.js`;
     const body = docSlimStepBanner(stepNum) + peeled + '\n';
@@ -434,6 +435,126 @@ async function loadEsbuild() {
 
 const ASYNC_IIFE_WRAP_OPEN = '(async()=>{';
 const ASYNC_IIFE_WRAP_CLOSE = '})();';
+
+/**
+ * Re-inject a `return` keyword in front of the last evaluating expression if
+ * terser's wrap-strip cycle elided it.
+ *
+ * Terser sees `(async()=>{...; return await fn()})()` as an IIFE whose result
+ * is discarded, so it strips the outer `return` and emits
+ * `(async()=>{await async function(){...}()})()`. After peelAsyncIifeWrapper,
+ * the body's last statement is a bare `await EXPR` — Figma's MCP host wraps
+ * the script in an implicit async function and returns whatever the explicit
+ * `return` produces, so a trailing `await EXPR` (no return) means the host
+ * gets `undefined`. The 6 doc-step bundles all hit this; step0 bundles don't
+ * because they end with bare `return {...}` literals (no nested await IIFE
+ * for terser to collapse).
+ *
+ * Walks forward through the body, tracking string/template/brace nesting, to
+ * locate the last top-level statement. If that statement is itself a block
+ * `{...}`, recurses into the block so we don't accidentally emit
+ * `return {const e=...}` (parsed as a return of an object literal whose first
+ * key is `const` — syntax error). If it's already `return …` or `throw …`,
+ * leaves it alone.
+ */
+/**
+ * Scan `body` forward, tracking string/template/brace nesting, and return the
+ * offset of the last `await` keyword that appears at brace-depth 0 (i.e. at
+ * the script-body top level). Returns -1 if none found.
+ */
+function findLastTopLevelAwait(body) {
+  let i = 0;
+  let depth = 0;
+  let lastAwait = -1;
+  while (i < body.length) {
+    const c = body[i];
+    if (c === '"' || c === "'") {
+      const q = c;
+      i++;
+      while (i < body.length && body[i] !== q) {
+        if (body[i] === '\\') i++;
+        i++;
+      }
+      i++;
+      continue;
+    }
+    if (c === '`') {
+      i++;
+      while (i < body.length && body[i] !== '`') {
+        if (body[i] === '\\') { i += 2; continue; }
+        if (body[i] === '$' && body[i + 1] === '{') {
+          i += 2;
+          let n = 1;
+          while (i < body.length && n > 0) {
+            if (body[i] === '{') n++;
+            else if (body[i] === '}') n--;
+            i++;
+          }
+          continue;
+        }
+        i++;
+      }
+      i++;
+      continue;
+    }
+    if (c === '(' || c === '[' || c === '{') { depth++; i++; continue; }
+    if (c === ')' || c === ']' || c === '}') { depth--; i++; continue; }
+    if (
+      depth === 0 &&
+      c === 'a' &&
+      body.slice(i, i + 6) === 'await ' &&
+      (i === 0 || !/[A-Za-z0-9_$]/.test(body[i - 1]))
+    ) {
+      lastAwait = i;
+      i += 6;
+      continue;
+    }
+    i++;
+  }
+  return lastAwait;
+}
+
+/**
+ * Inject a `return` keyword in front of the last evaluating expression if
+ * terser's wrap-strip cycle elided it.
+ *
+ * Terser sees `(async()=>{...; return await fn()})()` as an IIFE whose result
+ * is discarded, so it strips the outer `return` and emits
+ * `(async()=>{await async function(){...}()})()`. After peelAsyncIifeWrapper,
+ * the body's last statement is a bare `await EXPR` — Figma's MCP host wraps
+ * the script in an implicit async function and returns whatever the explicit
+ * `return` produces, so a trailing `await EXPR` (no return) means the host
+ * gets `undefined`. The 6 doc-step bundles all hit this; step0 bundles don't
+ * because they end with bare `return {...}` literals (no nested await IIFE
+ * for terser to collapse).
+ *
+ * The doc-step bundles always end with an `await async function(){…}()` at
+ * top level (the inlined `__ccDocDispatch()` call). Find the last top-level
+ * `await ` and prepend `return ` there. If the body already returns earlier
+ * along that path or has no top-level `await`, leave it alone.
+ */
+function ensureBodyReturnsValue(peeledBody, label) {
+  let body = peeledBody.trimEnd();
+  if (body.endsWith(';')) body = body.slice(0, -1);
+
+  const lastAwait = findLastTopLevelAwait(body);
+  if (lastAwait < 0) {
+    // Body's tail isn't a top-level await — nothing for us to fix. Leave it
+    // alone; the body is either already returning or the script type doesn't
+    // need this fix.
+    return body;
+  }
+
+  // Walk back from `lastAwait` over whitespace to see if the prior token was
+  // already `return`. If so, no work to do.
+  let j = lastAwait - 1;
+  while (j >= 0 && /\s/.test(body[j])) j--;
+  if (j >= 5 && body.slice(j - 5, j + 1) === 'return') {
+    return body;
+  }
+
+  return body.slice(0, lastAwait) + 'return ' + body.slice(lastAwait);
+}
 
 /** Peel the async IIFE wrapper esbuild/terser emit around a Figma script body. */
 function peelAsyncIifeWrapper(minBody, label) {
@@ -485,7 +606,8 @@ async function terserDeadStripAsyncBody(esbuildPeeledBody, label) {
   if (result.error) {
     throw new Error(`terser (${label}): ${result.error}`);
   }
-  return peelAsyncIifeWrapper(result.code || '', label);
+  const peeled = peelAsyncIifeWrapper(result.code || '', label);
+  return ensureBodyReturnsValue(peeled, label);
 }
 
 /**
