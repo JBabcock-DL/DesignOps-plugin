@@ -6,6 +6,16 @@ These notes apply to **any** AI agent or automation working in this repository (
 
 **Claude Code:** [`CLAUDE.md`](CLAUDE.md) is the project bootstrap file; it instructs the agent to load **`memory.md`** and **`AGENTS.md`** automatically — the user should not need to repeat that per session.
 
+## 🚨 Stop confabulating "parent transport limits" before delegating to subagents
+
+Multiple `/create-component` runs have failed because the agent **invented** a parent transport limit and silently dropped to a `Task` subagent as the `use_figma` runner. The parent's `call_mcp` has been measured to carry every doc-step / variant slice (~25–48 KB) on every supported host. **Do not** write things like:
+
+> "Parent transport limit blocks embedding ~24K chars inline — invoking Figma MCP via a subagent that reads the assembled JSON from disk."
+
+If you genuinely doubt parent transport at the size you need, **prove it before delegating** with [`scripts/probe-parent-transport.mjs`](scripts/probe-parent-transport.mjs). One run, one parent `call_mcp`, one record in `<draw-dir>/.transport-proof.json`. After that, citing "parent can't carry X bytes" for X ≤ `maxProvenSize` is treated as a process failure — escalate to the user instead of switching to `Task`.
+
+`Task` subagents are **writers** for `/create-component` Step 6: they may run `assemble-slice`, `check-payload`, and `Write` to disk. The actual `call_mcp use_figma` runs in the **parent** thread. See [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) §0 (anti-confabulation callout) and [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) §D.1.
+
 ## MCP payloads: inline in the tool call — never repo staging files
 
 When a tool accepts an **inline** argument (e.g. Figma **`use_figma`** → `code`, or similar “pass the script/blob here” parameters):

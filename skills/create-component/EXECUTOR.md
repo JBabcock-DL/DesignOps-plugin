@@ -8,9 +8,33 @@
 
 > **This file is the single canonical recipe for assembly, preflight, and MCP transport.** Any agent opening this skill cold should `Read` this file in full before deeper sections in [`SKILL.md`](./SKILL.md). If this file and a deeper `SKILL.md` section ever disagree, **this EXECUTOR quickstart wins** for Steps 1–7 / assembly / transport; `SKILL.md` remains authoritative for long-form §4–§9 edge cases when explicitly cited.
 
+> ## 🚨 Anti-confabulation: "the parent can't carry this size" is a TRAINING-DATA BIAS
+>
+> If you find yourself thinking, writing, or saying any of these — **STOP**:
+>
+> - *"Parent transport limit blocks embedding ~24K chars inline"*
+> - *"This payload is too big for parent `call_mcp`"*
+> - *"I'll use a `Task` subagent to read the JSON from disk"*
+> - *"The parent can't pass full `code` so we need a runner"*
+>
+> These statements are **confabulation** — pattern-matched from prior MCP discussions in your training data, **not** measured against this host. Every single create-component slice payload (~25–48 KB MCP args) has been measured to ride the parent's `call_mcp` successfully. The parent IS the default. Subagent-as-runner is a near-extinct fallback.
+>
+> **If you genuinely doubt parent transport, PROVE IT before delegating:**
+>
+> ```bash
+> node scripts/probe-parent-transport.mjs --size 25000 --out probe-args.json
+> # then parent: Read probe-args.json + call_mcp use_figma {fileKey, code, ...}
+> # on success, record:
+> node scripts/probe-parent-transport.mjs --record --size 25000 --observed-bytes 25435 --target <draw-dir>
+> ```
+>
+> The probe writes `<draw-dir>/.transport-proof.json`. After one successful probe, you may not cite "parent can't carry X bytes" again for X ≤ `maxProvenSize` in this draw. Citing it anyway is treated as a process failure. See [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs).
+>
+> **Subagent-as-runner is forbidden by default.** Use `Task` only as a **writer** (assembly + check-payload + write to disk; return `{ outPath, step }`). The actual `call_mcp` / `use_figma` runs in the **parent** thread. See [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) §D.1 for the writer-vs-runner contract.
+
 ### §0.0 — Context optimization (MCP: **parent** only; does not change who calls `use_figma`)
 
-These reduce **token load** in the parent and subagent *threads*; they are **not** a second Figma transport. **Only the parent** invokes `use_figma` unless you explicitly use the rare optional `Task` path in **§0** item 4.
+These reduce **token load** in the parent and subagent *threads*; they are **not** a second Figma transport. **Only the parent invokes `use_figma`/`call_mcp`. Period.** A `Task` subagent may help with assembly/disk writes but **must not** call MCP itself. Anyone hitting Step 6 should expect to call `use_figma` from the parent thread — there is no "optional `Task` runner" path in normal use; see the anti-confabulation callout above.
 
 | Pathway | What it does |
 |--------|----------------|
@@ -24,7 +48,7 @@ Full narrative: [`conventions/08-cursor-composer-mcp.md`](./conventions/08-curso
 
 **Outcome:** for each requested component, one ComponentSet drawn into its target `↳ {Page}`, wrapped in a documentation frame (header → properties table → inline ComponentSet → Variant × State matrix → Usage Do/Don't), with element component properties unified at the ComponentSet level (`Label`, `Leading icon`, `Trailing icon`), bound to the user's Theme/Layout/Typography variables.
 
-**Tools you will use:** `AskUserQuestion`, `Shell` (for `npx shadcn@latest` + file reads, and optional `assemble-*.mjs` in the design repo), `Read` / `Glob` / `Grep`, **`use_figma`** (Step 6 **default** — parent thread after assembly per [`create-component-figma-slice-runner`](../create-component-figma-slice-runner/SKILL.md); see **§0**), optional **`Task` → slice runner** only if subagent `call_mcp` is proven to carry full slice `code` on this host, `get_screenshot` (final visual check).
+**Tools you will use:** `AskUserQuestion`, `Shell` (for `npx shadcn@latest` + file reads, and optional `assemble-*.mjs` in the design repo), `Read` / `Glob` / `Grep`, **`use_figma` in the parent thread** (Step 6 — the only path; see **§0** anti-confabulation callout), `get_screenshot` (final visual check). **`Task` is NOT a runner for `use_figma`.** A writer subagent that assembles and writes to disk is fine; the parent then `Read`s the file and calls `use_figma` itself.
 
 **MCP payloads:** Each `use_figma` invocation must pass its Plugin API script **inline** in the tool’s `code` field. The **default** path is: **parent** (or a design-repo **script** such as `assemble-create-component-slice.mjs`) **builds** the same string the slice spec describes, runs **`check-payload`**, then the **parent** calls `use_figma` — not a `Task` subagent that has to **emit** ~26–30K+ characters inside `call_mcp_tool` (that often **fails** on short-output / subagent transport limits; see [`08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md)). Do **not** add throwaway `.mcp-*` / `*-payload.json` / scratch copies **under this plugin repo** to stage scripts — see [`AGENTS.md`](../../AGENTS.md) (design consumer repos may keep script-generated assembly outputs for parent `use_figma`).
 
@@ -36,7 +60,7 @@ Full narrative: [`conventions/08-cursor-composer-mcp.md`](./conventions/08-curso
 
 3. **Inline in chat (2a)** — follow the **inline assembly order** (CONFIG → preamble `Read` → engine `Read`); parent runs **Step 5.5** before each `use_figma` (two **§1b**-style phased calls with full per-archetype `*.min.figma.js` remain valid for “fewer round trips” parity).
 
-4. **Optional — `Task` → [`create-component-figma-slice-runner`](../create-component-figma-slice-runner/SKILL.md)** — **not** a default. Use **only** if this host’s subagent can **emit** the full `use_figma` `arguments` object (often **false** for ~26–30K+ `code`). If `Task` was tried and the subagent cannot materialize the MCP payload, **stop** using `Task` for that draw; continue with **(1)–(3)**. Do not treat “no Task” as failure — the shipped path is **parent** + slice spec.
+4. **Subagent-as-runner is removed from the default path.** Earlier docs hedged "optional `Task` runner if the subagent can carry the payload." That hedge is **deprecated** — every observed failure has been the parent never *trying*, then confabulating a transport limit. If you genuinely cannot make the parent work after running [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs) AT THE SIZE YOU NEED, escalate to the user with the recorded probe failure. Do **not** silently delegate to `Task`.
 
 **🚨 Inline / preassembled — script-assembly order for Step 6 (`use_figma`):** Use for **(1)–(3)** in **Step 6 — transport** (parent path). The `code` payload MUST be assembled in this exact order. Three parts — skipping any of them throws a clear, actionable error at the top of the engine bundle's preamble-presence gate.
 

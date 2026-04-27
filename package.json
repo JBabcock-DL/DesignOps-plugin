@@ -19,6 +19,7 @@
     "finalize-slice": "node scripts/finalize-slice.mjs",
     "cache-tokens": "node scripts/cache-tokens.mjs",
     "probe-page": "node scripts/probe-page.mjs",
+    "probe-parent-transport": "node scripts/probe-parent-transport.mjs",
     "assemble-slice": "node scripts/assemble-slice.mjs",
     "build-config-block": "node scripts/build-config-block.mjs",
     "measure-sigma": "node scripts/measure-sigma.mjs",

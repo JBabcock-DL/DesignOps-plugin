@@ -64,14 +64,22 @@ If an optional `Task` slice **aborts** on transport, **do not** loop on `Task` �
 
 These names describe **who calls `use_figma`**, not which file is assembled.
 
-| Role | Who | Allowed | Forbidden before the parent’s next `use_figma` |
-|------|-----|-----------|--------------------------------------------------|
+> 🚨 **Runner subagent is forbidden by default.** Multiple runs failed because the agent invented a parent transport limit and dropped to a `Task` runner without measuring. Read the anti-confabulation callout in [`../EXECUTOR.md`](../EXECUTOR.md) §0 first. If you genuinely doubt parent transport at the size you need, prove it with [`scripts/probe-parent-transport.mjs`](../../../scripts/probe-parent-transport.mjs) BEFORE delegating. After one successful probe, "parent can't carry X" for X ≤ `maxProvenSize` is a process failure — escalate to the user instead.
+
+| Role | Who | Allowed | Forbidden |
+|------|-----|---------|-----------|
 | **Writer** | Subagent or Shell | Run `node …/scripts/assemble-slice.mjs` (or equivalent), pipe to `check-payload`, **write** `slice-<slug>.js` and/or `mcp-<slug>.json` (from `--emit-mcp-args`) under the **design repo**; return **only** `{ ok, step, assembledPath, checkPayloadOk, codeCharCount }` (no `code` in chat). | Calling `use_figma` / `call_mcp` in the writer (the **parent** owns MCP). |
-| **Runner** | Subagent | **Only** if the host is **proven** to emit the **full** `use_figma` arguments in one `call_mcp_tool` without truncation. | Long prologues: `cursor --help`, JSON-RPC wrappers to temp files, `Grep`/`Glob` for “how to call MCP,” building throwaway scripts in the **plugin** repo, or multiple `Read`s of ~25K+ strings **unless** the very next tool is `call_mcp_tool` with that payload. |
+| **Runner** | Parent thread, **always** | The parent `Read`s the assembled file and calls `use_figma` / `call_mcp` itself, with the full `code` inline. | A `Task` subagent that calls `use_figma` / `call_mcp`. Period. There is no longer a "runner subagent" role — the term exists only so you recognize the anti-pattern when you read it elsewhere. |
 
-**If the parent cannot embed `code` in one turn:** prefer **writer → parent `Read` + `use_figma`** over a **runner** subagent that thrashes for many tool rounds before MCP. If a runner subagent **fails** transport, **stop** using `Task` for that draw; continue in the **parent** with the same bytes ([`../EXECUTOR.md`](../EXECUTOR.md) **§0** item 4).
+**Process for each slice:**
 
-**One slice per `Task` when using runners:** never batch **multiple** machine slugs (`cc-doc-props` … `cc-doc-finalize`) in a **single** `Task` prompt — you lose per-step Figma returns and on-disk merge auditability. See [§13 §5.1](13-component-draw-orchestrator.md).
+1. (optional) Writer subagent: assemble + check-payload + write `mcp-<slug>.json` to disk; return `{ outPath, step }`.
+2. **Parent**: `Read` `mcp-<slug>.json`, then `call_mcp use_figma` with `{ fileKey, code, description, skillNames }` from the file.
+3. **Parent**: `node scripts/finalize-slice.mjs <slug> handoff.json` (write return + merge atomically — see [`13` §5.2](13-component-draw-orchestrator.md)).
+
+**If you find yourself reaching for `Task` to call MCP**, stop. Run `node scripts/probe-parent-transport.mjs --size <bytes>` first. The parent's measured ceiling is well above any single create-component slice.
+
+**One slice per `Task` if you use a writer:** never batch **multiple** machine slugs (`cc-doc-props` … `cc-doc-finalize`) in a **single** `Task` prompt — you lose per-step Figma returns and on-disk merge auditability. See [§13 §5.1](13-component-draw-orchestrator.md).
 
 ### E — **What this does *not* fix (honest bound)**
 
