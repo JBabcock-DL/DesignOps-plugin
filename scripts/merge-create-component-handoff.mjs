@@ -13,8 +13,7 @@
 // Usage
 //   node scripts/merge-create-component-handoff.mjs <step> <handoff.json> <figma-return.json> [phase-state.json]
 //
-//   <step>        cc-doc-scaffold | cc-variants | cc-doc-component | cc-doc-props |
-//                 cc-doc-matrix | cc-doc-usage | cc-doc-finalize
+//   <step>        cc-doc-scaffold-shell | cc-doc-scaffold-header | … | cc-doc-finalize
 //   handoff.json  path to existing JSON (will be read, merged, written)
 //   figma-return  JSON file: either the object returned from use_figma, or
 //                 { "raw": { ... } } (slice-runner shape)
@@ -44,7 +43,10 @@ import { createHash } from "node:crypto";
 import { dirname, resolve, join, basename } from "node:path";
 
 export const SLUG_ORDER = [
-  "cc-doc-scaffold",
+  "cc-doc-scaffold-shell",
+  "cc-doc-scaffold-header",
+  "cc-doc-scaffold-table",
+  "cc-doc-scaffold-placeholders",
   "cc-variants",
   "cc-doc-component",
   "cc-doc-props",
@@ -53,7 +55,23 @@ export const SLUG_ORDER = [
   "cc-doc-finalize",
 ];
 
+/** First machine slug in the draw ladder (scaffold sub-slice 1). */
+export const FIRST_DRAW_SLUG = SLUG_ORDER[0];
+
+/** Scaffold tuple-op slugs in order, before `cc-variants` (for assembly / ops). */
+export const SCAFFOLD_SUB_SLUGS = SLUG_ORDER.slice(0, SLUG_ORDER.indexOf("cc-variants"));
+
 export const STEPS = new Set(SLUG_ORDER);
+
+const PART_SUFFIX = /^(.+)\.part([1-9]\d*)$/;
+
+/** Base slugs or `cc-doc-matrix.part2` style when the base is in SLUG_ORDER. */
+export function isValidStepSlug(slug) {
+  if (typeof slug !== "string" || !slug.length) return false;
+  if (STEPS.has(slug)) return true;
+  const m = slug.match(PART_SUFFIX);
+  return m ? STEPS.has(m[1]) : false;
+}
 
 const FILE_WAIT_RETRIES = 3;
 const FILE_WAIT_MS = 100;
@@ -84,6 +102,15 @@ export async function waitForFilePresent(path, label) {
 }
 
 export function pred(slug) {
+  const m = typeof slug === "string" ? slug.match(PART_SUFFIX) : null;
+  if (m) {
+    const base = m[1];
+    const n = parseInt(m[2], 10);
+    if (n > 1) return `${base}.part${n - 1}`;
+    const bi = SLUG_ORDER.indexOf(base);
+    if (bi <= 0) return null;
+    return SLUG_ORDER[bi - 1];
+  }
   const i = SLUG_ORDER.indexOf(slug);
   if (i <= 0) return null;
   return SLUG_ORDER[i - 1];
@@ -182,7 +209,7 @@ const SHA256_HEX = /^[a-f0-9]{64}$/i;
  * an array of human-readable error strings; empty = valid.
  *
  * Allowed top-level shapes:
- *   – fresh draw: { component, fileKey, lastSliceOk: null, nextSlug: 'cc-doc-scaffold',
+ *   – fresh draw: { component, fileKey, lastSliceOk: null, nextSlug: (first in SLUG_ORDER, e.g. cc-doc-scaffold-shell),
  *                   completedSlugs: [], lastCodeSha256: null, lastUpdated }
  *   – mid draw:  lastSliceOk = a slug in SLUG_ORDER, completedSlugs = SLUG_ORDER.slice(0, idx+1),
  *                nextSlug = SLUG_ORDER[idx+1] || null, lastCodeSha256 = sha256 hex.
@@ -203,20 +230,20 @@ export function validatePhaseStateSchema(state) {
 
   const { lastSliceOk, completedSlugs, nextSlug, lastCodeSha256 } = state;
 
-  if (lastSliceOk !== null && (typeof lastSliceOk !== "string" || !STEPS.has(lastSliceOk))) {
-    errors.push(`lastSliceOk must be null or one of ${[...STEPS].join("/")} (got ${JSON.stringify(lastSliceOk)})`);
+  if (lastSliceOk !== null && (typeof lastSliceOk !== "string" || !isValidStepSlug(lastSliceOk))) {
+    errors.push(`lastSliceOk must be null or a valid step slug (got ${JSON.stringify(lastSliceOk)})`);
   }
   if (!Array.isArray(completedSlugs)) {
     errors.push("completedSlugs must be an array");
   } else {
     for (const s of completedSlugs) {
-      if (typeof s !== "string" || !STEPS.has(s)) {
+      if (typeof s !== "string" || !isValidStepSlug(s)) {
         errors.push(`completedSlugs contains invalid slug: ${JSON.stringify(s)}`);
       }
     }
   }
-  if (nextSlug !== null && (typeof nextSlug !== "string" || !STEPS.has(nextSlug))) {
-    errors.push(`nextSlug must be null or one of ${[...STEPS].join("/")} (got ${JSON.stringify(nextSlug)})`);
+  if (nextSlug !== null && (typeof nextSlug !== "string" || !isValidStepSlug(nextSlug))) {
+    errors.push(`nextSlug must be null or a valid step slug (got ${JSON.stringify(nextSlug)})`);
   }
   if (lastCodeSha256 !== null && (typeof lastCodeSha256 !== "string" || !SHA256_HEX.test(lastCodeSha256))) {
     errors.push("lastCodeSha256 must be null or a 64-char hex SHA-256 (no placeholders)");
@@ -224,27 +251,29 @@ export function validatePhaseStateSchema(state) {
 
   if (errors.length) return errors;
 
-  // cross-field consistency
+  // cross-field consistency (relaxed when multi-part slugs are present)
+  const hasMultipart = Array.isArray(completedSlugs) && completedSlugs.some((s) => typeof s === "string" && s.includes(".part"));
   if (Array.isArray(completedSlugs) && completedSlugs.length > 0) {
     const expectedLast = completedSlugs[completedSlugs.length - 1];
     if (lastSliceOk !== expectedLast) {
       errors.push(`lastSliceOk (${lastSliceOk}) does not match last(completedSlugs) (${expectedLast})`);
     }
-    const idx = SLUG_ORDER.indexOf(expectedLast);
-    const expectedNext = idx >= 0 && idx < SLUG_ORDER.length - 1 ? SLUG_ORDER[idx + 1] : null;
-    if (nextSlug !== expectedNext) {
-      errors.push(`nextSlug (${nextSlug}) does not match expected (${expectedNext}) for lastSliceOk=${expectedLast}`);
-    }
-    // completedSlugs must equal SLUG_ORDER.slice(0, idx+1)
-    const expectedCompleted = SLUG_ORDER.slice(0, idx + 1);
-    if (
-      completedSlugs.length !== expectedCompleted.length ||
-      completedSlugs.some((s, i) => s !== expectedCompleted[i])
-    ) {
-      errors.push(
-        `completedSlugs (${completedSlugs.join(",")}) is not a contiguous SLUG_ORDER prefix ` +
-          `ending at lastSliceOk=${expectedLast}`,
-      );
+    if (!hasMultipart) {
+      const idx = SLUG_ORDER.indexOf(expectedLast);
+      const expectedNext = idx >= 0 && idx < SLUG_ORDER.length - 1 ? SLUG_ORDER[idx + 1] : null;
+      if (nextSlug !== expectedNext) {
+        errors.push(`nextSlug (${nextSlug}) does not match expected (${expectedNext}) for lastSliceOk=${expectedLast}`);
+      }
+      const expectedCompleted = SLUG_ORDER.slice(0, idx + 1);
+      if (
+        completedSlugs.length !== expectedCompleted.length ||
+        completedSlugs.some((s, i) => s !== expectedCompleted[i])
+      ) {
+        errors.push(
+          `completedSlugs (${completedSlugs.join(",")}) is not a contiguous SLUG_ORDER prefix ` +
+            `ending at lastSliceOk=${expectedLast}`,
+        );
+      }
     }
   } else if (lastSliceOk !== null) {
     errors.push("lastSliceOk is non-null but completedSlugs is empty");
@@ -319,7 +348,10 @@ export async function mergeOne({
   skipStaleReturnsCheck = false,
   skipPhaseStateSchemaCheck = false,
 }) {
-  if (!STEPS.has(step)) throw new MergeFailure(1, `unknown step "${step}"`);
+  if (!isValidStepSlug(step)) throw new MergeFailure(1, `unknown step "${step}"`);
+  if (step.includes('.part')) {
+    throw new MergeFailure(1, 'merge for multipart sub-slugs (e.g. cc-doc-matrix.part2) is not implemented; merge the whole slice (cc-doc-matrix) for now.');
+  }
   const phasePath = phaseStatePath ?? join(dirname(handoffPath), "phase-state.json");
 
   await waitForFilePresent(handoffPath, "handoff.json");
@@ -371,13 +403,13 @@ export async function mergeOne({
   // ─── DAG order ────────────────────────────────────────────────────────────
   const needPrev = pred(step);
   if (needPrev === null) {
-    if (step !== "cc-doc-scaffold") {
-      throw new MergeFailure(13, `first draw slice must be cc-doc-scaffold, got ${step}`);
+    if (step !== SLUG_ORDER[0]) {
+      throw new MergeFailure(13, `first draw slice must be ${SLUG_ORDER[0]}, got ${step}`);
     }
     if (phaseState && Array.isArray(phaseState.completedSlugs) && phaseState.completedSlugs.length > 0) {
       throw new MergeFailure(
         13,
-        "phase-state shows progress but merge requests cc-doc-scaffold — refusing to clobber. " +
+        `phase-state shows progress but merge requests ${SLUG_ORDER[0]} — refusing to clobber. ` +
           "Delete phase-state.json to restart or merge the correct next step.",
       );
     }

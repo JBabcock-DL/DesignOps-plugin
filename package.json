@@ -20,7 +20,10 @@
     "cache-tokens": "node scripts/cache-tokens.mjs",
     "probe-page": "node scripts/probe-page.mjs",
     "probe-parent-transport": "node scripts/probe-parent-transport.mjs",
-    "assemble-slice": "node scripts/assemble-slice.mjs",
+    "generate-ops": "node scripts/generate-ops.mjs",
+    "qa:op-interpreter": "node scripts/qa-op-interpreter.mjs",
+    "qa:op-part-slugs": "node scripts/qa-op-part-slugs.mjs",
+    "qa:visual-diff": "node scripts/qa-visual-diff.mjs",
     "build-config-block": "node scripts/build-config-block.mjs",
     "measure-sigma": "node scripts/measure-sigma.mjs",
     "qa:step-bundles": "node scripts/qa-step-bundles.mjs",
@@ -29,9 +32,8 @@
     "sync-cache": "bash scripts/sync-cache.sh",
     "verify-cache": "bash scripts/verify-cache.sh",
     "verify:component-slice-map": "node scripts/verify-component-slice-map.mjs",
-    "build": "npm run build:props && npm run build:docs && npm run build:min",
-    "verify": "npm run build:props:check && npm run build:docs:check && npm run build:min:check && npm run qa:step-bundles && npm run qa:create-component-skill && npm run qa:merge-consistency && npm run verify:component-slice-map && npm run verify-cache",
-    "mcp:figma-proxy": "node tools/mcp-figma-file-proxy/src/server.mjs"
+  "build": "npm run build:props && npm run build:docs && npm run build:min",
+    "verify": "npm run build:props:check && npm run build:docs:check && npm run build:min:check && npm run qa:step-bundles && npm run qa:create-component-skill && npm run qa:merge-consistency && npm run verify:component-slice-map && npm run qa:op-interpreter && npm run qa:op-part-slugs && npm run qa:visual-diff && npm run verify-cache"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

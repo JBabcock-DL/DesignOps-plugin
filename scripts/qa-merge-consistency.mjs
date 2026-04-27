@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import {
   validatePhaseStateSchema,
   SLUG_ORDER,
+  FIRST_DRAW_SLUG,
 } from './merge-create-component-handoff.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -94,16 +95,16 @@ console.log('\n[1] validatePhaseStateSchema');
 
 assert(
   validatePhaseStateSchema({
-    lastSliceOk: null, completedSlugs: [], nextSlug: 'cc-doc-scaffold', lastCodeSha256: null,
+    lastSliceOk: null, completedSlugs: [], nextSlug: FIRST_DRAW_SLUG, lastCodeSha256: null,
   }).length === 0,
   'fresh-draw shape passes',
 );
 
 assert(
   validatePhaseStateSchema({
-    lastSliceOk: 'cc-doc-scaffold',
-    completedSlugs: ['cc-doc-scaffold'],
-    nextSlug: 'cc-variants',
+    lastSliceOk: 'cc-doc-scaffold-shell',
+    completedSlugs: ['cc-doc-scaffold-shell'],
+    nextSlug: 'cc-doc-scaffold-header',
     lastCodeSha256: 'a'.repeat(64),
   }).length === 0,
   'mid-draw shape with valid sha passes',
@@ -130,7 +131,14 @@ assert(
 assert(
   validatePhaseStateSchema({
     lastSliceOk: 'cc-doc-component',
-    completedSlugs: ['cc-doc-scaffold', 'cc-variants', 'cc-doc-component'],
+    completedSlugs: [
+      'cc-doc-scaffold-shell',
+      'cc-doc-scaffold-header',
+      'cc-doc-scaffold-table',
+      'cc-doc-scaffold-placeholders',
+      'cc-variants',
+      'cc-doc-component',
+    ],
     nextSlug: 'cc-doc-matrix',  // wrong — should be cc-doc-props
     lastCodeSha256: 'c'.repeat(64),
   }).some((e) => e.includes('nextSlug')),
@@ -140,7 +148,7 @@ assert(
 assert(
   validatePhaseStateSchema({
     lastSliceOk: 'cc-variants',
-    completedSlugs: ['cc-doc-scaffold', 'cc-doc-component'],  // not contiguous prefix
+    completedSlugs: ['cc-doc-scaffold-shell', 'cc-doc-component'],  // not contiguous prefix
     nextSlug: 'cc-doc-component',
     lastCodeSha256: 'd'.repeat(64),
   }).some((e) => e.includes('contiguous SLUG_ORDER prefix')),
@@ -167,10 +175,10 @@ console.log('\n[2] merge — exit 15 (orphan return files)');
   const ret = {
     pageContentId: '1:2', docRootId: '1:3',
   };
-  writeJson(join(dir, 'return-cc-doc-scaffold.json'), ret);
+  writeJson(join(dir, 'return-cc-doc-scaffold-shell.json'), ret);
 
   const r = spawnNode(MERGE, [
-    'cc-doc-scaffold', join(dir, 'handoff.json'), join(dir, 'return-cc-doc-scaffold.json'),
+    'cc-doc-scaffold-shell', join(dir, 'handoff.json'), join(dir, 'return-cc-doc-scaffold-shell.json'),
   ]);
   assertExit(r, 15, 'orphan cc-variants return triggers exit 15');
   assertStderrIncludes(r, 'stale return-*.json', 'exit 15 message names the issue');
@@ -184,16 +192,16 @@ console.log('\n[3] merge — exit 14 (duplicate)');
   writeJson(join(dir, 'handoff.json'), { doc: { pageContentId: '1:2', docRootId: '1:3' } });
   writeJson(join(dir, 'phase-state.json'), {
     component: 'test', fileKey: 'k1',
-    lastSliceOk: 'cc-doc-scaffold',
-    completedSlugs: ['cc-doc-scaffold'],
-    nextSlug: 'cc-variants',
+    lastSliceOk: 'cc-doc-scaffold-shell',
+    completedSlugs: ['cc-doc-scaffold-shell'],
+    nextSlug: 'cc-doc-scaffold-header',
     lastCodeSha256: 'a'.repeat(64),
   });
-  writeJson(join(dir, 'return-cc-doc-scaffold.json'), {
+  writeJson(join(dir, 'return-cc-doc-scaffold-shell.json'), {
     pageContentId: '1:2', docRootId: '1:3',
   });
   const r = spawnNode(MERGE, [
-    'cc-doc-scaffold', join(dir, 'handoff.json'), join(dir, 'return-cc-doc-scaffold.json'),
+    'cc-doc-scaffold-shell', join(dir, 'handoff.json'), join(dir, 'return-cc-doc-scaffold-shell.json'),
   ]);
   assertExit(r, 14, 'duplicate merge triggers exit 14');
 }
@@ -207,11 +215,11 @@ console.log('\n[4] merge — exit 18 (schema violation)');
     lastSliceOk: 'cc-doc-finalize', completedSlugs: SLUG_ORDER, nextSlug: null,
     lastCodeSha256: 'pending',  // <-- violation
   });
-  writeJson(join(dir, 'return-cc-doc-scaffold.json'), {
+  writeJson(join(dir, 'return-cc-doc-scaffold-shell.json'), {
     pageContentId: '1:2', docRootId: '1:3',
   });
   const r = spawnNode(MERGE, [
-    'cc-doc-scaffold', join(dir, 'handoff.json'), join(dir, 'return-cc-doc-scaffold.json'),
+    'cc-doc-scaffold-shell', join(dir, 'handoff.json'), join(dir, 'return-cc-doc-scaffold-shell.json'),
   ]);
   assertExit(r, 18, 'placeholder lastCodeSha256 triggers exit 18');
   assertStderrIncludes(r, 'lastCodeSha256', 'exit 18 message names the offending field');
@@ -235,9 +243,9 @@ console.log('\n[5] assemble-slice — exit 17 (non-canonical sibling)');
   // Simpler approach: confirm that with all valid inputs the guard fires. We assemble against the
   // real plugin templates so the engine is present.
   const outPath = join(dir, 'out.js');
-  const mcpArgsPath = join(dir, 'mcp-cc-doc-scaffold.json');
+  const mcpArgsPath = join(dir, 'mcp-cc-doc-scaffold-shell.json');
   const r = spawnNode(ASSEMBLE, [
-    '--step', 'cc-doc-scaffold',
+    '--step', 'cc-doc-scaffold-shell',
     '--layout', 'control',
     '--config-block', join(dir, 'config-block.js'),
     '--registry', join(dir, '.designops-registry.json'),
@@ -254,14 +262,14 @@ console.log('\n[5] assemble-slice — exit 17 (non-canonical sibling)');
 console.log('\n[6] resume-handoff — replays orphans, reports next slug');
 {
   const dir = trackTmp(makeTmpDir('resume'));
-  // Fresh state, but two valid returns sitting on disk.
+  const ret = { pageContentId: '1:2', docRootId: '1:3' };
+  const varRet = { variantHolderId: '1:9', propsAdded: { label: true }, unresolvedTokenMisses: [] };
   writeJson(join(dir, 'handoff.json'), {});
-  writeJson(join(dir, 'return-cc-doc-scaffold.json'), {
-    pageContentId: '1:2', docRootId: '1:3',
-  });
-  writeJson(join(dir, 'return-cc-variants.json'), {
-    variantHolderId: '1:9', propsAdded: { label: true }, unresolvedTokenMisses: [],
-  });
+  writeJson(join(dir, 'return-cc-doc-scaffold-shell.json'), ret);
+  writeJson(join(dir, 'return-cc-doc-scaffold-header.json'), ret);
+  writeJson(join(dir, 'return-cc-doc-scaffold-table.json'), ret);
+  writeJson(join(dir, 'return-cc-doc-scaffold-placeholders.json'), ret);
+  writeJson(join(dir, 'return-cc-variants.json'), varRet);
   // Dry-run first
   const dry = spawnNode(RESUME, [dir, '--dry-run']);
   assertExit(dry, 0, 'resume --dry-run exits 0');
@@ -286,9 +294,9 @@ console.log('\n[7] resume-handoff — state mismatch (exit 1)');
   writeJson(join(dir, 'handoff.json'), {});
   writeJson(join(dir, 'phase-state.json'), {
     component: 'test', fileKey: 'k1',
-    lastSliceOk: 'cc-doc-scaffold',
-    completedSlugs: ['cc-doc-scaffold'],
-    nextSlug: 'cc-variants',
+    lastSliceOk: 'cc-doc-scaffold-shell',
+    completedSlugs: ['cc-doc-scaffold-shell'],
+    nextSlug: 'cc-doc-scaffold-header',
     lastCodeSha256: 'a'.repeat(64),
   });
   const r = spawnNode(RESUME, [dir]);

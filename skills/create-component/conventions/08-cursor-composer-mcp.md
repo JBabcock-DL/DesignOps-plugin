@@ -12,9 +12,9 @@
 
 **Two different levels:**
 
-1. **Orchestration (session / chat)** — **Do** break work up **sequentially**: finish each **style-guide** `canvas-bundle-runner` `Task` (or parent fallback) on its own; for **`/create-component`**, run **seven** `use_figma` invocations in **order** (parent default) or optional `Task` per slice **only** if the subagent can pass full `code` — see [`13`](13-component-draw-orchestrator.md). Avoid one parent turn that chains unrelated large Figma calls. The parent assembles each slice from **`configBlock`** + `handoff` + min engine per slice-runner **§0.1**; **not** a second subagent when the first cannot carry the payload.
+1. **Orchestration (session / chat)** — **Do** break work up **sequentially**: finish each **style-guide** `canvas-bundle-runner` `Task` (or parent fallback) on its own; for **`/create-component`**, run **10** `use_figma` invocations in **order** (parent default) or optional `Task` per slice **only** if the subagent can pass full `code` — see [`13`](13-component-draw-orchestrator.md). Avoid one parent turn that chains unrelated large Figma calls. The parent assembles each slice from **`configBlock`** + `handoff` + min engine per slice-runner **§0.1**; **not** a second subagent when the first cannot carry the payload.
 
-2. **Shipped component draw (Step 6 engine)** — On canvas, sections still appear in dependency order (Properties table, header, live ComponentSet tile, matrix, usage — see [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md)). **Default transport:** **seven** `use_figma` calls in the **parent**, each with **one** min slice from [`create-component-figma-slice-runner` §2](../../create-component-figma-slice-runner/SKILL.md) — see [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) and [§13](13-component-draw-orchestrator.md). **Phased two-call inline** in parent remains in [`../EXECUTOR.md`](../EXECUTOR.md) **§0** (fewer round trips). **Anti-pattern:** defaulting to **`Task` → slice runner** for slices the subagent **cannot** emit. **Anti-pattern:** uploading the **same** full engine blob on every call when the goal is small, fast steps.
+2. **Shipped component draw (Step 6 engine)** — On canvas, sections still appear in dependency order (Properties table, header, live ComponentSet tile, matrix, usage — see [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md)). **Default transport:** **10** `use_figma` calls in the **parent**, each with one slice from [`create-component-figma-slice-runner` §2](../../create-component-figma-slice-runner/SKILL.md) — see [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) and [§13](13-component-draw-orchestrator.md). **Phased two-call inline** in parent remains in [`../EXECUTOR.md`](../EXECUTOR.md) **§0** (fewer round trips). **Anti-pattern:** defaulting to **`Task` → slice runner** for slices the subagent **cannot** emit. **Anti-pattern:** uploading the **same** full engine blob on every call when the goal is small, fast steps.
 
 **Anti-pattern (still true):** Ad-hoc **minification**, **trimming** built bundles, or **stub** `code` (`PLACEHOLDER`) to “fit” MCP — that breaks `check-payload` / Figma; see [`../EXECUTOR.md`](../EXECUTOR.md) and slice runner prohibitions.
 
@@ -30,7 +30,7 @@ If an optional `Task` slice **aborts** on transport, **do not** loop on `Task` �
 
 **Transport invariant (unchanged):** The **parent thread** is the only layer that should invoke **`use_figma`** (MCP) for Step 6 — per [`../EXECUTOR.md`](../EXECUTOR.md) **§0**. The patterns below are **context / orchestration** optimizations only. They do **not** add a second path where a subagent calls `use_figma`.
 
-**Goal:** Finish all seven `use_figma` calls **without** stuffing the parent thread with **every** min engine + preamble + config at once, and without duplicating large blobs in chat prose.
+**Goal:** Finish all 10 `use_figma` calls **without** stuffing the parent thread with **every** min engine + preamble + config at once, and without duplicating large blobs in chat prose.
 
 **Hard limit today:** Figma `use_figma` still needs **inline `code`** in the tool call — there is no `codePath` in the shipping schema. So **one** slice still costs **one** large string in the turn that calls MCP (parent `Read` → `call_mcp` or equivalent). The wins below are about **not carrying more than one slice worth of source at a time** and **keeping handoff state tiny**.
 
@@ -45,7 +45,7 @@ If an optional `Task` slice **aborts** on transport, **do not** loop on `Task` �
    `node scripts/merge-create-component-handoff.mjs <step> mcp-exports/handoff.json mcp-exports/last-figma-return.json`  
    (update `afterVariants` / `doc` per [13 §4](../13-component-draw-orchestrator.md)), not a long recap in chat.
 
-3. **Repeat** for the next slug. The parent **never** holds **seven** full `code` bodies in the message history at once — only the **current** `Read` result for the MCP call, plus a small **handoff** file.
+3. **Repeat** for the next slug. The parent **never** holds **10** full `code` bodies in the message history at once — only the **current** `Read` result for the MCP call, plus a small **handoff** file.
 
 ### B — **Handoff outside the chat window**
 
@@ -54,15 +54,11 @@ If an optional `Task` slice **aborts** on transport, **do not** loop on `Task` �
 
 ### C — **One slice per parent “wave”**
 
-- Prefer **seven short parent turns** (or compact-and-continue) over **one** parent message that `Read`s all templates and all doc steps for planning. Do **not** `Read` [`SKILL.md`](../SKILL.md) in full in the same turn as a 30K engine `Read`.
+- Prefer **10 short parent turns** (or compact-and-continue) over **one** parent message that `Read`s all templates and all doc steps for planning. Do **not** `Read` [`SKILL.md`](../SKILL.md) in full in the same turn as a 30K engine `Read`.
 
 ### D — **Fresh subagent per slice (assembly writers only, never MCP)**
 
 - If each `Task` is a **new** isolated subagent whose job is **only** “assemble + `check-payload` + **write** output file + return short path metadata,” the **subagent** context is reset each time. **That subagent still does not call `use_figma`**. The **parent** runs the next `Read` + `use_figma` + handoff merge.
-
-### D.0 — **Optional transport C — `designops-figma-file-proxy`**
-
-If the user has added the local MCP package at [`tools/mcp-figma-file-proxy`](../../tools/mcp-figma-file-proxy/README.md) to their host config, the model may call **`use_figma_from_mcp_args_file`** with a short **`mcpArgsPath`** string (full `use_figma` arguments as JSON on disk from `assemble-slice --emit-mcp-args`). That avoids embedding the full `code` in the **chat** tool call for that turn. It is **not** the default, does **not** use Cursor’s Figma OAuth (user supplies `FIGMA_MCP_ACCESS_TOKEN` to the proxy), and does not change the writer + parent story for teams that do not install it. See [`../EXECUTOR.md`](../EXECUTOR.md) *Short-context* table row *Optional transport C* and [`AGENTS.md`](../../AGENTS.md).
 
 ### D.1 — **Writer subagent vs runner subagent (normative)**
 
@@ -72,7 +68,7 @@ These names describe **who calls `use_figma`**, not which file is assembled.
 
 | Role | Who | Allowed | Forbidden |
 |------|-----|---------|-----------|
-| **Writer** | Subagent or Shell | Run `node …/scripts/assemble-slice.mjs` (or equivalent), pipe to `check-payload`, **write** `slice-<slug>.js` and/or `mcp-<slug>.json` (from `--emit-mcp-args`) under the **design repo**; return **only** `{ ok, step, assembledPath, checkPayloadOk, codeCharCount }` (no `code` in chat). | Calling `use_figma` / `call_mcp` in the writer (the **parent** owns MCP). |
+| **Writer** | Subagent or Shell | Run `node …/scripts/assemble-slice.mjs` (default: `generate-ops` path; add `--legacy-bundles` to read `*.min.figma.js` only), pipe to `check-payload`, **write** `slice-<slug>.js` and/or `mcp-<slug>.json` (from `--emit-mcp-args`) under the **design repo**; return **only** `{ ok, step, assembledPath, checkPayloadOk, codeCharCount }` (no `code` in chat). | Calling `use_figma` / `call_mcp` in the writer (the **parent** owns MCP). |
 | **Runner** | Parent thread, **always** | The parent `Read`s the assembled file and calls `use_figma` / `call_mcp` itself, with the full `code` inline. | A `Task` subagent that calls `use_figma` / `call_mcp`. Period. There is no longer a "runner subagent" role — the term exists only so you recognize the anti-pattern when you read it elsewhere. |
 
 **Process for each slice:**
@@ -125,7 +121,7 @@ The Figma schema allows **`code` up to 50,000 characters** per call ([`16-mcp-us
 3. **Parent** `use_figma` for each slice (spec: [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md); DAG: [`§13`](../13-component-draw-orchestrator.md)) — **default**; **context optimization** = §0.0 in [`../EXECUTOR.md`](../EXECUTOR.md) and *Context budget* above. On transport failure, **preassembled / writer** per [`../EXECUTOR.md`](../EXECUTOR.md) **§0** (parent still issues `use_figma`). The rare `Task` that calls MCP is **not** the optimization path.
 4. **Escalation** — model hop for the Figma call only, or longer-context parent per [`../EXECUTOR.md`](../EXECUTOR.md).
 
-The **slice** path uses **seven** smaller payloads than a single monolith. For **timeout / execution-size** issues, see [`../../create-design-system/conventions/16-mcp-use-figma-workflow.md`](../../create-design-system/conventions/16-mcp-use-figma-workflow.md) (50k cap on each `code` string).
+The **slice** path uses **10** smaller payloads than a single monolith. For **timeout / execution-size** issues, see [`../../create-design-system/conventions/16-mcp-use-figma-workflow.md`](../../create-design-system/conventions/16-mcp-use-figma-workflow.md) (50k cap on each `code` string).
 
 ---
 
@@ -143,7 +139,7 @@ Before drawing, confirm **all** of the following:
 
 1. Parent completes Steps **1–5** and **4.7**; finalizes **`configBlock`** (verbatim `const CONFIG = { … };`, not `JSON.stringify` — functions like `applyStateOverride` must survive) and **`layout`**.
 
-2. **Default — seven `use_figma` invocations in the parent**, each assembled per [`create-component-figma-slice-runner` §0.1 / §2](../../create-component-figma-slice-runner/SKILL.md): `step` (`cc-doc-scaffold` → `cc-variants` → … → `cc-doc-finalize`), `fileKey`, `layout`, `configBlock`, `createComponentRoot`, `registry`, and `handoffJson` per [slice runner **§0**](../../create-component-figma-slice-runner/SKILL.md) and [orchestrator **§4**](../13-component-draw-orchestrator.md). Run [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) before each submit. Parent runs [`SKILL.md` §9](../SKILL.md) on the **last** slice’s return + registry.
+2. **Default — 10 `use_figma` invocations in the parent**, each assembled per [`create-component-figma-slice-runner` §0.1 / §2](../../create-component-figma-slice-runner/SKILL.md): `step` (`cc-doc-scaffold-shell` → … → `cc-doc-finalize`), `fileKey`, `layout`, `configBlock`, `createComponentRoot`, `registry`, and `handoffJson` per [slice runner **§0**](../../create-component-figma-slice-runner/SKILL.md) and [orchestrator **§4**](../13-component-draw-orchestrator.md). Run [`scripts/check-payload.mjs`](../../../scripts/check-payload.mjs) before each submit. Parent runs [`SKILL.md` §9](../SKILL.md) on the **last** slice’s return + registry.
 
 3. **Optional** — `Task` → slice runner **per slug** when the subagent is **proven** to pass full `call_mcp` for that slice. **If not**, stay in the parent; do not retry failed `Task` for transport.
 
@@ -152,7 +148,7 @@ Before drawing, confirm **all** of the following:
 ```mermaid
 flowchart LR
   parent[Parent Steps 1 to 5]
-  u0[use_figma cc-doc-scaffold]
+  u0[use_figma cc-doc-scaffold-shell]
   u1[use_figma cc-variants]
   u5[use_figma cc-doc-finalize]
   parent --> u0
@@ -160,14 +156,14 @@ flowchart LR
   u1 --> u5
 ```
 
-*(Seven sequential `use_figma` calls in production; diagram shows first and last for brevity.)*
+*(Ten sequential `use_figma` calls in production; diagram shows first and last for brevity.)*
 
 ---
 
 ## Phase 3 — Session choreography and fallbacks
 
 - **Tables then components** — If the same session includes **style-guide** Step 15a–c + 17 **and** `/create-component`, **finish** all canvas [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) `Task`s **first**; then run components. **Do not** interleave a full table `use_figma` and a full component `use_figma` in **one** parent turn ([`AGENTS.md`](../../../AGENTS.md) *Session runbook*).
-- **One component per wave** — Prefer install → 4.7 → **seven** parent `use_figma` slices (or **`EXECUTOR`** phasing) → §9 + registry; new turn if limits bite ([`../EXECUTOR.md`](../EXECUTOR.md) *Session / output limits*).
+- **One component per wave** — Prefer install → 4.7 → **10** parent `use_figma` slices (or **`EXECUTOR`** phasing) → §9 + registry; new turn if limits bite ([`../EXECUTOR.md`](../EXECUTOR.md) *Session / output limits*).
 - **Model hop (Step 6 only)** — If transport still fails after preflight + parent assembly (or **EXECUTOR** preassembled on disk), run **only the Figma step** with a model that tolerates long tool args (e.g. Claude in Cursor). Policy-neutral workaround.
 - **Parent / preassembled** — When subagent or inline chat fails, follow [`../EXECUTOR.md`](../EXECUTOR.md) (same `configBlock` / `layout` — no re-derive).
 
@@ -195,7 +191,7 @@ Use this to confirm **Phase 2** in your **Cursor** build and to compare before/a
 | Date | |
 | Cursor version (About) | |
 | Figma MCP `serverIdentifier` used | |
-| Parent seven-slice `use_figma` (or `Task` if proven) completed successfully (y/n) | |
+| Parent 10-slice `use_figma` (or `Task` if proven) completed successfully (y/n) | |
 | If n — fallback used (model hop / parent inline) | |
 | Notes | |
 

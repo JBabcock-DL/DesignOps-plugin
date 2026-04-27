@@ -7,7 +7,6 @@ This document is the **full research roll-up** for turning the transport spike i
 - Research narrative and phase log: [mcp-large-payload-transport-2026.md](./mcp-large-payload-transport-2026.md)
 - Continue vs pivot (bottom line): [mcp-transport-closure-report.md](./mcp-transport-closure-report.md)
 - Cursor fallback order: [mcp-transport-cursor-fallback.md](../mcp-transport-cursor-fallback.md)
-- Figma file-proxy spike (go/no-go): [tools/mcp-figma-file-proxy/README.md](../../tools/mcp-figma-file-proxy/README.md)
 
 ---
 
@@ -31,7 +30,7 @@ This document is the **full research roll-up** for turning the transport spike i
 | H1 | On-disk args can be valid while **model-mediated** `call_mcp` still fails for **~25k** `code`. | **Confirmed in part.** **5k** and **10k** `code` (5 228 and **10 279** B full serialized `use_figma` args) **succeed** in one parent `call_mcp` with **Figma** `ok: true` (2026-04-27). **25k** in **one** `call_mcp_tool` from the **same** Agent class was **not** completed: **~25.4k** UTF-8 serialized `arguments` **exceeds the practical single-assistant-message embed** here (output token + tool JSON; see §3.3). This is **not** the same as “Figma rejects” or universal “bridge rejects.” **Manual** Composer / parent with full JSON using `probe-args-real-25k.json` (sibling `figTest/`) remains the 25k capstone for `maxProvenSize`. |
 | H2 | **Transport** (bytes to Figma MCP) is distinct from **Figma** (file open + plugin + `ok: true`). | **Confirmed** with real `fileKey` and plugin returns; distinguish **file access errors** from **JSON parse** errors. |
 | H3 | **Gzip** or **base64** in `assemble-slice` by default reduces pain. | **Do not** default. Policy in [`AGENTS.md`](../../AGENTS.md) and [`skills/create-component/conventions/08-cursor-composer-mcp.md`](../../skills/create-component/conventions/08-cursor-composer-mcp.md): **no** gzip/bootstrap unless the **Figma** plugin run supports **`DecompressionStream`** and there is a **measured** need. |
-| H4 | A **file-path proxy** in front of Cursor’s Figma OAuth session is a light lift. | **No-go** as a default. Chaining into Cursor’s connector is not supported as a small repo addition; a **standalone** OAuth + HTTP client proxy is a **separate** product. See [tools/mcp-figma-file-proxy/README.md](../../tools/mcp-figma-file-proxy/README.md). |
+| H4 | A **file-path proxy** in front of Cursor’s Figma OAuth session is a light lift. | **No-go** as a default. Chaining into Cursor’s connector is not supported; a **standalone** stdio → HTTP client needs its **own** OAuth to `mcp.figma.com` — Figma does not accept PAT; **removing** an in-repo proxy experiment confirmed **parent `Read` + official `use_figma`** is the practical path. |
 | H5 | **`@file` in `use_figma.code`** avoids large JSON. | **Not supported** in shipping Figma MCP schema (only inline `code`). Chat **`@` file** is not tool-arg indirection. |
 
 ---
@@ -126,6 +125,73 @@ See also [`mcp-transport-closure-report.md`](./mcp-transport-closure-report.md) 
 
 This section **prioritizes** follow-on work. It does **not** change normative skills until owners adopt items explicitly.
 
+### 6.0 Tier 0 — Op-interpreter + data ops (DesignOps-plugin, in progress 2026)
+
+**Direction:** A **shared** Figma runtime ([`skills/create-component/templates/op-interpreter.figma.js`](../../skills/create-component/templates/op-interpreter.figma.js) → [`op-interpreter.min.figma.js`](../../skills/create-component/templates/op-interpreter.min.figma.js)) plus **tuple JSON ops** from Node ([`scripts/generate-ops.mjs`](../../scripts/generate-ops.mjs)) for the **scaffold** slice; other slices use the **same** committed per-step / step0 `*.min.figma.js` artifacts **via** `generate-ops` (delegate — byte-identical to the pre-op ladder). [`assemble-slice.mjs`](../../scripts/assemble-slice.mjs) defaults to this path; `--legacy-bundles` reads min files only. **Goal:** one assembly entrypoint, optional future compression. **Status:** sub–8 kB per-call hardening and full tuple ports for doc steps 2–6 remain follow-ups; committed min bundles stay canonical until then.
+
+#### 6.0.1 Research — meeting **≤ 8 kB `code`**, **≤ 10 kB serialized `use_figma` args** (granularity + compression)
+
+**Measured context (in-repo):** Parent-thread proof and §3.2–3.3: a **~10.3 kB** class **total serialized MCP object** is realistic on a model-mediated path. The **8 kB** target for the **`code` string** is stricter: the wrapper also carries `fileKey`, `description`, `skillNames`, and JSON delimiters, so the **10 kB full-args** cap and **8 kB code** cap are related but not identical — leave **~1–2 kB** headroom in `check-use-figma-mcp-args` for wrapper growth when tuning CI.
+
+**Why the current op scaffold misses 8 kB (typical):**
+
+1. **Runtime:** `op-interpreter.min.figma.js` is **~6 kB+** after minify (preamble contract, `bindColor`, `__ccRunOps`, handoff) — a **2.5 kB** runtime target implies aggressive dead-strip or a **smaller** op surface per slice.
+2. **Data:** [`cc-doc-scaffold.mjs`](../../scripts/op-generators/cc-doc-scaffold.mjs) expands the doc frame into many tuple ops with **verbose `props` objects** (repeated keys: `layoutMode`, `fillVar`, `primaryAxisSizingMode`, …). `JSON.stringify` of that list dominates once runtime is fixed.
+3. **Delegates:** Slices that still embed full `create-component-engine-doc.stepN.min.figma.js` are **~19–25 kB `code` alone** — indirection does not shrink wire size until those become **data** or **more calls**.
+
+**Tactics (combine as needed):**
+
+| Tactic | Idea | Effect | Cost |
+|--------|------|--------|------|
+| **A. Finer-grained `use_figma` steps** | Split one logical step into **2+ MCP rounds** (e.g. scaffold → header, table, placeholders), each with fewer ops and optionally a **smaller** runtime | Each **`code`** drops with work split; more slugs in `SLUG_ORDER` and handoff | More parent turns; `merge` / `phase-state` / [`13`](../../skills/create-component/conventions/13-component-draw-orchestrator.md) updates |
+| **B. Part files (`*.partN`)** | When over `--budget`, emit `mcp-<slug>.part1.json` + `.part2` (op plan Phase 4); Figma runs sequential `use_figma` with shared handoff | Splits **wire** size per invocation | `merge` for sub-slugs, resume rules (partially sketched) |
+| **C. Op compression (same # of Figma calls)** | Numeric opcodes + **positional** prop arrays; **symbol table** in preamble; **omit defaults** in JSON (interpreter supplies schema defaults) | Often **2–4×** smaller JSON | Generator + interpreter lockstep; tests |
+| **D. Thinner runtime** | Per-profile builds (scaffold-only) or split helpers into optional chunks | Lowers fixed **per-call** cost | More `.min.figma.js` variants to maintain |
+| **E. Port delegates** | Tuple ops + small runtime for doc 2–6 and variants (replace ~20k min bodies) | Addresses **largest** slices | Large port of [`draw-engine.figma.js`](../../skills/create-component/templates/draw-engine.figma.js) / archetype builders |
+
+**Suggested sequencing for green size gates:** (1) **(C)** on scaffold + tighten `qa:op-interpreter` toward 8000/10000. (2) If still over, **(A)** or **(B)** for scaffold, measure with `check-use-figma-mcp-args`. (3) Re-**probe** if parent-path limits are unclear (§3). (4) **(E)** + (A)/(C) for non-scaffold — delegates never hit 8 kB **code** without more rounds or a real op port.
+
+**2026-04-28 (wire ops):** `generate-ops` + [`compact-scaffold-ops.mjs`](../../scripts/op-generators/compact-scaffold-ops.mjs) emit **`__S`** (string table for `color/…` token paths) + **short frame/text keys** (`L`,`P`,`C`, …) and wire text (`[1,id,0,{Y,c,f,…}]`). Interpreter expands via `wF` / `wT` in [`op-interpreter.figma.js`](../../skills/create-component/templates/op-interpreter.figma.js). **~15.5 kB** assembled for a 3-row properties fixture; **8 kB** still requires more splits or a much smaller runtime.
+
+**Out of scope (reconfirmed):** gzip/base64 in `code` without a measured Figma plugin decoder ([`mcp-large-payload-transport-2026.md`](./mcp-large-payload-transport-2026.md) Phase 2); scratch staging files for payloads ([`AGENTS.md`](../../AGENTS.md)).
+
+#### 6.0.2 Research — **more granular steps** (what is possible before implementation)
+
+**Goal:** Additional `use_figma` rounds so each **`code`** stays under budget (e.g. 8 kB), without breaking the doc contract or resume tooling.
+
+**Hard product constraints (do not violate without an explicit spec change):**
+
+1. **Global DAG** — [`13-component-draw-orchestrator.md`](../../skills/create-component/conventions/13-component-draw-orchestrator.md) **§1**: `cc-doc-scaffold-shell` → … → `cc-doc-scaffold-placeholders` → `cc-variants` → `cc-doc-component` → … Any new sub-step must sit **inside** this order (e.g. expand only the **scaffold** segment into more first-class slugs **before** `cc-variants`). You cannot run variant plane before `_PageContent` + `docRoot` + table shell + dashed reserves exist.
+2. **Table / placeholder contract** — [`04-doc-pipeline-contract.md`](../../skills/create-component/conventions/04-doc-pipeline-contract.md) and [`09-mcp-multi-step-doc-pipeline.md`](../../skills/create-component/conventions/09-mcp-multi-step-doc-pipeline.md) **§1.1**: no empty table body mid-ladder; placeholder row count = `CONFIG.properties.length`; header row geometry must not collapse. A split “scaffold” is only valid if **every** intermediate state still has a legal table shell (or an accepted placeholder-only state that the next slice completes in one go).
+3. **Handoff IDs** — Resume for doc work uses `__CC_HANDOFF_PAGE_CONTENT_ID__` + `__CC_HANDOFF_DOC_ROOT_ID__` (and later `compSetId`, variant holder, etc.). The **first** granular call must create nodes whose ids are returned; **subsequent** calls must use the same `assemble-slice` **varGlobals** path as doc steps 2–6 today ([`assemble-slice.mjs`](../../scripts/assemble-slice.mjs) `buildVarGlobals`), not the “first slice” branch that omits handoff ids.
+
+**What can be split (high level):**
+
+| Area | Split idea | Handoff / resume | Main risk |
+|------|------------|------------------|-----------|
+| **Scaffold (op)** | **R1** `_PageContent` + `docRoot` frames only · **R2** header (title, summary) · **R3** properties group + table + header row + body rows · **R4** three dashed placeholders | After R1 return `pageContentId` + `docRootId`; R2–R4 use doc-resume globals + `find`/`append` by name (same as draw-engine) | R1-only must leave `docRoot` structurally valid for R2; table must appear before `cc-variants` with full placeholder rows |
+| **Scaffold (bytes only)** | Same Figma result, but **two** MCP JSON files (`mcp-cc-doc-scaffold.part1.json` / `.part2`) **one after another** in the same “step” with no merge slug change | Same return/merge as **one** `cc-doc-scaffold` if merge accepts a single logical step; else need **`.partN` merge** story | Today `mergeOne` rejects **`.part\*` merge**; part files are wire-only unless merge is extended |
+| **Matrix** | Row groups or variant batches in separate calls | Need stable parent id (matrix frame) + optional “last row index” in handoff | `draw-engine` `buildMatrix` is one coherent pass; splitting needs idempotent row append and **merge** rules for `cc-doc-matrix.part1`, `.part2` |
+| **Variants** | Holder frame first, then add `COMPONENT` children in batches | `variantHolderId` after first batch; second batch appends children | `combineAsVariants` timing: usually one **combine** after all components exist — last sub-step must own **combine**, earlier steps only **stage** |
+| **Doc 2–6 (min engines)** | Only helps size if each sub-step ships **smaller min** or **tuple ops**; raw `step2..6` are already **per-step** minified | Same as matrix: new slugs or `.partN` | **Largest** win is **porting** to op + thin runtime (§6.0.1 **E**), not arbitrary vertical splits |
+
+**Orchestration / repo touchpoints (any new machine slug or `.part`):**
+
+- [`SLUG_ORDER`](../../scripts/merge-create-component-handoff.mjs) — insert new slugs in **dependency order**; `pred` / `completedSlugs` / `phase-state` must stay consistent ([**13** §4](../../skills/create-component/conventions/13-component-draw-orchestrator.md), [phase-state schema](../../skills/create-component/conventions/schema/phase-state.schema.json)).
+- **Return files** — `return-<slug>.json` naming; listReturnFiles / stale checks use `SLUG_ORDER` today.
+- **Phases** — one doc under `skills/create-component/phases/` per slug if the slug is user-visible in the ladder.
+- **`assemble-slice` / `generate-ops` / `verify-component-slice-map`** — map new slugs to engines or op generators.
+
+**Recommendation (order of attack):**
+
+1. **Scaffold only, 2–4 sub-slugs** (e.g. `cc-doc-scaffold-shell` → `cc-doc-scaffold-table` → `cc-doc-scaffold-placeholders`) — clearest **byte** win for the op-interpreter path, clearest handoff (`pageContentId` / `docRootId` after shell), aligns with **09** “smaller Plugin API runs.”
+2. **Implement merge + phase-state for true `.partN` merges** (or treat sub-slugs as **first-class** slugs in `SLUG_ORDER` — simpler than multipart state machine).
+3. **Matrix / variants** — only after scaffold sub-steps are stable; variant **combine** boundary is the tricky design review.
+
+**Shipped (2026):** Plan A **first-class** scaffold sub-slugs (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`) are in [`SLUG_ORDER`](../../scripts/merge-create-component-handoff.mjs); normative runbooks (**13**, **09**, **EXECUTOR**, phase **04**) match. This section stays **research** for **further** splits (matrix, variants, `.partN` merge, thinner runtime).
+
+**Implementation plan (research-grounded):** [plan-A-granular-use-figma-steps.md](./plan-A-granular-use-figma-steps.md) — `SLUG_ORDER`, merge first-step / `.part` facts, spec checkpoints, phased work.
+
 ### 6.1 Tier 1 — DesignOps / consumer repo (low cost, immediate)
 
 | Idea | Rationale | Risk |
@@ -150,11 +216,11 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 | **Optional** `codeUri` or workspace-relative `codeFile` (with allowlist) | Offloads huge `code` from the JSON body when the file is **already** on the designer machine. | Security model (path traversal, shared workspaces); protocol version. |
 | **Confirm** 50k `code` is wire-stable when the **host** delivers full bytes | Our spike did **not** show Figma rejecting 25k; unblocks “host fixed” line of attack. | — |
 
-### 6.4 Tier 4 — Stand-alone MCP / proxy (high cost, optional product)
+### 6.4 Tier 4 — Stand-alone MCP / proxy (high cost, **not shipped**)
 
-| Idea | Rationale | Risk |
-|------|-----------|------|
-| **Local MCP (implemented):** [tools/mcp-figma-file-proxy](../../tools/mcp-figma-file-proxy/README.md) — `use_figma_from_mcp_args_file` + `check-use-figma-mcp-args` + forward to `https://mcp.figma.com/mcp` with **`FIGMA_MCP_ACCESS_TOKEN`** (see [mcp-figma-proxy-auth-spike.md](./mcp-figma-proxy-auth-spike.md)) | Model passes a **short** path; same JSON as inline `use_figma` for large on-disk `mcp-*.json`. | **Duplicate** Figma token handling vs IDE connector; not “chain Cursor’s session.” |
+| Idea | Rationale | Outcome |
+|------|-----------|--------|
+| **Local stdio MCP + HTTP forward** to `https://mcp.figma.com/mcp` | Model passes a **short** file path; same JSON as inline `use_figma`. | **Removed from the repo (2026).** A standalone `node` process does **not** get Cursor’s OAuth; **Figma’s remote MCP** does not accept a **PAT** as Bearer; Figma’s catalog path is **OAuth in approved clients** only. **Practical fix:** **parent `Read` of `mcp-*.json` + one `use_figma` on the IDE’s Figma MCP** — no second server. |
 | **gzip + DecompressionStream** in plugin | Only if measured need and [AGENTS.md](../../AGENTS.md) exception. | Sandboxed API support; not a default. |
 
 ### 6.5 Decision matrix (when to do what)
@@ -169,7 +235,7 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 2. Add or tighten **one** consumer-repo **package.json** example for **emit → Read → `use_figma`** (optional small PR in docs / [08](...)).  
 3. Run the **25k** proof **once** in **Composer** (or chosen parent path) to raise `maxProvenSize` to **25 429** if still desired for institutional confidence.  
 4. Track **Cursor** / **Figma** public roadmap for **large tool args**; link back here when something ships.  
-5. Revisit **Tier 4** only if Tiers 1–2 are exhausted and product still can’t land ~25k-class draws reliably.
+5. Revisit **Tier 4** only if Figma documents a **supported** way for a non-catalog client to obtain OAuth access tokens for `mcp.figma.com` **or** adds file-backed `use_figma` in the **IDE** (see Tier 2).
 
 ---
 
@@ -177,10 +243,10 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 
 | Role | Takeaway |
 |------|----------|
-| **Design system / create-component** | **Continue** current parent-or-design-repo + seven-slice design; use proof file to stop false “transport” delegation. |
+| **Design system / create-component** | **Continue** current parent-or-design-repo + **10-slice** draw ladder (four scaffold sub-slugs + `cc-variants` + five doc slugs); use proof file to stop false “transport” delegation. |
 | **Cursor / IDE platform** | Measured in spike: one-shot **~10.3k**-class (10 279 B serialized args) E2E on model-mediated `call_mcp`; 25k in one **Agent** turn not completed here. Residual limit is **model/bridge re-serialization** for very large `call_mcp`, not Figma’s 50k cap. Optional: **documented** large-arg path (file indirection) at MCP layer. |
 | **Figma MCP** | **No** change required for **~25–30k** class payloads **if** the host delivers full inline `code`. Optional future: **args file** with explicit security for **>50k** edge cases. |
-| **Security / platform** | File-proxy and OAuth **duplication** are **out** of default scope; see proxy README. |
+| **Security / platform** | In-repo file-proxy for Figma was **removed**; duplicate OAuth to `mcp.figma.com` is not viable for a bare stdio helper without a token source. |
 
 ---
 
@@ -190,5 +256,7 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 |------|--------|
 | 2026-04-27 | Initial SA handoff: measured results, 25k agent-embed limit note, default architecture, pivot triggers, stakeholder matrix. |
 | 2026-04-27 (b) | Spike compiled: 5k/10k parent E2E, `maxProvenSize` **10 279**; §3.3 blockers for 25k one-turn embed; new §6 **Solution ideation** (tiers 1–4, decision matrix, next steps). Stakeholder table updated. |
-| 2026-04-27 (c) | §6.4 Tier 4: [tools/mcp-figma-file-proxy](../../tools/mcp-figma-file-proxy/README.md) **implemented**; auth handoff in [mcp-figma-proxy-auth-spike.md](./mcp-figma-proxy-auth-spike.md). |
-
+| 2026 (proxy removal) | In-repo `tools/mcp-figma-file-proxy` **removed**; Figma remote MCP requires OAuth in catalog clients, not PAT; use **parent `Read` + official `use_figma`**. |
+| 2026-04-28 (c) | **§6.0.2** — granular sub-steps: constraints, scaffold/matrix/variant split ideas, repo touchpoints (pre-code). |
+| 2026-04-28 (d) | Link to [plan-A-granular-use-figma-steps.md](./plan-A-granular-use-figma-steps.md) from §6.0.2. |
+| 2026-04-28 (e) | **§6.0.2** hard constraints + **§7** stakeholder row: **10-slice** ladder (four scaffold + rest); endnote — Plan A first-class sub-slugs **shipped** in repo runbooks. |

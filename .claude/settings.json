@@ -19,7 +19,7 @@
       "Bash(echo \"EXIT:$?\")",
       "mcp__claude_ai_Figma__use_figma",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-variants handoff.json return.json)",
-      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-scaffold handoff.json scaffold-return.json)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-scaffold-shell handoff.json scaffold-return.json)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-component --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-component.js)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-component handoff.json return.json)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-props --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-props.js)",

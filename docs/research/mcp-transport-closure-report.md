@@ -47,7 +47,7 @@ Use that to decide whether to invest in **gzip**, a **file-path proxy MCP**, or 
 | **0** Baseline | **2k** E2E proven with real file; **25k** validated **on disk**; **25k** single parent `call_mcp` = **you run** one Read + one call (path above) to max out `maxProvenSize` in `.transport-proof.json` |
 | **1** Cursor `@file` / CLI | **No** documented `@file` indirection for Figma `use_figma` `code` — see [Cursor MCP docs](https://cursor.com/docs/mcp) |
 | **2** Gzip + base64 | **Do not** add to `assemble-slice` by default; [08](../../skills/create-component/conventions/08-cursor-composer-mcp.md) + [AGENTS](../../AGENTS.md) already set policy |
-| **3** File proxy | **No-go** to chain into **Cursor’s** Figma session; **optional** stand-alone HTTP client + OAuth is a **separate** product (see [tools/mcp-figma-file-proxy/README.md](../../tools/mcp-figma-file-proxy/README.md)) |
+| **3** File proxy | **No** — cannot chain into **Cursor’s** Figma session; a **separate** stdio → `mcp.figma.com` path failed in practice (no PAT; OAuth not available to bare Node; **in-repo proxy removed**). **Use** parent **`Read` + `use_figma`**. |
 | **4–5** Docs + fallback | **Done:** [AGENTS](../../AGENTS.md), [EXECUTOR](../../skills/create-component/EXECUTOR.md), [08](../../skills/create-component/conventions/08-cursor-composer-mcp.md), [mcp-transport-cursor-fallback.md](../mcp-transport-cursor-fallback.md) |
 
 ---
@@ -67,7 +67,7 @@ Use that to decide whether to invest in **gzip**, a **file-path proxy MCP**, or 
 
 | Question | Recommendation |
 |----------|------------------|
-| **Continue** building skills, `assemble-slice`, parent Step 6 seven-slice flow, and docs as today? | **Yes.** Evidence does **not** support replacing the default path with gzip, a proxy, or subagent runners. |
+| **Continue** building skills, `assemble-slice`, parent Step 6 **10-slice** flow (four scaffold sub-slugs + `cc-variants` + five doc), and docs as today? | **Yes.** Evidence does **not** support replacing the default path with gzip, a proxy, or subagent runners. |
 | **Pivot** to engineering a **file-proxy** package or **gzip** in the pipeline? | **No** as a default. **Revisit** only if **(i)** your **manual 25k** parent call repeatedly fails with **JSON parse** (not Figma), and **(ii)** fallbacks in [mcp-transport-cursor-fallback.md](../mcp-transport-cursor-fallback.md) are insufficient. |
 | **Pivot** research to **“real slice content re-encoding”** (not probe filler)? | **Optional follow-up** if **25k probe** passes in parent but **real** `create-component` slices still fail — then the failure mode is likely **content-specific** escaping, not raw size. |
 

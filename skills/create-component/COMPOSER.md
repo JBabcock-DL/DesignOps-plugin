@@ -14,8 +14,9 @@
 
 ```
 1. node scripts/build-config-block.mjs <component>
-2. # Loop 3–5 for each of 7 slices in this order:
-   cc-doc-scaffold → cc-variants → cc-doc-component → cc-doc-props →
+2. # Loop 3–5 for each of 10 slices in this order:
+   cc-doc-scaffold-shell → cc-doc-scaffold-header → cc-doc-scaffold-table →
+   cc-doc-scaffold-placeholders → cc-variants → cc-doc-component → cc-doc-props →
    cc-doc-matrix → cc-doc-usage → cc-doc-finalize
 3. node scripts/assemble-slice.mjs --step <slug> --layout <layout> --config-block <path> --registry <path> --handoff <path> --file-key <fileKey> --out <slice.code.js>
 4. # Call use_figma in the parent with the assembled code from --out
@@ -33,7 +34,7 @@
 
 ## Hard prohibitions
 
-- No `Task` subagents for full seven-slice `use_figma` payloads unless the host is proven to pass complete `call_mcp` tool args.
+- No `Task` subagents for full 10-slice `use_figma` payloads unless the host is proven to pass complete `call_mcp` tool args.
 - No hand-editing `preamble.runtime.figma.js` (generated) — edit `preamble.figma.js` and `npm run build:min`.
 - No hand-typed `summary` / `usageDo` / `usageDont` — use `build-config-block.mjs` or `Read` from `shadcn-props`.
 - No `cat` of large min files as the MCP `code` source (truncation risk); `Read` in editor or `assemble-slice` `--out`.

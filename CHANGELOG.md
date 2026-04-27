@@ -4,10 +4,14 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
-### Added — local Figma MCP file proxy (optional transport)
+### Changed — `/create-component` Step 6: granular scaffold (docs alignment)
 
-- **[`tools/mcp-figma-file-proxy/`](tools/mcp-figma-file-proxy/)** — stdio MCP server (`use_figma_from_mcp_args_file`), path allowlist, `check-use-figma-mcp-args`, forward to Figma remote HTTP MCP; **`npm test`** in package; **`docs/research/mcp-figma-proxy-auth-spike.md`**, **`env.example`**. Root script **`npm run mcp:figma-proxy`**. Docs: **`AGENTS.md`**, **`skills/create-component/EXECUTOR.md`**, **`conventions/08-cursor-composer-mcp.md`**, **`docs/mcp-transport-cursor-fallback.md`**, **[`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md) §6.4** (Tier 4 implemented), **`docs/research/mcp-large-payload-transport-2026.md`** (gzip default still out; proxy Phase 3).
-- Gzip+base64 default in **`scripts/assemble-slice.mjs`** — **not** added; see research note above and **`EXECUTOR.md`**.
+- **10** machine slugs in [`scripts/merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs) `SLUG_ORDER`: four first-class **`cc-doc-scaffold-*`** sub-slugs before **`cc-variants`**, then the existing doc ladder through **`cc-doc-finalize`**.
+- Normative and operator docs updated for the new flow: [`skills/create-component/conventions/13-component-draw-orchestrator.md`](skills/create-component/conventions/13-component-draw-orchestrator.md), phase **04**, [`16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md), [`docs/research/mcp-transport-solution-architecture-2026.md`](docs/research/mcp-transport-solution-architecture-2026.md), [`docs/research/plan-A-granular-use-figma-steps.md`](docs/research/plan-A-granular-use-figma-steps.md), [`README.md`](README.md) (min-template section), research closure report, [`10-phased-payload-research.md`](skills/create-component/conventions/10-phased-payload-research.md), [`17-scaffold-sub-slice-states.md`](skills/create-component/conventions/17-scaffold-sub-slice-states.md), [`12-sigma-budget-mcp.md`](skills/create-component/conventions/12-sigma-budget-mcp.md), [`sync-design-system/phases/07-10-axes-BC.md`](skills/sync-design-system/phases/07-10-axes-BC.md). **`.claude/settings.json`** merge example step → `cc-doc-scaffold-shell`.
+
+### Removed — local Figma MCP file proxy (stdio package)
+
+- **`tools/mcp-figma-file-proxy/`** — deleted (was optional stdio `use_figma_from_mcp_args_file` + HTTP forward to `mcp.figma.com`). **Reason:** Figma’s remote MCP expects **OAuth** in **catalog** clients; **PAT** is not valid for that endpoint; a standalone `node` process **does not** receive Cursor’s session. The supported large-payload path remains **parent `Read` of `mcp-*.json` + official `use_figma`**. Docs updated: **`AGENTS.md`**, **`EXECUTOR`**, **`08`**, **fallback**, **solution architecture §6.4**, **closure report**; removed **`mcp-figma-proxy-auth-spike.md`**. `npm run mcp:figma-proxy` removed from root **`package.json`**.
 
 ### Updated — MCP research compile + solution ideation (2026-04-27)
 
@@ -30,7 +34,6 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 - **`docs/research/mcp-large-payload-transport-2026.md`** — Phase 0–5: probe results, Cursor `@file` / CLI notes, gzip policy, file-proxy go/no-go, cross-links to `AGENTS` / `EXECUTOR` / `08`.
 - **`docs/mcp-transport-cursor-fallback.md`** — What to do when model/host JSON fails before Figma.
-- **`tools/mcp-figma-file-proxy/README.md`** — Optional future proxy; documents why chaining into Cursor’s Figma session is not supported out of the box.
 - **`AGENTS.md`**, **`skills/create-component/EXECUTOR.md`**, **`skills/create-component/conventions/08-cursor-composer-mcp.md`** — Pointers to the research and fallback docs.
 
 ### Fixed — README matches full plugin surface (2026-04-22)

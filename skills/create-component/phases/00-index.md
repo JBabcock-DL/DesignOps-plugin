@@ -4,9 +4,9 @@
 
 **Linear rule:** There are **ten** phases **01–10**. **Finish phase N completely** (including merges, handoffs, and — for phase 10 — closeout) **before** opening phase **N+1**. **No parallel** work across phases.
 
-**Draw ladder (phases 04–10):** **Scaffold first** — phase **04** is **`cc-doc-scaffold`** (doc shell + placeholder table + dashed reserves); phase **05** is **`cc-variants`** (staging `COMPONENT`s). Then **component** → **props** → matrix → usage → finalize + closeout in **10**. Transport: [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md).
+**Draw ladder (phases 04–10):** **Scaffold first** — phase **04** runs **`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`** (doc shell + placeholder table + dashed reserves, **four** machine slugs); phase **05** is **`cc-variants`** (staging `COMPONENT`s). Then **component** → **props** → matrix → usage → finalize + closeout in **10**. Transport: [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md).
 
-**Inline / preassembled** Step 6 → [`EXECUTOR.md`](../EXECUTOR.md) **§0** — still finish prep **01–03** first; monolithic draw still builds variants before the doc tail inside **one** script execution (implementation detail); the **seven-slice** ladder is the canonical **scaffold → variants → …** order.
+**Inline / preassembled** Step 6 → [`EXECUTOR.md`](../EXECUTOR.md) **§0** — still finish prep **01–03** first; monolithic draw still builds variants before the doc tail inside **one** script execution (implementation detail); the **10-slice** ladder is the canonical **scaffold → variants → …** order.
 
 ---
 

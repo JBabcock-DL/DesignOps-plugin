@@ -4,7 +4,7 @@
 
 **Solution architecture + spike compile + ideation:** [`mcp-transport-solution-architecture-2026.md`](./mcp-transport-solution-architecture-2026.md) (see §3.2–3.3 measured table, §5 closure, **§6 solution ideation**)
 
-This document implements the **MCP large-payload research** plan: measure where `use_figma` arguments can fail, document host workarounds, and record go/no-go decisions for gzip-in-plugin and a file-path proxy. It does **not** replace [`AGENTS.md`](../../AGENTS.md) or [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs); it adds evidence and cross-links.
+This document implements the **MCP large-payload research** plan: measure where `use_figma` arguments can fail, document host workarounds, and record go/no-go decisions for gzip-in-plugin and a file-path proxy. It does **not** replace [`AGENTS.md`](../../AGENTS.md) or [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs); it adds evidence and cross-links. **Op-interpreter slice size targets (8 kB / 10 kB) and tactics — more steps, part files, op compression:** see [`mcp-transport-solution-architecture-2026.md`](./mcp-transport-solution-architecture-2026.md) **§6.0.1**.
 
 ---
 
@@ -69,7 +69,7 @@ This document implements the **MCP large-payload research** plan: measure where 
 **Go / no-go**
 
 - **Chaining a local stdio proxy to Cursor’s *internal* Figma server instance:** **No** in current architecture — the parent agent does not have a public API to forward arbitrary bytes to the already-authenticated Figma session.
-- **A standalone local MCP that reads a file and calls Figma’s HTTP MCP** with a **user-supplied** bearer token: **Shipped** as [`../tools/mcp-figma-file-proxy`](../tools/mcp-figma-file-proxy/README.md) (`use_figma_from_mcp_args_file`); auth model in [`mcp-figma-proxy-auth-spike.md`](./mcp-figma-proxy-auth-spike.md). Still duplicates token handling vs the IDE connector — optional only.
+- **A standalone local MCP that reads a file and calls Figma’s HTTP MCP** with a user-supplied **Bearer** token: **Not viable in practice** for this repo. **PAT** is **not** accepted for `mcp.figma.com`; **OAuth** is tied to **catalog** clients (Cursor, VS Code, …), not a bare `node` stdio server. An in-repo stdio + forward experiment was **removed** — use **parent `Read` of `mcp-*.json` + one `use_figma` on the IDE’s Figma MCP** (same bytes, Cursor’s session).
 
 ---
 
@@ -78,7 +78,6 @@ This document implements the **MCP large-payload research** plan: measure where 
 - [`AGENTS.md`](../../AGENTS.md) — pointer to this research and fallback doc.
 - [`skills/create-component/EXECUTOR.md`](../../skills/create-component/EXECUTOR.md) — short pointer.
 - [`skills/create-component/conventions/08-cursor-composer-mcp.md`](../../skills/create-component/conventions/08-cursor-composer-mcp.md) — research pointer (gzip section unchanged as normative).
-- [`tools/mcp-figma-file-proxy/README.md`](../tools/mcp-figma-file-proxy/README.md) — optional stdio package (go/no-go on chaining Cursor above unchanged).
 - [`CHANGELOG.md`](../../CHANGELOG.md) — one-liner for transport documentation.
 
 ---
@@ -86,16 +85,14 @@ This document implements the **MCP large-payload research** plan: measure where 
 ## Phase 5 — Fallbacks and ownership
 
 - **Runbook (Cursor):** [`docs/mcp-transport-cursor-fallback.md`](../mcp-transport-cursor-fallback.md).
-- **MCP registration** for any proxy remains **per developer** in `.cursor/mcp.json` (not committed with secrets).
 - If skills text changes, run `npm run sync-cache` and `npm run verify` per [`AGENTS.md`](../../AGENTS.md).
 
 ---
 
 ## Risks (for later specs)
 
-- **Proxy maintenance** vs upstream Figma MCP.
-- **Dual tools** — `use_figma` vs a hypothetical `use_figma_from_file` must stay clear in [`create-component-figma-slice-runner`](../../skills/create-component-figma-slice-runner/SKILL.md) defaults; parent path remains default.
-- **Verification** — `scripts/check-use-figma-mcp-args.mjs` on any file a proxy would read before forward.
+- **Dual tools** — keep **parent `Read` + `use_figma`** vs any future Figma/IDE file indirection clear in skill defaults.
+- **Verification** — `scripts/check-use-figma-mcp-args.mjs` on any on-disk file before a parent `use_figma`.
 
 ---
 
@@ -107,4 +104,3 @@ This document implements the **MCP large-payload research** plan: measure where 
 | 25k probe args (example) | Sibling `figTest/draw-transport-research/probe-args.json` |
 | Probe script | [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs) |
 | Full args check | [`scripts/check-use-figma-mcp-args.mjs`](../../scripts/check-use-figma-mcp-args.mjs) |
-| Optional proxy notes | [`tools/mcp-figma-file-proxy/README.md`](../../tools/mcp-figma-file-proxy/README.md) |

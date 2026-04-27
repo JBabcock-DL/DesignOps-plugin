@@ -2,9 +2,9 @@
 
 # Phase 06 — Draw slice `cc-doc-component` (live ComponentSet in doc)
 
-**Maps to:** Orchestrator DAG **#3** [`13` §1](../conventions/13-component-draw-orchestrator.md); slice runner [**§2**](../../create-component-figma-slice-runner/SKILL.md) → `create-component-engine-doc.step2.min.figma.js`.
+**Maps to:** Orchestrator DAG **#6** [`13` §1](../conventions/13-component-draw-orchestrator.md); slice runner [**§2**](../../create-component-figma-slice-runner/SKILL.md) → `create-component-engine-doc.step2.min.figma.js`.
 
-**EXECUTOR:** Step **6**, **draw leg 3/7** — finish this phase before [`07`](./07-slice-cc-doc-props.md).
+**EXECUTOR:** Step **6**, **draw leg 6/10** — finish this phase before [`07`](./07-slice-cc-doc-props.md).
 
 **What this slice does:** Runs **`combineAsVariants`** from the phase-1 staging frame into the doc **Component** section (replacing the dashed placeholder). The merged return includes **`compSetId`** — parent must merge it into `handoff.doc` for props / matrix / usage / finalize slices.
 

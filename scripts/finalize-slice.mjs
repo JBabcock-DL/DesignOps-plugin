@@ -25,7 +25,7 @@
 //             [--keep-return]         do not delete return file after successful merge
 //                                     (default: keep on disk for resume-handoff)
 //
-//   <slug>  cc-doc-scaffold | cc-variants | cc-doc-component | cc-doc-props |
+//   <slug>  cc-doc-scaffold-shell | … | cc-doc-finalize
 //           cc-doc-matrix   | cc-doc-usage | cc-doc-finalize
 //
 // Exit codes propagate from mergeOne (merge-create-component-handoff.mjs):
@@ -52,6 +52,7 @@ import { resolve, join, dirname } from 'node:path';
 
 import {
   STEPS,
+  isValidStepSlug,
   MergeFailure,
   mergeOne,
 } from './merge-create-component-handoff.mjs';
@@ -92,7 +93,7 @@ for (let i = 2; i < args.length; i++) {
   }
 }
 
-if (!STEPS.has(slug)) {
+if (!isValidStepSlug(slug)) {
   console.error(`finalize-slice: unknown step "${slug}"`);
   process.exit(2);
 }

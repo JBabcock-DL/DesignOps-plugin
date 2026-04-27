@@ -141,7 +141,7 @@ if (handoffEmpty && completedSet.size > 0) {
       `  (a) Trust phase-state: rebuild handoff by replaying ALL return-*.json files. ` +
       `Delete phase-state.json then re-run resume-handoff.\n` +
       `  (b) Trust handoff (start over): delete phase-state.json AND all return-*.json files, ` +
-      `then start the ladder from cc-doc-scaffold.`,
+      `then start the ladder from ${SLUG_ORDER[0]}.`,
   );
   process.exit(1);
 }
@@ -158,7 +158,7 @@ if (toReplay.length === 0) {
   const idx = last ? SLUG_ORDER.indexOf(last) : -1;
   const nextSlug = idx >= 0 && idx < SLUG_ORDER.length - 1 ? SLUG_ORDER[idx + 1] : null;
   if (last === null && onDiskSlugs.length === 0) {
-    console.log(`\nnext slug: cc-doc-scaffold  (fresh draw)`);
+    console.log(`\nnext slug: ${SLUG_ORDER[0]}  (fresh draw)`);
   } else if (nextSlug === null) {
     console.log(`\nladder complete  (lastSliceOk=cc-doc-finalize)`);
   } else {

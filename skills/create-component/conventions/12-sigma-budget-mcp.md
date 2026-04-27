@@ -22,7 +22,7 @@ not **6 × (almost full engine)**. **Same total information, split across calls*
 
 ---
 
-## Why **committed** seven-step doc σ is ~150K (research)
+## Why **committed** six **doc-step** min bundles’ σ is ~150K (research)
 
 1. **Doc steps 1–6** are each built from the **same** slimmed `draw-engine` assembly (`buildDocSlimSteps` in [`scripts/build-min-templates.mjs`](../../../scripts/build-min-templates.mjs)): `slimTop + slimBottom` is **re-minified 6 times** with a different `__ccDocStep` constant. Terser removes **dead** branches, but each output still **embeds a large shared core** (token helpers, `makeText`, `__ccDocResumeFromHandoff`, etc.). So the **sum** of the six doc bundles **far exceeds** a single monolith — **overlap by design**, not a partition.
 

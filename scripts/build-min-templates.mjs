@@ -68,6 +68,10 @@ const DRAW_ENGINE_REL = `${TEMPLATES_DIR}/draw-engine.figma.js`;
 const ARCHETYPE_BUILDERS_REL = `${TEMPLATES_DIR}/archetype-builders.figma.js`;
 const PREAMBLE_REL = `${TEMPLATES_DIR}/preamble.figma.js`;
 const PREAMBLE_RUNTIME_REL = `${TEMPLATES_DIR}/preamble.runtime.figma.js`;
+const OP_INTERPRETER_REL = `${TEMPLATES_DIR}/op-interpreter.figma.js`;
+const OP_INTERPRETER_MIN_REL = `${TEMPLATES_DIR}/op-interpreter.min.figma.js`;
+// Plan: interpreter+ops ≤8KB transport; min runtime target ~4–5KB (shared across slices)
+const OP_INTERPRETER_BUDGET = 10000;
 // Plan / AGENTS: single-line header only — edit `preamble.figma.js`, then `npm run build:min`
 const PREAMBLE_RUNTIME_HEADER =
   `// preamble.runtime.figma.js — generated; edit preamble.figma.js + npm run build:min\n`;
@@ -284,6 +288,7 @@ function buildCheckRows() {
   rows.push({ src: DRAW_ENGINE_REL, dest: DRAW_ENGINE_MIN_REL });
   rows.push({ src: ARCHETYPE_BUILDERS_REL, dest: ARCHETYPE_BUILDERS_MIN_REL });
   rows.push({ src: PREAMBLE_REL, dest: PREAMBLE_RUNTIME_REL });
+  rows.push({ src: OP_INTERPRETER_REL, dest: OP_INTERPRETER_MIN_REL });
   return rows;
 }
 
@@ -747,6 +752,23 @@ function parseArchetypeBuilders(src) {
   return { sharedHelpers, builders };
 }
 
+async function buildOpInterpreterRuntime(esbuild) {
+  const srcText = readFileSync(resolve(REPO_ROOT, OP_INTERPRETER_REL), 'utf8');
+  let peeled = await minifyScriptBody(esbuild, srcText, 'op-interpreter', { mangle: true });
+  peeled = await terserDeadStripAsyncBody(peeled, 'op-interpreter-dce');
+  peeled = ensureBodyReturnsValue(peeled, 'op-interpreter');
+  const body = banner(OP_INTERPRETER_REL) + peeled + '\n';
+  const bodyBytes = Buffer.byteLength(body, 'utf8');
+  if (bodyBytes > OP_INTERPRETER_BUDGET) {
+    throw new Error(
+      `op-interpreter min is ${bodyBytes} bytes, exceeds budget ${OP_INTERPRETER_BUDGET}. ` +
+        'Shrink op-interpreter.figma.js or raise budget after review.',
+    );
+  }
+  writeFileSync(resolve(REPO_ROOT, OP_INTERPRETER_MIN_REL), body);
+  return { destRel: OP_INTERPRETER_MIN_REL, destBytes: bodyBytes };
+}
+
 async function buildStandalone(esbuild, srcRel, destRel) {
   const srcAbs = resolve(REPO_ROOT, srcRel);
   const destAbs = resolve(REPO_ROOT, destRel);
@@ -882,6 +904,12 @@ async function main() {
   console.log(
     `preamble.runtime`.padEnd(28) +
     `${preambleResult.destBytes} bytes (was ${preambleResult.srcBytes}, -${pct}%; saves ${preambleResult.saving}B per slice × 7 = ${preambleResult.saving * 7}B per draw)`,
+  );
+
+  const opR = await buildOpInterpreterRuntime(esbuild);
+  console.log(
+    `op-interpreter.runtime`.padEnd(28) +
+    `${opR.destBytes} bytes (budget ${OP_INTERPRETER_BUDGET}) -> ${opR.destRel}`,
   );
 
   // (2) Per-archetype runtime bundles.

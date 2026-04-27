@@ -8,9 +8,9 @@
 
 ## Part A — Draw slice `cc-doc-finalize`
 
-**Maps to:** Orchestrator DAG **#7** [`13` §1](../conventions/13-component-draw-orchestrator.md); slice runner [**§2**](../../create-component-figma-slice-runner/SKILL.md) → `create-component-engine-doc.step6.min.figma.js`.
+**Maps to:** Orchestrator DAG **#10** [`13` §1](../conventions/13-component-draw-orchestrator.md); slice runner [**§2**](../../create-component-figma-slice-runner/SKILL.md) → `create-component-engine-doc.step6.min.figma.js`.
 
-**EXECUTOR:** Step **6**, **leg 7 of 7** (last MCP call for this component’s delegated draw).
+**EXECUTOR:** Step **6**, **leg 10 of 10** (last MCP call for this component’s delegated draw).
 
 **On `ok: true`:** Continue to **Part B** below on **this** slice’s return only — not on intermediate slices.
 
@@ -30,8 +30,8 @@
 
 **Exit when:** §9 checks pass; `.designops-registry.json` updated per 5.2 where applicable; run summary table in SKILL **§8** is filled honestly.
 
-**Inline / preassembled only:** If the draw never used seven slice `Task`s, closeout still applies the same **§9** / **5.2** / **§8** rules to the final successful `use_figma` return — see [`EXECUTOR.md`](../EXECUTOR.md) **§0** fallbacks 2a / 2b.
+**Inline / preassembled only:** If the draw never used 10 slice `Task`s, closeout still applies the same **§9** / **5.2** / **§8** rules to the final successful `use_figma` return — see [`EXECUTOR.md`](../EXECUTOR.md) **§0** fallbacks 2a / 2b.
 
-**`phase-state.json` and merge integrity:** Set **`nextSlug: null`** and a **full** `completedSlugs` list **only** if [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) ran successfully for **all seven** machine slugs in DAG order. If intermediate merges were skipped, **do not** manually mark a complete ladder; **do not** hand-fill `lastCodeSha256` with a placeholder to “look done.” A truthful record shows `nextSlug` at the first missing merge or a partial `completedSlugs`. The merge script (not prose) is the source of `lastCodeSha256` for each step.
+**`phase-state.json` and merge integrity:** Set **`nextSlug: null`** and a **full** `completedSlugs` list **only** if [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) ran successfully for **all 10** machine slugs in DAG order. If intermediate merges were skipped, **do not** manually mark a complete ladder; **do not** hand-fill `lastCodeSha256` with a placeholder to “look done.” A truthful record shows `nextSlug` at the first missing merge or a partial `completedSlugs`. The merge script (not prose) is the source of `lastCodeSha256` for each step.
 
 **Done:** This component’s phased run is complete.

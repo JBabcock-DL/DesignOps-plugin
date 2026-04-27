@@ -44,7 +44,7 @@ function stepSlugForBundleFilename(name) {
   if (!m) return null;
   const d = m[1];
   const map = {
-    1: 'cc-doc-scaffold',
+    1: 'cc-doc-scaffold-shell',
     2: 'cc-doc-component',
     3: 'cc-doc-props',
     4: 'cc-doc-matrix',

@@ -17,45 +17,16 @@
     },
     "lastSliceOk": {
       "type": ["string", "null"],
-      "enum": [
-        null,
-        "cc-doc-scaffold",
-        "cc-variants",
-        "cc-doc-component",
-        "cc-doc-props",
-        "cc-doc-matrix",
-        "cc-doc-usage",
-        "cc-doc-finalize"
-      ],
-      "description": "Slug of the last slice whose merge succeeded. null = no slices merged yet."
+      "description": "Last merged slug (e.g. cc-doc-props) or a multipart sub-slug (e.g. cc-doc-matrix.part2). See merge-create-component-handoff isValidStepSlug; JSON schema is intentionally loose; JS validator enforces shape."
     },
     "nextSlug": {
       "type": ["string", "null"],
-      "enum": [
-        null,
-        "cc-doc-scaffold",
-        "cc-variants",
-        "cc-doc-component",
-        "cc-doc-props",
-        "cc-doc-matrix",
-        "cc-doc-usage",
-        "cc-doc-finalize"
-      ],
-      "description": "Slug of the next slice to run. Cross-validated to equal SLUG_ORDER[indexOf(lastSliceOk)+1] or null at terminal."
+      "description": "Next slice to run, or a multipart sub-slug. Contiguity is validated in JS; relaxed when .part* appears in completedSlugs."
     },
     "completedSlugs": {
       "type": "array",
       "items": {
-        "type": "string",
-        "enum": [
-          "cc-doc-scaffold",
-          "cc-variants",
-          "cc-doc-component",
-          "cc-doc-props",
-          "cc-doc-matrix",
-          "cc-doc-usage",
-          "cc-doc-finalize"
-        ]
+        "type": "string"
       },
       "description": "Contiguous prefix of SLUG_ORDER ending at lastSliceOk. Must not contain placeholders."
     },

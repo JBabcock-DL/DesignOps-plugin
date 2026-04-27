@@ -8,7 +8,7 @@
 
 ## 1. What we are really splitting
 
-- **Figma state (persistent between calls):** `_PageContent` + doc shell from **`cc-doc-scaffold` first**; then staging `_ccVariantBuild/...` after **`cc-variants`**; then after `cc-doc-component`, `COMPONENT_SET` inside the doc section. Passed as **ids** (`__PHASE_1_VARIANT_HOLDER_ID__`, optional `__CC_HANDOFF_COMP_SET_ID__` after component step, `__CC_HANDOFF_PAGE_CONTENT_ID__`, `__CC_HANDOFF_DOC_ROOT_ID__`, etc.) and rehydrated with `getNodeByIdAsync` in `__ccDocResumeFromHandoff()` / phase-2 entry.
+- **Figma state (persistent between calls):** `_PageContent` + doc shell from the **scaffold sub-slugs** (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`) **first**; then staging `_ccVariantBuild/...` after **`cc-variants`**; then after `cc-doc-component`, `COMPONENT_SET` inside the doc section. Passed as **ids** (`__PHASE_1_VARIANT_HOLDER_ID__`, optional `__CC_HANDOFF_COMP_SET_ID__` after component step, `__CC_HANDOFF_PAGE_CONTENT_ID__`, `__CC_HANDOFF_DOC_ROOT_ID__`, etc.) and rehydrated with `getNodeByIdAsync` in `__ccDocResumeFromHandoff()` / phase-2 entry.
 - **Config state (injected script input):** Today one **`const CONFIG = {…}`** read across the whole engine. Re-sending the full object every call is a **contract** choice, not a Figma requirement.
 - **Preamble (registry / file key):** `preamble.figma.js` runs **after** `CONFIG` and **reads** `CONFIG.composes` to set `usesComposes` (line 61). Full `REGISTRY_COMPONENTS` + `ACTIVE_FILE_KEY` are replaced at assembly time.
 

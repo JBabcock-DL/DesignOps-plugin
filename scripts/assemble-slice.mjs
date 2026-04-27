@@ -12,7 +12,7 @@
 //
 // Usage
 //   node scripts/assemble-slice.mjs \
-//     --step <cc-doc-scaffold|cc-variants|cc-doc-component|cc-doc-props|cc-doc-matrix|cc-doc-usage|cc-doc-finalize> \
+//     --step <cc-doc-scaffold-shell|cc-doc-scaffold-header|…|cc-doc-finalize> \
 //     --layout <chip|surface-stack|field|row-item|tiny|control|container|__composes__> \
 //     --config-block <path-to-config-block.js> \
 //     --registry <path-to-.designops-registry.json> \
@@ -21,7 +21,7 @@
 //     --out <output-code.js> \
 //     [--description "<use_figma description string>"] \
 //     [--emit-mcp-args <output-mcp-args.json>] \
-//     [--plugin-root <path>]  # override create-component skill root (default: auto-detect)
+//     [--legacy-bundles]     read per-step min.figma.js (escape hatch; default = generate-ops)
 //
 // Canonical on-disk name for JSON written by --emit-mcp-args: `mcp-<step-slug>.json` in the
 // design repo (e.g. `mcp-cc-doc-props.json`). Do not introduce parallel ad hoc names
@@ -39,6 +39,9 @@
 //      Remove them and retry; do not coexist with parallel naming schemes.
 //
 // Optional flags:
+//   --legacy-bundles              use committed *.min.figma.js per step (pre–op default path)
+//                                 (default: generate-ops assembles all slugs: tuple ops for
+//                                 scaffold sub-slugs, delegated min engines for 2–6 + variants)
 //   --skip-check                  skip the check-payload + check-use-figma-mcp-args passes
 //                                 (for the rare debug case; otherwise they always run).
 //   --skip-noncanonical-guard     skip the non-canonical sibling check (escape hatch
@@ -51,15 +54,24 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
+import { loadConfigFromFile, assembleOpsBody } from './generate-ops.mjs';
+import { SLUG_ORDER, SCAFFOLD_SUB_SLUGS, FIRST_DRAW_SLUG } from './merge-create-component-handoff.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
+
+const SCAFFOLD_SUB_SET = new Set(SCAFFOLD_SUB_SLUGS);
+const DOC_STEP1_MIN = 'create-component-engine-doc.step1.min.figma.js';
 
 // ── Bundle map — create-component-figma-slice-runner SKILL.md §2 ───────────
 // Maps step slug → engine filename relative to templates/.
 // For cc-variants, the filename also depends on layout (see LAYOUT_TO_ARCHETYPE below).
 const STEP_ENGINE_MAP = {
-  'cc-doc-scaffold':   'create-component-engine-doc.step1.min.figma.js',
-  'cc-variants':       null, // resolved via layout → archetype below
+  'cc-doc-scaffold-shell':         DOC_STEP1_MIN,
+  'cc-doc-scaffold-header':        DOC_STEP1_MIN,
+  'cc-doc-scaffold-table':         DOC_STEP1_MIN,
+  'cc-doc-scaffold-placeholders':  DOC_STEP1_MIN,
+  'cc-variants':                   null, // resolved via layout → archetype below
   'cc-doc-component':  'create-component-engine-doc.step2.min.figma.js',
   'cc-doc-props':      'create-component-engine-doc.step3.min.figma.js',
   'cc-doc-matrix':     'create-component-engine-doc.step4.min.figma.js',
@@ -85,7 +97,7 @@ const VALID_LAYOUTS = new Set(Object.keys(LAYOUT_TO_ARCHETYPE));
 
 // ── CLI argument parsing ──────────────────────────────────────────────────
 // Boolean (no-arg) flags. Anything not in this set consumes the next argv slot.
-const BOOL_FLAGS = new Set(['skip-check', 'skip-noncanonical-guard']);
+const BOOL_FLAGS = new Set(['skip-check', 'skip-noncanonical-guard', 'use-ops', 'legacy-bundles']);
 
 function parseArgs(argv) {
   const args = {};
@@ -109,7 +121,7 @@ function usage() {
     '  --step <slug> --layout <layout> \\\n' +
     '  --config-block <path> --registry <path|"{}"> --handoff <path|"{}"> \\\n' +
     '  --file-key <figmaFileKey> --out <output.js> \\\n' +
-    '  [--description "<text>"] [--emit-mcp-args <output.json>]\n' +
+    '  [--description "<text>"] [--emit-mcp-args <output.json>] [--legacy-bundles]\n' +
     '\nSteps: ' + [...VALID_STEPS].join(' | ') +
     '\nLayouts: ' + [...VALID_LAYOUTS].join(' | '),
   );
@@ -128,6 +140,9 @@ const description  = rawArgs['description'] || `create-component step=${step} la
 const mcpArgsPath  = rawArgs['emit-mcp-args'];
 const skipCheck    = rawArgs['skip-check'] === true;
 const skipNonCanonicalGuard = rawArgs['skip-noncanonical-guard'] === true;
+const useLegacy = rawArgs['legacy-bundles'] === true;
+// Default: op pipeline (generate-ops). --legacy-bundles reads min engines directly. --use-ops is a no-op alias for default.
+const useOps = !useLegacy;
 // Auto-detect plugin root: directory containing skills/create-component/
 const pluginRoot   = rawArgs['plugin-root'] ?? REPO_ROOT;
 
@@ -143,6 +158,13 @@ if (!VALID_STEPS.has(step)) {
 
 if (!VALID_LAYOUTS.has(layout)) {
   console.error(`assemble-slice: unknown layout "${layout}". Valid: ${[...VALID_LAYOUTS].join(', ')}`);
+  process.exit(2);
+}
+
+if (useLegacy && SCAFFOLD_SUB_SET.has(step)) {
+  console.error(
+    'assemble-slice: scaffold sub-slugs use tuple ops; omit --legacy-bundles (default is generate-ops).',
+  );
   process.exit(2);
 }
 
@@ -187,7 +209,7 @@ if (!existsSync(preamblePath)) {
   process.exit(3);
 }
 
-// ── Resolve engine file ───────────────────────────────────────────────────
+// ── Resolve engine: legacy min bundle or op-ops (generate-ops) ─────────
 let engineFile;
 if (step === 'cc-variants') {
   const archetype = LAYOUT_TO_ARCHETYPE[layout];
@@ -196,17 +218,30 @@ if (step === 'cc-variants') {
   engineFile = STEP_ENGINE_MAP[step];
 }
 const enginePath = join(templatesDir, engineFile);
-if (!existsSync(enginePath)) {
-  console.error(`assemble-slice: engine not found: ${enginePath}. Run: npm run build:min`);
-  process.exit(3);
+
+let engineSrc;
+if (useOps) {
+  try {
+    const configObj = await loadConfigFromFile(resolve(configPath));
+    engineSrc = assembleOpsBody({ slug: step, config: configObj, layout, pluginRoot: resolve(pluginRoot) });
+    engineFile = 'generate-ops (tuple ops or delegated .min.figma.js)';
+  } catch (e) {
+    console.error(`assemble-slice: generate-ops: ${e.message}`);
+    process.exit(3);
+  }
+} else {
+  if (!existsSync(enginePath)) {
+    console.error(`assemble-slice: engine not found: ${enginePath}. Run: npm run build:min`);
+    process.exit(3);
+  }
+  engineSrc = readFile(enginePath, `engine (${engineFile})`);
 }
 
-// ── Read inputs ───────────────────────────────────────────────────────────
+// ── Read inputs (config as embedded string + JSON) ──────────────────────
 const configBlock = readFile(configPath, '--config-block').trim();
 const registry    = parseJsonArg(registryArg, '--registry');
 const handoffObj  = parseJsonArg(handoffArg, '--handoff');
 const preambleSrc = readFile(preamblePath, 'preamble');
-const engineSrc   = readFile(enginePath, `engine (${engineFile})`);
 
 // ── Patch preamble: inject ACTIVE_FILE_KEY + REGISTRY_COMPONENTS ─────────
 const activeFileKey = typeof registry.fileKey === 'string' ? registry.fileKey : null;
@@ -223,28 +258,41 @@ const patchedPreamble = preambleSrc
     `const REGISTRY_COMPONENTS = ${JSON.stringify(registryComponents)};`,
   );
 
-// ── Build varGlobals — slice-runner SKILL.md §3 ───────────────────────────
-// Four cases: scaffold, variants, doc-component (no compSetId yet), doc-rest
+// Four cases: first scaffold, scaffold continuation, variants, doc-component / doc-rest
 function buildVarGlobals(stepSlug, handoff) {
   const doc = (handoff.doc && typeof handoff.doc === 'object') ? handoff.doc : {};
   const av  = (handoff.afterVariants && typeof handoff.afterVariants === 'object') ? handoff.afterVariants : {};
+  const pcId = doc.pageContentId;
+  const drId = doc.docRootId;
+  const vi = SLUG_ORDER.indexOf('cc-variants');
+  const lastScaffold = vi > 0 ? SLUG_ORDER[vi - 1] : 'cc-doc-scaffold-placeholders';
 
   const lines = [];
 
-  if (stepSlug === 'cc-doc-scaffold') {
-    // First doc slice: no afterVariants, no compSetId. Bundle already sets DOC_STEP=1.
-    lines.push(`var __CREATE_COMPONENT_PHASE__ = 2;`);
-    lines.push(`var __CREATE_COMPONENT_DOC_STEP__ = 1;`);
-
+  if (SCAFFOLD_SUB_SET.has(stepSlug)) {
+    if (stepSlug === FIRST_DRAW_SLUG) {
+      lines.push(`var __CREATE_COMPONENT_PHASE__ = 2;`);
+      lines.push(`var __CREATE_COMPONENT_DOC_STEP__ = 1;`);
+    } else {
+      if (!pcId || !drId) {
+        console.error(
+          `assemble-slice: ${stepSlug} requires handoff.doc.pageContentId + docRootId from a prior merge ` +
+            `(run merge-create-component-handoff.mjs after ${FIRST_DRAW_SLUG} and each continuation slice).`,
+        );
+        process.exit(1);
+      }
+      lines.push(`var __CREATE_COMPONENT_PHASE__ = 2;`);
+      lines.push(`var __CREATE_COMPONENT_DOC_STEP__ = 1;`);
+      lines.push(`var __CC_HANDOFF_PAGE_CONTENT_ID__ = ${JSON.stringify(pcId)};`);
+      lines.push(`var __CC_HANDOFF_DOC_ROOT_ID__ = ${JSON.stringify(drId)};`);
+    }
   } else if (stepSlug === 'cc-variants') {
-    // Second slice: variant plane. Preserves _PageContent from scaffold.
+    // Variant plane. Preserves _PageContent from scaffold.
     lines.push(`var __CREATE_COMPONENT_PHASE__ = 1;`);
-    const pcId = doc.pageContentId;
-    const drId = doc.docRootId;
     if (!pcId || !drId) {
       console.error(
-        'assemble-slice: cc-variants requires handoff.doc.pageContentId + docRootId from cc-doc-scaffold return. ' +
-        'Run merge-create-component-handoff.mjs after cc-doc-scaffold first.',
+        `assemble-slice: cc-variants requires handoff.doc.pageContentId + docRootId (merge returns after each doc slice, through ${lastScaffold}). ` +
+          'Run merge-create-component-handoff.mjs after each scaffold sub-slice.',
       );
       process.exit(1);
     }
@@ -262,8 +310,6 @@ function buildVarGlobals(stepSlug, handoff) {
       );
       process.exit(1);
     }
-    const pcId = doc.pageContentId;
-    const drId = doc.docRootId;
     if (!pcId || !drId) {
       console.error(`assemble-slice: ${stepSlug} requires handoff.doc.pageContentId + docRootId.`);
       process.exit(1);

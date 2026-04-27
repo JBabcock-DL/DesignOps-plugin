@@ -1,27 +1,27 @@
 ---
 name: create-component-figma-slice-runner
-description: Normative spec for assembling one create-component Figma min slice (variant plane or doc step 1–6) — CONFIG + varGlobals + preamble + one committed *.min.figma.js, check-payload, one use_figma, compact return. Default transport is PARENT (or design-repo script) — not Task subagents, which often cannot emit full ~26–30K+ call_mcp payloads. Optional Task use only if this host is proven to pass full use_figma arguments from a subagent. Parent orchestration in conventions/13; EXECUTOR.md §0.
-argument-hint: "step=<cc-variants|cc-doc-…>, fileKey, layout, createComponentRoot, configBlock, registry, handoffJson — see SKILL §0."
+description: Normative spec for assembling one create-component Figma min slice (variant plane or doc step) — CONFIG + varGlobals + preamble + tuple ops (scaffold sub-slugs) or one committed *.min.figma.js, check-payload, one use_figma, compact return. Default transport is PARENT (or design-repo script) — not Task subagents, which often cannot emit full ~26–30K+ call_mcp payloads. Optional Task use only if this host is proven to pass full use_figma arguments from a subagent. Parent orchestration in conventions/13; EXECUTOR.md §0.
+argument-hint: "step=<cc-doc-scaffold-shell|…|cc-doc-finalize>, fileKey, layout, createComponentRoot, configBlock, registry, handoffJson — see SKILL §0."
 agent: general-purpose
 ---
 
 # Skill — `create-component-figma-slice-runner`
 
-This file defines the **one-slice** assembly contract and **handoff** shape for [`/create-component`](../create-component/SKILL.md) Step 6. It is the **authoritative spec** for what each `use_figma` payload contains (`configBlock` → `varGlobals` → patched preamble → one engine from **§2**).
+This file defines the **one-slice** assembly contract and **handoff** shape for [`/create-component`](../create-component/SKILL.md) Step 6. It is the **authoritative spec** for what each `use_figma` payload contains (`configBlock` → `varGlobals` → patched preamble → tuple ops for scaffold sub-slugs **or** one engine from **§2**).
 
-**Default transport (Composer-class / short-output hosts):** the **parent** (or a script in the **design repo**, e.g. `assemble-create-component-slice.mjs`) **assembles** per **§0.1**, runs **`check-payload`**, then the **parent** calls `use_figma` — **not** a `Task` subagent. Subagents often **cannot** materialize the full `use_figma` `arguments` JSON (including ~26–30K+ `code`) in one `call_mcp_tool` output. **Do not** default to `Task` → this skill for large slices, and do **not** delegate the **entire** seven-slice chain to a subagent when the contract is parent-owned MCP — a subagent may only **write** assembled `*.code.js` to disk for the parent to `Read` + `use_figma`. See [`../create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** and [`../create-component/conventions/08-cursor-composer-mcp.md`](../create-component/conventions/08-cursor-composer-mcp.md).
+**Default transport (Composer-class / short-output hosts):** the **parent** (or a script in the **design repo**, e.g. `assemble-create-component-slice.mjs`) **assembles** per **§0.1**, runs **`check-payload`**, then the **parent** calls `use_figma` — **not** a `Task` subagent. Subagents often **cannot** materialize the full `use_figma` `arguments` JSON (including ~26–30K+ `code`) in one `call_mcp_tool` output. **Do not** default to `Task` → this skill for large slices, and do **not** delegate the **entire** ten-slice chain to a subagent when the contract is parent-owned MCP — a subagent may only **write** assembled `*.code.js` to disk for the parent to `Read` + `use_figma`. See [`../create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** and [`../create-component/conventions/08-cursor-composer-mcp.md`](../create-component/conventions/08-cursor-composer-mcp.md).
 
 **Optional:** A **subagent** may run this skill only when the host is **proven** to pass the **full** tool arguments from a subagent. If a subagent `call_mcp` **fails** or **truncates** on slice size, **abandon** `Task` for that draw; continue in the **parent** with the same bytes.
 
 You **`Read`** [`preamble.figma.js`](../create-component/templates/preamble.figma.js) and **exactly one** committed `*.min.figma.js` from the **§2** map, **concatenate** with the parent’s **`configBlock`**, **phase / handoff globals** (§3), and patched preamble — order is **`configBlock` → `varGlobals` → preamble → engine** (§0.1). You run **`check-payload`** (and `check-use-figma-mcp-args` if available), then **one** `use_figma`. You **never** `Read` a different min bundle than §2 for this `step`, and you **do not** spawn another `Task` from inside this skill.
 
-**Parent** owns: Steps 1–5, 4.7, `SKILL.md` §9, registry 5.2, and **strictly sequential** scheduling of **seven** `use_figma` invocations — **one at a time**, DAG order only, **no parallel slices**. The **first** draw call is **always** `cc-doc-scaffold`; the **second** is **always** `cc-variants`. Do not start `cc-doc-component` or later until **both** have run and `handoffJson` has `doc` + `afterVariants`. Optional `Task` per slug **only** if viable — still **never** parallelize the ladder.
+**Parent** owns: Steps 1–5, 4.7, `SKILL.md` §9, registry 5.2, and **strictly sequential** scheduling of **10** `use_figma` invocations (see [orchestrator §1](../create-component/conventions/13-component-draw-orchestrator.md)) — **one at a time**, DAG order only, **no parallel slices**. The **first** draw call is **always** `cc-doc-scaffold-shell`; the **fifth** is **always** `cc-variants` (after `cc-doc-scaffold-placeholders`). Do not start `cc-doc-component` or later until **both** scaffold chain and variants have run and `handoffJson` has `doc` + `afterVariants`. Optional `Task` per slug **only** if viable — still **never** parallelize the ladder.
 
 **Phase file:** Open the matching row in [`/create-component` `phases/`](../create-component/phases/00-index.md) for the current `step` — same slug order as [orchestrator §1](../create-component/conventions/13-component-draw-orchestrator.md).
 
 | `step` | Read before slice |
 |--------|---------------------|
-| `cc-doc-scaffold` | [`phases/04-slice-cc-doc-scaffold.md`](../create-component/phases/04-slice-cc-doc-scaffold.md) |
+| `cc-doc-scaffold-shell` — `cc-doc-scaffold-placeholders` | [`phases/04-slice-cc-doc-scaffold.md`](../create-component/phases/04-slice-cc-doc-scaffold.md) (covers all four) |
 | `cc-variants` | [`phases/05-slice-cc-variants.md`](../create-component/phases/05-slice-cc-variants.md) |
 | `cc-doc-component` | [`phases/06-slice-cc-doc-component.md`](../create-component/phases/06-slice-cc-doc-component.md) |
 | `cc-doc-props` | [`phases/07-slice-cc-doc-props.md`](../create-component/phases/07-slice-cc-doc-props.md) |
@@ -35,13 +35,13 @@ You **`Read`** [`preamble.figma.js`](../create-component/templates/preamble.figm
 
 | Field | Required | Description |
 |--------|----------|-------------|
-| `step` | yes | Machine slug: `cc-variants` \| `cc-doc-scaffold` \| `cc-doc-props` \| `cc-doc-component` \| `cc-doc-matrix` \| `cc-doc-usage` \| `cc-doc-finalize` (see **§2**). Unknown → `{ ok: false, errors: ["unknown step"] }` — do not guess. |
+| `step` | yes | Machine slug: see [`SLUG_ORDER`](../../scripts/merge-create-component-handoff.mjs) (scaffold: `cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`, then `cc-variants` … `cc-doc-finalize`). Unknown → `{ ok: false, errors: ["unknown step"] }` — do not guess. |
 | `fileKey` | yes | Figma `fileKey` for `use_figma`. |
 | `layout` | yes | Must match `CONFIG.layout` inside `configBlock` (string: `chip`, `surface-stack`, `field`, `row-item`, `tiny`, `control`, `container`, `__composes__`). |
 | `configBlock` | yes | Verbatim `const CONFIG = { … };` (Markdown-fence stripped per **§0.1**). **Not** JSON — functions must survive. |
 | `createComponentRoot` | yes | Folder containing `templates/preamble.figma.js` (typically `…/skills/create-component/`). |
 | `registry` | yes | **(a)** Path to project `.designops-registry.json` at the design repo root — `Read` to fill `ACTIVE_FILE_KEY` and `REGISTRY_COMPONENTS` in the preamble, **or (b)** `activeFileKey` (string or null) + `registryComponentsJson` (stringified object) if the file is unavailable. |
-| `handoffJson` | **`cc-doc-scaffold`: optional / `{}`** (first draw slice); **`cc-variants`: required** — must include merged **`doc`** (`pageContentId`, `docRootId`) from scaffold; **`cc-doc-component` through `cc-doc-finalize`: required** — full `doc` + `afterVariants` (see **§3**) | JSON object; **parent-maintained** state between slices. Pass as a fenced `json` block or inline JSON. |
+| `handoffJson` | **`cc-doc-scaffold-shell`: optional / `{}`** (first draw slice); **scaffold 2–4:** must include merged **`doc`** from prior merges; **`cc-variants`: required** — `doc` with ids; **`cc-doc-component` through `cc-doc-finalize`: required** — full `doc` + `afterVariants` (see **§3**) | JSON object; **parent-maintained** state between slices. Pass as a fenced `json` block or inline JSON. |
 | `description` | no | `use_figma` description. |
 | `projectRootForShell` | no | Cwd for `npm run check-payload` if needed (DesignOps plugin root). |
 
@@ -71,7 +71,10 @@ Paths are under `{createComponentRoot}/templates/`. The **preamble** for MCP run
 
 | `step` | Engine file (one `Read`) |
 |--------|--------------------------|
-| `cc-doc-scaffold` | `create-component-engine-doc.step1.min.figma.js` — page + header + Properties table (placeholder body rows) |
+| `cc-doc-scaffold-shell` | Tuple ops + `op-interpreter.min.figma.js` via `assemble-slice` / `generate-ops` (not the raw `create-component-engine-doc.step1.min.figma.js` file — that min remains in repo for legacy `--legacy-bundles` only) |
+| `cc-doc-scaffold-header` | (same — continuation; handoff ids in `varGlobals`) |
+| `cc-doc-scaffold-table` | (same) |
+| `cc-doc-scaffold-placeholders` | (same) |
 | `cc-variants` | `create-component-engine-<archetype>.step0.min.figma.js` where `<archetype>` = `chip` \| `surface-stack` \| `field` \| `row-item` \| `tiny` \| `control` \| `container` \| `composed` (use **`composed`** when `layout` is `__composes__`) |
 | `cc-doc-component` | `create-component-engine-doc.step2.min.figma.js` — live ComponentSet into doc (replace placeholder) |
 | `cc-doc-props` | `create-component-engine-doc.step3.min.figma.js` — fill table cells in place from `CONFIG.properties` |
@@ -91,19 +94,23 @@ Parse `handoffJson` to an object. Use **safe JSON** for string/array/object lite
 
 **Schema (parent):**
 
-- `doc` — from **`cc-doc-scaffold`** onward: `pageContentId`, `docRootId`, refreshed after each doc step; **`compSetId` only after `cc-doc-component`**. Merge script retains prior `doc` when a slice omits `compSetId`.
+- `doc` — from **`cc-doc-scaffold-shell` return** onward (merge after each slice that returns ids): `pageContentId`, `docRootId`, refreshed after each doc step; **`compSetId` only after `cc-doc-component`**. Merge script retains prior `doc` when a slice omits `compSetId`.
 - `afterVariants` — from **`cc-variants`** return: at least `variantHolderId`, `propsAdded`, `unresolvedTokenMisses` (no `COMPONENT_SET` until `cc-doc-component`).
 
-**`cc-doc-scaffold`** (first draw slice — **no** variants, **no** `afterVariants` yet)
+**`cc-doc-scaffold-shell`** (first draw slice — **no** handoff page/doc ids in globals yet)
+
+**`cc-doc-scaffold-header` / `cc-doc-scaffold-table` / `cc-doc-scaffold-placeholders`** (continuation — **`assemble-slice` injects** `__CC_HANDOFF_PAGE_CONTENT_ID__` and `__CC_HANDOFF_DOC_ROOT_ID__` from `handoff.doc`; op-interpreter pre-seeds `refs.pc` / `refs.dr` — see [`assemble-slice.mjs`](../../scripts/assemble-slice.mjs) `buildVarGlobals`)
+
+**First slice only** — same as before:
 
 ```text
 var __CREATE_COMPONENT_PHASE__ = 2;
 var __CREATE_COMPONENT_DOC_STEP__ = 1;
 ```
 
-The min bundle already sets `__CREATE_COMPONENT_DOC_STEP__`; if assembling by hand, include it. **Do not** inject `__PHASE_1_VARIANT_HOLDER_ID__` or `__CC_PHASE1_*` for this slice.
+Continuation scaffold slices add the two `__CC_HANDOFF_*` lines (see script). **Do not** inject `__PHASE_1_VARIANT_HOLDER_ID__` or `__CC_PHASE1_*` until after `cc-variants`.
 
-**`cc-variants`** (second draw slice — **preserves** `_PageContent` from scaffold)
+**`cc-variants`** (fifth draw slice in the default ladder — **preserves** `_PageContent` from scaffold)
 
 ```text
 var __CREATE_COMPONENT_PHASE__ = 1;
@@ -171,7 +178,7 @@ On transient MCP error, **one** retry with identical `code` (same as [canvas-bun
 
 ## §5 — Hard prohibitions
 
-- **Do not** run **multiple** create-component draw slices **in parallel** or **out of DAG order** — merge the prior return into `handoff.json`, then invoke the **next** slug only (**`cc-doc-scaffold` before `cc-variants`**).
+- **Do not** run **multiple** create-component draw slices **in parallel** or **out of DAG order** — merge the prior return into `handoff.json`, then invoke the **next** slug only (**`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders` before `cc-variants`**, then the rest of the ladder in [`13` §1](../create-component/conventions/13-component-draw-orchestrator.md) order).
 - **Do not** call `use_figma` before the full `code` string is assembled and `check-payload` passes.
 - **Do not** `Read` any engine file except **preamble** + the **one** path from **§2** for this `step`/`layout`.
 - **Do not** minify, trim, or “fix” the engine or preamble.
