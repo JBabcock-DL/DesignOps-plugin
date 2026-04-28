@@ -1,6 +1,10 @@
 # DesignOps Step 6 engine — contract
 
-**Canonical script:** [`scripts/designops-step6-engine.mjs`](../../../scripts/designops-step6-engine.mjs)  
+**Canonical script:** [`scripts/designops-step6-engine.mjs`](../../../scripts/designops-step6-engine.mjs)
+
+**Default invoke path:** **Cursor or Claude Code Figma MCP** — parent **`Read`** **`.designops/staging/mcp-<slug>.json`**, **`call_mcp`** **`use_figma`**. **Optional fallback** (same JSON on disk — Node MCP client): [`scripts/figma-mcp-invoke-from-file.mjs`](../../../scripts/figma-mcp-invoke-from-file.mjs) **`npm run figma:mcp-invoke`** + **`finalizeHint.fallbackShellPipe`** in the manifest.
+
+**Operator doc:** [`docs/buildable-figma-payload-path.md`](../../../docs/buildable-figma-payload-path.md)  
 **Status helper:** [`scripts/lib/designops-step6-status.mjs`](../../../scripts/lib/designops-step6-status.mjs)  
 **Related:** [`08-cursor-composer-mcp`](./08-cursor-composer-mcp.md), [`21-mcp-ephemeral-payload-protocol`](./21-mcp-ephemeral-payload-protocol.md), [`EXECUTOR`](../EXECUTOR.md).
 
@@ -21,24 +25,46 @@
 ## `current-step.manifest.json` v1
 
 - **`version`** — integer `1`
-- **`strategy`** — always **`disk`**.
-- **`assembleArgv`** — exact argv used for `assemble-slice` subprocess (absolute paths); includes **`--emit-mcp-args`** to staging.
-- **`payload.mode`** — always **`disk`**: **`mcpArgsJson`** + **`codeJs`** under **`.designops/staging/`**.
-- **`finalizeHint`** — pipe return JSON to **`finalize-slice`** (see **`scripts/finalize-slice.mjs`**).
-- **`parent_actions`** — exactly **four** ops in order (execute literally):
+- **`strategy`** — always **`disk`**
+- **`assembleArgv`** — exact argv used for `assemble-slice` subprocess (absolute paths); includes **`--emit-mcp-args`** to staging
+- **`payload.mode`** — always **`disk`**: **`mcpArgsJson`** + **`codeJs`** under **`.designops/staging/`**
+- **`finalizeHint`** — **`mode`:** **`return-path`**; **`exampleFinalize`** (shell line for **`finalize-slice`** only); **`fallbackShellPipe`** (Node **`figma:mcp-invoke`** redirect + **`finalize-slice`** when IDE cannot **`call_mcp`**); **`examplePipeNotes`**
+- **`parent_actions`** — four ops in order (execute literally):
 
 ```json
 [
-  { "op": "RUN_SHELL", "argv": ["…assemble-slice…"], "cwd": "<REPO_ROOT>", "exitOnFail": [10, 11, 17] },
-  { "op": "READ_PATH", "path": "<drawDir>/.designops/staging/mcp-<slug>.json", "purpose": "mcp-args" },
-  { "op": "CALL_MCP_USE_FIGMA", "fromMcpJson": "<absolute path to same mcp-*.json>" },
-  { "op": "FINALIZE_STDIN", "slug": "<slug>", "handoffPath": "<handoff.json>" }
+  {
+    "op": "RUN_SHELL",
+    "argv": ["…assemble-slice…"],
+    "cwd": "<REPO_ROOT>",
+    "exitOnFail": [10, 11, 17]
+  },
+  {
+    "op": "READ_PATH",
+    "path": "<drawDir>/.designops/staging/mcp-<slug>.json",
+    "purpose": "Parent Read full staging JSON (assemble-slice --emit-mcp-args output)."
+  },
+  {
+    "op": "CALL_MCP_USE_FIGMA",
+    "stagingJsonPath": "<same as READ_PATH.path>",
+    "writeToolResultTo": "<drawDir>/return-<slug>.json",
+    "purpose": "Parse { fileKey, code, description, skillNames }; call_mcp use_figma via Cursor or Claude Code Figma MCP (mcps/…/SERVER_METADATA.json). Writes tool result JSON to disk before finalize.",
+    "note": "Not standalone Node MCP — optional escape: finalizeHint.fallbackShellPipe"
+  },
+  {
+    "op": "FINALIZE_SLICE",
+    "slug": "<slug>",
+    "handoffPath": "<handoff.json>",
+    "returnPath": "<drawDir>/return-<slug>.json",
+    "argv": ["node", "scripts/finalize-slice.mjs", "<slug>", "<handoff.json>", "--return-path", "<drawDir>/return-<slug>.json"],
+    "cwd": "<REPO_ROOT>"
+  }
 ]
 ```
 
-**`parent_actions[2]` (`CALL_MCP_USE_FIGMA`):** Older drafts described `fromMcpJson` as a **hint string** listing field names (`fileKey`, `code`, …). The **shipped manifest** uses **`fromMcpJson` as an absolute filesystem path** to the **`mcp-<slug>.json`** produced by **`designops-step6`** (same JSON the parent would `Read` for args). That is intentional: the path is copyable, diffable, and unambiguous; the parent still parses the file and passes **`fileKey`**, **`code`**, **`description`**, **`skillNames`** into `use_figma`.
+**`writeToolResultTo`:** Must contain the same JSON shape IDE **`use_figma`** would return (what **`merge-one`** expects). For **fallbackShellPipe**, **`npm run figma:mcp-invoke`** prints an unwrapped tool result — same merge shape.
 
-The parent thread **`Read`**s the **`mcp-*.json`** file in full (no chat paste), then **`call_mcp` → `use_figma`** with the parsed **`fileKey`**, **`code`**, **`description`**, **`skillNames`**.
+**`parent_actions[2]` vs Node script:** The **default** product path is **IDE MCP** — the same Desktop/remote Figma session the designer authorized in Cursor or Claude. **`figma:mcp-invoke`** only bypasses **IDE tool-arg serialization** (or runs in CI); it is **not** “the” integration when the editor already hosts Figma MCP.
 
 ---
 

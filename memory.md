@@ -7,7 +7,7 @@
 ## Authority stack (what to trust, in order)
 
 1. **`memory.md`** (this file) — *where to go, in what order, what not to load*
-2. **`AGENTS.md`** — *MCP payloads (inline default; ephemeral file staging per policy), Draw Engine manifests ([`skills/create-component/conventions/23-designops-step6-engine.md`](skills/create-component/conventions/23-designops-step6-engine.md)), canvas runner delegation, session split tables↔components, skill/cache sync*
+2. **`AGENTS.md`** — *MCP payloads (inline default; ephemeral file staging per policy), Draw Engine manifests ([`skills/create-component/conventions/23-designops-step6-engine.md`](skills/create-component/conventions/23-designops-step6-engine.md)), canvas runner delegation, session split tables↔components, skill/cache sync* — **Composer-class hosts:** **[`docs/composer2-canvas-playbook.md`](docs/composer2-canvas-playbook.md)** checklist (probe, `qa:assembled-size`, disk `Read` → `call_mcp`, fallback **`figma:mcp-invoke`**).
 3. **`skills/<skill>/SKILL.md` + linked shards** — *lazy-load only the phase or convention file the current step needs*
 
 Do not paste entire `SKILL.md` files into context “just in case.” Follow each skill’s lazy-load table / router.

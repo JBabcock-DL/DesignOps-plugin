@@ -15,6 +15,9 @@
 | [`conventions/06-audit-checklist.md`](./conventions/06-audit-checklist.md) | MA.* + S9.* audit checklist · authoritative-rule index (§14, §15) |
 | [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) | Token path canonicals · Step 4.7 pre-flight · banned inference strategies |
 | [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) | Cursor / Composer Step 6 transport · `Task` + runner |
+| [`conventions/22-delegate-blob-hotspots.md`](./conventions/22-delegate-blob-hotspots.md) | Delegated `*.min.figma.js` engines vs tuple path · hotspots · `npm run report:delegate-sizes` |
+| [`conventions/23-designops-step6-engine.md`](./conventions/23-designops-step6-engine.md) | Prepare manifest · `parent_actions` Draw Engine (`designops-step6-engine.mjs`) |
+| [`conventions/24-tuple-expand-delegated-roadmap.md`](./conventions/24-tuple-expand-delegated-roadmap.md) | Future tuple parity for delegated doc/variants engines |
 | [`conventions/13-component-draw-orchestrator.md`](./conventions/13-component-draw-orchestrator.md) | Step 6 · `SLUG_ORDER` · `*.step0` + `create-component-engine-doc.step1..6` · scaffold sub-slugs · **04** §2.2 placeholders |
 
 ## System audit — Mode A / Mode B (read order for agents)

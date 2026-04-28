@@ -165,6 +165,8 @@ async function cmdPrepare(raw) {
 
   const outPath = resolve(join(stagingDir, `${slug}.code.js`));
   const mcpPath = resolve(join(stagingDir, `mcp-${slug}.json`));
+  /** Figma return JSON capture path (same directory as handoff by default). */
+  const returnPathAbs = resolve(join(drawDir, `return-${slug}.json`));
 
   const assembleExe = resolve(REPO_ROOT, "scripts/assemble-slice.mjs");
 
@@ -210,9 +212,12 @@ async function cmdPrepare(raw) {
       },
     },
     finalizeHint: {
-      mode: "stdin",
-      examplePipe: `echo '<return-json>' | node scripts/finalize-slice.mjs ${slug} "${handoffArg}"`,
-      returnPathDoc: `Or save return to ${join(drawDir, `return-${slug}.json`)} and use finalize-slice --return-path.`,
+      mode: "return-path",
+      returnPath: returnPathAbs,
+      exampleFinalize: `node scripts/finalize-slice.mjs ${slug} "${handoffArg}" --return-path "${returnPathAbs}"`,
+      fallbackShellPipe: `FIGMA_DESKTOP_MCP_URL="$FIGMA_DESKTOP_MCP_URL" npm run figma:mcp-invoke -- --file "${mcpPath}" > "${returnPathAbs}" && node scripts/finalize-slice.mjs ${slug} "${handoffArg}" --return-path "${returnPathAbs}"`,
+      examplePipeNotes:
+        "Default: parent Read staging JSON → call_mcp use_figma (Cursor or Claude Code Figma MCP) → Write tool JSON to return-<slug>.json → exampleFinalize. Use fallbackShellPipe only when the IDE cannot serialize full tool arguments (probe) or for CI without call_mcp.",
     },
     parent_actions: [
       {
@@ -221,9 +226,36 @@ async function cmdPrepare(raw) {
         cwd: REPO_ROOT,
         exitOnFail: [10, 11, 17],
       },
-      { op: "READ_PATH", path: mcpPath, purpose: "mcp-args" },
-      { op: "CALL_MCP_USE_FIGMA", fromMcpJson: mcpPath },
-      { op: "FINALIZE_STDIN", slug, handoffPath: handoffArg },
+      {
+        op: "READ_PATH",
+        path: mcpPath,
+        purpose:
+          "Parent loads full staging JSON via Read (complete bytes — same object as emitted by assemble-slice --emit-mcp-args).",
+      },
+      {
+        op: "CALL_MCP_USE_FIGMA",
+        stagingJsonPath: mcpPath,
+        writeToolResultTo: returnPathAbs,
+        purpose:
+          "Parse JSON → { fileKey, code, description, skillNames }. Invoke use_figma through the Cursor or Claude Code Figma MCP connector (workspace mcps/…/SERVER_METADATA.json — do not hardcode server id). Writes the MCP tool result JSON to writeToolResultTo before finalize.",
+        note:
+          "This is the product-default path — not standalone Node MCP. Optional escape hatch: npm run figma:mcp-invoke (same JSON; Node StreamableHTTP to Desktop URL) — see finalizeHint.fallbackShellPipe.",
+      },
+      {
+        op: "FINALIZE_SLICE",
+        slug,
+        handoffPath: handoffArg,
+        returnPath: returnPathAbs,
+        argv: [
+          process.execPath,
+          resolve(REPO_ROOT, "scripts/finalize-slice.mjs"),
+          slug,
+          handoffArg,
+          "--return-path",
+          returnPathAbs,
+        ],
+        cwd: REPO_ROOT,
+      },
     ],
   };
 

@@ -30,16 +30,13 @@ function __ccPreflightFileKey() {
   const expected =
     typeof ACTIVE_FILE_KEY === 'string' && ACTIVE_FILE_KEY ? ACTIVE_FILE_KEY : null;
   if (observed === 'headless') {
-    return {
-      ok: false,
-      why: 'figma-headless-session',
-      fileKeyObserved: 'headless',
-      fileKeyExpected: expected,
-      remediation:
-        'figma.fileKey is "headless" — open ' +
-        (expected || 'the design file') +
-        ' in Figma Desktop with MCP linked, then re-run prepare.',
-    };
+    console.warn(
+      '[create-component] figma.fileKey is "headless" (common for some MCP connectors). ' +
+        'Draw proceeds against the active canvas — confirm you have ' +
+        (expected ? '"' + expected + '" ' : '') +
+        'open if using registry composes.',
+    );
+    return null;
   }
   if (observed && expected && observed !== expected) {
     return {

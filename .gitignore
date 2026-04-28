@@ -9,3 +9,11 @@ node_modules/
 mcp-figma-arguments*.json
 # Default `build-config-block` output at repo cwd (plan: design-repos; ignore when testing in-plugin).
 mcp-exports/
+
+# Composer 2 probe fixture — probe emit JSON, transport proofs, qa-assembled-size scratch ([`composer2-probe-draw/README`](scripts/test-fixtures/composer2-probe-draw/README.md)).
+scripts/test-fixtures/composer2-probe-draw/probe-args*.json
+scripts/test-fixtures/composer2-probe-draw/.transport-proof.json
+scripts/test-fixtures/composer2-probe-draw/.designops/
+
+# Local tuple-parity / QA reports (`npm run qa:tuple-parity`)
+.designops/

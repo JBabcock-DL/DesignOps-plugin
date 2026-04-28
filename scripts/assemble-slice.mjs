@@ -4,8 +4,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Single-command assembly for one create-component MCP ladder slice.
 // Collapses 5 manual steps (Read × 4 files, varGlobals build, check-payload,
-// check-use-figma-mcp-args, concat) into one command. Parent still owns
-// the `use_figma` call — this script writes the assembled code to --out.
+// check-use-figma-mcp-args, concat) into one command. **Invoke Figma** with
+// **Read** + **call_mcp `use_figma`** (Cursor / Claude Figma MCP — default),
+// or **`npm run figma:mcp-invoke -- --file`** (fallback; manifest `finalizeHint`).
+// This script writes assembly to --out / --emit-mcp-args.
 //
 // Implements: skills/create-component-figma-slice-runner/SKILL.md §0.1 assembly
 //             skills/create-component/conventions/13-component-draw-orchestrator.md §3
@@ -25,7 +27,8 @@
 //
 // Canonical on-disk name for JSON written by --emit-mcp-args: `mcp-<step-slug>.json` in the
 // design repo (e.g. `mcp-cc-doc-props.json`). Do not introduce parallel ad hoc names
-// (`mcp-invoke-use-figma.json`, etc.) in the same folder. Parent: `Read` full JSON → `call_mcp` / `use_figma`.
+// (`mcp-invoke-use-figma.json`, etc.) in the same folder. Consume with parent
+// **`Read` → `call_mcp` / `use_figma`**, or **`npm run figma:mcp-invoke -- --file`** (fallback).
 //
 // Exit codes:
 //   0  ok

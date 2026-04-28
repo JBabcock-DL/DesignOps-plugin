@@ -18,6 +18,7 @@ import {
 } from './op-generators/cc-doc-scaffold.mjs';
 import { toWireScaffoldOps } from './op-generators/compact-scaffold-ops.mjs';
 import { getDelegatedMinRelPath } from './op-generators/lib/delegate-legacy-min.mjs';
+import { tryTupleFirstDelegatedEngine } from './op-generators/tuple-delegate-pipeline.mjs';
 import { SCAFFOLD_SUB_SLUGS } from './merge-create-component-handoff.mjs';
 
 const SCAFFOLD_TUPLE = new Set(SCAFFOLD_SUB_SLUGS);
@@ -120,11 +121,19 @@ function readOpRuntimeMin(pluginRoot) {
 export function assembleOpsBody({ slug, config, layout, pluginRoot = REPO_ROOT, budget = null }) {
   const rel = getDelegatedMinRelPath(slug, layout, pluginRoot);
   if (rel) {
-    const abs = join(pluginRoot, rel);
-    if (!existsSync(abs)) {
-      throw new Error(`generate-ops: delegated min not found (run npm run build:min): ${abs}`);
+    const delegated = tryTupleFirstDelegatedEngine({
+      slug,
+      layout,
+      config,
+      pluginRoot,
+    });
+    if (typeof delegated === 'string' && delegated.length > 0) {
+      return delegated;
     }
-    return readFileSync(abs, 'utf8');
+    throw new Error(
+      `generate-ops: delegated slice "${slug}" (layout=${String(layout)}) ` +
+        'must resolve via tryTupleFirstDelegatedEngine — check delegate-legacy-min mapping',
+    );
   }
   if (SCAFFOLD_TUPLE.has(slug) || slug === 'cc-doc-scaffold-full-qa') {
     const verbose =

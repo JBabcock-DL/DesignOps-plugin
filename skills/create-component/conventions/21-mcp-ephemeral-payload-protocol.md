@@ -11,7 +11,7 @@
 
 | Axis | Question | Handles |
 |------|----------|---------|
-| **A — Transport** | Can this host pass **complete** MCP tool JSON **without truncation** when `code` is large? | Inline `code` vs **writer → `--out` / `--emit-mcp-args`** → parent **`Read`** → `call_mcp` ([`08`](./08-cursor-composer-mcp.md) §A, §D.1); [`docs/mcp-transport-cursor-fallback.md`](../../../docs/mcp-transport-cursor-fallback.md) |
+| **A — Transport** | Can this host pass **complete** MCP tool JSON **without truncation** when `code` is large? | **Default:** parent **`Read`** **`mcp-<slug>.json`** → **`call_mcp` `use_figma`** (Cursor or Claude Figma MCP). **Fallback:** **`npm run figma:mcp-invoke -- --file mcp-<slug>.json`** ([`23`](./23-designops-step6-engine.md), [`figma-mcp-invoke-from-file.mjs`](../../../scripts/figma-mcp-invoke-from-file.mjs)) **or** writer → disk → parent **`Read`** → **`call_mcp`** ([`08`](./08-cursor-composer-mcp.md) §A, §D.1); [`docs/mcp-transport-cursor-fallback.md`](../../../docs/mcp-transport-cursor-fallback.md) |
 | **B — Wire size** | Is the **assembled** slice still too heavy *even after* reliable transport? | More [`18`](./18-mcp-payload-budget.md) rounds, scaffold sub-slugs, [`build-min-templates`](../../../scripts/build-min-templates.mjs) / CONFIG projection / tuple ops per **18** |
 
 **Rule:** Fixing **B** alone does **not** fix pasted/truncated tool JSON; fixing **A** alone does **not** remove repeated CONFIG/engine bytes. Agents run **measurement** (`check-*`, probes) against the **failure class** they observe.
@@ -32,8 +32,8 @@ flowchart TD
   writer --> chk["check-payload + check-use-figma-mcp-args"]
   chk --> okChk{"Pass?"}
   okChk -->|no| fixAsm[Fix assembly / inputs — not transport]
-  okChk -->|yes| parentRead["Parent: Read full bytes → ONE call_mcp"]
-  parentRead --> doneA[finalize-slice merge handoff]
+  okChk -->|yes| invoke["Read mcp-<slug>.json → call_mcp use_figma (IDE); or figma:mcp-invoke fallback"]
+  invoke --> doneA[finalize-slice merge handoff]
 
   axisB --> smaller["Prefer more smaller slugs — 13 DAG — not trimming engines"]
   smaller --> roadmap["If still over budget — 18 + measure-sigma + build-min"]
@@ -57,7 +57,7 @@ Use this checklist **for every slice** when the parent prefers **not** to embed 
 | 1 | Agent | Resolve a **staging root** outside **`skills/`** in **this repo**: prefer **consumer design repo** (e.g. `<project>/designops-draw/<run-id>/` or existing `draw/`/`mcp-exports/`), **or** OS temp. **Never** commit scratch under **`skills/`** |
 | 2 | Shell | `node scripts/assemble-slice.mjs … --out <staging>/<slug>.code.js [--emit-mcp-args <staging>/mcp-<slug>.json]` from **DesignOps-plugin** root (paths to `--config-block`, `--handoff`, `--registry` point at the consumer project as today) ([`assemble-slice.mjs` header](../../../scripts/assemble-slice.mjs)) |
 | 3 | Shell | Scripts run **`check-payload`** + **`check-use-figma-mcp-args`** by default (**exit ≠ 0** → fix inputs; do **not** skip unless you documented `--skip-*` reason) |
-| 4 | **Parent** only | **`Read`** the **`--out`** file **or** `mcp-<slug>.json` (full file; **no** shell `cat` of huge blobs for truth) → **`call_mcp` `use_figma`** with the same `{ fileKey, code, … }` bytes the JSON encodes |
+| 4 | **Parent** (default) or **Shell** (fallback) | **Parent** **`Read`** `mcp-<slug>.json` → **`call_mcp` `use_figma`** (Cursor or Claude Code Figma MCP) → **`Write`** **`return-<slug>.json`**. **Or** **`npm run figma:mcp-invoke`** with **`FIGMA_DESKTOP_MCP_URL`** — Node reads the same file; use when IDE transport fails **[`probe-parent-transport`](../../../scripts/probe-parent-transport.mjs)** or CI has no MCP |
 | 5 | **Parent** | `finalize-slice` / [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) per **`13`** — update **`handoff.json`** on disk; do not paraphrase large returns |
 | 6 | Agent | **`Delete`** staging files **after** successful merge when the designers do not need retained debug artifacts (`gitignored` dirs are fine leaving until session end) |
 
@@ -69,7 +69,7 @@ Use this checklist **for every slice** when the parent prefers **not** to embed 
 
 **Still forbidden:**
 
-- **`Task` / subagent calling `call_mcp` / `use_figma`** except rare proof that subagent emits full MCP args (**default = parent**) ([`08`](./08-cursor-composer-mcp.md) §D.1).
+- **`Task` / subagent calling `figma:mcp-invoke` / `call_mcp` / `use_figma`** except rare proof that subagent emits full MCP args (**default = manifest `Read` + `call_mcp`** or **`fallbackShellPipe`**) ([`08`](./08-cursor-composer-mcp.md) §D.1).
 - **`PLACEHOLDER`** or hand-trimmed `code` to “fit.”
 - **Parallel naming schemes** in the same **`--emit-mcp-args` directory** (`mcp-invoke-*.json`, etc.) — script **exit 17** exists to enforce this ([`assemble-slice`](../../../scripts/assemble-slice.mjs)).
 

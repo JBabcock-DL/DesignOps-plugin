@@ -1,6 +1,6 @@
 # Micro-granular create-component phase ladder (many small `use_figma` calls)
 
-**Goal:** Shrink each MCP payload toward [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md) (≲ **8–10 kB** UTF-8) by **splitting** one logical “step” into **many** machine slugs, each doing **one** small, idempotent change on the canvas. Total **round trips** go up; **table width and auto-layout invariants** must not regress.
+**Goal:** Shrink each **plugin `code`** payload toward [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md) (≲ **8–10 kB** UTF-8) by **splitting** one logical “step” into **many** machine slugs, each doing **one** small, idempotent change on the canvas. Total **round trips** go up; **table width and auto-layout invariants** must not regress. **Transport** for Step 6 is **`Read` → IDE `call_mcp`** (**[`23`](./23-designops-step6-engine.md)**), with **`figma:mcp-invoke`** as fallback — granular slicing is for **canvas correctness**, not Composer wire limits.
 
 **Authority:** This file does not override [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2–2.2.1** or [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md) (fixed DAG + scaffold intermediate states) — it **refines** how to add slices without tripping them.
 

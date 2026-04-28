@@ -107,25 +107,25 @@ if (_fileKeyMismatch) {
   logFileKeyMismatch(ACTIVE_FILE_KEY, _fileKeyObserved);
 }
 
-// File-binding preflight. Returns structured { ok: false, ... } when the running plugin
-// is not attached to the expected file — including figma.fileKey === "headless".
-// Returns null when the binding is acceptable to continue draws.
+// File-binding preflight. Returns structured { ok: false, ... } only for a mismatched,
+// non-placeholder fileKey. Returns null when the binding is acceptable to continue draws.
+//
+// figma.fileKey === "headless": several IDE/MCP transports always stub this — it is NOT
+// proof the wrong document is focused. Warn and continue (same spirit as § file-key gate
+// above). Verify the correct file by canvas content / ACTIVE_FILE_KEY for composes.
 function __ccPreflightFileKey() {
   const observed =
     typeof figma.fileKey === 'string' && figma.fileKey ? figma.fileKey : null;
   const expected =
     typeof ACTIVE_FILE_KEY === 'string' && ACTIVE_FILE_KEY ? ACTIVE_FILE_KEY : null;
   if (observed === 'headless') {
-    return {
-      ok: false,
-      why: 'figma-headless-session',
-      fileKeyObserved: 'headless',
-      fileKeyExpected: expected,
-      remediation:
-        'figma.fileKey is "headless" — open ' +
-        (expected || 'the design file') +
-        ' in Figma Desktop with MCP linked, then re-run prepare.',
-    };
+    console.warn(
+      '[create-component] figma.fileKey is "headless" (common for some MCP connectors). ' +
+        'Draw proceeds against the active canvas — confirm you have ' +
+        (expected ? '"' + expected + '" ' : '') +
+        'open if using registry composes.',
+    );
+    return null;
   }
   if (observed && expected && observed !== expected) {
     return {

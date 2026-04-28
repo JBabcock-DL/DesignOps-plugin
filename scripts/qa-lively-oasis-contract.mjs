@@ -38,12 +38,12 @@ need(
   "op-interpreter fail-fast",
 );
 
-// 14 convention files (21 − 7 deleted in Lively Oasis consolidation)
+// 16 convention files (14 Lively Oasis consolidation + 22 delegate hotspots + 24 tuple roadmap)
 const convDir = join(REPO_ROOT, "skills/create-component/conventions");
 const mdFiles = readdirSync(convDir).filter((f) => f.endsWith(".md"));
-if (mdFiles.length !== 14) {
+if (mdFiles.length !== 16) {
   console.error(
-    `qa-lively-oasis-contract: expected 14 conventions/*.md files, got ${mdFiles.length}: ${mdFiles.sort().join(", ")}`,
+    `qa-lively-oasis-contract: expected 16 conventions/*.md files, got ${mdFiles.length}: ${mdFiles.sort().join(", ")}`,
   );
   failures++;
 } else {
