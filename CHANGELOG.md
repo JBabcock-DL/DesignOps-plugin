@@ -4,6 +4,10 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ## [Unreleased]
 
+### Fixed — CONFIG projection + Mode B CONFIG with functions
+
+- **`scripts/config-projection.mjs`** — Identity projection no longer relies on **`structuredClone`** alone; CONFIG blocks that include function-valued fields (`applyStateOverride`, `label`) fall back to the original object when clone fails (**`assemble-slice`** generate-ops tuple path). **`scripts/qa-config-projection.mjs`** covers the function-valued case.
+
 ### Added — MCP payload transport (`21`) + deterministic Step 6 flows (`22`)
 
 - **[`skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md`](skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md)** — Normative two-axis model (**transport** vs **wire size**), per-slice `assemble-slice` checklist, **`mcp-<slug>.json`** naming, pairing with **`20`**. Linked from **`AGENTS.md`**, [`00-overview.md`](skills/create-component/conventions/00-overview.md), [`memory.md`](memory.md). [`EXECUTOR`](skills/create-component/EXECUTOR.md), [`08-cursor-composer-mcp`](skills/create-component/conventions/08-cursor-composer-mcp.md).

@@ -28,10 +28,20 @@ export function applyConfigProjectionForSlug(slug, config) {
   const rule = map.bySlug?.[slug] ?? map.defaults ?? { allowTopLevelKeys: null };
   const keys = rule.allowTopLevelKeys;
   if (keys === null || keys === undefined) {
-    return structuredClone(config);
+    try {
+      return structuredClone(config);
+    } catch {
+      // CONFIG commonly includes function-valued fields (`applyStateOverride`, `label`).
+      // structuredClone cannot copy those; downstream read-only consumers may share the reference.
+      return config;
+    }
   }
   if (!Array.isArray(keys)) {
-    return structuredClone(config);
+    try {
+      return structuredClone(config);
+    } catch {
+      return config;
+    }
   }
   const out = {};
   for (const k of keys) {

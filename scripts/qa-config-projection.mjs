@@ -23,6 +23,12 @@ assert.deepStrictEqual(
   "defaults should preserve full CONFIG"
 );
 
+assert.strictEqual(
+  applyConfigProjectionForSlug("cc-variants", { x: 1, fn: () => 1 }).fn(),
+  1,
+  "identity path must tolerate function-valued CONFIG (structuredClone fallback)"
+);
+
 assert.ok(
   configObjectToEmbeddedBlock({ x: 1 }).includes('"x": 1'),
   "embedded block should stringify"
