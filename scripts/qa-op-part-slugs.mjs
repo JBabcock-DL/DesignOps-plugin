@@ -3,8 +3,8 @@
 import { pred, isValidStepSlug, validatePhaseStateSchema } from './merge-create-component-handoff.mjs';
 
 const a = pred('cc-doc-matrix.part1');
-if (a !== 'cc-doc-props') {
-  console.error(`qa-op-part-slugs: expected pred(cc-doc-matrix.part1)===cc-doc-props, got ${a}`);
+if (a !== 'cc-doc-props-2') {
+  console.error(`qa-op-part-slugs: expected pred(cc-doc-matrix.part1)===cc-doc-props-2, got ${a}`);
   process.exit(1);
 }
 const b = pred('cc-doc-matrix.part2');
@@ -23,11 +23,13 @@ const multipartState = {
   completedSlugs: [
     'cc-doc-scaffold-shell',
     'cc-doc-scaffold-header',
-    'cc-doc-scaffold-table',
+    'cc-doc-scaffold-table-chrome',
+    'cc-doc-scaffold-table-body',
     'cc-doc-scaffold-placeholders',
     'cc-variants',
     'cc-doc-component',
-    'cc-doc-props',
+    'cc-doc-props-1',
+    'cc-doc-props-2',
     'cc-doc-matrix.part1',
   ],
   lastCodeSha256: '0'.repeat(64),

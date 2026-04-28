@@ -1,5 +1,7 @@
 # MCP `σ` budget — **total** `code` across all calls in one draw
 
+> **Per-call target (2026+):** Prefer **8–10 kB** UTF-8 per `use_figma` round trip for host/model stability — see [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md). The σ (sigma) model below is still the design-time check for **partitioning** work without redundant engine compiles.
+
 **Definition — σ (sigma):** For one component draw, **σ = sum of `len(code)`** over every `use_figma` in that draw.
 
 **Goal many teams want:** **σ ≲ ~45K** (same order as a **one-shot** monolith) **and** **several** MCP calls (phases, skills, subagents) for **per-call** host limits and clearer orchestration.

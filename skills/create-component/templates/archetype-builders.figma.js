@@ -203,8 +203,8 @@ function wireIconSwapProp(comp, slotNode, propKeys, propName) {
       ...(slotNode.componentPropertyReferences || {}),
       mainComponent: key,
     };
-  } catch (err) {
-    console.warn(`wireIconSwapProp failed for ${propName}:`, err && err.message ? err.message : err);
+  } catch (e) {
+    console.warn('wI', propName, e);
   }
 }
 
@@ -229,7 +229,6 @@ function buildSurfaceStackVariant(name, fillVar, fallbackFill, {
   radiusVar     = 'radius/xl',
   padH          = 'space/2xl',
   sizeKey       = null,
-  propLabelText = 'Card',
 } = {}) {
   const surface = CONFIG.surface || {};
   const padYTok = surface.sectionPadY ?? padH;
@@ -379,8 +378,8 @@ function buildSurfaceStackVariant(name, fillVar, fallbackFill, {
       propKeys.footer = c.addComponentProperty('Show footer', 'BOOLEAN', true);
       footerFrame.componentPropertyReferences = { visible: propKeys.footer };
     }
-  } catch (err) {
-    console.warn(`addComponentProperty (surface-stack) failed on '${name}':`, err && err.message ? err.message : err);
+  } catch (e) {
+    console.warn('ccProp', name, e);
   }
 
   figma.currentPage.appendChild(c);
@@ -558,8 +557,8 @@ function buildFieldVariant(name, fillVar, fallbackFill, {
       // Select chevron — INSTANCE_SWAP only, no boolean toggle.
       wireIconSwapProp(c, trailingSlotNode, propKeys, 'Icon: chevron');
     }
-  } catch (err) {
-    console.warn(`addComponentProperty (field) failed on '${name}':`, err && err.message ? err.message : err);
+  } catch (e) {
+    console.warn('ccProp', name, e);
   }
 
   figma.currentPage.appendChild(c);
@@ -688,8 +687,8 @@ function buildRowItemVariant(name, fillVar, fallbackFill, {
       };
       wireIconSwapProp(c, trailingSlotNode, propKeys, row.trailingIsChevron ? 'Icon: chevron' : 'Icon: trailing');
     }
-  } catch (err) {
-    console.warn(`addComponentProperty (row-item) failed on '${name}':`, err && err.message ? err.message : err);
+  } catch (e) {
+    console.warn('ccProp', name, e);
   }
 
   figma.currentPage.appendChild(c);
@@ -1091,8 +1090,8 @@ function buildContainerVariant(name, fillVar, fallbackFill, {
       panel.children[0].componentPropertyReferences = { characters: propKeys.content };
     }
     wireIconSwapProp(c, chev, propKeys, 'Icon: chevron');
-  } catch (err) {
-    console.warn(`addComponentProperty (container) failed on '${name}':`, err && err.message ? err.message : err);
+  } catch (e) {
+    console.warn('ccProp', name, e);
   }
 
   figma.currentPage.appendChild(c);
@@ -1164,8 +1163,8 @@ function buildComposedVariant(name, fillVar, fallbackFill, {
       if (spec.defaultProps && typeof spec.defaultProps === 'object') {
         try {
           inst.setProperties(spec.defaultProps);
-        } catch (err) {
-          console.warn(`setProperties on ${spec.component} instance:`, err && err.message ? err.message : err);
+        } catch (e) {
+          console.warn('setP', spec.component, e);
         }
       }
       slotFrame.appendChild(inst);

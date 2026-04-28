@@ -15,7 +15,7 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **Mandatory:** Before any install, assembly, or `use_figma` call, `Read` [`EXECUTOR.md`](./EXECUTOR.md) in full. It holds the canonical **§0** quickstart (script assembly order, `check-payload` gates, short-context / MCP transport table, session runbook, twelve-step table, §0.1–§0.3). This **`SKILL.md`** file is the long-form spec (§1 onward: interactive contract, CONFIG schema, §6 template, §9 assertions, supported components). If `EXECUTOR.md` and a numbered section here conflict on **assembly or transport**, **EXECUTOR.md** wins; for **CONFIG shape and draw-engine behavior**, this file wins when explicitly cited.
 
-**Step 6 — orchestrated slice draw:** The **default** path is the **parent-owned DAG** in [`conventions/13-component-draw-orchestrator.md`](./conventions/13-component-draw-orchestrator.md): **10** sequential `use_figma` invocations, each assembled per [`../create-component-figma-slice-runner/SKILL.md`](../create-component-figma-slice-runner/SKILL.md) (`cc-doc-scaffold-shell` → … → `cc-doc-scaffold-placeholders` → `cc-variants` → `cc-doc-component` → … → `cc-doc-finalize`), the same **`configBlock`** and registry each time, and **`handoffJson`** updated from the prior return. The parent **may** `Read` minified engines in the main thread. **Do not** default to **`Task` → slice runner** for slices the subagent cannot emit in `call_mcp` (common). **`EXECUTOR.md`** §0 *Step 6 — transport* is authoritative.
+**Step 6 — orchestrated slice draw:** The **default** path is the **parent-owned DAG** in [`conventions/13-component-draw-orchestrator.md`](./conventions/13-component-draw-orchestrator.md): **12** sequential `use_figma` invocations, each assembled per [`../create-component-figma-slice-runner/SKILL.md`](../create-component-figma-slice-runner/SKILL.md) (`cc-doc-scaffold-shell` → … → `cc-doc-scaffold-placeholders` → `cc-variants` → `cc-doc-component` → … → `cc-doc-finalize`), the same **`configBlock`** and registry each time, and **`handoffJson`** updated from the prior return. The parent **may** `Read` minified engines in the main thread. **Do not** default to **`Task` → slice runner** for slices the subagent cannot emit in `call_mcp` (common). **`EXECUTOR.md`** §0 *Step 6 — transport* is authoritative.
 
 **Alternatives:** Phased two-call **or** one-shot full engine **`use_figma` in the parent** per **`EXECUTOR.md`** when the designer wants fewer Figma round trips; the parent always runs **Step 5.5** locally. Optional **`Task`** per slice only if the host is **proven** to pass full slice `code` from a subagent.
 
@@ -27,7 +27,7 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 ## Conventions load map (lazy — required)
 
-`Read` **only** the convention files for the phase you are executing. For the **draw phases (04–10)** — **scaffold** (`04`, **four** machine sub-slices) **then** **variants** (`05`) + **five** doc slices (component through finalize) — the standing set is [`13`](./conventions/13-component-draw-orchestrator.md), [`09` §1](./conventions/09-mcp-multi-step-doc-pipeline.md) (dependency order), and [slice runner §2](../create-component-figma-slice-runner/SKILL.md) (which min file each `step` uses). When **editing CONFIG** or **debugging layout**, also open [`01-config-schema.md`](./conventions/01-config-schema.md) and/or [`04-doc-pipeline-contract.md`](./conventions/04-doc-pipeline-contract.md).
+`Read` **only** the convention files for the phase you are executing. For the **draw phases (04–11)** — **scaffold** (`04`, **five** machine sub-slices) **then** **variants** (`05`) + **six** doc-sequence machine legs (`cc-doc-component` through `cc-doc-finalize`, including **two** props-fill phases **07** + **08**) — the standing set is [`13`](./conventions/13-component-draw-orchestrator.md), [`09` §1](./conventions/09-mcp-multi-step-doc-pipeline.md) (dependency order), and [slice runner §2](../create-component-figma-slice-runner/SKILL.md) (which min file each `step` uses). When **editing CONFIG** or **debugging layout**, also open [`01-config-schema.md`](./conventions/01-config-schema.md) and/or [`04-doc-pipeline-contract.md`](./conventions/04-doc-pipeline-contract.md).
 
 | Phase | When | Convention files to open |
 |------|------|---------------------------|
@@ -37,16 +37,17 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 | 04 | Step 6 — scaffold sub-slices (`cc-doc-scaffold-shell` …) | [`13` §1](./conventions/13-component-draw-orchestrator.md), [`09` §1](./conventions/09-mcp-multi-step-doc-pipeline.md), [slice runner §2](../create-component-figma-slice-runner/SKILL.md) + optional [`04-doc-pipeline-contract.md`](./conventions/04-doc-pipeline-contract.md) if debugging |
 | 05 | Step 6 — slice `cc-variants` | same as 04 |
 | 06 | Step 6 — slice `cc-doc-component` | same as 04 + optional `04` if debugging |
-| 07 | Step 6 — slice `cc-doc-props` | same as 04 + optional `04` if debugging |
-| 08 | Step 6 — slice `cc-doc-matrix` | same as 04 + optional `04` if debugging |
-| 09 | Step 6 — slice `cc-doc-usage` | same as 04 + optional `04` if debugging |
-| 10 | Step 6 — slice `cc-doc-finalize` **then** Step 7 closeout (same phase file) | Part A: same as 04 · Part B: [`06-audit-checklist.md`](./conventions/06-audit-checklist.md) · [`resolver/merge-registry.mjs`](./resolver/merge-registry.mjs) for 5.2 |
+| 07 | Step 6 — slice `cc-doc-props-1` | same as 04 + optional `04` if debugging |
+| 08 | Step 6 — slice `cc-doc-props-2` | same as 04 + optional `04` if debugging |
+| 09 | Step 6 — slice `cc-doc-matrix` | same as 04 + optional `04` if debugging |
+| 10 | Step 6 — slice `cc-doc-usage` | same as 04 + optional `04` if debugging |
+| 11 | Step 6 — slice `cc-doc-finalize` **then** Step 7 closeout (same phase file) | Part A: same as 04 · Part B: [`06-audit-checklist.md`](./conventions/06-audit-checklist.md) · [`resolver/merge-registry.mjs`](./resolver/merge-registry.mjs) for 5.2 |
 
 ---
 
 ## Phase execution (orchestration — required order)
 
-**Ten phases (01–10), strictly sequential:** finish phase **N** completely before starting **N+1**. **Steps 1–5** and **4.7** map to **01–03**; **Step 6** is **10** `use_figma` legs **04–10 Part A** — **scaffold (four sub-slices) before variants** — then component through finalize (parent default, one call per leg); **Step 7** is **10 Part B** (§9, 5.2, §8) — read [`phases/10-slice-cc-doc-finalize.md`](./phases/10-slice-cc-doc-finalize.md) in full for both. `EXECUTOR` phasing / preassembled: [`EXECUTOR.md`](./EXECUTOR.md) §0.
+**Eleven phases (01–11), strictly sequential:** finish phase **N** completely before starting **N+1**. **Steps 1–5** and **4.7** map to **01–03**; **Step 6** is **12** `use_figma` machine slugs, documented as **phases 04–11 Part A** — **scaffold (five sub-slices) before variants** — then component through finalize (parent default, one `use_figma` per machine slug); **Step 7** is **11 Part B** (§9, 5.2, §8) — read [`phases/11-slice-cc-doc-finalize.md`](./phases/11-slice-cc-doc-finalize.md) in full for both. `EXECUTOR` phasing / preassembled: [`EXECUTOR.md`](./EXECUTOR.md) §0.
 
 | Phase | Scope | Read path |
 |------|--------|------------|
@@ -54,13 +55,14 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 | 01 | Steps 1–3, 3b | [`phases/01-setup.md`](./phases/01-setup.md) |
 | 02 | Steps 4, 4.3, 4.4, 4.7; §4.5 | [`phases/02-install.md`](./phases/02-install.md) |
 | 03 | Step 5; Figma prep | [`phases/03-figma-prep.md`](./phases/03-figma-prep.md) |
-| 04 | Step 6, legs 1–4/10 — `cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders` | [`phases/04-slice-cc-doc-scaffold.md`](./phases/04-slice-cc-doc-scaffold.md) |
-| 05 | Step 6, leg 5/10 — `cc-variants` | [`phases/05-slice-cc-variants.md`](./phases/05-slice-cc-variants.md) |
-| 06 | Step 6, leg 6/10 — `cc-doc-component` | [`phases/06-slice-cc-doc-component.md`](./phases/06-slice-cc-doc-component.md) |
-| 07 | Step 6, leg 7/10 — `cc-doc-props` | [`phases/07-slice-cc-doc-props.md`](./phases/07-slice-cc-doc-props.md) |
-| 08 | Step 6, leg 8/10 — `cc-doc-matrix` | [`phases/08-slice-cc-doc-matrix.md`](./phases/08-slice-cc-doc-matrix.md) |
-| 09 | Step 6, leg 9/10 — `cc-doc-usage` | [`phases/09-slice-cc-doc-usage.md`](./phases/09-slice-cc-doc-usage.md) |
-| 10 | Step 6, leg 10/10 — `cc-doc-finalize` **+** Step 7 closeout | [`phases/10-slice-cc-doc-finalize.md`](./phases/10-slice-cc-doc-finalize.md) |
+| 04 | Step 6, machine slugs 1–5/12 — `cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders` | [`phases/04-slice-cc-doc-scaffold.md`](./phases/04-slice-cc-doc-scaffold.md) |
+| 05 | Step 6, machine slug 6/12 — `cc-variants` | [`phases/05-slice-cc-variants.md`](./phases/05-slice-cc-variants.md) |
+| 06 | Step 6, machine slug 7/12 — `cc-doc-component` | [`phases/06-slice-cc-doc-component.md`](./phases/06-slice-cc-doc-component.md) |
+| 07 | Step 6, machine slug 8/12 — `cc-doc-props-1` | [`phases/07-slice-cc-doc-props-1.md`](./phases/07-slice-cc-doc-props-1.md) |
+| 08 | Step 6, machine slug 9/12 — `cc-doc-props-2` | [`phases/08-slice-cc-doc-props-2.md`](./phases/08-slice-cc-doc-props-2.md) |
+| 09 | Step 6, machine slug 10/12 — `cc-doc-matrix` | [`phases/09-slice-cc-doc-matrix.md`](./phases/09-slice-cc-doc-matrix.md) |
+| 10 | Step 6, machine slug 11/12 — `cc-doc-usage` | [`phases/10-slice-cc-doc-usage.md`](./phases/10-slice-cc-doc-usage.md) |
+| 11 | Step 6, machine slug 12/12 — `cc-doc-finalize` **+** Step 7 closeout | [`phases/11-slice-cc-doc-finalize.md`](./phases/11-slice-cc-doc-finalize.md) |
 
 ---
 
@@ -1397,7 +1399,7 @@ After all components have been processed, call **AskUserQuestion**: "Run `/code-
 
 ### Step 8 — Report results
 
-**On-disk handoff / phase-state:** If the run used `merge-create-component-handoff.mjs` and `phase-state.json`, cross-check: **`completedSlugs` length and `nextSlug` must match** how many merge runs actually happened. If you skipped merges or hand-edited state, say so in **Notes** — do not claim a full ten-slice closeout when `handoff.json` and `phase-state.json` (or the merge count) are out of sync, and do not invent `lastCodeSha256` ([`13` §4](conventions/13-component-draw-orchestrator.md), [`10` Part B](phases/10-slice-cc-doc-finalize.md)).
+**On-disk handoff / phase-state:** If the run used `merge-create-component-handoff.mjs` and `phase-state.json`, cross-check: **`completedSlugs` length and `nextSlug` must match** how many merge runs actually happened. If you skipped merges or hand-edited state, say so in **Notes** — do not claim a full **12-slice** ladder closeout when `handoff.json` and `phase-state.json` (or the merge count) are out of sync, and do not invent `lastCodeSha256` ([`13` §4](conventions/13-component-draw-orchestrator.md), [`11` Part B](phases/11-slice-cc-doc-finalize.md)).
 
 Output a summary table:
 

@@ -4,9 +4,10 @@
 
 ## Agent execution (automation)
 
-- **Run** every `node scripts/…` and `npm run …` step here yourself (shell from the **DesignOps-plugin** repo root). Do not tell the user to copy-paste commands unless you are blocked (e.g. `FIGMA_DESKTOP_MCP_URL` not set for path **4b**, or interactive auth).
-- **`--emit-mcp-args`:** use it when taking path **4b** so `figma:mcp-invoke` has a file to read.
-- **4b order:** `npm run figma:mcp-invoke -- --dry-run --file <mcp-json>` then, with URL in env, `npm run figma:mcp-invoke -- --file <same>`. Cursor: [`.cursor/rules/agent-run-designops-commands.mdc`](../../.cursor/rules/agent-run-designops-commands.mdc).
+- **Run** every `node scripts/…` and `npm run …` step here yourself (shell from the **DesignOps-plugin** repo root). Do not tell the user to copy-paste commands unless you are blocked (e.g. the environment has no Figma MCP and cannot `call_mcp` / `use_figma` at all).
+- **Payload budget:** target **8–10 kB** (UTF-8) per assembled `code` + full MCP `arguments` per slice — [`conventions/18-mcp-payload-budget.md`](./conventions/18-mcp-payload-budget.md). If a slice is still huge, add **more** machine sub-slugs / `.partN` steps (merge-handoff order) and thinner engines — not a second MCP client.
+- **`--emit-mcp-args`:** use when the parent will **`Read`** the same JSON in full and pass it to `call_mcp` (large objects must not be retyped in chat).
+- **Default — remote MCP in the IDE:** Figma is connected via the host’s Figma MCP (e.g. Cursor marketplace, OAuth). **Parent** assembles, **`Read`s** the emitted `*.js` or `mcp-*.json` in full, then **`call_mcp`** (see `mcps/**/SERVER_METADATA.json` → `serverIdentifier`).
 
 ## One-time setup
 
@@ -20,16 +21,14 @@
 
 ```
 1. node scripts/build-config-block.mjs <component>
-2. # Loop 3–5 for each of 10 slices in this order:
-   cc-doc-scaffold-shell → cc-doc-scaffold-header → cc-doc-scaffold-table →
-   cc-doc-scaffold-placeholders → cc-variants → cc-doc-component → cc-doc-props →
+2. # Loop 3–5 for each draw slug in this order (expand with .part2+ when a step is still too fat):
+   cc-doc-scaffold-shell → cc-doc-scaffold-header → cc-doc-scaffold-table-chrome →
+   cc-doc-scaffold-table-body →
+   cc-doc-scaffold-placeholders → cc-variants → cc-doc-component → cc-doc-props-1 →
+   cc-doc-props-2 →
    cc-doc-matrix → cc-doc-usage → cc-doc-finalize
 3. node scripts/assemble-slice.mjs ... [--emit-mcp-args <draw/mcp-<slug>.json>]
-4a. **IDE path:** Call `use_figma` in the parent with the assembled code from `--out` (or `Read` the emit JSON and call MCP).
-4b. **Desktop MCP path (no huge tool arg in chat):** Figma Desktop → Dev Mode → MCP on → copy URL. Then:
-    `FIGMA_DESKTOP_MCP_URL="…" npm run figma:mcp-invoke -- --file draw/mcp-<slug>.json`
-    Preflight only: `npm run figma:mcp-invoke -- --dry-run --file draw/mcp-<slug>.json`
-    See [`docs/buildable-figma-payload-path.md`](../../docs/buildable-figma-payload-path.md).
+4. **use_figma** — parent **`call_mcp`** with server id from `mcps/**/SERVER_METADATA.json`. Assembled `code` = `Read` full `--out` or full JSON from `--emit-mcp-args` (no hand-copy of truncated lines).
 5. node scripts/merge-create-component-handoff.mjs <slug> handoff.json return.json
 ```
 
@@ -39,15 +38,15 @@
 
 1. Re-read `phase-state.json` for `nextSlug` and the on-disk `handoff.json`.
 2. If `assemble-slice.mjs` exits **10** or **11** (`check-payload` / `check-use-figma-mcp-args`), fix the assembled code or MCP args before retrying.
-3. If `use_figma` returns truncation or `Unexpected end of JSON input`, halt — do not retry the same shape; use a host that can pass the full tool-arguments JSON, **or** run [`npm run figma:mcp-invoke`](../../docs/buildable-figma-payload-path.md) against Figma Desktop MCP with `--emit-mcp-args`, **or** reduce payload size in source templates.
-4. Escalate to a higher-capacity model for that single `use_figma` call if needed.
+3. If `use_figma` returns truncation or `Unexpected end of JSON input`, **split the work** (more sub-slugs, thinner bundle, or [`probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs) once to document the host) — do not assume a separate shell invoker will fix auth or session parity with the IDE.
+4. Escalate to a higher-capacity model for that single `use_figma` call if the bytes are already minimal and the host is proven to accept them.
 
 ## Hard prohibitions
 
-- No `Task` subagents for full 10-slice `use_figma` payloads unless the host is proven to pass complete `call_mcp` tool args.
+- No `Task` subagents for full-slice `use_figma` payloads unless the host is proven to pass complete `call_mcp` tool args.
 - No hand-editing `preamble.runtime.figma.js` (generated) — edit `preamble.figma.js` and `npm run build:min`.
 - No hand-typed `summary` / `usageDo` / `usageDont` — use `build-config-block.mjs` or `Read` from `shadcn-props`.
 - No `cat` of large min files as the MCP `code` source (truncation risk); `Read` in editor or `assemble-slice` `--out`.
-- No parallel draw slices; one slug at a time, fixed DAG.
+- No parallel draw slices; one slug at a time, fixed DAG; prefer **more** ordered turns over **bigger** strings.
 
-**Related:** [`../create-component-figma-slice-runner/SKILL.md`](../create-component-figma-slice-runner/SKILL.md), [`EXECUTOR.md`](./EXECUTOR.md) §0, [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md).
+**Related:** [`../create-component-figma-slice-runner/SKILL.md`](../create-component-figma-slice-runner/SKILL.md), [`EXECUTOR.md`](./EXECUTOR.md) §0, [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md), [`conventions/18-mcp-payload-budget.md`](./conventions/18-mcp-payload-budget.md).

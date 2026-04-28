@@ -22,8 +22,10 @@
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-scaffold-shell handoff.json scaffold-return.json)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-component --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-component.js)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-component handoff.json return.json)",
-      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-props --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-props.js)",
-      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-props handoff.json return.json)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-props-1 --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-props-1.js)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-props-1 handoff.json return.json)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-props-2 --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-props-2.js)",
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-props-2 handoff.json return.json)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-matrix --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-matrix.js)"
     ],
     "additionalDirectories": [

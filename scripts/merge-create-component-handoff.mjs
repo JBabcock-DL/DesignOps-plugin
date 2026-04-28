@@ -45,11 +45,13 @@ import { dirname, resolve, join, basename } from "node:path";
 export const SLUG_ORDER = [
   "cc-doc-scaffold-shell",
   "cc-doc-scaffold-header",
-  "cc-doc-scaffold-table",
+  "cc-doc-scaffold-table-chrome",
+  "cc-doc-scaffold-table-body",
   "cc-doc-scaffold-placeholders",
   "cc-variants",
   "cc-doc-component",
-  "cc-doc-props",
+  "cc-doc-props-1",
+  "cc-doc-props-2",
   "cc-doc-matrix",
   "cc-doc-usage",
   "cc-doc-finalize",
@@ -133,7 +135,7 @@ const RETURN_FILE_RE = /^return-(.+)\.json$/;
 
 /**
  * Scan `dir` for return-*.json files and return Map<slug, absolutePath>.
- * Filters to slugs in SLUG_ORDER so unrelated files (e.g. `return-foo.json`
+ * Filters to valid step slugs (`isValidStepSlug`) so unrelated files (e.g. `return-foo.json`
  * from another tool) don't trip the consistency check.
  */
 export async function listReturnFilesOnDisk(dir) {
@@ -148,7 +150,7 @@ export async function listReturnFilesOnDisk(dir) {
     const m = RETURN_FILE_RE.exec(name);
     if (!m) continue;
     const slug = m[1];
-    if (!STEPS.has(slug)) continue;
+    if (!isValidStepSlug(slug)) continue;
     out.set(slug, resolve(dir, name));
   }
   return out;
@@ -322,6 +324,9 @@ export function mergeReturnIntoHandoff({ step, handoff, payload }) {
   if (typeof compSetId === "string" && compSetId.length) {
     next.doc.compSetId = compSetId;
   }
+  if (typeof payload?.propertiesTableId === "string" && payload.propertiesTableId.length) {
+    next.doc.propertiesTableId = payload.propertiesTableId;
+  }
   return next;
 }
 
@@ -349,9 +354,6 @@ export async function mergeOne({
   skipPhaseStateSchemaCheck = false,
 }) {
   if (!isValidStepSlug(step)) throw new MergeFailure(1, `unknown step "${step}"`);
-  if (step.includes('.part')) {
-    throw new MergeFailure(1, 'merge for multipart sub-slugs (e.g. cc-doc-matrix.part2) is not implemented; merge the whole slice (cc-doc-matrix) for now.');
-  }
   const phasePath = phaseStatePath ?? join(dirname(handoffPath), "phase-state.json");
 
   await waitForFilePresent(handoffPath, "handoff.json");

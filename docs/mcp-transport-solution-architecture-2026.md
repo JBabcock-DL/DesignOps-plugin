@@ -279,7 +279,7 @@ The recurring “MCP spiral” is rarely **Figma’s ~50k `code` schema cap**. I
 
 **Suggested MVP:** **Track A** on Figma’s official MCP (smallest conceptual change: one read on the server, model sends only a short path). **Track B** helps any large tool arg, not only Figma, but depends on Cursor’s roadmap.
 
-**Track E — No schema change, you own the client:** See **[`docs/buildable-figma-payload-path.md`](buildable-figma-payload-path.md)** — Figma **Desktop** MCP URL + `npm run figma:mcp-invoke` (reads JSON from disk; model can run a **short** shell command).
+**Track E — Removed (non-viable for IDE parity):** A standalone Node **`use_figma`** invoker (Desktop MCP + Streamable HTTP) was **shipped and removed** — it could not replace the IDE’s OAuth/session for Figma’s remote MCP. The supported mitigation is **more granular draw slices** (target **8–10 kB** per call where practical): [`skills/create-component/conventions/18-mcp-payload-budget.md`](../skills/create-component/conventions/18-mcp-payload-budget.md).
 
 ---
 
@@ -287,7 +287,7 @@ The recurring “MCP spiral” is rarely **Figma’s ~50k `code` schema cap**. I
 
 | Role | Takeaway |
 |------|----------|
-| **Design system / create-component** | **Continue** current parent-or-design-repo + **10-slice** draw ladder (four scaffold sub-slugs + `cc-variants` + five doc slugs); use proof file to stop false “transport” delegation. |
+| **Design system / create-component** | **Expand** the draw ladder with **smaller** per-slice `code` (north star **8–10 kB** per [`18-mcp-payload-budget.md`](../skills/create-component/conventions/18-mcp-payload-budget.md)); more sub-slugs / `.partN` as needed. Parent **`Read` + one `use_figma`**. Proof file to stop false “transport” delegation. |
 | **Cursor / IDE platform** | Measured in spike: one-shot **~10.3k**-class (10 279 B serialized args) E2E on model-mediated `call_mcp`; 25k in one **Agent** turn not completed here. Residual limit is **model/bridge re-serialization** for very large `call_mcp`, not Figma’s 50k cap. Optional: **documented** large-arg path (file indirection) at MCP layer. |
 | **Figma MCP** | **No** change required for **~25–30k** class payloads **if** the host delivers full inline `code`. Optional future: **args file** with explicit security for **>50k** edge cases. |
 | **Security / platform** | In-repo file-proxy for Figma was **removed**; duplicate OAuth to `mcp.figma.com` is not viable for a bare stdio helper without a token source. |
@@ -308,4 +308,5 @@ The recurring “MCP spiral” is rarely **Figma’s ~50k `code` schema cap**. I
 | 2026-04-27 (g) | **§6.7** — Deeper fix: H1–H4 (file-backed / chunked / IDE / non-LLM caller), dependencies, DesignOps stance until vendors ship; owner research prompts. **`AGENTS.md`** cross-link to anti-spiral + §6.7. |
 | 2026-04-27 (h) | §6.7 lead: explicit link to `memory.md` system thesis (one tree, no speculative layers until host-side args). |
 | 2026-04-27 (i) | **§6.8** — Implementation checklist for host-side tool args (Figma `codeFile`, Cursor hydration, chunked session, repo stopgap). |
-| 2026-04-27 (j) | **§6.8** — Track E: link to **`docs/buildable-figma-payload-path.md`** (Desktop MCP + `figma:mcp-invoke`). |
+| 2026-04-27 (j) | **§6.8** — Track E: **removed** standalone invoker; link [`18-mcp-payload-budget.md`](../skills/create-component/conventions/18-mcp-payload-budget.md). |
+| 2026-04-28 (h) | **Track E** doc: removed `buildable-figma-payload-path` + `figma-mcp-invoke`; micro-slice budget is canonical. |

@@ -11,6 +11,8 @@ import {
   buildScaffoldShellOps,
   buildScaffoldHeaderOps,
   buildScaffoldTableOps,
+  buildScaffoldTableChromeOps,
+  buildScaffoldTableBodyOps,
   buildScaffoldPlaceholdersOps,
   buildScaffold1Ops,
 } from './op-generators/cc-doc-scaffold.mjs';
@@ -23,7 +25,8 @@ const SCAFFOLD_TUPLE = new Set(SCAFFOLD_SUB_SLUGS);
 const SCAFFOLD_BUILD = {
   'cc-doc-scaffold-shell': buildScaffoldShellOps,
   'cc-doc-scaffold-header': buildScaffoldHeaderOps,
-  'cc-doc-scaffold-table': buildScaffoldTableOps,
+  'cc-doc-scaffold-table-chrome': buildScaffoldTableChromeOps,
+  'cc-doc-scaffold-table-body': buildScaffoldTableBodyOps,
   'cc-doc-scaffold-placeholders': buildScaffoldPlaceholdersOps,
 };
 

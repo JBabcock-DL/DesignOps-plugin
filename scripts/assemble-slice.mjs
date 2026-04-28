@@ -25,9 +25,7 @@
 //
 // Canonical on-disk name for JSON written by --emit-mcp-args: `mcp-<step-slug>.json` in the
 // design repo (e.g. `mcp-cc-doc-props.json`). Do not introduce parallel ad hoc names
-// (`mcp-invoke-use-figma.json`, etc.) in the same folder.
-// After writing, optional non-IDE run: FIGMA_DESKTOP_MCP_URL=<url> npm run figma:mcp-invoke -- --file <that.json>
-// Preflight without Figma: npm run figma:mcp-invoke -- --dry-run --file <that.json>
+// (`mcp-invoke-use-figma.json`, etc.) in the same folder. Parent: `Read` full JSON → `call_mcp` / `use_figma`.
 //
 // Exit codes:
 //   0  ok
@@ -58,6 +56,7 @@ import { spawnSync } from 'node:child_process';
 
 import { loadConfigFromFile, assembleOpsBody } from './generate-ops.mjs';
 import { SLUG_ORDER, SCAFFOLD_SUB_SLUGS, FIRST_DRAW_SLUG } from './merge-create-component-handoff.mjs';
+import { applyConfigProjectionForSlug, configObjectToEmbeddedBlock } from './config-projection.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -71,11 +70,14 @@ const DOC_STEP1_MIN = 'create-component-engine-doc.step1.min.figma.js';
 const STEP_ENGINE_MAP = {
   'cc-doc-scaffold-shell':         DOC_STEP1_MIN,
   'cc-doc-scaffold-header':        DOC_STEP1_MIN,
-  'cc-doc-scaffold-table':         DOC_STEP1_MIN,
+  'cc-doc-scaffold-table-chrome':  DOC_STEP1_MIN,
+  'cc-doc-scaffold-table-body':    DOC_STEP1_MIN,
   'cc-doc-scaffold-placeholders':  DOC_STEP1_MIN,
   'cc-variants':                   null, // resolved via layout → archetype below
   'cc-doc-component':  'create-component-engine-doc.step2.min.figma.js',
-  'cc-doc-props':      'create-component-engine-doc.step3.min.figma.js',
+  'cc-doc-props':        'create-component-engine-doc.step3.min.figma.js',
+  'cc-doc-props-1':      'create-component-engine-doc.step3.min.figma.js',
+  'cc-doc-props-2':      'create-component-engine-doc.step3.min.figma.js',
   'cc-doc-matrix':     'create-component-engine-doc.step4.min.figma.js',
   'cc-doc-usage':      'create-component-engine-doc.step5.min.figma.js',
   'cc-doc-finalize':   'create-component-engine-doc.step6.min.figma.js',
@@ -222,10 +224,12 @@ if (step === 'cc-variants') {
 const enginePath = join(templatesDir, engineFile);
 
 let engineSrc;
+let loadedConfig = null;
 if (useOps) {
   try {
-    const configObj = await loadConfigFromFile(resolve(configPath));
-    engineSrc = assembleOpsBody({ slug: step, config: configObj, layout, pluginRoot: resolve(pluginRoot) });
+    loadedConfig = await loadConfigFromFile(resolve(configPath));
+    loadedConfig = applyConfigProjectionForSlug(step, loadedConfig);
+    engineSrc = assembleOpsBody({ slug: step, config: loadedConfig, layout, pluginRoot: resolve(pluginRoot) });
     engineFile = 'generate-ops (tuple ops or delegated .min.figma.js)';
   } catch (e) {
     console.error(`assemble-slice: generate-ops: ${e.message}`);
@@ -238,9 +242,24 @@ if (useOps) {
   }
   engineSrc = readFile(enginePath, `engine (${engineFile})`);
 }
+if (!loadedConfig && (step === 'cc-doc-props-1' || step === 'cc-doc-props-2')) {
+  try {
+    loadedConfig = await loadConfigFromFile(resolve(configPath));
+    loadedConfig = applyConfigProjectionForSlug(step, loadedConfig);
+  } catch (e) {
+    console.error(`assemble-slice: load CONFIG for ${step}: ${e.message}`);
+    process.exit(3);
+  }
+}
 
-// ── Read inputs (config as embedded string + JSON) ──────────────────────
-const configBlock = readFile(configPath, '--config-block').trim();
+// ── Config block string: use projected CONFIG when ops pipeline loaded an object ──
+let configBlock;
+if (useOps && loadedConfig) {
+  configBlock = configObjectToEmbeddedBlock(loadedConfig).trim();
+} else {
+  configBlock = readFile(configPath, '--config-block').trim();
+}
+
 const registry    = parseJsonArg(registryArg, '--registry');
 const handoffObj  = parseJsonArg(handoffArg, '--handoff');
 const preambleSrc = readFile(preamblePath, 'preamble');
@@ -261,7 +280,7 @@ const patchedPreamble = preambleSrc
   );
 
 // Four cases: first scaffold, scaffold continuation, variants, doc-component / doc-rest
-function buildVarGlobals(stepSlug, handoff) {
+function buildVarGlobals(stepSlug, handoff, configObj) {
   const doc = (handoff.doc && typeof handoff.doc === 'object') ? handoff.doc : {};
   const av  = (handoff.afterVariants && typeof handoff.afterVariants === 'object') ? handoff.afterVariants : {};
   const pcId = doc.pageContentId;
@@ -287,6 +306,17 @@ function buildVarGlobals(stepSlug, handoff) {
       lines.push(`var __CREATE_COMPONENT_DOC_STEP__ = 1;`);
       lines.push(`var __CC_HANDOFF_PAGE_CONTENT_ID__ = ${JSON.stringify(pcId)};`);
       lines.push(`var __CC_HANDOFF_DOC_ROOT_ID__ = ${JSON.stringify(drId)};`);
+      if (stepSlug === 'cc-doc-scaffold-table-body') {
+        const ptId = doc.propertiesTableId;
+        if (typeof ptId !== 'string' || !ptId.length) {
+          console.error(
+            'assemble-slice: cc-doc-scaffold-table-body requires handoff.doc.propertiesTableId ' +
+              '(merge after cc-doc-scaffold-table-chrome; Figma return must include propertiesTableId).',
+          );
+          process.exit(1);
+        }
+        lines.push(`var __CC_HANDOFF_SCAFFOLD_TABLE_ID__ = ${JSON.stringify(ptId)};`);
+      }
     }
   } else if (stepSlug === 'cc-variants') {
     // Variant plane. Preserves _PageContent from scaffold.
@@ -332,12 +362,29 @@ function buildVarGlobals(stepSlug, handoff) {
     if (doc.compSetId) {
       lines.push(`var __CC_HANDOFF_COMP_SET_ID__ = ${JSON.stringify(doc.compSetId)};`);
     }
+    if (stepSlug === 'cc-doc-props-1' || stepSlug === 'cc-doc-props-2') {
+      if (!configObj || !Array.isArray(configObj.properties)) {
+        console.error(
+          `assemble-slice: ${stepSlug} requires a readable CONFIG with properties[] (same --config-block as the draw).`,
+        );
+        process.exit(1);
+      }
+      const n = configObj.properties.length;
+      const mid = Math.ceil(n / 2);
+      if (stepSlug === 'cc-doc-props-1') {
+        lines.push(`var __CC_PROPS_ROW_START__ = 0;`);
+        lines.push(`var __CC_PROPS_ROW_END__ = ${mid};`);
+      } else {
+        lines.push(`var __CC_PROPS_ROW_START__ = ${mid};`);
+        lines.push(`var __CC_PROPS_ROW_END__ = ${n};`);
+      }
+    }
   }
 
   return lines.join('\n');
 }
 
-const varGlobals = buildVarGlobals(step, handoffObj);
+const varGlobals = buildVarGlobals(step, handoffObj, loadedConfig);
 
 // ── Concatenate: configBlock → varGlobals → patchedPreamble → engine ──────
 // Assembly order per EXECUTOR.md §0 / slice-runner §0.1

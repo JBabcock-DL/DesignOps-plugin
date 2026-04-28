@@ -12,6 +12,6 @@ When `call_mcp` / `use_figma` fails with **JSON parse / truncated** errors (or t
 
 5. **No gzip by default** — unless the Figma plugin environment is proven to run your decoder and [`AGENTS.md`](../AGENTS.md) is updated, do not add gzip+base64 to [`scripts/assemble-slice.mjs`](../scripts/assemble-slice.mjs) defaults.
 
-6. **Optional** — a **local stdio MCP that forwards to Figma’s remote HTTP MCP** (short path, separate OAuth) was **explored and removed** from the repo: Figma’s `mcp.figma.com` does not accept a PAT; standalone Node does not get Cursor’s session; use **parent `Read` + official `use_figma`** for large on-disk `mcp-*.json` instead. **Buildable alternative (no PAT):** Figma **Desktop** MCP URL + **[`docs/buildable-figma-payload-path.md`](buildable-figma-payload-path.md)** (`npm run figma:mcp-invoke`).
+6. **No alternate MCP invokers** — use **parent `Read` + official `use_figma`** in the IDE. A standalone Node client (previously attempted) does **not** share the IDE’s OAuth session with Figma’s remote MCP. **Smaller bytes:** more sub-slugs / `.partN` in the draw DAG and [`skills/create-component/conventions/18-mcp-payload-budget.md`](../skills/create-component/conventions/18-mcp-payload-budget.md) (target **8–10 kB** per slice where practical).
 
 **Ownership:** MCP server entries stay in the developer’s `.cursor/mcp.json` (or project `.cursor/mcp.json`); do not commit tokens.

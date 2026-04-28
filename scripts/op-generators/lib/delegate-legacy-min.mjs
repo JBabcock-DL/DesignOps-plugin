@@ -9,6 +9,8 @@ const TEMPL = ['skills', 'create-component', 'templates'];
 const DOC_SLUG_TO_FILE = {
   'cc-doc-component': 'create-component-engine-doc.step2.min.figma.js',
   'cc-doc-props': 'create-component-engine-doc.step3.min.figma.js',
+  'cc-doc-props-1': 'create-component-engine-doc.step3.min.figma.js',
+  'cc-doc-props-2': 'create-component-engine-doc.step3.min.figma.js',
   'cc-doc-matrix': 'create-component-engine-doc.step4.min.figma.js',
   'cc-doc-usage': 'create-component-engine-doc.step5.min.figma.js',
   'cc-doc-finalize': 'create-component-engine-doc.step6.min.figma.js',

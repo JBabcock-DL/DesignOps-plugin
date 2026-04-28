@@ -1528,24 +1528,25 @@ async function __ccDocInsertOrReplaceSection(scaffoldSlug, buildSection) {
   }
 }
 
-// Multistep step 2 only — in-place text updates, no table delete/rebuild.
+// step3 — in-place property cells; optional __CC_PROPS_ROW_{START,END}__ for two-pass MCP
 function __ccDocFillPropertiesFromConfig() {
   const table = docRoot.findOne(
     n => n.type === 'FRAME' && n.name === `doc/table/${CONFIG.component}/properties`,
   );
   if (!table) {
-    throw new Error(
-      '[create-component] doc table not found for __ccDocFillPropertiesFromConfig — expected doc/table/.../properties under docRoot',
-    );
+    throw new Error('[cc] properties table missing');
   }
   const bodyRows = table.children.slice(1);
   const want = (CONFIG.properties && CONFIG.properties.length) || 0;
   if (bodyRows.length !== want) {
-    throw new Error(
-      `[create-component] properties table has ${bodyRows.length} body rows, CONFIG.properties has ${want} — scaffold/fill mismatch`,
-    );
+    throw new Error(`[cc] prop rows ${bodyRows.length}≠${want}`);
   }
-  for (let i = 0; i < want; i++) {
+  let a = 0;
+  let b = want;
+  if (typeof __CC_PROPS_ROW_START__ === 'number' && !Number.isNaN(__CC_PROPS_ROW_START__)) a = __CC_PROPS_ROW_START__;
+  if (typeof __CC_PROPS_ROW_END__ === 'number' && !Number.isNaN(__CC_PROPS_ROW_END__)) b = __CC_PROPS_ROW_END__;
+  if (a < 0 || b > want || a > b) throw new Error('r' + a + ',' + b + '/' + want);
+  for (let i = a; i < b; i++) {
     const r = CONFIG.properties[i];
     const row = bodyRows[i];
     for (let j = 0; j < 5; j++) {

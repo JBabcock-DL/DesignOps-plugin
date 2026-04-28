@@ -325,6 +325,10 @@ async function __ccRunOps(ops) {
       if (pc && 'appendChild' in pc) refs.pc = pc;
     }
   }
+  if (typeof __CC_HANDOFF_SCAFFOLD_TABLE_ID__ === 'string' && __CC_HANDOFF_SCAFFOLD_TABLE_ID__.length) {
+    const tb = await figma.getNodeByIdAsync(__CC_HANDOFF_SCAFFOLD_TABLE_ID__);
+    if (tb && 'appendChild' in tb) refs.table = tb;
+  }
   for (const raw of ops) {
     const o = normalizeOp(raw);
     if (!o || !o.op) continue;
@@ -363,9 +367,9 @@ async function runCreateComponentOpList(userOps) {
  * @param {import('@figma/plugin-typings').FrameNode} pageContent
  * @param {import('@figma/plugin-typings').FrameNode} docRoot
  * @param {number} docStep
- * @param {ReturnType<typeof runCreateComponentOpList> extends Promise<infer R> ? R : never} _refs
+ * @param {Awaited<ReturnType<typeof runCreateComponentOpList>> | undefined} scaffoldRefs
  */
-function __ccHandoffAfter(pageContent, docRoot, docStep) {
+function __ccHandoffAfter(pageContent, docRoot, docStep, scaffoldRefs) {
   const o = {
     ok: true,
     docStep,
@@ -380,13 +384,16 @@ function __ccHandoffAfter(pageContent, docRoot, docStep) {
     unresolvedTokenMisses: _unresolvedTokenMisses.slice(),
     layout: layoutKey === '__composes__' ? 'composes' : (CONFIG.layout || 'chip'),
   };
+  if (scaffoldRefs && scaffoldRefs.table && 'id' in scaffoldRefs.table) {
+    o.propertiesTableId = scaffoldRefs.table.id;
+  }
   return o;
 }
 
 // ── cc-doc-scaffold: execute op list, then return handoff (step 1) ──────
 // Assembly appends: return await runScaffold1();  which closes over __OPS
 async function runScaffold1FromOps(__OPS) {
-  await __ccRunOps(__OPS);
+  const scaffoldRefs = await __ccRunOps(__OPS);
   const pageContent = /** @type {import('@figma/plugin-typings').FrameNode} */ (figma.currentPage.findOne(
     n => n.name === '_PageContent',
   ));
@@ -399,7 +406,7 @@ async function runScaffold1FromOps(__OPS) {
   if (!docRoot || docRoot.type !== 'FRAME') {
     throw new Error(`[op] scaffold: doc/component/${CONFIG.component} missing`);
   }
-  return __ccHandoffAfter(pageContent, docRoot, 1);
+  return __ccHandoffAfter(pageContent, docRoot, 1, scaffoldRefs);
 }
 
 // generate-ops prepends: const __OP_LIST__ = [...];

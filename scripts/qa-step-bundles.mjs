@@ -46,7 +46,7 @@ function stepSlugForBundleFilename(name) {
   const map = {
     1: 'cc-doc-scaffold-shell',
     2: 'cc-doc-component',
-    3: 'cc-doc-props',
+    3: 'cc-doc-props-1',
     4: 'cc-doc-matrix',
     5: 'cc-doc-usage',
     6: 'cc-doc-finalize',

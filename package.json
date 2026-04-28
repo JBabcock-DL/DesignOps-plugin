@@ -20,8 +20,12 @@
     "cache-tokens": "node scripts/cache-tokens.mjs",
     "probe-page": "node scripts/probe-page.mjs",
     "probe-parent-transport": "node scripts/probe-parent-transport.mjs",
-    "figma:mcp-invoke": "node scripts/figma-mcp-invoke-from-file.mjs",
-    "qa:figma-mcp-invoke": "node scripts/qa-figma-mcp-invoke.mjs",
+    "designops:step6": "node scripts/designops-step6-engine.mjs",
+    "designops:step6:status": "node scripts/designops-step6-engine.mjs status",
+    "designops:step6:prepare": "node scripts/designops-step6-engine.mjs prepare",
+    "designops:canvas:manifest": "node scripts/designops-canvas-session.mjs",
+    "qa:assembled-size": "node scripts/qa-assembled-size.mjs",
+    "qa:config-projection": "node scripts/qa-config-projection.mjs",
     "generate-ops": "node scripts/generate-ops.mjs",
     "qa:op-interpreter": "node scripts/qa-op-interpreter.mjs",
     "qa:op-part-slugs": "node scripts/qa-op-part-slugs.mjs",
@@ -35,10 +39,9 @@
     "verify-cache": "bash scripts/verify-cache.sh",
     "verify:component-slice-map": "node scripts/verify-component-slice-map.mjs",
     "build": "npm run build:props && npm run build:docs && npm run build:min",
-    "verify": "npm run build:props:check && npm run build:docs:check && npm run build:min:check && npm run qa:step-bundles && npm run qa:create-component-skill && npm run qa:merge-consistency && npm run verify:component-slice-map && npm run qa:op-interpreter && npm run qa:op-part-slugs && npm run qa:figma-mcp-invoke && npm run qa:visual-diff && npm run verify-cache"
+    "verify": "npm run build:props:check && npm run build:docs:check && npm run build:min:check && npm run qa:step-bundles && npm run qa:create-component-skill && npm run qa:merge-consistency && npm run verify:component-slice-map && npm run qa:config-projection && npm run qa:op-interpreter && npm run qa:op-part-slugs && npm run qa:visual-diff && npm run verify-cache"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "esbuild": "^0.24.0",
     "terser": "^5.46.2"
   }

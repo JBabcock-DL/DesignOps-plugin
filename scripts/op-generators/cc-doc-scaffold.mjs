@@ -114,17 +114,12 @@ export function buildScaffoldHeaderOps(config) {
 }
 
 /**
- * Properties group + table + header row + body placeholder rows.
+ * Properties group + table frame + header row (no body yet) — one MCP; smaller payload.
  * @param {object} config
  * @returns {object[]}
  */
-export function buildScaffoldTableOps(config) {
+export function buildScaffoldTableChromeOps(config) {
   const comp = String(config.component || 'component');
-  const n = (config.properties && config.properties.length) || 0;
-  const placeholderRows = [];
-  for (let i = 0; i < n; i++) {
-    placeholderRows.push([`placeholder-${i}`, '…', '…', '…', '…']);
-  }
   const ops = [];
   function frame(id, props) {
     ops.push([0, id, props]);
@@ -213,6 +208,30 @@ export function buildScaffoldTableOps(config) {
     });
     append(cid, tid);
   }
+  return ops;
+}
+
+/**
+ * N placeholder body rows (continuation; seeds `refs.table` from `__CC_HANDOFF_SCAFFOLD_TABLE_ID__` in op-interpreter).
+ * @param {object} config
+ * @returns {object[]}
+ */
+export function buildScaffoldTableBodyOps(config) {
+  const n = (config.properties && config.properties.length) || 0;
+  const placeholderRows = [];
+  for (let i = 0; i < n; i++) {
+    placeholderRows.push([`placeholder-${i}`, '…', '…', '…', '…']);
+  }
+  const ops = [];
+  function frame(id, props) {
+    ops.push([0, id, props]);
+  }
+  function text(id, styleKey, props) {
+    ops.push([1, id, styleKey || null, props]);
+  }
+  function append(parent, child) {
+    ops.push([2, parent, child]);
+  }
   for (let i = 0; i < placeholderRows.length; i++) {
     const r = placeholderRows[i];
     const isLast = i === placeholderRows.length - 1;
@@ -273,6 +292,15 @@ export function buildScaffoldTableOps(config) {
     }
   }
   return ops;
+}
+
+/**
+ * Properties group + table + header row + body placeholder rows (one op list; tests / one-shot / legacy).
+ * @param {object} config
+ * @returns {object[]}
+ */
+export function buildScaffoldTableOps(config) {
+  return [...buildScaffoldTableChromeOps(config), ...buildScaffoldTableBodyOps(config)];
 }
 
 /**

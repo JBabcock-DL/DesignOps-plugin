@@ -7,7 +7,7 @@
 ## Authority stack (what to trust, in order)
 
 1. **`memory.md`** (this file) — *where to go, in what order, what not to load*
-2. **`AGENTS.md`** — *inline MCP payloads, canvas runner delegation, session split tables↔components, skill/cache sync*
+2. **`AGENTS.md`** — *MCP payloads (inline default; ephemeral file staging per policy), Draw Engine manifests ([`skills/create-component/conventions/23-designops-step6-engine.md`](skills/create-component/conventions/23-designops-step6-engine.md)), canvas runner delegation, session split tables↔components, skill/cache sync*
 3. **`skills/<skill>/SKILL.md` + linked shards** — *lazy-load only the phase or convention file the current step needs*
 
 Do not paste entire `SKILL.md` files into context “just in case.” Follow each skill’s lazy-load table / router.
@@ -20,7 +20,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 |------|---------------------|--------|
 | 1. Scaffold Figma file | **`/new-project`** | Foundations template, Drafts; then designer moves file per skill output. |
 | 2. Variables + collections + style-guide canvas | **`/create-design-system`** | Steps 1–17; **Steps 15a–15c + 17** = committed `.min.mcp.js` bundles. |
-| 3. Draw UI components | **`/create-component`** | One component per run to completion when possible; **time order** = [`skills/create-component/phases/`](skills/create-component/phases/) (ten draw slices for Step 6: four scaffold sub-slices → variants → doc …); **`EXECUTOR.md`** = assembly + step IDs. |
+| 3. Draw UI components | **`/create-component`** | One component per run to completion when possible; **time order** = [`skills/create-component/phases/`](skills/create-component/phases/) (**11** phase files **01–11**; **12** machine `use_figma` slugs in Step 6 — five scaffold → variants → doc, with **two** props-fill phases **07–08**); **`EXECUTOR.md`** = assembly + step IDs. |
 | 4. Reconcile drift | **`/sync-design-system`** | **Axis A → B → C** (variables → components → Code Connect); one bundled decision pass; **pre-execution validation** between axes. |
 | 5. Code Connect only (optional) | **`/code-connect`** | Often invoked from sync **Axis C**; standalone for mapping sweeps. |
 | 6. Ops / QA | **`/accessibility-check`**, **`/new-language`**, **`/dev-handoff`** | As needed. |
@@ -33,7 +33,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 ## Session choreography (token + MCP safety)
 
-- **Run plugin commands in-agent:** When work uses this repo’s **`scripts/`** or **`npm run`** entries (`assemble-slice`, `merge-handoff`, `figma:mcp-invoke`, `verify`, etc.), **execute** them via the environment shell from the plugin root; do not default to “run this yourself” unless missing env (e.g. `FIGMA_DESKTOP_MCP_URL`) or an interactive gate blocks automation. Cursor: [`.cursor/rules/agent-run-designops-commands.mdc`](.cursor/rules/agent-run-designops-commands.mdc).
+- **Run plugin commands in-agent:** When work uses this repo's **`scripts/`** or **`npm run`** entries (`assemble-slice`, `merge-handoff`, `verify`, etc.), **execute** them via the environment shell from the plugin root; do not default to “run this yourself” unless a gate blocks automation (e.g. no Figma MCP / `call_mcp` in the environment). Cursor: [`.cursor/rules/agent-run-designops-commands.mdc`](.cursor/rules/agent-run-designops-commands.mdc).
 - **Same session asks for style-guide tables *and* `/create-component`:** Finish **Phase A** (all Step 15a–15c + 17 via **`Task` → [`skills/canvas-bundle-runner/SKILL.md`](skills/canvas-bundle-runner/SKILL.md)** — one Task per slug; 15c = **three** sequential Tasks) **before** Phase B (one component draw at a time). **`AGENTS.md`** *Session runbook*.
 - **Parent thread must not** `Read` canvas **`.min.mcp.js`** or paste bundle text for Step 15/17 — **canvas-bundle-runner** only.
 - **`/create-component` Step 6:** default **`node scripts/assemble-slice.mjs …`** (no flag) uses **`generate-ops`**: tuple ops + op-interpreter for **scaffold sub-slugs** (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`), and delegates to the same committed `*.min.figma.js` engines for the other slugs. **`--legacy-bundles`** reads those min files directly (not for scaffold sub-slugs). See [`EXECUTOR.md`](skills/create-component/EXECUTOR.md).
@@ -43,18 +43,18 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 ## MCP anti-spiral (agents)
 
-**System thesis:** Ending **constant looping** on large `use_figma` calls needs a **host-side** fix: **file-backed or chunked tool arguments**, so the model is not the only pipe for huge JSON. **Until Cursor/MCP/Figma ship that**, this repo’s job is **one decision tree** (classify the failure → measure → act from existing runbooks) and **refusing speculative layers** — no new runners, proxies, or payload formats “just in case.” Transport detail, vendor checklist, and **buildable Desktop MCP invoker:** [docs/mcp-transport-solution-architecture-2026.md](docs/mcp-transport-solution-architecture-2026.md) sections 6.7–6.8; [docs/buildable-figma-payload-path.md](docs/buildable-figma-payload-path.md).
+**System thesis:** Ending **constant looping** on large `use_figma` calls needs **smaller** per-slice bytes (see [`skills/create-component/conventions/18-mcp-payload-budget.md`](skills/create-component/conventions/18-mcp-payload-budget.md), target **8–10 kB**; roadmap [`20-mcp-payload-shrink-solution.md`](skills/create-component/conventions/20-mcp-payload-shrink-solution.md)) and, longer term, **host-side** file-backed or chunked tool arguments. **Until vendors ship that**, this repo’s job is one decision tree (classify → measure with [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md)) and **refusing speculative layers** — no extra MCP clients, proxies, or payload formats. Transport detail: [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) §6.7–6.8.
 
 1. **Classify first** — Truncated tool JSON / `Unexpected end of JSON` → host or model re-emission of the wrapper, not “Figma broke.” Figma `ok: false` → file/plugin/access. Wrong frames or overlap → canvas geometry or handoff ids (often **before** transport).
 2. **Measure once, then act** — Run `check-payload` / `check-use-figma-args` on the bytes you actually send; use `probe-parent-transport.mjs` before claiming a parent limit. Do not add a new runner pattern to “work around” an unproven cap.
-3. **Prefer de-looping over new machinery** — Smaller slice or more `use_figma` rounds; or **writer → file in design repo → parent `Read` → one `use_figma`** ([`08`](skills/create-component/conventions/08-cursor-composer-mcp.md) D.1). Avoid proxy MCP, gzip/bootstrap, and extra `Task` roles unless a doc explicitly promotes them after measurement.
+3. **Prefer de-looping over new machinery** — Smaller slice or more `use_figma` rounds; or **writer → file in design repo → parent `Read` → one `use_figma`** per **[`21`](skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md)** + **[`22`](skills/create-component/conventions/22-deterministic-agent-flows.md)** + **[`08`](skills/create-component/conventions/08-cursor-composer-mcp.md)** §D.1. Avoid proxy MCP, gzip/bootstrap, and extra `Task` roles unless a doc explicitly promotes them after measurement.
 4. **Op-interpreter + tuple ops** — A **wire-size** path ([`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) section 6.0), not a second orchestration stack. Monolith parity fixes (e.g. same page clears / handoff targets) belong in the interpreter or generator so **one** pipeline stays correct.
 
 ---
 
 ## Non-negotiables (Figma + layout)
 
-- **MCP:** Inline **`use_figma`** `code` in the tool call — **no** repo scratch files to stage payloads. **Exception:** committed paths skills name explicitly (`*.min.mcp.js`, etc.). **`AGENTS.md`**.
+- **MCP:** Prefer inline **`use_figma`** `code` in the tool call; **ephemeral** `assemble-slice --out` / `--emit-mcp-args` → parent **`Read`** is allowed when transport needs it (see [`AGENTS.md`](AGENTS.md)). Do **not** leave persistent staging under **`skills/`**. **Exception:** committed paths skills name (`*.min.mcp.js`, etc.).
 - **`resize()`** resets auto-layout sizing to **FIXED**. Order: **`resize` → then** set `primaryAxisSizingMode` / `counterAxisSizingMode`. **VERTICAL** component roots: avoid 1px-tall masters. **HORIZONTAL** rows (e.g. doc **usage**): **counter axis = vertical** — use **`AUTO`** so height is not pinned at 1px. [**§0.10**](skills/create-design-system/conventions/00-gotchas.md).
 - **Matrix specimen cells:** **counter `AUTO`** + **`minHeight`** — not only fixed 72px. [`skills/create-component/conventions/03-auto-layout-invariants.md`](skills/create-component/conventions/03-auto-layout-invariants.md) §10–10.2.
 - **Style-guide tables:** header vs body cell recipes differ; **§0.5–0.7** gotchas + **§14 audit** before “done.” [`skills/create-design-system/conventions/00-gotchas.md`](skills/create-design-system/conventions/00-gotchas.md).

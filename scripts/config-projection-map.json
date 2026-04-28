@@ -1,0 +1,7 @@
+{
+  "_comment": "Tier 1 CONFIG projection — allowTopLevelKeys null = passthrough entire CONFIG.",
+  "defaults": {
+    "allowTopLevelKeys": null
+  },
+  "bySlug": {}
+}

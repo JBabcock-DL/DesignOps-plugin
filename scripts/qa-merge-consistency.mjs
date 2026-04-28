@@ -134,12 +134,13 @@ assert(
     completedSlugs: [
       'cc-doc-scaffold-shell',
       'cc-doc-scaffold-header',
-      'cc-doc-scaffold-table',
+      'cc-doc-scaffold-table-chrome',
+      'cc-doc-scaffold-table-body',
       'cc-doc-scaffold-placeholders',
       'cc-variants',
       'cc-doc-component',
     ],
-    nextSlug: 'cc-doc-matrix',  // wrong — should be cc-doc-props
+    nextSlug: 'cc-doc-matrix',  // wrong — should be cc-doc-props-1
     lastCodeSha256: 'c'.repeat(64),
   }).some((e) => e.includes('nextSlug')),
   'wrong nextSlug for lastSliceOk rejected',
@@ -267,7 +268,9 @@ console.log('\n[6] resume-handoff — replays orphans, reports next slug');
   writeJson(join(dir, 'handoff.json'), {});
   writeJson(join(dir, 'return-cc-doc-scaffold-shell.json'), ret);
   writeJson(join(dir, 'return-cc-doc-scaffold-header.json'), ret);
-  writeJson(join(dir, 'return-cc-doc-scaffold-table.json'), ret);
+  const retTableChrome = { pageContentId: '1:2', docRootId: '1:3', propertiesTableId: '1:99' };
+  writeJson(join(dir, 'return-cc-doc-scaffold-table-chrome.json'), retTableChrome);
+  writeJson(join(dir, 'return-cc-doc-scaffold-table-body.json'), ret);
   writeJson(join(dir, 'return-cc-doc-scaffold-placeholders.json'), ret);
   writeJson(join(dir, 'return-cc-variants.json'), varRet);
   // Dry-run first

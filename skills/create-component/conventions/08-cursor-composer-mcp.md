@@ -4,6 +4,10 @@
 
 **Goal:** Reliable **Step 6** (Figma MCP `use_figma` with one inline `code` per slice, typically ~26–43K per call depending on step) by **adoption** of the repo’s assembly order — in the **parent** (or a design-repo script) by default, **not** by punting **~26–30K+** `code` to a **subagent** that must **emit** the full `call_mcp` JSON in one turn (that often **fails** on subagent / tool-arg limits).
 
+**Normative checklist (transport + optional shrink pairing):** [`21-mcp-ephemeral-payload-protocol`](./21-mcp-ephemeral-payload-protocol.md).
+
+**Procedure order (Flows P, Strategy I/D, recovery):** [`22-deterministic-agent-flows`](./22-deterministic-agent-flows.md).
+
 **Non-goals:** Do not require “subagent or bust” for Step 6. Success = **parent** (or preassembled on disk) + `check-payload` + `use_figma` per [`../EXECUTOR.md`](../EXECUTOR.md) **§0**.
 
 ---
