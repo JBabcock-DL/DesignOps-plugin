@@ -60,11 +60,11 @@ Do **not** improvise a parallel "generator" that ignores the templates — the t
 
 ## Non-canvas `use_figma` calls (`/create-component` Step 6)
 
-**Default — parent `use_figma`:** the **parent** assembles and runs **10** sequential `use_figma` invocations in DAG order (`cc-doc-scaffold-shell` → … → `cc-doc-scaffold-placeholders` → `cc-variants` → … → `cc-doc-finalize`) per [`create-component-figma-slice-runner` §0.1 / §2](../../create-component-figma-slice-runner/SKILL.md), [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0**, and [`13`](../create-component/conventions/13-component-draw-orchestrator.md). Tuple ops + `op-interpreter` cover the **four** scaffold sub-slugs; other slugs use the same committed `*.min.figma.js` delegates. The parent **merges** `handoffJson` after each return and runs **`create-component` §9** on the final slice. **Do not** default to `Task` subagents for payloads they cannot `call_mcp` ([`AGENTS.md`](../../../AGENTS.md)).
+**Default — parent `use_figma`:** the **parent** runs **five** sequential `use_figma` invocations in fixed order: **`scaffold.min.mcp.js`** → **`properties.min.mcp.js`** → **`component-chip.min.mcp.js`** or **`component-<layout>.min.mcp.js`** → **`matrix.min.mcp.js`** → **`usage.min.mcp.js`** per [`create-component/canvas-templates/bundles/`](../create-component/canvas-templates/bundles/) and [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0**. Each payload is **`ctx`** (CONFIG + `fileKey` / registry fields) prepended to the `Read` bundle body; **`check-payload`** gates before MCP. **`create-component` §9** runs on the **`component-*`** return for structure checks. **Do not** default to `Task` subagents for payloads they cannot `call_mcp` ([`AGENTS.md`](../../../AGENTS.md)).
 
-**Optional — one `Task` per slug:** only when the subagent is **proven** to pass full `call_mcp` tool arguments — same **10** slugs, one `use_figma` per `Task`, parent still merges `handoffJson` between them.
+**Optional — `Task` writers:** subagent may assemble `code` to disk; **parent** still owns **`Read` → `call_mcp`** per [`16`](./16-mcp-use-figma-workflow.md) (same pattern as style-guide bundles when delegation helps token load).
 
-**Fallback:** parent inline or preassembled `code` per [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** when per-slice `Task`s are unavailable. Ad-hoc small Figma edits may stay inline in the parent. See [`13`](../create-component/conventions/13-component-draw-orchestrator.md) (multi-call ladder).
+**Fallback:** parent inline / preassembled `code` only; ad-hoc small Figma edits stay inline. Regenerate bundles with **`npm run bundle-component`** in the plugin repo after editing [`create-component/canvas-templates/`](../create-component/canvas-templates/).
 
 The subagent-delegation rule for **style-guide** work applies **only** to the committed canvas bundles under [`../canvas-templates/bundles/`](../canvas-templates/bundles/) (use [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md) for those). **Do not** use component runners for 15a–c / 17 tables. A one-off 2k-char script for a single node edit stays inline in the parent.
 
@@ -75,14 +75,14 @@ The subagent-delegation rule for **style-guide** work applies **only** to the co
 | Priority | Mechanism | Notes |
 |----------|-----------|--------|
 | **1 — Canvas bundles (Step 15 / 17)** | **Delegate to [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent.** | Parent never `Read`s the bundle. |
-| **2 — `/create-component` Step 6 (parent default)** | **12×** `use_figma` in the **parent** (`SLUG_ORDER` in [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs)) per [13](../create-component/conventions/13-component-draw-orchestrator.md) + [EXECUTOR](../create-component/EXECUTOR.md) | Preferred; see **Non-canvas** section above. |
-| **2a — `/create-component` Step 6 (delegated `Task`s)** | **Up to 12** `Task`s → [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md) (one `use_figma` per `Task`; parent `handoffJson`) | Only when subagent can emit full tool args — see [13](../create-component/conventions/13-component-draw-orchestrator.md). |
-| **2b — `/create-component` Step 6 (inline / preassembled)** | Parent assembles per [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** | Full-engine phased or single-call; same `configBlock` as slice path. |
+| **2 — `/create-component` Step 6 (parent default)** | **5×** `use_figma` in the **parent** (`scaffold` → `properties` → `component-*` → `matrix` → `usage`) per [EXECUTOR](../create-component/EXECUTOR.md) + committed [`*.min.mcp.js` bundles](../create-component/canvas-templates/bundles/) | Preferred; see **Non-canvas** section above. |
+| **2a — `/create-component` Step 6 (writer `Task`)** | Subagent writes assembled `code`; parent **`Read` → `call_mcp`** | Only when helpful for token load — parent must still pass full tool args. |
+| **2b — `/create-component` Step 6 (inline / preassembled)** | Parent assembles per [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** | Same **`ctx` + bundle** bytes as the five-call path; optional writer emits a `.js` file for parent `Read`. |
 | **2c — Non-canvas inline (parent)** | Build plain Plugin API JS in the parent and pass as inline `code`. | Small ad-hoc edits. ~50k cap; `figma-use` when required. |
 | **Fallback (debug only)** | Editor **`Read`** the committed `.min.mcp.js` and pass **verbatim** as inline `code` from the parent. | Use only when the runner subagent can't reach the MCP and the parent must escalate. Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
 | **Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
 | **Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema — only inline `code` exists. |
-| **Total bytes across calls (σ)** | Committed **per-doc-step** min bundles may **re-embed** a large shared `draw-engine` core across many slices, so σ can **exceed** a one-shot monolith unless the build partitions shared bytes; a thinner op runtime + **more** granular scaffold calls (see **12-slice** ladder in **[13](../create-component/conventions/13-component-draw-orchestrator.md)**) reduces per-call size. **`npm run measure-sigma`**; policy **[`AGENTS.md`](../../../AGENTS.md)** *MCP transport*. |
+| **Total bytes across calls (σ)** | Component draw uses **five** bundles sharing a bundled runtime in [`bundle-component-mcp.mjs`](../../../scripts/bundle-component-mcp.mjs); **`npm run measure-sigma`** if investigating duplicate weight across calls. |
 
 ## Troubleshooting: truncated or invalid `code`
 
@@ -109,7 +109,7 @@ The subagent-delegation rule for **style-guide** work applies **only** to the co
 The JavaScript runs in a **Figma plugin context** exposed by the MCP server — not necessarily a full browser or dev plugin.
 
 - **Do not rely on** `atob`, `TextDecoder`, `DecompressionStream`, or other **browser** APIs unless you have confirmed they exist in this host. If you must decode, use **small inline helpers** and still respect the **50k** `code` limit — but the preferred approach is **plain source text** from the repo (no base64-wrapped bundles).
-- **Same constraints apply to `/create-component`** when assembling large `use_figma.code` strings (CONFIG + preamble + one per-archetype `create-component-engine-*.min.figma.js`) — see [`skills/create-component/EXECUTOR.md`](../../create-component/EXECUTOR.md) *Short-context agents / MCP transport* and the 50k cap table there.
+- **Same constraints apply to `/create-component`** when assembling large `use_figma.code` strings (`ctx` + committed `.min.mcp.js` bundle) — see [`skills/create-component/EXECUTOR.md`](../../create-component/EXECUTOR.md) **§0** and the 50k cap.
 - **Do not use** `figma.clientStorage.setAsync` / `getAsync` to stitch multi-part scripts unless you have verified support — many MCP hosts **do not** implement `clientStorage` the same way as a shipped plugin.
 
 ---

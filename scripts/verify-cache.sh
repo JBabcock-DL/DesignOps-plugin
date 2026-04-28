@@ -75,23 +75,10 @@ STALE=0
 # (create-component-engine-<layout>.min.figma.js) has no matching .figma.js
 # source file.
 BUNDLE_PREFIX="skills/create-component/templates/create-component-engine"
-BUNDLES_REL=(
-  "$BUNDLE_PREFIX-chip.min.figma.js"
-  "$BUNDLE_PREFIX-surface-stack.min.figma.js"
-  "$BUNDLE_PREFIX-field.min.figma.js"
-  "$BUNDLE_PREFIX-row-item.min.figma.js"
-  "$BUNDLE_PREFIX-tiny.min.figma.js"
-  "$BUNDLE_PREFIX-control.min.figma.js"
-  "$BUNDLE_PREFIX-container.min.figma.js"
-  "$BUNDLE_PREFIX-composed.min.figma.js"
-  "$BUNDLE_PREFIX.min.figma.js"
-)
-for _LAYOUT in chip surface-stack field row-item tiny control container composed; do
-  BUNDLES_REL+=( "$BUNDLE_PREFIX-${_LAYOUT}.step0.min.figma.js" )
-done
-for _S in 1 2 3 4 5 6; do
-  BUNDLES_REL+=( "$BUNDLE_PREFIX-doc.step${_S}.min.figma.js" )
-done
+BUNDLES_REL=()
+# Legacy create-component-engine *.min.figma.js bundles removed — use
+# `npm run bundle-component` (scripts/bundle-component-mcp.mjs) for
+# skills/create-component/canvas-templates/bundles/*.mcp.js instead.
 BUNDLE_SOURCES=(
   "skills/create-component/templates/draw-engine.figma.js"
   "skills/create-component/templates/archetype-builders.figma.js"

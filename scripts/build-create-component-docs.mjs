@@ -302,16 +302,19 @@ function main() {
     ? readFileSync(REFERENCE_AGENT_STEPS_PATH, 'utf8')
     : '';
   let refAfter = refBefore;
-  const r2 = replaceMarkerBlock(refAfter, 'page-routing-table', routingTable);
-  if (!r2.found) {
-    warnings.push(
-      'REFERENCE-agent-steps.md missing <!-- GENERATED:page-routing-table START/END --> markers; skipping that block.'
-    );
+  let refChanged = false;
+  if (existsSync(REFERENCE_AGENT_STEPS_PATH)) {
+    const r2 = replaceMarkerBlock(refAfter, 'page-routing-table', routingTable);
+    if (!r2.found) {
+      warnings.push(
+        'REFERENCE-agent-steps.md missing <!-- GENERATED:page-routing-table START/END --> markers; skipping that block.'
+      );
+    }
+    refAfter = r2.text;
+    refChanged = refAfter !== refBefore;
   }
-  refAfter = r2.text;
 
   const skillChanged = skillAfter !== skillBefore;
-  const refChanged = refAfter !== refBefore;
 
   if (check) {
     if (propsMutated) {

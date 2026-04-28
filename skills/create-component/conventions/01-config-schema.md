@@ -1,16 +1,16 @@
 # create-component / conventions / 01-config-schema.md
 
-> Scope: the **per-component `CONFIG`** object that lives at the top of every `use_figma` draw. This is the only block the agent edits per component. Everything below `CONFIG` is the generic draw engine (inlined from [`templates/draw-engine.figma.js`](../templates/draw-engine.figma.js) and, for non-chip layouts, [`templates/archetype-builders.figma.js`](../templates/archetype-builders.figma.js)).
+> Scope: the **per-component `CONFIG`** embedded in **`ctx`** for the five-call `/create-component` draw. The agent builds **`ctx`** (including **CONFIG**) once per component; each bundle reads `const CONFIG = ctx` from the preamble. Runtime sources: [`../canvas-templates/`](../canvas-templates/) → committed [`.min.mcp.js` bundles](../canvas-templates/bundles/).
 >
 > **Related**: [`00-overview.md`](./00-overview.md) (router, glossary, modes). [`02-archetype-routing.md`](./02-archetype-routing.md) (picking `CONFIG.layout`). [`03-auto-layout-invariants.md`](./03-auto-layout-invariants.md) (valid enum values). [`05-code-connect.md`](./05-code-connect.md) (Mode A class-to-token resolution that populates `CONFIG.style`).
 
-## 2 — Step 6.A handoff (`Task` → `create-component-figma-slice-runner`)
+## 2 — Step 6 and `ctx` (parent five-call loop)
 
-The parent **authors** this schema in place as the opening `const CONFIG = { … };` of the draw script. For **delegated** Step 6, copy that block **verbatim** as **`configBlock`** and pass **`layout`** (= `CONFIG.layout`) plus `fileKey`, `createComponentRoot`, registry, and **`handoffJson`** per [`../create-component-figma-slice-runner/SKILL.md`](../create-component-figma-slice-runner/SKILL.md) **§0** and [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md). **`JSON.stringify(CONFIG)` is invalid** for handoff — it **drops** `applyStateOverride`, function `label`, and any other function-valued keys. If a `Task` fails or is interrupted, the parent finishes with **inline Step 6.B** using the **same** `configBlock` (no re-derivation).
+The parent assembles **`ctx`** once per component (full **CONFIG** plus `activeFileKey` / `fileKey`, `registryComponents`, `usesComposes`, etc. per [`../EXECUTOR.md`](../EXECUTOR.md) **§0**). If you stage **`ctx`** to disk, **function-valued** fields (`applyStateOverride`, `label`, …) must survive round-trip — **never** rely on **`JSON.stringify(ctx)` alone** as the only persisted CONFIG. There is **no** slice handoff / merge script between calls; each bundle finds frames by stable layer names under `doc/component/{component}`.
 
 ## 3. Component `CONFIG` schema (the ONLY thing you edit per component)
 
-The `/create-component` script in `SKILL.md` is split into two halves: a per-component **`CONFIG`** object at the very top of the `use_figma` code block (§0), and a **generic draw engine** inlined from [`templates/draw-engine.figma.js`](../templates/draw-engine.figma.js) that reads every field from `CONFIG`. The engine is identical for every component. If you find yourself editing anything below `CONFIG`, you are forking the standard — stop and add the missing knob to this schema instead.
+The **`CONFIG`** object in **`ctx`** is consumed by the bundled runtime in [`../canvas-templates/`](../canvas-templates/) (`cc-runtime-head.js`, section templates, `cc-arch-*.js`). If you need new behavior, extend this schema and the relevant archetype or doc chunk — do not fork ad hoc script below the bundled preamble.
 
 ### Required fields
 

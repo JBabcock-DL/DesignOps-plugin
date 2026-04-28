@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Static contract checks for Lively Oasis / Step 6 fail-fast (templates + doc inventory).
+// Static contract checks for /create-component (canvas bundles + doc inventory).
 // Run: npm run qa:lively-oasis-contract  (also wired into npm run verify)
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
@@ -25,25 +25,24 @@ function need(path, substrings, label) {
   }
 }
 
-need("skills/create-component/templates/preamble.figma.js", ["function __ccPreflightFileKey", "figma.fileKey"], "preamble preflight");
-
 need(
-  "skills/create-component/templates/op-interpreter.figma.js",
-  [
-    "__ccPreflightFileKey()",
-    "_handoffMisses",
-    "handoff-id-not-resolvable-in-current-file",
-    "scaffoldRefs.ok === false",
-  ],
-  "op-interpreter fail-fast",
+  "skills/create-component/canvas-templates/cc-runtime-head.js",
+  ["CONFIG.pageName", "figma.variables.getLocalVariableCollections"],
+  "canvas runtime head",
 );
 
-// 16 convention files (14 Lively Oasis consolidation + 22 delegate hotspots + 24 tuple roadmap)
+need(
+  "scripts/bundle-component-mcp.mjs",
+  [".min.mcp.js", "canvas-templates"],
+  "component MCP bundler",
+);
+
 const convDir = join(REPO_ROOT, "skills/create-component/conventions");
 const mdFiles = readdirSync(convDir).filter((f) => f.endsWith(".md"));
-if (mdFiles.length !== 16) {
+const EXPECTED_CONVENTIONS = 8;
+if (mdFiles.length !== EXPECTED_CONVENTIONS) {
   console.error(
-    `qa-lively-oasis-contract: expected 16 conventions/*.md files, got ${mdFiles.length}: ${mdFiles.sort().join(", ")}`,
+    `qa-lively-oasis-contract: expected ${EXPECTED_CONVENTIONS} conventions/*.md files, got ${mdFiles.length}: ${mdFiles.sort().join(", ")}`,
   );
   failures++;
 } else {
@@ -51,13 +50,12 @@ if (mdFiles.length !== 16) {
 }
 
 const skillPath = join(REPO_ROOT, "skills/create-component/SKILL.md");
-const referencePath = join(REPO_ROOT, "skills/create-component/REFERENCE-agent-steps.md");
 const MAX_SKILL_LINES = 300;
 if (existsSync(skillPath)) {
   const n = readFileSync(skillPath, "utf8").split(/\r?\n/).length;
   if (n > MAX_SKILL_LINES) {
     console.error(
-      `qa-lively-oasis-contract: SKILL.md must stay ≤ ${MAX_SKILL_LINES} lines (router + §9 + generated tables); got ${n}. Move prose to REFERENCE-agent-steps.md.`,
+      `qa-lively-oasis-contract: SKILL.md must stay ≤ ${MAX_SKILL_LINES} lines (router + §9 + generated tables); got ${n}. Trim prose into EXECUTOR.md or conventions.`,
     );
     failures++;
   } else {
@@ -65,14 +63,9 @@ if (existsSync(skillPath)) {
   }
 }
 
-if (existsSync(referencePath)) {
-  const n = readFileSync(referencePath, "utf8").split(/\r?\n/).length;
-  console.log(`qa-lively-oasis-contract: REFERENCE-agent-steps.md lines = ${n} (informational)`);
-}
-
 if (failures > 0) {
   console.error(`qa-lively-oasis-contract: FAILED (${failures} check(s))`);
   process.exit(1);
 }
 
-console.log("qa-lively-oasis-contract: OK (templates + convention inventory)");
+console.log("qa-lively-oasis-contract: OK (canvas-templates + convention inventory)");

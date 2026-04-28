@@ -5,12 +5,12 @@ alwaysApply: true
 
 # Run DesignOps commands in-agent
 
-When this workspace includes the **DesignOps-plugin** root (`memory.md`, `skills/`, `scripts/`) **and** the task uses those assets (e.g. `/create-component`, `assemble-slice`, `merge-handoff`, `build-config-block`, `probe-parent-transport`, `npm run verify`):
+When this workspace includes the **DesignOps-plugin** root (`memory.md`, `skills/`, `scripts/`) **and** the task uses those assets (e.g. `/create-component`, **`bundle-component`**, `build-config-block`, `probe-parent-transport`, `npm run verify`):
 
-1. **Execute** the documented `node scripts/…` and `npm run …` steps yourself (IDE terminal / agent shell), from the **plugin repo root** — `cd` there first if the chat’s primary folder is a consumer app (multi-root: use the folder that contains this repo’s `package.json` with `assemble-slice` / `verify`).
+1. **Execute** the documented `node scripts/…` and `npm run …` steps yourself (IDE terminal / agent shell), from the **plugin repo root** — `cd` there first if the chat’s primary folder is a consumer app (multi-root: use the folder that contains this repo’s `package.json` with **`bundle-component`** / `verify`).
 2. **Do not** reply with only “run this in your terminal” when you can run the same command non-interactively. After a failure, diagnose stderr, fix, and retry.
 3. **Exceptions (ask or stop):** no working **`call_mcp` / Figma `use_figma`** in the environment, interactive browser OAuth the agent cannot complete, destructive confirmations, or commands that need network the sandbox blocks — then state the blocker and the exact command for the user.
 
-**`/create-component` (Composer):** follow [`skills/create-component/conventions/08-cursor-composer-mcp.md`](../../skills/create-component/conventions/08-cursor-composer-mcp.md) and [`skills/create-component/EXECUTOR.md`](../../skills/create-component/EXECUTOR.md) — run `build-config-block`, `assemble-slice` (**`--emit-mcp-args`**), **`Read`** **`mcp-*.json`**, **`call_mcp` `use_figma`** (IDE Figma MCP), **`Write`** return JSON → **`finalize-slice --return-path`**; use **`npm run figma:mcp-invoke`** only when [`probe-parent-transport`](../../scripts/probe-parent-transport.mjs) or CI warrants **manifest `finalizeHint.fallbackShellPipe`**. Archetype **`code`** budget **8–10 kB** per slice: [`conventions/18-mcp-payload-budget.md`](../../skills/create-component/conventions/18-mcp-payload-budget.md).
+**`/create-component`:** follow [`skills/create-component/EXECUTOR.md`](../../skills/create-component/EXECUTOR.md) — run `build-config-block` as needed, **`npm run bundle-component`** after canvas source edits, assemble **`ctx` +** **`Read`** each committed **`canvas-templates/bundles/*.min.mcp.js`**, **`check-payload`**, then **`call_mcp` `use_figma`** (integrated IDE Figma MCP) **five times** in order per §0.
 
 Canonical policy: [`AGENTS.md`](../../AGENTS.md), [`memory.md`](../../memory.md).

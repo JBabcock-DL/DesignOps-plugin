@@ -25,7 +25,7 @@
 
 ### Component set
 
-- [ ] **S9.3** Every variant × size combination has a `ComponentNode` — `compSetVariants.length === CONFIG.variants.length × max(CONFIG.sizes.length, 1)`
+- [ ] **S9.3** Every variant × size combination has a `ComponentNode` — `compSetVariants === CONFIG.variants.length × max(CONFIG.sizes.length, 1)` (numeric `compSetVariants` on **`component-*`** return)
 - [ ] **V** Each variant's inner label text uses a published `Label/*` text style (Label/XS / Label/SM / Label/MD / Label/LG) driven by `CONFIG.labelStyle` — not raw `fontSize`
 - [ ] **S9.2** All variant nodes combined into one `ComponentSet` named `{Title} — ComponentSet`
 - [ ] **S9.4** ComponentSet **reparented into the doc frame** as [`04-doc-pipeline-contract.md` §3.2](./04-doc-pipeline-contract.md#32--component-set-section-layout) (Component Set section) — NOT parked at `y: -2000` and NOT left on the page root
@@ -34,11 +34,10 @@
 
 ### Icon slots ([`01-config-schema.md` §3.3](./01-config-schema.md#33--icon-slots--element-component-properties-designer-ready-polish))
 
-- [ ] **S9.7** If `CONFIG.iconSlots.leading` is true: every variant with a label contains a child named `icon-slot/leading` at **24 × 24** with no fill and a 1 px dashed stroke bound to `color/border/default`, `cornerRadius: 4`
-- [ ] **S9.7** If `CONFIG.iconSlots.trailing` is true: same, named `icon-slot/trailing`
-- [ ] **S9.8** Every variant whose `CONFIG.label(size, variant)` returns `null` contains exactly **one** child named `icon-slot/center` at 24 × 24 — and no text node
+- [ ] **S9.7** Archetype / structure checks per [`SKILL.md` §9](../SKILL.md) — use `layout`, `compSetVariantRows`, and `firstVariantChildren` on the **`component-*`** return
 - [ ] **V** Icon-only variants have **square** padding (`paddingTop == paddingLeft`) so they render as squares — matches shadcn `h-10 w-10`
 - [ ] **S9.7** Slot layer order is `icon-slot/leading → text → icon-slot/trailing` (reading order)
+- [ ] **S9.8** Icon-only rows: `hasText === false` and CONFIG implies icon-only → exactly one `icon-slot/center` in `childNames` and no stray label frame ([`SKILL.md` §9](../SKILL.md)); skip for composites when `composedWith.length > 0`
 
 ### Element component properties ([`01-config-schema.md` §3.3.2](./01-config-schema.md#332--the-three-element-component-properties))
 
@@ -59,7 +58,7 @@
 - [ ] **V** Property row order: variant props → state props → content props → a11y props → escape hatches
 - [ ] **V** Every cell's text uses `Doc/Code` or `Doc/Caption`; `textAutoResize = 'HEIGHT'`
 - [ ] **V** Properties table subtree has **no** stacked doc elevation: **`effects` empty** and **no `effectStyleId`** on the table root, `body`, and row frames (unless the `SKILL.md` §6 template was intentionally updated — default is shadowless; [`04-doc-pipeline-contract.md` §2.1](./04-doc-pipeline-contract.md#21--same-failure-modes-as-the-style-guide-what-sonnet--cursor-must-not-fix))
-- [ ] **V** Multistep ladder: **scaffold** slice uses placeholder body rows; **props** slice only **fills** cells in place — **or** single-pass uses one `buildPropertiesTable(CONFIG.properties)` ([`04-doc-pipeline-contract.md` §2.2.1](./04-doc-pipeline-contract.md#221--strict-properties-table-build-no-structural-redraw))
+- [ ] **V** Multistep path: **scaffold** + **properties** bundles — placeholder rows then in-place cell fill only ([`04-doc-pipeline-contract.md` §2.2.1](./04-doc-pipeline-contract.md#221--strict-properties-table-build-no-structural-redraw))
 
 ### Doc frame — component set section ([`04-doc-pipeline-contract.md` §3.2](./04-doc-pipeline-contract.md#32--component-set-section-layout))
 

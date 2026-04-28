@@ -21,7 +21,7 @@
 
    Writes **`.transport-proof.json`** here. **`maxProvenSize`** is cited in **[`AGENTS.md`](../../../AGENTS.md)** anti-confabulation policy.
 
-Committed **optional** illustrative proof must be regenerated in Composer — see **[`docs/composer2-canvas-playbook`](../../../docs/composer2-canvas-playbook.md)**.
+Committed **optional** illustrative proof must be regenerated in Composer — see **[`08-cursor-composer-mcp.md`](../../../skills/create-component/conventions/08-cursor-composer-mcp.md)** and **[`EXECUTOR.md`](../../../skills/create-component/EXECUTOR.md)**.
 
 ## Size report for all slugs
 

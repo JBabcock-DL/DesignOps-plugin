@@ -1,0 +1,3 @@
+const DOC_FRAME_WIDTH = 1640;
+const GUTTER_W_SIZE = 60;
+const GUTTER_W_VARIANT = 160;

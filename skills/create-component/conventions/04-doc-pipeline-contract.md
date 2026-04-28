@@ -50,33 +50,26 @@ The **§6 `use_figma` template in [`SKILL.md`](../SKILL.md)** already bakes in t
 
 **After the full tree is built**, if **`_PageContent`** or **`doc/component/{name}`** reads as clipped or too short, re-assert vertical Hug per **create-design-system `SKILL.md` §0.1** (Figma sometimes pins **`layoutSizingVertical: 'FIXED'`** after **`appendChild`**).
 
-### 2.2 — Phased / multi-call draws — preserve space; use placeholders
+### 2.2 — Multi-call draws (five-call `/create-component`)
 
-When the doc frame is built across **several** Figma Plugin API runs ( **`SLUG_ORDER`** ladder in **[`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md)** ), agents **must not** leave empty shells that **collapse** in auto-layout — that destroys table width, header/body alignment, and the visual contract designers expect.
+The documentation frame may be filled across **several** parent `use_figma` invocations in fixed order: **`scaffold`** → **`properties`** → **`component-*`** → **`matrix`** → **`usage`** ([`../EXECUTOR.md`](../EXECUTOR.md) **§0**). Agents **must not** leave shells that **collapse** in auto-layout between calls.
 
 **Rules:**
 
-1. **Keep canonical geometry first** — `_PageContent`, `doc/component/{name}` at **1640px** inner width, **five section slots** in the final order (header → properties → component-set-group → matrix → usage). If a section’s real content is not ready yet, still create the **frame node** (correct `name`, `layoutMode`, `layoutAlign: 'STRETCH'`, `itemSpacing`) so siblings and gutters match §1–§2.
-2. **Properties table** — Always ship the **full chrome**: `doc/table-group/...` wrapper, **`doc/table/...` at 1640px**, **header row** with uppercase columns and `color/background/variant` fill (§4). If body rows are filled in a later step, step 1 must still insert **placeholder body rows** — not an empty body — using the **same** row/cell auto-layout as production (`minHeight` per §4, `textAutoResize: 'HEIGHT'`, centered counter-axis). Use neutral filler text (`—`, `…`, or `Pending`) in cells until real copy replaces it; **do not** rely on zero-height empty frames.
-3. **Replace in place** — Prefer updating placeholder row text / swapping placeholder nodes over **deleting the table shell** and redrawing. Ripping out the grid mid-pipeline is how column widths and section order drift.
-4. **Same failure modes as §2.1** — Empty VERTICAL children with no text and no `minHeight` still produce **~10px rails** and **1px-tall** table bodies. Placeholders exist specifically to hold space until `CONFIG.properties` (or matrix/usage builders) run.
+1. **Keep canonical geometry first** — `_PageContent`, `doc/component/{name}` at **1640px** inner width, **five section slots** in the final order (header → properties → component-set-group → matrix → usage). **`scaffold`** creates frames and placeholder rows so later calls only **fill** or **append** content.
+2. **Properties table** — **`scaffold`** ships full chrome and **`CONFIG.properties.length`** placeholder body rows. **`properties`** runs **`__ccDocFillPropertiesFromConfig()`** — **text only**, no structural redraw (see **`cc-doc-fill-props.js`**).
+3. **Replace in place** — Do not delete the table shell mid-pipeline; update cells and placeholders only.
+4. **Same failure modes as §2.1** — Empty VERTICAL children with no text and no `minHeight` still produce **~10px rails** and **1px-tall** table bodies.
 
 #### 2.2.1 — Strict properties table build (no structural redraw)
 
-These are the **valid** ways to get a correct table **without** deleting and re-building the 1640px shell mid-ladder. Stray patterns tend to reflow columns or collapse the body.
-
 | Path | When | What happens |
 |------|------|----------------|
-| **A — In-place scaffold + component + fill (shipped multistep default)** | `CONFIG.properties` is known before any doc `use_figma` (always true in `/create-component`). | **Scaffold** (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders` / tuple ops + `op-interpreter`): `buildPropertiesTable(placeholder rows)` — header + **`properties.length` placeholder** body rows + dashed reserves (may span **five** `use_figma` scaffold sub-slugs). **`cc-doc-component`** (`step2`): live `ComponentSet` into the doc section. **`cc-doc-props-1` / `cc-doc-props-2`** (`step3` twice) or legacy **`cc-doc-props`**: `__ccDocFillPropertiesFromConfig()` — **only** overwrites text in existing cells (row-range `varGlobals` for the two-pass split). Row count and table shell are fixed for the life of the draw. Dependency order is fixed **`SLUG_ORDER`** — see **[`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md)**. |
-| **B — Single `use_figma` (inline / single-pass)** | Parent runs full `draw-engine` with `__ccDocStep === null`. | Same **ordering** as Path A in one run: placeholder table + reserves → **component section** → **in-place fill** from `CONFIG.properties` → matrix → usage → finalize — no separate per-slice `use_figma` calls. |
-| **C — Placeholder then text-only (custom)** | Any other split of “shell” and “content” across two calls. | Same as former Path B: reserved placeholder rows, then in-place text only — **no** delete/rebuild of the table root mid-ladder. |
+| **A — Shipped five-call default** | Mode A/B before any `use_figma`; `CONFIG.properties` length known | **`scaffold`:** `buildPropertiesTable` with placeholder rows. **`properties`:** in-place cell text from CONFIG. **`component-*`:** live ComponentSet into component-set-group. **`matrix`** / **`usage`:** subsequent bundles. |
+| **B — Single `use_figma` (custom / debug)** | One merged code string | Same ordering in one run — not the default shipped path. |
+| **C — Other splits** | Rare | Same rule: reserved rows first, then text-only updates — **no** delete/rebuild of the table root mid-pipeline. |
 
-**Forbidden**
-
-- A **header-only** table in one step and **grow the body later** by appending an unpredictable number of rows if that step did not reserve row geometry (leads to collapse or a second “draw” in practice).
-- **Deleting** `doc/table/.../properties` (or the table group) and recreating it in a later slice **unless** you are intentionally resetting the whole page (same rule as “delete before drawing” in §2 — not mid-pipeline).
-
-**Authoring rule:** `N = CONFIG.properties.length` is knowable **before** any Figma call in `/create-component` — there is no reason the structural row count should change between slices.
+**Forbidden:** Growing the body by appending rows after **`scaffold`** without having reserved that row count initially. **Deleting** `doc/table/.../properties` mid-pipeline unless intentionally resetting the whole page (§2).
 
 ---
 
@@ -425,16 +418,8 @@ If a design system author has already published `color/primary/hover`, `color/pr
 
 ---
 
-## 14 — Mid-draw resume state (`phase-state.json`)
+## 14 — Resume / mid-draw state (**obsolete**)
 
-The merge script writes `phase-state.json` next to `handoff.json` after every Step 6 slice; this is the canonical mid-draw resume state.
+Legacy **`phase-state.json`**, **`handoff.json`**, and **`merge-create-component-handoff`** applied to the old 12-slice ladder only. The shipped **five-call** path has **no** merge script or slug-order resume file — if a draw fails mid-loop, fix the payload and re-run from the failing **`scaffold` … `usage`** step; see [`../EXECUTOR.md`](../EXECUTOR.md).
 
-Schema (validated on every merge — exit 18 on violation): [`schema/phase-state.schema.json`](./schema/phase-state.schema.json). Hand-rolled validator lives alongside [`scripts/merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs) (`validatePhaseStateSchema`).
-
-Notable rules:
-
-- `lastCodeSha256` is `null` (no merge yet) or a 64-char lowercase hex SHA-256. **Placeholder strings like `"pending"` are rejected.** Do not hand-fill it.
-- `completedSlugs` must be a contiguous prefix of `SLUG_ORDER` ending at `lastSliceOk` — the merge script enforces this.
-- `nextSlug` must equal `SLUG_ORDER[indexOf(lastSliceOk) + 1]`, or `null` after `cc-doc-finalize`.
-
-When recovering a broken ladder (handoff reset, missing merges), use [`scripts/resume-handoff.mjs`](../../../scripts/resume-handoff.mjs) — see [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md) §5.3.
+**Measured host transport** (truncating MCP JSON, future chunked tool args): **[`AGENTS.md`](../../../AGENTS.md)** and **[`memory.md`](../../../memory.md)** (*MCP anti-spiral*). Prefer **`probe-parent-transport`**, smaller **`ctx`**, or ephemeral **`Read` → `call_mcp`** — not a second MCP stack.

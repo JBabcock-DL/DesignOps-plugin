@@ -10,10 +10,10 @@ Applies to **every** agent session in this repository.
 ## Must follow
 
 1. Put inline tool arguments (`use_figma` → `code`, etc.) **in the tool call** when the host handles it reliably.
-2. **Ephemeral staging is OK** when it fixes transport: **`assemble-slice --out`** / **`--emit-mcp-args`** → parent **`Read`** (full file) → `call_mcp`; prefer **consumer design repo** `draw/` / `tmp/`, or OS temp — not persistent junk under **`skills/`**. Delete when done (see [`AGENTS.md`](../../AGENTS.md)).
+2. **Ephemeral staging is OK** when it fixes transport: writer assembles `code` to **consumer design repo** `draw/` / `tmp/` or OS temp → parent **`Read`** (full file) → `call_mcp`; not persistent junk under **`skills/`**. Delete when done (see [`AGENTS.md`](../../AGENTS.md)).
 3. If too large, use **multiple sequential** self-contained tool calls — not chained through **unread** partial files.
-4. **Committed** paths (`*.min.mcp.js`, `skills/create-component/templates/*.figma.js`, etc.) — **`Read`** once and pass contents inline; do **not** duplicate into a parallel scratch copy inside **`skills/`**.
+4. **Committed** paths (`*.min.mcp.js`, e.g. **`skills/create-component/canvas-templates/bundles/*.min.mcp.js`**, style-guide bundles) — **`Read`** once and pass contents inline; do **not** duplicate into a parallel scratch copy inside **`skills/`**.
 5. **Canvas bundles** (Steps 15a–c + 17): parent uses **`Task` → canvas-bundle-runner** per skill; parent audit per [`14-audit.md`](../../skills/create-design-system/conventions/14-audit.md).
 6. **Non-canvas** `use_figma`: prefer parent-built `code`; **no** shell `cat` of huge files as source of truth (truncation risk).
 
-**Normative checklist (transport + optional shrink pairing):** [`skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md`](../../skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md). **Deterministic ladder order:** [`13-component-draw-orchestrator.md`](../../skills/create-component/conventions/13-component-draw-orchestrator.md) **§1**. **`Draw Engine`** (scripts + **`current-step.manifest.json`**): [`23-designops-step6-engine.md`](../../skills/create-component/conventions/23-designops-step6-engine.md). **Full policy:** [`AGENTS.md`](../../AGENTS.md) (MCP payloads section).
+**`/create-component` draw order and bundles:** [`skills/create-component/EXECUTOR.md`](../../skills/create-component/EXECUTOR.md) **§0**. **Generic MCP workflow:** [`16-mcp-use-figma-workflow.md`](../../skills/create-design-system/conventions/16-mcp-use-figma-workflow.md). **Full policy:** [`AGENTS.md`](../../AGENTS.md) (MCP payloads section).

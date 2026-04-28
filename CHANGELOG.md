@@ -27,10 +27,10 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 - **[`skills/create-component/conventions/18-mcp-payload-budget.md`](skills/create-component/conventions/18-mcp-payload-budget.md)** — North star for `use_figma` wire size: **more** small rounds, not bigger strings. Linked from [`AGENTS.md`](AGENTS.md), [`memory.md`](memory.md), [`08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md), [`phases/00-index.md`](skills/create-component/phases/00-index.md), [`00-overview` router](skills/create-component/conventions/00-overview.md), [`EXECUTOR.md`](skills/create-component/EXECUTOR.md).
 - **[`skills/create-component/conventions/19-micro-phase-ladder.md`](skills/create-component/conventions/19-micro-phase-ladder.md)** — Micro-granular phases (row/cell/slug patterns, table invariants, `SLUG_ORDER` vs `.part`, implementation checklist). Cross-links from [`18`](skills/create-component/conventions/18-mcp-payload-budget.md), [`13`](skills/create-component/conventions/13-component-draw-orchestrator.md), [`merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs) (multipart merge error text). `listReturnFilesOnDisk` uses `isValidStepSlug` for `return-*.json` names.
 
-### Removed — buildable Figma `figma:mcp-invoke` path (non-viable for IDE OAuth parity)
+### Removed — standalone Node **`figma:mcp-invoke`** (Desktop MCP) path
 
-- **[`docs/buildable-figma-payload-path.md`](docs/buildable-figma-payload-path.md)** — **deleted.**
-- **[`scripts/figma-mcp-invoke-from-file.mjs`](scripts/figma-mcp-invoke-from-file.mjs)**, **[`scripts/qa-figma-mcp-invoke.mjs`](scripts/qa-figma-mcp-invoke.mjs)**, **`npm run figma:mcp-invoke`**, **`qa:figma-mcp-invoke`** — removed; **`@modelcontextprotocol/sdk`** devDependency removed. **`verify`** and docs ( [`AGENTS.md`](AGENTS.md), [`mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md), [`mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) §6.8 Track E, [`.cursor/rules/agent-run-designops-commands.mdc`](.cursor/rules/agent-run-designops-commands.mdc), [`CLAUDE.md`](CLAUDE.md), [`memory.md`](memory.md) ) updated. Mitigation: **granular** draw ladder + **8–10 kB** per-slice target.
+- **[`scripts/figma-mcp-invoke-from-file.mjs`](scripts/figma-mcp-invoke-from-file.mjs)** removed; **`npm run figma:mcp-invoke`** removed from **`package.json`**. **`@modelcontextprotocol/sdk`** devDependency removed.
+- **`qa:figma-mcp-invoke`** now runs a smoke **`check-use-figma-mcp-args`** on temp JSON (`scripts/qa-figma-mcp-invoke.mjs`). **`finalizeHint.fallbackShellPipe`** / Desktop URL prose removed from manifests and docs (`AGENTS.md`, **`EXECUTOR`**, **`23`**, **`21`**, composer playbook, **`buildable-figma-payload-path`**). Mitigation stays **integrated `call_mcp` `use_figma`** + granular slices (**`13`**, **`18`**).
 
 
 - **12** machine slugs in [`scripts/merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs) `SLUG_ORDER`: **five** scaffold sub-slugs (`cc-doc-scaffold-shell` through `cc-doc-scaffold-placeholders`), including **`cc-doc-scaffold-table-chrome`** and **`cc-doc-scaffold-table-body`** to shrink per-`use_figma` tuple payloads, then **`cc-variants`** and the doc ladder through **`cc-doc-finalize`**, with **`cc-doc-props-1` / `cc-doc-props-2`** (two `use_figma` calls sharing `create-component-engine-doc.step3` and row-range `varGlobals` from [`assemble-slice.mjs`](scripts/assemble-slice.mjs)). `mergeReturnIntoHandoff` preserves optional **`doc.propertiesTableId`**; **`assemble-slice`** injects **`__CC_HANDOFF_SCAFFOLD_TABLE_ID__`** for the body slice. Orchestration phase files under [`skills/create-component/phases/`](skills/create-component/phases/) are **01–11** (matrix / usage / finalize renumbered to **09 / 10 / 11** so **07** and **08** each document one props machine slug).
@@ -38,7 +38,7 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ### Removed — redundant MCP research under `docs/research/`
 
-- Deleted spin-off **closure report**, **large-payload phase log**, **Plan A pre-ship plan**, and the extra copy of the **solution architecture** that lived under `docs/research/`. **Single canonical write-up:** [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) (moved to `docs/`). Links updated in **`AGENTS.md`**, **`EXECUTOR`**, **[`08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md)**, [`docs/mcp-transport-cursor-fallback.md`](docs/mcp-transport-cursor-fallback.md).
+- Deleted spin-off **closure report**, **large-payload phase log**, **Plan A pre-ship plan**, and the extra copy of the **solution architecture** that lived under `docs/research/`. **Current references:** [`AGENTS.md`](AGENTS.md) (*Large `use_figma` transport*), [`18-mcp-payload-budget.md`](skills/create-component/conventions/18-mcp-payload-budget.md), [`21-mcp-ephemeral-payload-protocol.md`](skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md). *(A consolidated `docs/mcp-transport-solution-architecture-2026.md` and cursor fallback doc existed briefly; both were later removed from the tree.)*
 
 ### Removed — local Figma MCP file proxy (stdio package)
 
@@ -46,7 +46,7 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ### Updated — MCP research compile + solution ideation (2026-04-27)
 
-- **[`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md)** — Compiles 2026-04-27 spike: parent E2E at **5k / 10k** `code` (recorded `maxProvenSize` **10,279** B in sibling `figTest` draw dir), blockers for **25k** in one agent `call_mcp` (not Figma 50k cap), new **section 6 — Solution ideation** (tiers, decision matrix, next steps). Stakeholder row refreshed. *(2026-04-28: path moved to `docs/`; subsidiary research files under `docs/research/` later removed — see [Unreleased].)*
+- *Historical (2026-04-27): compiled MCP transport spike (5k / 10k `code`, `maxProvenSize` **10,279** B, 25k `call_mcp` blockers) lived in a standalone doc under `docs/`; **current** policy: [`AGENTS.md`](AGENTS.md), [`18`](skills/create-component/conventions/18-mcp-payload-budget.md), [`21`](skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md).*
 - **Earlier spin-off docs** (`mcp-transport-closure-report`, `mcp-large-payload-transport-2026`) — *removed 2026-04-28*; content consolidated into the solution architecture doc.
 
 ### Changed — `probe-parent-transport.mjs` (2026-04-27)
@@ -55,17 +55,17 @@ All notable changes to DesignOps-plugin live here. Format loosely follows [Keep 
 
 ### Added — MCP transport solution architecture handoff (2026-04-27)
 
-- **[`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md)** — Full research roll-up for SA: hypotheses, measured table, default architecture, pivot triggers, stakeholder matrix, 25k “last box” status (manual Composer capstone if agent cannot embed full args in one `call_mcp_tool`). *(Path was `docs/research/…` until 2026-04-28.)*
+- *Historical (2026-04-27): full MCP transport research handoff was published as a standalone `docs/` file later removed; **current** pointers: [`AGENTS.md`](AGENTS.md), [`16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md).*
 
 ### Added — MCP transport closure report (2026-04-27) — *file removed 2026-04-28*
 
-- *Superseded; narrative in [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md) **§4–5**, **§7**.*
+- *Superseded; transport narrative consolidated into [`AGENTS.md`](AGENTS.md) and [`18`](skills/create-component/conventions/18-mcp-payload-budget.md).*
 
 ### Added — `use_figma` transport research and fallbacks (2026-04-27) — *large-payload log removed 2026-04-28*
 
-- ~~**`docs/research/mcp-large-payload-transport-2026.md`**~~ — *Phase log removed; measurements and decisions live in [`docs/mcp-transport-solution-architecture-2026.md`](docs/mcp-transport-solution-architecture-2026.md).*
-- **`docs/mcp-transport-cursor-fallback.md`** — What to do when model/host JSON fails before Figma.
-- **`AGENTS.md`**, **`skills/create-component/EXECUTOR.md`**, **`skills/create-component/conventions/08-cursor-composer-mcp.md`** — Pointers to the research and fallback docs.
+- ~~**`docs/research/mcp-large-payload-transport-2026.md`**~~ — *Phase log removed; **current** mitigations: [`AGENTS.md`](AGENTS.md), [`21`](skills/create-component/conventions/21-mcp-ephemeral-payload-protocol.md).*
+- *Historical:* **`docs/mcp-transport-cursor-fallback.md`** — rolling into **[`AGENTS.md`](AGENTS.md)** (*Large `use_figma` transport*).
+- **`AGENTS.md`**, **`skills/create-component/EXECUTOR.md`**, **`skills/create-component/conventions/08-cursor-composer-mcp.md`** — Pointers to transport policy and Composer preflight.
 
 ### Fixed — README matches full plugin surface (2026-04-22)
 
