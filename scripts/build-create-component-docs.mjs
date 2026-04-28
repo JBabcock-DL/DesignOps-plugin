@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Regenerate the hand-maintained doc tables in
-// skills/create-component/SKILL.md (Supported Components grouped list and the
-// component → page routing table) directly from skills/create-component/shadcn-props.json.
+// skills/create-component/SKILL.md (Supported Components grouped list) and
+// skills/create-component/REFERENCE-agent-steps.md (component → page routing table).
+// Legacy: both blocks lived only in SKILL.md before Task 8 trim.
 //
 // Also: seeds the `category` field on every entry in shadcn-props.json the
 // first time this script runs against an older JSON, using the CATEGORY_MAP
@@ -25,6 +26,7 @@ const REPO_ROOT = resolve(__dirname, '..');
 const PROPS_PATH = resolve(REPO_ROOT, 'skills/create-component/shadcn-props.json');
 const SPLIT_DIR = resolve(REPO_ROOT, 'skills/create-component/shadcn-props');
 const SKILL_PATH = resolve(REPO_ROOT, 'skills/create-component/SKILL.md');
+const REFERENCE_AGENT_STEPS_PATH = resolve(REPO_ROOT, 'skills/create-component/REFERENCE-agent-steps.md');
 
 // Category display order mirrors the pre-SSOT SKILL.md sequence (Form & Input
 // first, platform bits last) so git diffs stay minimal during migration.
@@ -296,15 +298,20 @@ function main() {
   }
   skillAfter = r1.text;
 
-  const r2 = replaceMarkerBlock(skillAfter, 'page-routing-table', routingTable);
+  const refBefore = existsSync(REFERENCE_AGENT_STEPS_PATH)
+    ? readFileSync(REFERENCE_AGENT_STEPS_PATH, 'utf8')
+    : '';
+  let refAfter = refBefore;
+  const r2 = replaceMarkerBlock(refAfter, 'page-routing-table', routingTable);
   if (!r2.found) {
     warnings.push(
-      'SKILL.md missing <!-- GENERATED:page-routing-table START/END --> markers; skipping that block.'
+      'REFERENCE-agent-steps.md missing <!-- GENERATED:page-routing-table START/END --> markers; skipping that block.'
     );
   }
-  skillAfter = r2.text;
+  refAfter = r2.text;
 
   const skillChanged = skillAfter !== skillBefore;
+  const refChanged = refAfter !== refBefore;
 
   if (check) {
     if (propsMutated) {
@@ -313,8 +320,11 @@ function main() {
     if (skillChanged) {
       console.error('drift: SKILL.md generated blocks are stale.');
     }
+    if (refChanged) {
+      console.error('drift: REFERENCE-agent-steps.md generated blocks are stale.');
+    }
     for (const w of warnings) console.error(`warn: ${w}`);
-    if (propsMutated || skillChanged) process.exit(1);
+    if (propsMutated || skillChanged || refChanged) process.exit(1);
     console.log('build-create-component-docs: OK (no drift)');
     return;
   }
@@ -333,7 +343,11 @@ function main() {
     writeFileSync(SKILL_PATH, skillAfter);
     console.log(`updated ${SKILL_PATH} (regenerated generated blocks)`);
   }
-  if (!propsMutated && !skillChanged) {
+  if (refChanged) {
+    writeFileSync(REFERENCE_AGENT_STEPS_PATH, refAfter);
+    console.log(`updated ${REFERENCE_AGENT_STEPS_PATH} (page-routing table)`);
+  }
+  if (!propsMutated && !skillChanged && !refChanged) {
     console.log('build-create-component-docs: already up to date');
   }
   for (const w of warnings) console.log(`warn: ${w}`);

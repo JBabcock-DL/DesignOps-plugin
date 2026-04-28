@@ -19,13 +19,13 @@
 
 ## System audit — Mode A / Mode B (read order for agents)
 
-Lower-capability models should walk this list in order when debugging extraction vs draw. Authoritative behavior always defers to [`SKILL.md`](./SKILL.md) (especially §4.5.0, §4.5, §6, §8). **First read:** [`EXECUTOR.md`](./EXECUTOR.md) for assembly + transport.
+Lower-capability models should walk this list in order when debugging extraction vs draw. Authoritative behavior defers to **[`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md)** (especially §4.5.0, §4.5, Steps 6–8) and [`SKILL.md`](./SKILL.md) **§9**. **First read:** [`EXECUTOR.md`](./EXECUTOR.md) for assembly + transport.
 
 | Layer | Path | Role |
 |------|------|------|
 | Time-ordered phases | [`phases/`](./phases/) (`00-index` + `01`–`10`) | *When* to run each unit; **six** draw phases (`04`–`09`) for Step 6 — [`SKILL.md` *Phase execution*](./SKILL.md) |
 | Quickstart + transport | [`EXECUTOR.md`](./EXECUTOR.md) | §0 recipe; `check-payload`; 50k / JSON gates |
-| Canonical skill | [`SKILL.md`](./SKILL.md) | Steps 1–9; reporting; `_source` tags |
+| Canonical skill | [`SKILL.md`](./SKILL.md) + [`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md) | Router + **§9**; Steps **1–8** prose + template |
 | Overview + glossary | [`conventions/00-overview.md`](./conventions/00-overview.md) | Mode A vs B vocabulary |
 | Extraction + error semantics | [`conventions/05-code-connect.md`](./conventions/05-code-connect.md) | Tier1/Tier2; §2.5.5 decision table |
 | Doc pipeline | [`conventions/04-doc-pipeline-contract.md`](./conventions/04-doc-pipeline-contract.md) | Mode A-only doc step 0 |
@@ -53,4 +53,4 @@ When in doubt, start at [`conventions/00-overview.md`](./conventions/00-overview
 
 ## Authoritative source
 
-[`skills/create-component/SKILL.md`](./SKILL.md). When any `conventions/*.md` file disagrees with the skill, the skill wins. The **§0 Quickstart** lives in [`EXECUTOR.md`](./EXECUTOR.md); **§9 Self-check** in `SKILL.md` is the pass/fail gate for reporting a component "drawn".
+[`skills/create-component/SKILL.md`](./SKILL.md) (**§9**) and [`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md) (Steps **1–8**). When any `conventions/*.md` file disagrees with those, the **skill router + EXECUTOR** win for procedure/transport; **§9** + cited conventions win for assertions/geometry. **First read:** [`EXECUTOR.md`](./EXECUTOR.md) for assembly + transport.

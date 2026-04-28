@@ -36,6 +36,8 @@
 ]
 ```
 
+**`parent_actions[2]` (`CALL_MCP_USE_FIGMA`):** Older drafts described `fromMcpJson` as a **hint string** listing field names (`fileKey`, `code`, …). The **shipped manifest** uses **`fromMcpJson` as an absolute filesystem path** to the **`mcp-<slug>.json`** produced by **`designops-step6`** (same JSON the parent would `Read` for args). That is intentional: the path is copyable, diffable, and unambiguous; the parent still parses the file and passes **`fileKey`**, **`code`**, **`description`**, **`skillNames`** into `use_figma`.
+
 The parent thread **`Read`**s the **`mcp-*.json`** file in full (no chat paste), then **`call_mcp` → `use_figma`** with the parsed **`fileKey`**, **`code`**, **`description`**, **`skillNames`**.
 
 ---

@@ -44,7 +44,7 @@ If `extract-cva.mjs` exits non-zero for a component (custom composition, no cva,
 
 > `Axis B: {component} — source is not cva-based, cannot extract variant structure. Included in the diff as informational only; direction prompts will not target this component.`
 
-That **`unresolvable` label applies to this Axis B diff only** (code-vs-Figma variant structure comparison). It does **not** mean `/create-component` cannot run: the same extractor outcome routes that skill to **Mode B**, and Step 6 may still draw a valid ComponentSet from curated `shadcn-props` + the synthetic template. See [`../../create-component/SKILL.md`](../../create-component/SKILL.md) §4.5.0.
+That **`unresolvable` label applies to this Axis B diff only** (code-vs-Figma variant structure comparison). It does **not** mean `/create-component` cannot run: the same extractor outcome routes that skill to **Mode B**, and Step 6 may still draw a valid ComponentSet from curated `shadcn-props` + the synthetic template. See [`../../create-component/REFERENCE-agent-steps.md`](../../create-component/REFERENCE-agent-steps.md) §4.5.0.
 
 ### Axis C Connect API failure
 

@@ -51,9 +51,23 @@ if (mdFiles.length !== 14) {
 }
 
 const skillPath = join(REPO_ROOT, "skills/create-component/SKILL.md");
+const referencePath = join(REPO_ROOT, "skills/create-component/REFERENCE-agent-steps.md");
+const MAX_SKILL_LINES = 300;
 if (existsSync(skillPath)) {
   const n = readFileSync(skillPath, "utf8").split(/\r?\n/).length;
-  console.log(`qa-lively-oasis-contract: SKILL.md lines = ${n} (informational)`);
+  if (n > MAX_SKILL_LINES) {
+    console.error(
+      `qa-lively-oasis-contract: SKILL.md must stay ≤ ${MAX_SKILL_LINES} lines (router + §9 + generated tables); got ${n}. Move prose to REFERENCE-agent-steps.md.`,
+    );
+    failures++;
+  } else {
+    console.log(`qa-lively-oasis-contract: OK  SKILL.md lines = ${n} (max ${MAX_SKILL_LINES})`);
+  }
+}
+
+if (existsSync(referencePath)) {
+  const n = readFileSync(referencePath, "utf8").split(/\r?\n/).length;
+  console.log(`qa-lively-oasis-contract: REFERENCE-agent-steps.md lines = ${n} (informational)`);
 }
 
 if (failures > 0) {

@@ -9,7 +9,7 @@ Agent-facing logic lives primarily in `SKILL.md` files, with **lazy-loaded shard
 > Then use these quick-reference guides before running any skill:
 >
 > - [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) — **router** to convention shards; **§0 gotchas** live in [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md). For geometry + pages + naming, read [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md); for `codeSyntax` rules, [`skills/create-design-system/conventions/02-codesyntax.md`](skills/create-design-system/conventions/02-codesyntax.md). **Do not** load every shard at session start — follow each skill’s lazy-load instructions.
-> - [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) — **first read** for `/create-component`: assembly order, `check-payload`, MCP transport / 50k cap (medium-reasoning agents). Long-form: [`skills/create-component/SKILL.md`](skills/create-component/SKILL.md).
+> - [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) — **first read** for `/create-component`: assembly order, `check-payload`, MCP transport / Figma `code` cap + disk manifest. **§9 + supported list:** [`skills/create-component/SKILL.md`](skills/create-component/SKILL.md). **Steps 1–8 prose:** [`skills/create-component/REFERENCE-agent-steps.md`](skills/create-component/REFERENCE-agent-steps.md).
 > - [`skills/create-component/conventions/`](skills/create-component/conventions/) — **topic-scoped** convention shards (router at [`conventions/00-overview.md`](skills/create-component/conventions/00-overview.md), legacy [`CONVENTIONS.md`](skills/create-component/CONVENTIONS.md) kept as a §→file map). Covers the **matrix-default** 5-section layout every component uses: header + properties table + **live Component Set section (inline, editable)** + variant × state specimen matrix + Do/Don't usage notes. Per-category state axes, per-component variant rows, instance-vs-component handling, the `CONFIG` schema (including `labelStyle` bindings to published `Label/*` text styles), and a Button reference `CONFIG` live across [`01-config-schema.md`](skills/create-component/conventions/01-config-schema.md) / [`02-archetype-routing.md`](skills/create-component/conventions/02-archetype-routing.md) / [`04-doc-pipeline-contract.md`](skills/create-component/conventions/04-doc-pipeline-contract.md).
 
 ---
@@ -667,7 +667,7 @@ Set `CLAUDE_CACHE=/path/to/labs-design-ops` if the marketplace lives outside the
 
 ### Regenerating generated doc blocks
 
-Some tables inside `skills/create-component/SKILL.md` are derived from `skills/create-component/shadcn-props.json` (the per-component SSOT) and are rewritten between `<!-- GENERATED:... START/END -->` markers.
+Some tables inside `skills/create-component/SKILL.md` (supported components) and `skills/create-component/REFERENCE-agent-steps.md` (component → page routing) are derived from `skills/create-component/shadcn-props.json` (the per-component SSOT) and are rewritten between `<!-- GENERATED:... START/END -->` markers.
 
 | Script | Purpose |
 |---|---|

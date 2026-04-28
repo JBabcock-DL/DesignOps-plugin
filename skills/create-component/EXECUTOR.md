@@ -6,37 +6,19 @@
 
 ## §0 — Quickstart recipe for any agent
 
-> **This file is the single canonical recipe for assembly, preflight, and MCP transport.** Any agent opening this skill cold should `Read` this file in full before deeper sections in [`SKILL.md`](./SKILL.md). If this file and a deeper `SKILL.md` section ever disagree, **this EXECUTOR quickstart wins** for Steps 1–7 / assembly / transport; `SKILL.md` remains authoritative for long-form §4–§9 edge cases when explicitly cited.
+> **This file is the single canonical recipe for assembly, preflight, and MCP transport.** Any agent opening this skill cold should `Read` this file in full, then open [`SKILL.md`](./SKILL.md) for §9 + supported components and [`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md) when full Steps 1–8 prose is needed. If this file and narrative elsewhere disagree, **this EXECUTOR quickstart wins** for Steps 1–7 / assembly / transport; **§9** in `SKILL.md` remains the pass/fail self-check; **Steps 1–8 detail** in [`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md) applies when cited.
 
-> ## North star: **8–10 kB** per slice (before “parent can’t carry it”)
+> ## North star: **8–10 kB** per slice
 >
-> Prefer **more** `use_figma` calls with **less** `code` each (sub-slugs, tuple ops, `.partN` — [`conventions/18-mcp-payload-budget.md`](./conventions/18-mcp-payload-budget.md)) so the IDE MCP session stays reliable. The anti-confabulation block below is about **measured** limits when a slice is **already** minimal; do not use it to **avoid** splitting overweight bundles.
+> Prefer **more** `use_figma` calls with **less** `code` each (sub-slugs, tuple ops, `.partN` — [`conventions/18-mcp-payload-budget.md`](./conventions/18-mcp-payload-budget.md)) plus disk-backed staging via **[`23-designops-step6-engine`](./conventions/23-designops-step6-engine.md)** (`current-step.manifest.json`, `.designops/staging/mcp-*.json`) so slices stay small **and** reproducible. Do not use “parent can’t carry it” to justify **skipping** splits when a slice is still overweight.
 
-> ## 🚨 Anti-confabulation: "the parent can't carry this size" is a TRAINING-DATA BIAS
+> ## Anti-confabulation — “parent can’t carry this”
 >
-> If you find yourself thinking, writing, or saying any of these — **STOP**:
+> Claims like *“parent transport blocks ~24K inline”* or *“use a `Task` runner for `use_figma`”* are **often wrong** here: parent `call_mcp` has been **measured** for full create-component args—see [`AGENTS.md`](../../AGENTS.md). **If** you suspect the **host** truncated JSON, prove or follow [`docs/mcp-transport-cursor-fallback.md`](../../docs/mcp-transport-cursor-fallback.md)—**not** an unmeasured subagent runner.
 >
-> - *"Parent transport limit blocks embedding ~24K chars inline"*
-> - *"This payload is too big for parent `call_mcp`"*
-> - *"I'll use a `Task` subagent to read the JSON from disk"*
-> - *"The parent can't pass full `code` so we need a runner"*
+> **Before** delegating away from the parent: run [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs); on success record `<draw-dir>/.transport-proof.json`. **Subagent-as-runner is forbidden by default** — `Task` may only **write** assembled `code` / `mcp-args` to disk ([`08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) §D.1); the **parent** calls `use_figma`.
 >
-> These statements are **confabulation** — pattern-matched from prior MCP discussions in your training data, **not** measured against this host. Every single create-component slice payload (~25–48 KB MCP args) has been measured to ride the parent's `call_mcp` successfully. The parent IS the default. Subagent-as-runner is a near-extinct fallback.
->
-> **If you genuinely doubt parent transport, PROVE IT before delegating:**
->
-> ```bash
-> node scripts/probe-parent-transport.mjs --size 25000 --out probe-args.json
-> # then parent: Read probe-args.json + call_mcp use_figma {fileKey, code, ...}
-> # on success, record:
-> node scripts/probe-parent-transport.mjs --record --size 25000 --observed-bytes 25435 --target <draw-dir>
-> ```
->
-> The probe writes `<draw-dir>/.transport-proof.json`. After one successful probe, you may not cite "parent can't carry X bytes" again for X ≤ `maxProvenSize` in this draw. Citing it anyway is treated as a process failure. See [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs).
->
-> **Subagent-as-runner is forbidden by default.** Use `Task` only as a **writer** (assembly + check-payload + write to disk; return `{ outPath, step }`). The actual `call_mcp` / `use_figma` runs in the **parent** thread. See [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) §D.1 for the writer-vs-runner contract.
->
-> **Transport (measured 2026):** see [`docs/mcp-transport-solution-architecture-2026.md`](../../docs/mcp-transport-solution-architecture-2026.md) and fallback order [`docs/mcp-transport-cursor-fallback.md`](../../docs/mcp-transport-cursor-fallback.md) when JSON/tool-arg limits (not Figma) are suspected.
+> **Caps (do not conflate):** (1) **Figma MCP** `use_figma.code` **`maxLength` 50 000** characters — hard ceiling on the **plugin script string**. (2) **DesignOps Step 6 manifest** path keeps **per-slice** assembled output **on disk** and well under that ceiling in normal use. (3) Typical **parent** `call_mcp` has carried **~25–48K+** serialized tool args in practice—still **prove** if you doubt.
 
 ### §0.0 — Context optimization (MCP: **parent** only; does not change who calls `use_figma`)
 
@@ -47,7 +29,7 @@ These reduce **token load** in the parent and subagent *threads*; they are **not
 | **Preassembled on disk (2b)** | Assembly lives in file(s) under the **design repo**; parent `Read` one file per slice → one `use_figma`. |
 | **Writer subagent / Shell** | Subagent (or `node assemble-…js`) **writes** `slice-*.code.js` / `mcp-call.json`, returns only `{ path, checkPayloadOk }` — **no** `use_figma` in the subagent. **Parent** `Read` + `use_figma`. |
 | **Handoff on disk** | After each return, run [`scripts/merge-create-component-handoff.mjs`](../../scripts/merge-create-component-handoff.mjs) to merge the saved Figma return JSON into `handoff.json` (avoids retyping large objects in chat). |
-| **One slice per turn** | Do not `Read` every min engine + full `SKILL.md` in a single message. |
+| **One slice per turn** | Do not load every min engine + full **`REFERENCE-agent-steps.md`** / router in one message. |
 | **Lazy-load conventions** | Open only the phase/§ shard needed for the current slice. |
 
 Full narrative: [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) *Context budget*.
@@ -111,7 +93,7 @@ If your `Read` of this file or [`SKILL.md`](./SKILL.md) truncates before the ass
 | Topic | Guidance |
 |--------|-----------|
 | **`Unexpected end of JSON input` (or empty tool args) on `use_figma`** | The MCP request body was **truncated, incomplete, or not valid JSON**. After assembly, verify the **entire** tool-arguments object serializes: `JSON.stringify` → `JSON.parse` with no throw. `check-payload.mjs` validates the `code` **string** only — it does not prove the **wrapper** JSON is complete. |
-| **50k `code` cap** | MCP `use_figma.code` **`maxLength` is 50 000** characters. Use **one** per-archetype `create-component-engine-{layout}.min.figma.js` + CONFIG + preamble (table above). **Never** inline the full debug [`create-component-engine.min.figma.js`](./templates/create-component-engine.min.figma.js) at runtime. Typical assembled payloads are ~40–43K — inside the cap when **one** string is passed whole. |
+| **50k `code` cap (Figma)** | MCP `use_figma.code` **`maxLength` is 50 000** (inline plugin script). Targets for **per-slice** `code` are much smaller—**8–10 kB** class per [`18-mcp-payload-budget.md`](./conventions/18-mcp-payload-budget.md); [**`23`**](./conventions/23-designops-step6-engine.md) + **`.designops/staging/`** keep disk-backed args predictable. Use **one** per-archetype `create-component-engine-{layout}.min.figma.js` + CONFIG + preamble (§0 script-assembly table). **Never** inline the debug all-archetype [`create-component-engine.min.figma.js`](./templates/create-component-engine.min.figma.js) at runtime. |
 | **Gzip / base64 / `fetch` / `AsyncFunction` wrappers** | **Do not invent any wrapper.** The assembled slice bytes (CONFIG + varGlobals + preamble + min engine, ~23–43K) **are** the plugin code — pass them **verbatim** as `use_figma`'s `code` argument. The Figma plugin host **executes that string directly**. **Diagnostic:** if you find yourself reaching for `fetch`, `XMLHttpRequest`, `atob`, `TextDecoder`, `DecompressionStream`, or `new AsyncFunction(decoded)()` because those APIs are "missing in the sandbox," **stop** — you are solving the wrong problem. Those APIs are absent because they are **not needed** on the documented path. The slice already runs as plugin code; there is nothing to fetch, decode, or eval. Wrappers add bytes, push payloads over the 50k cap, and divert debugging onto the wrapper itself (see commit `a1f7f15` postmortem: a `/s/g` typo in a base64 strip-whitespace regex burned an entire session that didn't need a wrapper at all). Use **plain** committed template text only; see [`skills/create-design-system/conventions/16-mcp-use-figma-workflow.md`](../create-design-system/conventions/16-mcp-use-figma-workflow.md) § *MCP host constraints*. |
 | **Session / output limits** | Prefer finishing **install → 4.5 → 4.7 → twelve-slice `use_figma` in parent (or preassembled / inline) per component; then **registry** — before the next component or in a new turn if context is tight. **Do not** block on `Task` subagents for slices the subagent cannot emit. |
 | **Session runbook (tables + components)** | If the same chat run includes `/create-design-system` style-guide tables and `/create-component`, **finish 15a–c + 17** (via `canvas-bundle-runner` only) before any component Figma draw — see [`AGENTS.md`](../../AGENTS.md) § *Session runbook*. Do not interleave a table bundle `use_figma` and a component `use_figma` in one parent turn. |
@@ -121,7 +103,7 @@ If your `Read` of this file or [`SKILL.md`](./SKILL.md) truncates before the ass
 | **Long single-line minified bundles** | Editor UIs may **clip** one long line when copying. **`Read` the bundle file path in full** (or pipe the file to `check-payload`) and pass that complete string into MCP — never hand-copy a partial line from the panel. |
 | **Repo hygiene** | Do not commit `*.tmp.js` / payload scratch under the repo. Use [`AGENTS.md`](../../AGENTS.md) rules: `/tmp`, stdin, or ephemeral paths only. |
 
-**Optional host probe (once per session when debugging transport):** a minimal `use_figma` payload may `return { hasDecompressionStream: typeof DecompressionStream !== 'undefined', fileKey: figma.fileKey };` — if `hasDecompressionStream` is false, **no gzip path**; if `fileKey` is `headless` or mismatched, rely on **`ACTIVE_FILE_KEY`** / handoff / registry (preamble already treats `figma.fileKey` as a soft signal). Mode A/B (`SKILL.md` §4.5.0) is unrelated to these transport issues.
+**Optional host probe (once per session when debugging transport):** a minimal `use_figma` payload may `return { hasDecompressionStream: typeof DecompressionStream !== 'undefined', fileKey: figma.fileKey };` — if `hasDecompressionStream` is false, **no gzip path**; if `fileKey` is `headless` or mismatched, rely on **`ACTIVE_FILE_KEY`** / handoff / registry (preamble already treats `figma.fileKey` as a soft signal). Mode A/B ([`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md) §4.5.0) is unrelated to these transport issues.
 
 **CONFIG-authoring rules — non-negotiable:**
 
@@ -150,7 +132,7 @@ If your `Read` of this file or [`SKILL.md`](./SKILL.md) truncates before the ass
 
 ### §0.1 — Decision tree for edge cases
 
-- **No components provided** → step 1 prompts with the full supported list (see the routing table in `SKILL.md` §6).
+- **No components provided** → step 1 prompts with the full supported list (see Supported Components in [`SKILL.md`](./SKILL.md)); full step prose in [`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md) Step 6 for template + routing.
 - **`tokens.css` not found** → step 2 prompts; reply `skip` sets `TOKEN_CSS_PATH = null` and canvas uses hex fallbacks.
 - **shadcn not initialized** → step 3 prompts to run `npx shadcn@latest init`; if declined, stop the skill.
 - **`designops.config.json` already has an `iconPack` block** → step 3b is silent; `ICON_PACK` is read from disk and reused. Designer can edit the file by hand or pass `--re-ask-icon-pack` to force re-prompt.
@@ -214,18 +196,18 @@ Then retry the slice **once** with parent `call_mcp`.
 
 | Topic | Section |
 |-------|---------|
-| Interactive prompts | `SKILL.md` §1 Interactive input contract |
-| Shadcn init + token wiring | `SKILL.md` §3 / §3a |
-| Icon-pack bootstrap (first-time-only) | `SKILL.md` §3b |
-| Install per component | `SKILL.md` §4 |
-| Icon-pack import rewrite (lucide → chosen pack) | `SKILL.md` §4.4 |
-| Mode A contract · when Mode B is normal · extractor exit-1 discipline | `SKILL.md` §4.5.0 |
-| File-key resolution | `SKILL.md` §5 |
-| The `use_figma` template (CONFIG + draw engine) | `SKILL.md` §6 |
-| Reporting table | `SKILL.md` §8 |
-| Self-check before reporting "drawn" | `SKILL.md` §9 |
-| Icon slots + element properties spec | [`conventions/01-config-schema.md` §3.3](./conventions/01-config-schema.md) |
+| Interactive prompts | [`REFERENCE-agent-steps.md`](./REFERENCE-agent-steps.md) (Step 1 + AskUserQuestion cadence) |
+| Shadcn init + token wiring | same file — Steps 3–3a |
+| Icon-pack bootstrap | same — Step 3b |
+| Install per component | same — Step 4 |
+| Icon-pack import rewrite | same — Step 4.4 |
+| Mode A / Mode B · extractor | same — §4.5.0 |
+| File-key resolution | same — Step 5 |
+| `use_figma` CONFIG + template block | same — Step 6 |
+| Reporting table | same — Step 8 |
+| Self-check before reporting "drawn" | [`SKILL.md`](./SKILL.md) Step 9 |
+| Icon slots + element properties | [`conventions/01-config-schema.md` §3.3](./conventions/01-config-schema.md) |
 | State override policy | [`conventions/04-doc-pipeline-contract.md` §13.1](./conventions/04-doc-pipeline-contract.md) |
 | Audit checklist | [`conventions/06-audit-checklist.md` §14](./conventions/06-audit-checklist.md) |
-| Token-path canonicals + pre-flight + banned strategies | [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) |
-| Short-context / MCP transport (50k cap, no gzip, JSON completeness) | This file §0 *Short-context agents / MCP transport* |
+| Token paths · pre-flight | [`conventions/07-token-paths.md`](./conventions/07-token-paths.md) |
+| MCP transport (`use_figma`, JSON, caps) | This file §0 *Short-context* table |

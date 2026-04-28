@@ -68,7 +68,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 | [`new-project`](skills/new-project/SKILL.md) | `/new-project` | Scaffold Foundations Figma file + page hierarchy. |
 | [`create-design-system`](skills/create-design-system/SKILL.md) | `/create-design-system` | Push tokens/variables; style-guide tables; Step 15a–c + 17 canvas bundles. |
 | [`sync-design-system`](skills/sync-design-system/SKILL.md) | `/sync-design-system` | One reconcile **A→B→C**; bundled **AskUserQuestion** decisions; figma-only / full / code-to-figma scopes. |
-| [`create-component`](skills/create-component/SKILL.md) | `/create-component` | shadcn-aligned component + **5-section doc frame**; **`EXECUTOR.md`** = assembly + 50k cap. |
+| [`create-component`](skills/create-component/SKILL.md) | `/create-component` | Router + **§9**; **`REFERENCE-agent-steps.md`** = Steps 1–8; **`EXECUTOR.md`** = assembly + Figma `code` cap + disk manifest (**23**). |
 | [`create-component-figma-slice-runner`](skills/create-component-figma-slice-runner/SKILL.md) | **Spec (Step 6)** | Assembly order + `handoffJson`; **default:** parent `use_figma` ×**12** (see `SLUG_ORDER` in [`merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs)), **not** `Task` for oversized `call_mcp`. |
 | [`canvas-bundle-runner`](skills/canvas-bundle-runner/SKILL.md) | **`Task` (preferred) or [16] parent** | One committed Step 15a / 15b / 15c-* / 17 bundle verbatim; fallback if subagent cannot emit. |
 | [`code-connect`](skills/code-connect/SKILL.md) | `/code-connect` | Find/publish Code Connect mappings; often **Axis C** of sync. |
@@ -80,7 +80,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 
 ---
 
-## `/create-component` transport (50k ceiling)
+## `/create-component` transport (Figma `code` 50k; disk staging)
 
 - **Default — 12 slices in parent:** **12** `use_figma` invocations, assembly per slice runner — `create-component-engine-{layout}.step0.min.figma.js` then **five** **scaffold** tuple-op slices, then `create-component-engine-doc.step2`…`step6` (legacy `step1` min is superseded at assembly; see [13](skills/create-component/conventions/13-component-draw-orchestrator.md)). See [`EXECUTOR` §0](skills/create-component/EXECUTOR.md).
 - **Phased / one-shot in parent — two full-engine or one:** **`CONFIG`** + **`preamble.figma.js`** + **`create-component-engine-{layout}.min.figma.js`** in the **parent** per **`EXECUTOR.md`** (fewer Figma round trips than **twelve** slices).
@@ -110,7 +110,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 | Style-guide / variables | [`skills/create-design-system/CONVENTIONS.md`](skills/create-design-system/CONVENTIONS.md) | Only the phase + convention shard for the current step. |
 | Geometry / pages / doc styles | [`skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md`](skills/create-design-system/conventions/03-through-07-geometry-and-doc-styles.md) | As skill directs. |
 | Gotchas / §0 index | [`skills/create-design-system/SKILL.md`](skills/create-design-system/SKILL.md) §0 + [`00-gotchas.md`](skills/create-design-system/conventions/00-gotchas.md) | §0.10 for resize/component/usage/matrix. |
-| Component draw | **Composer / short context:** [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) · [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) | Then `SKILL.md` sections as needed (§9, registry). |
+| Component draw | **Composer / short context:** [`skills/create-component/conventions/08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) · [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) | Then [`SKILL.md`](skills/create-component/SKILL.md) **§9** + [`REFERENCE-agent-steps.md`](skills/create-component/REFERENCE-agent-steps.md) as needed. |
 | Sync reconcile | [`skills/sync-design-system/SKILL.md`](skills/sync-design-system/SKILL.md) router | **One** [`phases/*.md`](skills/sync-design-system/phases/) for current step. |
 | MCP / bundles / Cursor roots | [`AGENTS.md`](AGENTS.md) | [`16-mcp-use-figma-workflow.md`](skills/create-design-system/conventions/16-mcp-use-figma-workflow.md) when debugging transport. |
 | Cursor + Composer; Step 6 `use_figma` pain | [`08-cursor-composer-mcp.md`](skills/create-component/conventions/08-cursor-composer-mcp.md) | Then [`AGENTS.md`](AGENTS.md) if policy detail needed. |
