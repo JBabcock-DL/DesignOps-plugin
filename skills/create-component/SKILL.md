@@ -13,9 +13,9 @@ Install shadcn/ui components into the local codebase and draw them onto the Figm
 
 **Mandatory:** Before any install, assembly, or `use_figma` call, `Read` [`EXECUTOR.md`](./EXECUTOR.md) in full (install through Step 6 transport, `check-payload`, session runbook). **`SKILL.md`** holds **§9** (pass/fail self-check), generated **supported components**, and shortcuts. **EXECUTOR** wins on assembly and MCP transport; **`conventions/`** wins cited geometry.
 
-**Step 6 — five parent `use_figma` calls:** After a single **`ctx`** prefix that mirrors **CONFIG** plus `activeFileKey` / `fileKey`, `registryComponents`, and `usesComposes` (see `EXECUTOR` §0), **`Read`** each committed bundle and invoke **`use_figma`** in order: **`scaffold.min.mcp.js`** → **`properties.min.mcp.js`** → **`component-chip.min.mcp.js`** or **`component-<layout>.min.mcp.js`** (per [`02-archetype-routing.md`](./conventions/02-archetype-routing.md)) → **`matrix.min.mcp.js`** → **`usage.min.mcp.js`**. Bundles: [`canvas-templates/bundles/`](./canvas-templates/bundles/). Rebuild from [`canvas-templates/`](./canvas-templates/) via **`npm run bundle-component`**.
+**Step 6 — five `use_figma` calls (aligned with style-guide canvas):** Build **`ctx`** once per component (full **CONFIG** + `activeFileKey` / `fileKey`, `registryComponents`, `usesComposes` — see [`EXECUTOR.md`](./EXECUTOR.md) §0). For each step, run **`assemble-component-use-figma-code.mjs`**, **`check-payload`**, then **prefer** **`Task` → [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md)** with `step=cc-scaffold` … `cc-usage` and `assembledCodePath` (see runner §2 / §6). **Fallback:** **parent** **`Read`** the same assembled file → **`call_mcp`**. Order: **`cc-scaffold`** → **`cc-properties`** → **`cc-component-*`** (per [`02-archetype-routing.md`](./conventions/02-archetype-routing.md)) → **`cc-matrix`** → **`cc-usage`**. Bundles: [`canvas-templates/bundles/`](./canvas-templates/bundles/). Rebuild: **`npm run bundle-component`**.
 
-**Short-output / Composer-class hosts:** Same **`Read` → `call_mcp`** pattern as style-guide canvas ([`create-design-system` / 16](../create-design-system/conventions/16-mcp-use-figma-workflow.md)). Subagents may write assembled `code` to disk; **parent** runs `use_figma`.
+**Short-output / Composer-class hosts:** Same delegation + fallback as Steps 15a–c / 17 ([`create-design-system` / 16](../create-design-system/conventions/16-mcp-use-figma-workflow.md)). Writers may run assembly + `check-payload` only.
 
 > **Conventions:** Start at [`conventions/00-overview.md`](./conventions/00-overview.md). Router for section IDs: [`CONVENTIONS.md`](./CONVENTIONS.md).
 
@@ -114,6 +114,8 @@ The following shadcn/ui components are supported. Pass any of these names to the
 
 ## CLI Reference
 
+Commands below are **invoked by the agent** from the DesignOps-plugin repo root when automating this skill (see [`AGENTS.md`](../../AGENTS.md) — *Agents run plugin CLI*). **Do not** instruct designers to manually run them unless automation is unavailable.
+
 | Command | Purpose |
 |---|---|
 | `npx shadcn@latest init` | Initialize shadcn in the current project (creates `components.json`) |
@@ -122,6 +124,7 @@ The following shadcn/ui components are supported. Pass any of these names to the
 | `npx shadcn@latest diff` | Show which installed components are out of date |
 | `node …/resolver/validate-composes.mjs <shadcn-props.json> <component\|--all> [--project <root>]` | Validate `composes[]` (Step 4.5.g) |
 | `node …/resolver/merge-registry.mjs <.designops-registry.json> <entry.json>` | Upsert one registry record after a successful draw (Step 5.2) |
+| `npm run create-component-step6 -- --ctx-file <path>` (DesignOps-plugin root) | Batch Step 6 assemble + `check-payload` (+ optional `--check-mcp-args`, `--probe-first`); writes `create-component-step6-progress.json` — still five **sequential** `use_figma` ([`EXECUTOR.md`](./EXECUTOR.md) §0, [`scripts/create-component-step6-all.mjs`](../../scripts/create-component-step6-all.mjs)) |
 
 ---
 

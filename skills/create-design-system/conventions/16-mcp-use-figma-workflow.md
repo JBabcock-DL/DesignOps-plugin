@@ -60,13 +60,15 @@ Do **not** improvise a parallel "generator" that ignores the templates — the t
 
 ## Non-canvas `use_figma` calls (`/create-component` Step 6)
 
-**Default — parent `use_figma`:** the **parent** runs **five** sequential `use_figma` invocations in fixed order: **`scaffold.min.mcp.js`** → **`properties.min.mcp.js`** → **`component-chip.min.mcp.js`** or **`component-<layout>.min.mcp.js`** → **`matrix.min.mcp.js`** → **`usage.min.mcp.js`** per [`create-component/canvas-templates/bundles/`](../create-component/canvas-templates/bundles/) and [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0**. Each payload is **`ctx`** (CONFIG + `fileKey` / registry fields) prepended to the `Read` bundle body; **`check-payload`** gates before MCP. **`create-component` §9** runs on the **`component-*`** return for structure checks. **Do not** default to `Task` subagents for payloads they cannot `call_mcp` ([`AGENTS.md`](../../../AGENTS.md)).
+**Preferred — same `canvas-bundle-runner` subagent:** For each of the **five** steps, run [`scripts/assemble-component-use-figma-code.mjs`](../../../scripts/assemble-component-use-figma-code.mjs) (`--step cc-scaffold` … `cc-usage`, `--ctx-file`, `--out`), **`npm run check-payload -- <out>`**, then **`Task` → [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md)** with **`step`**, **`assembledCodePath`**, **`fileKey`**, **`description`** (runner §0.C / §6). One **`Read`** of the assembled file + one **`use_figma`** — same transport model as style-guide canvas.
 
-**Optional — `Task` writers:** subagent may assemble `code` to disk; **parent** still owns **`Read` → `call_mcp`** per [`16`](./16-mcp-use-figma-workflow.md) (same pattern as style-guide bundles when delegation helps token load).
+**Fallback — parent `use_figma`:** If the subagent cannot emit full `call_mcp` args, the **parent** **`Read`s the same `<out>`** and **`call_mcp`**.
 
-**Fallback:** parent inline / preassembled `code` only; ad-hoc small Figma edits stay inline. Regenerate bundles with **`npm run bundle-component`** in the plugin repo after editing [`create-component/canvas-templates/`](../create-component/canvas-templates/).
+**Order:** `cc-scaffold` → `cc-properties` → **`cc-component-*`** (from **`CONFIG.layout`**) → `cc-matrix` → `cc-usage`. **`ctx`** / **§9** / bundle paths: [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0**.
 
-The subagent-delegation rule for **style-guide** work applies **only** to the committed canvas bundles under [`../canvas-templates/bundles/`](../canvas-templates/bundles/) (use [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md) for those). **Do not** use component runners for 15a–c / 17 tables. A one-off 2k-char script for a single node edit stays inline in the parent.
+**Writers only:** a subagent may run **`assemble-component-use-figma-code.mjs`** + **`check-payload`**; **runner or parent** still performs **`use_figma`**.
+
+Regenerate committed bundle bodies with **`npm run bundle-component`**. **Do not** use **`cc-*`** runner steps for 15a–c / 17 tables — those use committed **`.min.mcp.js`** only (runner §0.B). A one-off small script stays inline in the parent.
 
 ---
 
@@ -74,10 +76,10 @@ The subagent-delegation rule for **style-guide** work applies **only** to the co
 
 | Priority | Mechanism | Notes |
 |----------|-----------|--------|
-| **1 — Canvas bundles (Step 15 / 17)** | **Delegate to [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent.** | Parent never `Read`s the bundle. |
-| **2 — `/create-component` Step 6 (parent default)** | **5×** `use_figma` in the **parent** (`scaffold` → `properties` → `component-*` → `matrix` → `usage`) per [EXECUTOR](../create-component/EXECUTOR.md) + committed [`*.min.mcp.js` bundles](../create-component/canvas-templates/bundles/) | Preferred; see **Non-canvas** section above. |
-| **2a — `/create-component` Step 6 (writer `Task`)** | Subagent writes assembled `code`; parent **`Read` → `call_mcp`** | Only when helpful for token load — parent must still pass full tool args. |
-| **2b — `/create-component` Step 6 (inline / preassembled)** | Parent assembles per [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** | Same **`ctx` + bundle** bytes as the five-call path; optional writer emits a `.js` file for parent `Read`. |
+| **1 — Canvas bundles (Step 15 / 17)** | **Delegate to [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent** (`step` = `15a-primitives` …). | Parent never `Read`s the bundle. |
+| **2 — `/create-component` Step 6 (runner preferred)** | **5×** `Task` → **`canvas-bundle-runner`** with **`assembledCodePath`** after [`assemble-component-use-figma-code.mjs`](../../../scripts/assemble-component-use-figma-code.mjs) + **`check-payload`**. | Same skill as row 1; **§0.C** in runner SKILL. |
+| **2a — `/create-component` Step 6 (parent fallback)** | Parent **`Read`** assembled file → **`call_mcp`** | Same bytes as 2 when subagent transport fails. |
+| **2b — `/create-component` writers** | Subagent runs assemble + `check-payload`; runner or parent **`use_figma`**. | Paths only in Task return. |
 | **2c — Non-canvas inline (parent)** | Build plain Plugin API JS in the parent and pass as inline `code`. | Small ad-hoc edits. ~50k cap; `figma-use` when required. |
 | **Fallback (debug only)** | Editor **`Read`** the committed `.min.mcp.js` and pass **verbatim** as inline `code` from the parent. | Use only when the runner subagent can't reach the MCP and the parent must escalate. Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
 | **Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
@@ -88,7 +90,7 @@ The subagent-delegation rule for **style-guide** work applies **only** to the co
 
 | Symptom | Likely cause | Fix |
 |---------|----------------|-----|
-| Figma parse error or bizarre early failure right after a “successful” shell dump | **Truncated** bundle copied from capped terminal output | `Read` the `.min.mcp.js`; never use full-file `cat` as source of truth. |
+| Figma parse error or bizarre early failure right after a “successful” shell dump | **Truncated** bundle copied from capped terminal output | `Read` the `.min.mcp.js` or **assembled** `use_figma` file; never use full-file `cat` as source of truth. |
 | `MCP server does not exist` | Wrong server id in Cursor | Use workspace `mcps/**/SERVER_METADATA.json` `serverIdentifier` (often `plugin-figma-figma`), not the slug `figma`. |
 | Payload over ~50k | Bundle + extras over schema cap | Regen min bundle; split per phase 07; omit inline `variableMap` when using `_lib` + `ensureLocalVariableMapOnCtx`. |
 

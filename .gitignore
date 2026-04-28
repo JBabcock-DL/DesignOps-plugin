@@ -17,3 +17,6 @@ scripts/test-fixtures/composer2-probe-draw/.designops/
 
 # Local tuple-parity / QA reports (`npm run qa:tuple-parity`)
 .designops/
+
+# Step 6 orchestration QA (`npm run qa:step6-orchestration`)
+scripts/test-fixtures/.step6-orchestration-out/

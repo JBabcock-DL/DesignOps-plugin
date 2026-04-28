@@ -700,42 +700,17 @@ npm run build:props:check     # CI guard
 
 Agents should prefer `Read`-ing the single `shadcn-props/{component}.json` file they need (saves ~60 KB of context vs the monolith) and only fall back to the monolith if a tool explicitly requires it (e.g. `resolver/validate-composes.mjs`).
 
-### Regenerating minified templates
+### Regenerating create-component MCP bundles
 
-`/create-component`'s committed templates include **per-archetype full engines** (`create-component-engine-{layout}.min.figma.js`, ~32–35 KB) and **per-step** min slices for the doc ladder (`*.step0` for variants + `create-component-engine-doc.step1`…`step6` for doc work). **Default Step 6:** [`assemble-slice.mjs`](scripts/assemble-slice.mjs) (no `legacy` flag) uses **tuple JSON ops** + [`op-interpreter.min.figma.js`](skills/create-component/templates/op-interpreter.min.figma.js) for the **five** scaffold sub-slugs (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`), then the same `*.min.figma.js` delegates for `cc-variants` and doc steps 2–6 (see [`13-component-draw-orchestrator.md`](skills/create-component/conventions/13-component-draw-orchestrator.md) — **12** parent `use_figma` calls in order, `SLUG_ORDER` in [`merge-create-component-handoff.mjs`](scripts/merge-create-component-handoff.mjs)). **Inline or preassembled** in the parent (e.g. two phased full-engine calls) — [`EXECUTOR.md`](skills/create-component/EXECUTOR.md) **§0**. The table below is for **inline** full-engine use.
+`/create-component` ships committed **`.min.mcp.js`** bodies under [`skills/create-component/canvas-templates/bundles/`](skills/create-component/canvas-templates/bundles/), built from sources in [`skills/create-component/canvas-templates/`](skills/create-component/canvas-templates/) by [`scripts/bundle-component-mcp.mjs`](scripts/bundle-component-mcp.mjs).
 
-| `CONFIG.layout` | Bundle file | ~size |
-|---|---|---|
-| `chip` | [`create-component-engine-chip.min.figma.js`](skills/create-component/templates/create-component-engine-chip.min.figma.js) | ~26 KB |
-| `surface-stack` | [`create-component-engine-surface-stack.min.figma.js`](skills/create-component/templates/create-component-engine-surface-stack.min.figma.js) | ~32 KB |
-| `field` | [`create-component-engine-field.min.figma.js`](skills/create-component/templates/create-component-engine-field.min.figma.js) | ~32 KB |
-| `row-item` | [`create-component-engine-row-item.min.figma.js`](skills/create-component/templates/create-component-engine-row-item.min.figma.js) | ~31 KB |
-| `tiny` | [`create-component-engine-tiny.min.figma.js`](skills/create-component/templates/create-component-engine-tiny.min.figma.js) | ~32 KB |
-| `control` | [`create-component-engine-control.min.figma.js`](skills/create-component/templates/create-component-engine-control.min.figma.js) | ~31 KB |
-| `container` | [`create-component-engine-container.min.figma.js`](skills/create-component/templates/create-component-engine-container.min.figma.js) | ~32 KB |
-| `__composes__` | [`create-component-engine-composed.min.figma.js`](skills/create-component/templates/create-component-engine-composed.min.figma.js) | ~31 KB |
-
-Three additional artifacts are committed as **debug-only siblings** — never inlined at runtime:
-
-- [`create-component-engine.min.figma.js`](skills/create-component/templates/create-component-engine.min.figma.js) — the full 7-archetype bundle (~50 KB, right at the MCP limit with no CONFIG room).
-- [`draw-engine.min.figma.js`](skills/create-component/templates/draw-engine.min.figma.js) — standalone draw-engine (identifiers preserved for readability).
-- [`archetype-builders.min.figma.js`](skills/create-component/templates/archetype-builders.min.figma.js) — standalone archetype-builders (identifiers preserved).
-
-| Script | Purpose |
-|---|---|
-| [`scripts/build-min-templates.mjs`](scripts/build-min-templates.mjs) | Splits `draw-engine.figma.js` on the archetype-builders insertion banner, parses `archetype-builders.figma.js` into per-builder blocks, and emits 11 committed artifacts: 8 per-archetype runtime bundles (identifier-mangled for size) + 1 full debug bundle + 2 standalone debug `.min` files. Refuses to write any runtime bundle larger than 40 000 bytes. `--check` exits non-zero if any source is newer than any generated output. |
-
-Typical flow after editing either source template:
+**Step 6 orchestration:** [`skills/create-component/EXECUTOR.md`](skills/create-component/EXECUTOR.md) — five calls in order (`cc-scaffold` … `cc-usage`). Parents run [`scripts/assemble-component-use-figma-code.mjs`](scripts/assemble-component-use-figma-code.mjs) (`--ctx-file`, `--step`, `--out`), **`npm run check-payload -- <out>`**, then **`Task` → [`canvas-bundle-runner`](skills/canvas-bundle-runner/SKILL.md)** with **`assembledCodePath`**, or **parent** `Read` → `call_mcp` if subagent transport fails.
 
 ```bash
-npm install                 # once, for esbuild (devDependency)
-npm run build:min           # regenerate all 11 outputs
-npm run build:min:check     # CI guard: exits 1 on stale outputs
+npm run bundle-component              # regen all *.min.mcp.js after editing canvas-templates sources
+npm run qa:create-component-skill     # check-payload on every bundle body
+npm run qa:assemble-component-code    # ctx + bundle concat × 12 steps (offline)
 ```
-
-The combined CI gate is `npm run verify` (runs `build:docs:check`, `build:min:check`, and `verify-cache` in sequence). `scripts/verify-cache.sh` fails the drift check if any source `.figma.js` is newer than any of its generated outputs, so a commit that forgets `npm run build:min` is caught automatically.
-
-Identifier mangling is **enabled** for the per-archetype runtime bundles because the runtime `typeof buildSurfaceStackVariant === 'function'` assertions live in the same compilation unit as the declarations — esbuild renames both sides consistently. Boundary identifiers declared by the agent's §0 CONFIG preamble (`CONFIG`, `ACTIVE_FILE_KEY`, `REGISTRY_COMPONENTS`, `usesComposes`) appear as undeclared free variables inside the templates and are left un-renamed automatically. See [`skills/create-component/templates/README.md`](skills/create-component/templates/README.md) for the full contract.
 
 ---
 
@@ -748,7 +723,7 @@ This plugin is distributed internally via this Git repository. To add or modify 
 3. Update `templates/workflow.md` and this `README.md` if the change affects designer-facing behavior or conventions
 4. Test with a live Figma file using the Figma MCP connector before committing
 5. If your change touches `skills/create-component/shadcn-props/*.json`, run `npm run build:props` to regenerate `shadcn-props.json` + `_index.json`, then `npm run build:docs` so the generated blocks in `SKILL.md` stay in sync
-6. If your change touches `skills/create-component/templates/draw-engine.figma.js` or `archetype-builders.figma.js`, run `npm run build:min` so the committed `.min.figma.js` siblings stay fresh
+6. If your change touches `skills/create-component/canvas-templates/**` sources, run `npm run bundle-component` so committed `bundles/*.min.mcp.js` stay fresh
 7. Run `bash scripts/sync-cache.sh` to push **every** `skills/**` change into the Claude marketplace cache, then **`npm run verify`** (runs `verify-cache` among other checks). Do not assume the cache updated itself — stale cache is a common “agent ignored my edit” false alarm.
 8. After refactors that rename headings or split sections, grep for stale links (e.g. old `SKILL.md#…` anchors) so agent instructions do not point at dead fragments.
 

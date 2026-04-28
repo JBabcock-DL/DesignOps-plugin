@@ -27,10 +27,14 @@
     "build-config-block": "node scripts/build-config-block.mjs",
     "measure-sigma": "node scripts/measure-sigma.mjs",
     "qa:create-component-skill": "node scripts/qa-create-component-skill.mjs",
+    "qa:assemble-component-code": "node scripts/qa-assemble-component-code.mjs",
+    "assemble-component-code": "node scripts/assemble-component-use-figma-code.mjs",
+    "create-component-step6": "node scripts/create-component-step6-all.mjs",
+    "qa:step6-orchestration": "node scripts/create-component-step6-all.mjs --ctx-file scripts/test-fixtures/min-component-ctx.js --out-dir scripts/test-fixtures/.step6-orchestration-out --check-mcp-args",
     "sync-cache": "bash scripts/sync-cache.sh",
     "verify-cache": "bash scripts/verify-cache.sh",
     "build": "npm run build:props && npm run build:docs && npm run bundle-component",
-    "verify": "npm run build:props:check && npm run build:docs:check && npm run bundle-component && npm run qa:create-component-skill && npm run qa:config-projection && npm run qa:lively-oasis-contract && npm run qa:visual-diff && npm run verify-cache"
+    "verify": "npm run build:props:check && npm run build:docs:check && npm run bundle-component && npm run qa:create-component-skill && npm run qa:assemble-component-code && npm run qa:step6-orchestration && npm run qa:config-projection && npm run qa:lively-oasis-contract && npm run qa:visual-diff && npm run verify-cache"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

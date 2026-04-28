@@ -6,40 +6,45 @@
 
 ## §0 — Quickstart
 
-> **Composer 2 / Cursor:** [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) — measurement, disk staging, parent **`Read` → `call_mcp`**.
+> **Composer 2 / Cursor:** [`conventions/08-cursor-composer-mcp.md`](./conventions/08-cursor-composer-mcp.md) — measurement, disk staging, **`Read` → `call_mcp`**.
 
 **This file** is the single canonical recipe for install, CONFIG, **five-call** Figma draw, `check-payload`, and MCP transport. Then open [`SKILL.md`](./SKILL.md) for **§9** and supported components. On conflict: **EXECUTOR** wins assembly and transport; **conventions/** win cited geometry.
 
-### Step 6 — five `use_figma` calls in the parent (default)
+**Who runs shell commands:** Agents execute **`node scripts/…`** / **`npm run …`** from the plugin repo per [`AGENTS.md`](../../AGENTS.md) (*Agents run plugin CLI*). Designers are **not** expected to copy-paste terminal steps unless an exception applies (no agent, CI-only workflow, or blocker listed there).
 
-Integrated IDE Figma MCP only: assemble **`code`** = **`ctx` prefix + bundle body**, run **`check-payload`** on that string, then **`call_mcp` `use_figma`**. No parallel Node MCP invoker.
+### Step 6 — five `use_figma` calls (same runner pattern as style-guide canvas)
 
-**`ctx`:** Must mirror full **CONFIG** plus at least `activeFileKey` or `fileKey`, `registryComponents` (or equivalent registry snapshot), and `usesComposes` / `composedWith` when composites run. Match the shape expected by [`canvas-templates/cc-runtime-head.js`](./canvas-templates/cc-runtime-head.js) and the bundle you execute.
+Integrated IDE Figma MCP only. **Preferred:** `Task` → **[`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md)** (one Task per step) so large assemble text stays out of the parent thread — same delegation model as Steps 15a–c / 17. **Fallback:** parent **`Read`** the same assembled file → **`call_mcp` `use_figma`** if the subagent cannot pass the full tool JSON.
 
-**Order (fixed):**
+**Per-step assembly (before each Task or parent invoke):**
 
-1. **`scaffold.min.mcp.js`** — doc shell, header, table chrome, placeholders.
-2. **`properties.min.mcp.js`** — fill properties table rows.
-3. **`component-chip.min.mcp.js`** *or* **`component-<layout>.min.mcp.js`** — pick from `CONFIG.layout` and [`02-archetype-routing.md`](./conventions/02-archetype-routing.md) (`chip`, `surface-stack`, `field`, `row-item`, `tiny`, `control`, `container`, `composed`).
-4. **`matrix.min.mcp.js`** — variant × state matrix.
-5. **`usage.min.mcp.js`** — usage / Do–Don’t notes.
+1. Write **`ctx`** to a UTF-8 file: `const ctx = { … };` with full **CONFIG** plus at least `activeFileKey` or `fileKey`, `registryComponents`, and `usesComposes` / `composedWith` when composites run. Match the shape expected by [`canvas-templates/cc-runtime-head.js`](./canvas-templates/cc-runtime-head.js) (`const CONFIG = ctx` in-bundle — **ctx** is the single merged object).
+2. Run **`node scripts/assemble-component-use-figma-code.mjs --step <slug> --ctx-file <path> --out <path>`** from this repo root (or pass absolute paths). Slugs: **`cc-scaffold`**, **`cc-properties`**, **`cc-matrix`**, **`cc-usage`**, **`cc-component-chip`**, **`cc-component-surface-stack`**, **`cc-component-field`**, **`cc-component-row-item`**, **`cc-component-tiny`**, **`cc-component-control`**, **`cc-component-container`**, **`cc-component-composed`** — pick the **`cc-component-*`** row for **`CONFIG.layout`** via [`02-archetype-routing.md`](./conventions/02-archetype-routing.md).
+3. **`npm run check-payload -- <out>`** — must exit 0.
+4. **`Task`:** `step=<same slug>`, `assembledCodePath=<out>`, `fileKey=…`, `description=…` per **[`canvas-bundle-runner` §6](../canvas-bundle-runner/SKILL.md)**. If **`ok: false`** and errors indicate transport/truncation, **parent** repeats step 4 with **`Read` → `call_mcp`** on the **same** `<out>` file.
 
-**Bundles:** [`skills/create-component/canvas-templates/bundles/*.min.mcp.js`](./canvas-templates/bundles/). **Sources:** [`canvas-templates/`](./canvas-templates/) (`cc-runtime-head.js`, archetype splits, doc chunks). **Build:** `npm run bundle-component` ( [`scripts/bundle-component-mcp.mjs`](../../scripts/bundle-component-mcp.mjs) ).
+**Batch assemble (recommended):** From plugin repo root run **`npm run create-component-step6 -- --ctx-file <path/to/ctx.js>`** [`scripts/create-component-step6-all.mjs`](../../scripts/create-component-step6-all.mjs). That emits **`assembled-cc-*.mjs`** under **`--out-dir`** (default: dirname of ctx), runs **`check-payload`** on each (optional **`--check-mcp-args`** for full MCP wrapper JSON), optionally **`--probe-first`** ([`probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs)), and writes **`create-component-step6-progress.json`** with **`invokeHints`** for the five MCP calls. Still requires **five sequential** **`Task` → [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md)** or parent **`Read` → call_mcp`** — this script does **not** invoke Figma.
 
-**Caps:** Figma `use_figma.code` **`maxLength` 50 000**. Per-bundle bodies are sized to stay under the cap once `ctx` is prepended; if transport fails, use [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs) and shrink **CONFIG** prose or split work per maintainer guidance — do not add gzip/bootstrap wrappers.
+**Parallelism:** Do **not** launch **two `Task`** delegations for **`cc-*`** steps at the same time (e.g. matrix + usage in parallel). Same ordering rule as style-guide canvas [**16** § Canvas runner](../create-design-system/conventions/16-mcp-use-figma-workflow.md): **strict sequence**, one **`use_figma`** completes before the next assemble/runner prompt.
+
+**Order (fixed):** `cc-scaffold` → `cc-properties` → **`cc-component-*`** (one row from the table) → `cc-matrix` → `cc-usage`.
+
+**Bundles:** [`skills/create-component/canvas-templates/bundles/*.min.mcp.js`](./canvas-templates/bundles/). **Sources:** [`canvas-templates/`](./canvas-templates/). **Build:** `npm run bundle-component` ([`scripts/bundle-component-mcp.mjs`](../../scripts/bundle-component-mcp.mjs)).
+
+**Caps:** Figma `use_figma.code` **`maxLength` 50 000**. If transport fails, [`scripts/probe-parent-transport.mjs`](../../scripts/probe-parent-transport.mjs) + shrink **CONFIG** prose per [`18-mcp-payload-budget.md`](./conventions/18-mcp-payload-budget.md) — do not add gzip/bootstrap wrappers.
 
 | Concern | Guidance |
 |--------|-----------|
-| **Writer subagents** | May assemble `code` to disk in the consumer repo or `tmp/`; **parent** performs `Read` → `call_mcp`. |
-| **`Task` as `use_figma` runner** | Avoid defaulting here; subagents often cannot emit full tool args. |
+| **Writer subagents** | May run **`assemble-component-use-figma-code.mjs`** + **`check-payload`** and write **`ctx`** / assembled paths only; **runner** or **parent** owns **`call_mcp`**. |
 | **Session runbook** | Finish `/create-design-system` table bundles (15a–c, 17) in separate turns from `/create-component` draws — [`AGENTS.md`](../../AGENTS.md). |
 
 ### §0.1 — `code` assembly checklist
 
-1. **`const ctx = { ... };`** (or equivalent) — full CONFIG + file/registry fields.
-2. **Bundle** — `Read` the committed `.min.mcp.js` for this step; concatenate after `ctx` (no extra eval wrappers).
-3. **`node scripts/check-payload.mjs <file-or-stdin>`** — must exit 0 before MCP.
-4. **Full MCP JSON** — if the host has truncated `call_mcp` before, also verify the full tool-arguments object serializes ([`scripts/check-use-figma-mcp-args.mjs`](../../scripts/check-use-figma-mcp-args.mjs)).
+1. **`const ctx = { ... };`** — full CONFIG + file/registry fields (see Step 6).
+2. **`assemble-component-use-figma-code.mjs`** — writes `ctx` + committed bundle into one file (same bytes as hand-concat).
+3. **`npm run check-payload -- <assembled>`** — must exit 0 before MCP.
+4. **`Task` → `canvas-bundle-runner`** with `assembledCodePath`, or **parent** `Read` → `call_mcp`.
+5. **Full MCP JSON** — if the host has truncated `call_mcp` before, also verify the full tool-arguments object serializes ([`scripts/check-use-figma-mcp-args.mjs`](../../scripts/check-use-figma-mcp-args.mjs)).
 
 CONFIG authoring: prefer **`npm run build-config-block -- <component> --out <path>.config.js`**; avoid hand-typing apostrophes in single-quoted strings ([`07-token-paths.md`](./conventions/07-token-paths.md)).
 
@@ -57,7 +62,7 @@ CONFIG authoring: prefer **`npm run build-config-block -- <component> --out <pat
 | 4.7 | Token path preflight | [`07-token-paths.md`](./conventions/07-token-paths.md) |
 | 5 | Resolve Figma `fileKey` | handoff or prompt |
 | 5.5 | `check-payload` | before **each** Step 6 call |
-| 6 | Draw → Figma | **Five** calls above, parent default |
+| 6 | Draw → Figma | **Five** calls above — **`Task` → `canvas-bundle-runner`** preferred; **parent** `Read` → `call_mcp` on transport failure |
 | 7 | §9 assertions | [`SKILL.md`](./SKILL.md) — use **`component-*`** return for structure checks |
 | 8 | Reporting + registry | [`resolver/merge-registry.mjs`](./resolver/merge-registry.mjs) |
 
