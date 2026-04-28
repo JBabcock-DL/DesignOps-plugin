@@ -4,10 +4,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Atomic write-then-merge wrapper for one /create-component Step 6 slice.
 // Replaces the two-step "Write return-<slug>.json + run merge" pattern with
-// one command — saves one tool call per slice (× 7 slices = 7 fewer round
+// one command — saves one tool call per slice (× 12 slices = 12 fewer round
 // trips per component draw).
 //
-// Use this AFTER the parent's `use_figma` / `call_mcp` returns successfully.
+// Use this AFTER the parent's `use_figma` / `call_mcp` returns (success `{ok:true}` or
+// structured fail `{ok:false, why, remediation}`).
 // Pipe the return JSON in (recommended for large returns) or pass --return-json
 // inline (small returns only — Windows shells cap argv around ~32 KB).
 //
@@ -37,7 +38,7 @@
 //   15  stale return-*.json files (orphans from skipped merges)
 //   16  state corruption
 //   18  phase-state schema violation
-//
+//   19  Figma slice returned ok:false (handoff unchanged)
 // Notes
 //   - Uses waitForFilePresent inside mergeOne, so a fresh write is safe.
 //   - The return JSON written here uses the canonical name `return-<slug>.json`

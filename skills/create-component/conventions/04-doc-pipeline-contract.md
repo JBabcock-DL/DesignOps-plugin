@@ -52,7 +52,7 @@ The **§6 `use_figma` template in [`SKILL.md`](../SKILL.md)** already bakes in t
 
 ### 2.2 — Phased / multi-call draws — preserve space; use placeholders
 
-When the doc frame is built across **several** Figma Plugin API runs (see [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md)), agents **must not** leave empty shells that **collapse** in auto-layout — that destroys table width, header/body alignment, and the visual contract designers expect.
+When the doc frame is built across **several** Figma Plugin API runs ( **`SLUG_ORDER`** ladder in **[`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md)** ), agents **must not** leave empty shells that **collapse** in auto-layout — that destroys table width, header/body alignment, and the visual contract designers expect.
 
 **Rules:**
 
@@ -67,7 +67,7 @@ These are the **valid** ways to get a correct table **without** deleting and re-
 
 | Path | When | What happens |
 |------|------|----------------|
-| **A — In-place scaffold + component + fill (shipped multistep default)** | `CONFIG.properties` is known before any doc `use_figma` (always true in `/create-component`). | **Scaffold** (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders` / tuple ops + `op-interpreter`): `buildPropertiesTable(placeholder rows)` — header + **`properties.length` placeholder** body rows + dashed reserves (may span **four** `use_figma` calls). **`cc-doc-component`** (`step2`): live `ComponentSet` into the doc section. **`cc-doc-props-1` / `cc-doc-props-2`** (`step3` twice) or legacy **`cc-doc-props`**: `__ccDocFillPropertiesFromConfig()` — **only** overwrites text in existing cells (row-range `varGlobals` for the two-pass split). Row count and table shell are fixed for the life of the draw. See [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) §1. |
+| **A — In-place scaffold + component + fill (shipped multistep default)** | `CONFIG.properties` is known before any doc `use_figma` (always true in `/create-component`). | **Scaffold** (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders` / tuple ops + `op-interpreter`): `buildPropertiesTable(placeholder rows)` — header + **`properties.length` placeholder** body rows + dashed reserves (may span **five** `use_figma` scaffold sub-slugs). **`cc-doc-component`** (`step2`): live `ComponentSet` into the doc section. **`cc-doc-props-1` / `cc-doc-props-2`** (`step3` twice) or legacy **`cc-doc-props`**: `__ccDocFillPropertiesFromConfig()` — **only** overwrites text in existing cells (row-range `varGlobals` for the two-pass split). Row count and table shell are fixed for the life of the draw. Dependency order is fixed **`SLUG_ORDER`** — see **[`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md)**. |
 | **B — Single `use_figma` (inline / single-pass)** | Parent runs full `draw-engine` with `__ccDocStep === null`. | Same **ordering** as Path A in one run: placeholder table + reserves → **component section** → **in-place fill** from `CONFIG.properties` → matrix → usage → finalize — no separate per-slice `use_figma` calls. |
 | **C — Placeholder then text-only (custom)** | Any other split of “shell” and “content” across two calls. | Same as former Path B: reserved placeholder rows, then in-place text only — **no** delete/rebuild of the table root mid-ladder. |
 

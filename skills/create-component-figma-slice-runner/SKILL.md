@@ -147,7 +147,7 @@ var __CC_HANDOFF_COMP_SET_ID__ = "<doc.compSetId>";
 
 Use the **most recent** `use_figma` return from the **prior** slice to populate `doc` — see orchestrator [§4](../create-component/conventions/13-component-draw-orchestrator.md#4--handoffjson-shape-between-tasks). If `pageContentId` / `docRootId` are missing, return `{ ok: false, errors: ["handoff: missing __CC_HANDOFF_* id for doc step"] }` before `use_figma`. For **finalize / matrix / usage** doc steps **4–6** (engine steps 4–6), also require `doc.compSetId` / `__CC_HANDOFF_COMP_SET_ID__`. (**`cc-doc-props-1` / `cc-doc-props-2`**, engine step **3**, do not require `compSetId` for the table fill logic, but the parent should still merge **`cc-doc-component`** first so `handoff.doc` carries `compSetId` for a consistent chain.)
 
-**Table safety:** the parent and engine enforce [09 §1.1](../create-component/conventions/09-mcp-multi-step-doc-pipeline.md) and [04](../create-component/conventions/04-doc-pipeline-contract.md) — you only inject handoffs; you do **not** edit table geometry.
+**Table safety:** the parent and engine enforce [`04-doc-pipeline-contract.md`](../create-component/conventions/04-doc-pipeline-contract.md) **§2.2–2.2.1** — you only inject handoffs; you do **not** edit table geometry.
 
 ---
 

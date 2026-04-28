@@ -32,7 +32,7 @@
 //       15 stale return-*.json files on disk (orphaned by skipped merges)
 //       16 handoff/phase-state corruption (completedSlugs disagrees with disk)
 //       18 phase-state schema violation
-//
+//       19 Figma slice returned ok:false (structured fail — handoff/phase-state unchanged)
 // Ordering: run this script **after** the Figma return file is flushed to disk (e.g. do not
 // shell-merge in the same message as a chat `Write` to that path until the write has
 // completed; chained `Write` then `run_terminal_cmd` in one assistant turn is fine).
@@ -459,8 +459,21 @@ export async function mergeOne({
     }
   }
 
-  // ─── mutate + write ───────────────────────────────────────────────────────
+  // ─── Figma returned ok:false — do not mutate handoff or phase-state ───────
   const payload = parseFigmaReturn(retWrapper);
+  if (payload && payload.ok === false) {
+    const parts = [`merge: slice "${step}" returned ok:false — phase-state not advanced.`];
+    if (payload.why) parts.push(`why: ${payload.why}`);
+    if (payload.remediation) parts.push(`remediation: ${payload.remediation}`);
+    try {
+      await writeFile(returnPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    } catch {
+      /* best-effort */
+    }
+    throw new MergeFailure(19, parts.join("\n"));
+  }
+
+  // ─── mutate + write ───────────────────────────────────────────────────────
   const nextHandoff = mergeReturnIntoHandoff({ step, handoff, payload });
 
   const handoffJson = JSON.stringify(nextHandoff, null, 2) + "\n";

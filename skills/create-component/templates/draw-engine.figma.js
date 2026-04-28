@@ -91,6 +91,7 @@
     REGISTRY_COMPONENTS:   typeof REGISTRY_COMPONENTS,
     usesComposes:          typeof usesComposes,
     logFileKeyMismatch:    typeof logFileKeyMismatch,
+    __ccPreflightFileKey:  typeof __ccPreflightFileKey,
     _fileKeyObserved:      typeof _fileKeyObserved,
     _fileKeyMismatch:      typeof _fileKeyMismatch,
   };
@@ -102,8 +103,8 @@
       `[create-component] Preamble-presence gate: missing identifier(s) [${missing.join(', ')}]. ` +
       `Read and inline skills/create-component/templates/preamble.figma.js VERBATIM ` +
       `between the §0 CONFIG block and this engine bundle. The preamble file declares ` +
-      `ACTIVE_FILE_KEY, REGISTRY_COMPONENTS, usesComposes, logFileKeyMismatch, ` +
-      `_fileKeyObserved, and _fileKeyMismatch in one ~60-line block. ` +
+      `ACTIVE_FILE_KEY, REGISTRY_COMPONENTS, usesComposes, logFileKeyMismatch, __ccPreflightFileKey, ` +
+      `_fileKeyObserved, and _fileKeyMismatch in one block. ` +
       `See the "Script-assembly order" block in skills/create-component/EXECUTOR.md — runtime payload is ` +
       `CONFIG → preamble.figma.js → create-component-engine-{CONFIG.layout}.min.figma.js.`
     );
@@ -1147,7 +1148,7 @@ if (_ccPhase === 1) {
 
 // Multistep doc pipeline (MCP): __CREATE_COMPONENT_DOC_STEP__ 1–6 runs one slice
 // per `use_figma` call; omit it for single-pass doc tail (inline two-phase
-// phase 2 or _ccPhase === 0). See conventions/09 + EXECUTOR.md.
+// phase 2 or _ccPhase === 0). See conventions/13-component-draw-orchestrator.md + EXECUTOR.md.
 // Steps: 1 = page + header + properties table (placeholder body rows) + dashed reserves ·
 // 2 = component section (combine + reparent) · 3 = fill table cells from CONFIG.properties in place ·
 // 4–6 = matrix, usage, finalize.
@@ -1172,7 +1173,7 @@ async function __ccDocResumeFromHandoff() {
     throw new Error(
       '[create-component] Multistep doc steps 2–6 require __CC_HANDOFF_PAGE_CONTENT_ID__ and ' +
         '__CC_HANDOFF_DOC_ROOT_ID__ from the prior step return payload. ' +
-        'See conventions/09-mcp-multi-step-doc-pipeline.md.',
+        'See conventions/04-doc-pipeline-contract.md §2.2.',
     );
   }
   const pc = await figma.getNodeByIdAsync(pcId);

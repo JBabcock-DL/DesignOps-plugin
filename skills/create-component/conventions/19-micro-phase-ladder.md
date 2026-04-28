@@ -2,7 +2,7 @@
 
 **Goal:** Shrink each MCP payload toward [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md) (≲ **8–10 kB** UTF-8) by **splitting** one logical “step” into **many** machine slugs, each doing **one** small, idempotent change on the canvas. Total **round trips** go up; **table width and auto-layout invariants** must not regress.
 
-**Authority:** This file does not override [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2–2.2.1** or [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) **§1.1** — it **refines** how to add slices without tripping them.
+**Authority:** This file does not override [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2–2.2.1** or [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md) (fixed DAG + scaffold intermediate states) — it **refines** how to add slices without tripping them.
 
 ---
 
@@ -23,7 +23,7 @@ If a proposed micro-slice would leave an intermediate state with **no** body row
 | Area | What to make tiny | Safer pattern | Risk if wrong |
 |------|-------------------|---------------|----------------|
 | **Scaffold — table** | One MCP per **placeholder row** or per **row pair**, after header + 1640px table chrome exist | **Append** a row with the **same** cell recipe as production; keep header row in an earlier call | Body collapses to ~9px or columns drift |
-| **Scaffold — header / shell** | Title only, then summary only, or keep current sub-slugs | Tuple ops + [`op-interpreter`](./17-scaffold-sub-slice-states.md) already head this direction | Low if geometry matches shipped scaffold |
+| **Scaffold — header / shell** | Title only, then summary only, or keep current sub-slugs | Tuple ops + [`op-interpreter`](../templates/op-interpreter.figma.js) already head this direction | Low if geometry matches shipped scaffold |
 | `cc-doc-props-1` / `cc-doc-props-2` | **Half** the property rows per call (shipped two-pass) | `__ccDocFillPropertiesFromConfig` with `__CC_PROPS_ROW_*__` + same table ids in `handoffJson.doc` | Must not change row count or reorder rows |
 | **`cc-doc-matrix`** | Sub-grid: one **specimen row** or one **state column** per call | Reserves in earlier call must size the matrix frame; only **place instances** in cells that already exist | Clipped or fixed-height cells; see **§0.10** in [`00-gotchas`](../create-design-system/conventions/00-gotchas.md) |
 | **`cc-doc-usage`** | Do block first, then Don’t, or one bullet at a time | HORIZONTAL frames need `counterAxisSizingMode: 'AUTO'`; don’t `resize` then leave AUTO broken | Clipped Do/Don’t columns |
@@ -62,13 +62,12 @@ When you add micro-slugs for real, touch these in order:
 3. **`assemble-slice --step …`** — map new slugs to CONFIG + handoff + engine in [`scripts/assemble-slice.mjs`](../../../scripts/assemble-slice.mjs) and any [`generate-ops`](../../../scripts/generate-ops.mjs) json.
 4. **Templates** — new or slivered `*.min.figma.js` / op tuples; run `npm run build:min` and keep `npm run verify` green.
 5. **QA** — [`qa:merge-consistency`](../../../package.json), [`qa:step-bundles`](../../../package.json), [`qa:op-part-slugs`](../../../scripts/qa-op-part-slugs.mjs) after merge changes.
-6. **Docs** — `COMPOSER.md`, this file, and [`12-sigma-budget-mcp.md`](./12-sigma-budget-mcp.md) if σ strategy shifts.
+6. **Docs** — `SKILL.md`, this file, and [`AGENTS.md`](../../../AGENTS.md) *MCP transport* if σ strategy shifts.
 
 ---
 
 ## 6. Related
 
-- [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md) — 8–10 kB target  
-- [`12-sigma-budget-mcp.md`](./12-sigma-budget-mcp.md) — total bytes across all calls (σ) when splitting engines  
-- [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md) — DAG, handoff, merge  
+- [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md) — 8–10 kB target; run `npm run measure-sigma` for total bytes (σ) when splitting engines
+- [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md) — DAG, handoff, merge
 - [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) — table / matrix invariants

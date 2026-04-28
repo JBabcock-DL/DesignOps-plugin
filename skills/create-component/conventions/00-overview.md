@@ -20,14 +20,11 @@ This folder replaces the single-file `CONVENTIONS.md` (~940 lines) that used to 
 | Gating a component as "drawn to canvas"; running the audit checklist before surfacing a run summary | [`06-audit-checklist.md`](./06-audit-checklist.md) |
 | Writing / validating any `fill`, `labelVar`, `strokeVar`, `padH`, `radius`, or `*Var` path on a `CONFIG`; avoiding the `--color-primary` vs `color/primary/default` spiral | [`07-token-paths.md`](./07-token-paths.md) |
 | **Cursor** + **Composer-class** (or short-output) hosts: Step 6 `use_figma` preflight, `Task` + runner, fallbacks, symptoms | [`08-cursor-composer-mcp.md`](./08-cursor-composer-mcp.md) |
-| **Multi-call Step 6:** splitting variant build vs doc into **many** small MCP payloads (table shell → header → component tile → matrix → usage) + handoff ids | [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) |
-| **Per-slice `code` size target (~8–10 kB)**, more sub-slugs / `.partN`, σ / engine partition | [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md) |
-| **Payload shrink roadmap** (CONFIG projection, engine split, tiers P0–P4) | [`20-mcp-payload-shrink-solution.md`](./20-mcp-payload-shrink-solution.md) |
-| **Ephemeral disks + shrink — normative checklist** (transport vs bytes, `assemble-slice`, `mcp-<slug>.json`) | [`21-mcp-ephemeral-payload-protocol.md`](./21-mcp-ephemeral-payload-protocol.md) |
-| **Deterministic Step 6 flows** (Strategy I vs D, master loop P, W/C recovery) | [`22-deterministic-agent-flows.md`](./22-deterministic-agent-flows.md) |
-| **Draw Engine** (`designops-step6-engine`, manifests, **`npm run designops:step6:*`**) | [`23-designops-step6-engine.md`](./23-designops-step6-engine.md) |
-| **Thin doc engine split** (planned Tier 3) | [`24-thin-doc-engine-split-plan.md`](./24-thin-doc-engine-split-plan.md) |
-| **Micro-granular phases** (row/cell/slug patterns, when merge supports `.part`) | [`19-micro-phase-ladder.md`](./19-micro-phase-ladder.md) |
+| **Multi-call Step 6:** `SLUG_ORDER`, dependency order, handoff ids | [`13-component-draw-orchestrator.md`](./13-component-draw-orchestrator.md), [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) §2.2 |
+| **Per-slice `code` target (~8–10 kB), sub-slugs / `.partN`, σ / engine partition** | [`18-mcp-payload-budget.md`](./18-mcp-payload-budget.md) |
+| **Ephemeral disks + staging — normative checklist** (`assemble-slice`, `mcp-<slug>.json`) | [`21-mcp-ephemeral-payload-protocol.md`](./21-mcp-ephemeral-payload-protocol.md) |
+| **Draw Engine** (`designops-step6-engine`, manifests, `npm run designops:step6:*`) | [`23-designops-step6-engine.md`](./23-designops-step6-engine.md) |
+| **Micro-granular phases** (row/cell/slug patterns; when merge supports `.part`) | [`19-micro-phase-ladder.md`](./19-micro-phase-ladder.md) |
 
 ## Two sources of truth (Mode A vs Mode B)
 

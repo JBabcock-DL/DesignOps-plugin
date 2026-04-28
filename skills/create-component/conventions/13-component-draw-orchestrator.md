@@ -1,8 +1,8 @@
 # Component draw orchestrator (parent thread)
 
-This document is the **runbook** for **Step 6**: **one** sequential `use_figma` per machine slug in [`SLUG_ORDER`](../../../scripts/merge-create-component-handoff.mjs) (default: **12** base slugs — five scaffold + `cc-variants` + six doc-sequence slugs including **two** `cc-doc-props-*` chunks that share the step3 engine), each assembled per [`../../create-component-figma-slice-runner/SKILL.md`](../../create-component-figma-slice-runner/SKILL.md) **§0.1 / §2**. You may **extend** the ladder with **more** slugs for smaller payloads — see [`19-micro-phase-ladder.md`](./19-micro-phase-ladder.md) (row/cell granularity, layout invariants). The **parent** owns scheduling, merges `handoffJson` between calls, returns for `SKILL.md` §9, and registry **5.2**. **Do not** default to `Task` subagents for slices whose **full** `code` the subagent cannot pass in `call_mcp` (common for ~26–30K+ payloads) — see [`../EXECUTOR.md`](../EXECUTOR.md) **§0**. The **parent** may `Read` min engines and preamble in the main thread for this path. **Deterministic gates** (Strategy I/D, Flow P loop, recovery patterns): [`22-deterministic-agent-flows`](./22-deterministic-agent-flows.md).
+This document is the **runbook** for **Step 6**: **one** sequential `use_figma` per machine slug in [`SLUG_ORDER`](../../../scripts/merge-create-component-handoff.mjs) (default: **12** base slugs — five scaffold + `cc-variants` + six doc-sequence slugs including **two** `cc-doc-props-*` chunks that share the step3 engine), each assembled per [`../../create-component-figma-slice-runner/SKILL.md`](../../create-component-figma-slice-runner/SKILL.md) **§0.1 / §2**. You may **extend** the ladder with **more** slugs for smaller payloads — see [`19-micro-phase-ladder.md`](./19-micro-phase-ladder.md) (row/cell granularity, layout invariants). The **parent** owns scheduling, merges `handoffJson` between calls, returns for `SKILL.md` §9, and registry **5.2**. **Do not** default to `Task` subagents for slices whose **full** `code` the subagent cannot pass in `call_mcp` (common for ~26–30K+ payloads) — see [`../EXECUTOR.md`](../EXECUTOR.md) **§0**. The **parent** may `Read` min engines and preamble in the main thread for this path. **Transport + ephemeral staging:** **[`21`](./21-mcp-ephemeral-payload-protocol.md)**; **`designops-step6-engine` manifests:** **[`23`](./23-designops-step6-engine.md)**; session policy **`AGENTS.md`**.
 
-**Non-negotiables (imported, do not paraphrase away):** [`09-mcp-multi-step-doc-pipeline.md`](./09-mcp-multi-step-doc-pipeline.md) **§1.1** and [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2** — no empty table bodies, no “delete the whole table to add rows” mid-ladder, placeholder row geometry as needed so the 1640px table layout does not collapse. **Scaffold → component → fill:** the first doc slice places the **Properties** table with **placeholder** body rows and dashed reserves; **`cc-doc-component`** lands the live ComponentSet; **`cc-doc-props-1`** / **`cc-doc-props-2`** **fill** cell text in place only (see [04](./04-doc-pipeline-contract.md) **§2.2.1**).
+**Non-negotiables (imported, do not paraphrase away):** [`04-doc-pipeline-contract.md`](./04-doc-pipeline-contract.md) **§2.2–2.2.1** — no empty table bodies, no “delete the whole table to add rows” mid-ladder, placeholder row geometry as needed so the 1640px table layout does not collapse. **Scaffold → component → fill:** the first doc slice places the **Properties** table with **placeholder** body rows and dashed reserves; **`cc-doc-component`** lands the live ComponentSet; **`cc-doc-props-1`** / **`cc-doc-props-2`** **fill** cell text in place only (see [04](./04-doc-pipeline-contract.md) **§2.2.1**).
 
 ---
 
@@ -10,7 +10,17 @@ This document is the **runbook** for **Step 6**: **one** sequential `use_figma` 
 
 Run **exactly** this sequence, **in order** — **sequential only**: one slice finishes (handoff merged on disk) before the **next** `use_figma` starts. **Do not** run draw slices **in parallel**, batch them, or overlap them with unrelated canvas `use_figma` in the same parent turn. The order is a **hard dependency chain** (**scaffold → variants** → **component** → **fill (props)** → matrix → usage → finalize), not an optimization hint.
 
-**`cc-doc-scaffold-shell` is always first** among the draw slugs. By the time **`cc-doc-scaffold-placeholders`** completes, `_PageContent`, the header, placeholder **Properties** table, and dashed section reserves exist **before** `cc-variants` adds the staging frame. See [`17-scaffold-sub-slice-states.md`](./17-scaffold-sub-slice-states.md).
+**`cc-doc-scaffold-shell` is always first** among the draw slugs. By the time **`cc-doc-scaffold-placeholders`** completes, `_PageContent`, the header, placeholder **Properties** table, and dashed section reserves exist **before** `cc-variants` adds the staging frame. **Intermediate canvas states** after each scaffold sub-slice (must stay valid per **04** §2.2 for the union of completed slugs):
+
+| Slug (order) | Figma result after the slice | Notes |
+|-------------|-----------------------------|--------|
+| `cc-doc-scaffold-shell` | `_PageContent` on the page; `doc/component/<name>` root frame; **no** header, table, or dashed reserves yet | Ids for `pageContentId` + `docRootId` are valid for the next handoff. |
+| `cc-doc-scaffold-header` | Header frame + title + summary under `docRoot` | No table; placeholder row count not required until table slices. |
+| `cc-doc-scaffold-table-chrome` | **Properties** group, table frame, **header** row only (no body) | Figma return should include `propertiesTableId` for the table node so the body slice can `append` rows. |
+| `cc-doc-scaffold-table-body` | **N** placeholder body rows (N = `CONFIG.properties.length`) | Requires prior merge with `doc.propertiesTableId`. Matches step1 table contract (with chrome) before `cc-variants`. |
+| `cc-doc-scaffold-placeholders` | Three dashed reserve frames under `docRoot` (component-set, matrix, usage) | Same end state as the legacy **one-call** `create-component-engine-doc.step1` / single-merge scaffold before variants. |
+
+**`cc-variants` runs only after** the last scaffold row (`cc-doc-scaffold-placeholders` merged). The global DAG is unchanged: all scaffold sub-slugs complete before `cc-variants`.
 
 Do not skip, reorder, or interleave. On any `ok: false` from a slice, **stop**; do not start the next slug. **Scaffold (5 `use_figma` calls):** one phase file covers the run — [`phases/04-slice-cc-doc-scaffold.md`](../phases/04-slice-cc-doc-scaffold.md). **Later rows:** through [`11-slice-cc-doc-finalize.md`](../phases/11-slice-cc-doc-finalize.md) (one machine slug per `use_figma` for doc steps `cc-doc-component` … `cc-doc-finalize`).
 
@@ -48,7 +58,7 @@ Do not skip, reorder, or interleave. On any `ok: false` from a slice, **stop**; 
 | Do / Don’t (usage) | `cc-doc-usage` |
 | Finalize (full return) | `cc-doc-finalize` |
 
-**Implementation note:** The five scaffold sub-slugs together replace the legacy single step `create-component-engine-doc.step1` (header + table with `…` placeholders + reserves). `cc-doc-component` is `step2` (ComponentSet into doc). **`cc-doc-props-1` / `cc-doc-props-2`** are both **`step3`** (in-place cell updates) with `__CC_PROPS_ROW_START__` / `__CC_PROPS_ROW_END__` from [`assemble-slice.mjs`](../../../scripts/assemble-slice.mjs). `cc-doc-finalize` is `step6` — see [09](./09-mcp-multi-step-doc-pipeline.md) bundle table.
+**Implementation note:** The five scaffold sub-slugs together replace the legacy single step `create-component-engine-doc.step1` (header + table with `…` placeholders + reserves). `cc-doc-component` is `step2` (ComponentSet into doc). **`cc-doc-props-1` / `cc-doc-props-2`** are both **`step3`** (in-place cell updates) with `__CC_PROPS_ROW_START__` / `__CC_PROPS_ROW_END__` from [`assemble-slice.mjs`](../../../scripts/assemble-slice.mjs). `cc-doc-finalize` is `step6` — min bundle map in [slice runner §2](../../create-component-figma-slice-runner/SKILL.md).
 
 ---
 
@@ -101,7 +111,7 @@ After the parent's `call_mcp` returns, prefer a single command over a manual `Wr
 echo '<return-json>' | node scripts/finalize-slice.mjs <slug> handoff.json
 ```
 
-[`scripts/finalize-slice.mjs`](../../../scripts/finalize-slice.mjs) writes `return-<slug>.json` next to `handoff.json` (canonical name), waits for the file system to flush, then runs the merge with the full DAG / consistency / schema checks. Saves one tool call per slice (×10 slices = **10 fewer round trips per draw** in the default ladder).
+[`scripts/finalize-slice.mjs`](../../../scripts/finalize-slice.mjs) writes `return-<slug>.json` next to `handoff.json` (canonical name), waits for the file system to flush, then runs the merge with the full DAG / consistency / schema checks. Saves one tool call per slice (×12 slices = **12 fewer round trips per draw** in the default ladder vs manual merge per slice).
 
 For larger returns (>~32 KB on Windows shells), prefer pipe-from-stdin or write the file first and pass `--return-path`. See the script header for all flags.
 
@@ -131,6 +141,6 @@ If you see exit 18, the file was hand-edited or written by a non-conforming scri
 
 ## 6 — What this supersedes
 
-- **Default** ten-slice transport: **10** parent `use_figma` invocations (assembly per `create-component-figma-slice-runner` — this doc). **Optional** `Task` per slice only if subagent **call_mcp** can pass full `code`. Parent **inline** / **preassembled** full-engine work stays in [`EXECUTOR.md`](../EXECUTOR.md) **§0**; do **not** require `Task` when subagents cannot materialize the payload.
+- **Default** twelve-slice transport: **12** parent `use_figma` invocations (`SLUG_ORDER` in [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs); assembly per `create-component-figma-slice-runner` — this doc). **Optional** `Task` per slice only if subagent **call_mcp** can pass full `code`. Parent **inline** / **preassembled** full-engine work stays in [`EXECUTOR.md`](../EXECUTOR.md) **§0**; do **not** require `Task` when subagents cannot materialize the payload.
 
 **Cross-refs:** [`16-mcp-use-figma-workflow.md`](../create-design-system/conventions/16-mcp-use-figma-workflow.md) (canvas vs component slice), [`AGENTS.md`](../../../AGENTS.md) (session runbook).

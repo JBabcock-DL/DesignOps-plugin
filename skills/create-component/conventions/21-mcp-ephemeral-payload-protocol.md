@@ -1,9 +1,9 @@
 # MCP ephemeral payload protocol (normative — create-component Step 6 + related)
 
-**Procedural order (step-by-step machine):** [`22-deterministic-agent-flows`](./22-deterministic-agent-flows.md).
+**Procedure order (`SLUG_ORDER`, merge, resume):** [`13-component-draw-orchestrator`](./13-component-draw-orchestrator.md).
 
 **Audience:** Every agent invoking Figma **`use_figma`** for `/create-component` or debugging transport.  
-**Companion:** [`08-cursor-composer-mcp`](./08-cursor-composer-mcp.md) **§** writer vs parent; [`20-mcp-payload-shrink-solution`](./20-mcp-payload-shrink-solution.md) (byte tiers); [`AGENTS.md`](../../../AGENTS.md) **MCP payloads** section.
+**Companion:** [`08-cursor-composer-mcp`](./08-cursor-composer-mcp.md) **§** writer vs parent; [`18-mcp-payload-budget`](./18-mcp-payload-budget.md); [`AGENTS.md`](../../../AGENTS.md) **MCP payloads** section.
 
 ---
 
@@ -12,7 +12,7 @@
 | Axis | Question | Handles |
 |------|----------|---------|
 | **A — Transport** | Can this host pass **complete** MCP tool JSON **without truncation** when `code` is large? | Inline `code` vs **writer → `--out` / `--emit-mcp-args`** → parent **`Read`** → `call_mcp` ([`08`](./08-cursor-composer-mcp.md) §A, §D.1); [`docs/mcp-transport-cursor-fallback.md`](../../../docs/mcp-transport-cursor-fallback.md) |
-| **B — Wire size** | Is the **assembled** slice still too heavy *even after* reliable transport? | More [`18`](./18-mcp-payload-budget.md) rounds, scaffold sub-slugs, [`20`](./20-mcp-payload-shrink-solution.md) tiers (CONFIG projection, engine split, tuples) |
+| **B — Wire size** | Is the **assembled** slice still too heavy *even after* reliable transport? | More [`18`](./18-mcp-payload-budget.md) rounds, scaffold sub-slugs, [`build-min-templates`](../../../scripts/build-min-templates.mjs) / CONFIG projection / tuple ops per **18** |
 
 **Rule:** Fixing **B** alone does **not** fix pasted/truncated tool JSON; fixing **A** alone does **not** remove repeated CONFIG/engine bytes. Agents run **measurement** (`check-*`, probes) against the **failure class** they observe.
 
@@ -36,14 +36,14 @@ flowchart TD
   parentRead --> doneA[finalize-slice merge handoff]
 
   axisB --> smaller["Prefer more smaller slugs — 13 DAG — not trimming engines"]
-  smaller --> roadmap["If still over budget — 20 tier plan + measure"]
+  smaller --> roadmap["If still over budget — 18 + measure-sigma + build-min"]
 
   roadmap --> tier[Implement next safe tier with before/after size]
 ```
 
 1. **Classify:** Is the failure **`Unexpected end of JSON`** / truncated args → **Axis A**. Is the failure **size / maintainability / north-star budget** → **Axis B**.
 2. **Axis A:** Use the **explicit file-backed transport** sequence below — **never** loosen validation or invent a gzip/bootstrap layer ([`08`](./08-cursor-composer-mcp.md) sandbox anti-pattern).
-3. **Axis B:** Follow **`13`** scaffold + doc ladder granularity; apply **`20`** tiers with measured baselines (**Tier 0** first).
+3. **Axis B:** Follow **`13`** scaffold + doc ladder granularity; apply **`18`** + measured baselines (`check-*`, `measure-sigma`).
 4. **Confabulated parent caps:** **[`scripts/probe-parent-transport.mjs`](../../../scripts/probe-parent-transport.mjs)** once **before** changing runner strategy ([`AGENTS.md`](../../../AGENTS.md)).
 
 ---
@@ -80,10 +80,10 @@ Use this checklist **for every slice** when the parent prefers **not** to embed 
 | If you … | Then … |
 |---------|--------|
 | Only need **reliable MCP delivery** | **§ Ephemeral-file transport sequence** alone is enough (`Read` preserves full UTF-8/length). |
-| Need **smaller sustained wire size** | After transport works, execute **`20`** **Tier 0** baselines (`check-use-figma-mcp-args`, optional CI sample row), then tiers **1–4** — **committed** projection maps under `scripts/` / repo, **not** ad hoc JSON strips in **`skills/`** scratch files. |
+| Need **smaller sustained wire size** | After transport works, run **`measure-sigma`**, **`check-use-figma-mcp-args`**, and follow **`18`** — **committed** projection maps under `scripts/` / repo, **not** ad hoc JSON strips in **`skills/`** scratch files. |
 | Hit **Composer / short-output limits** while **only** shrinking bytes | Prefer **narrower scaffold sub-slugs** and **`13`** sequencing before inventing wrappers ([`memory.md`](../../../memory.md) MCP anti-spiral). |
 
-Ephemeral paths **carry** validated bytes; **`20`** **changes assembly** — both may apply to the **same** component over time without contradiction.
+Ephemeral paths **carry** validated bytes; **`18`** + build tooling **changes assembly** — both may apply to the **same** component over time without contradiction.
 
 ---
 
@@ -93,7 +93,7 @@ Ephemeral paths **carry** validated bytes; **`20`** **changes assembly** — bot
 |---------|----------------|
 | [**`AGENTS.md`**](../../../AGENTS.md) **MCP payloads** | Declares prefer-inline + **explicitly OK ephemeral** carries; forbids **`skills/`** persistent scratch |
 | [**`08`**](./08-cursor-composer-mcp.md) | Writer ↔ parent MCP ownership, recovery order |
-| **`20`** | Byte-reduction tiers **orthogonal** to file carriers |
+| [**`18`**](./18-mcp-payload-budget.md) | Byte-reduction north star **orthogonal** to file carriers |
 | [`docs/mcp-transport-cursor-fallback.md`](../../../docs/mcp-transport-cursor-fallback.md) | IDE-specific fallback ladder |
 | **`13`** **§** handoff / merge | Invariants unchanged when using files |
 

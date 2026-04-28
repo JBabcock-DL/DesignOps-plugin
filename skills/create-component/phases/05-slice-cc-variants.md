@@ -14,6 +14,6 @@
 
 **If `ok: false`:** **Stop** — do not start [`06-slice-cc-doc-component.md`](./06-slice-cc-doc-component.md).
 
-**Also read:** [`09-mcp-multi-step-doc-pipeline.md`](../conventions/09-mcp-multi-step-doc-pipeline.md) **§1** (dependency order).
+**Also read:** [`13-component-draw-orchestrator.md`](../conventions/13-component-draw-orchestrator.md) **§1** (dependency order).
 
 **Next:** [`06-slice-cc-doc-component.md`](./06-slice-cc-doc-component.md)

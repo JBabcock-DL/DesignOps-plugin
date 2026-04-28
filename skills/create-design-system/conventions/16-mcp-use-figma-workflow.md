@@ -64,7 +64,7 @@ Do **not** improvise a parallel "generator" that ignores the templates — the t
 
 **Optional — one `Task` per slug:** only when the subagent is **proven** to pass full `call_mcp` tool arguments — same **10** slugs, one `use_figma` per `Task`, parent still merges `handoffJson` between them.
 
-**Fallback:** parent inline or preassembled `code` per [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** when per-slice `Task`s are unavailable. Ad-hoc small Figma edits may stay inline in the parent. See [`09-mcp-multi-step-doc-pipeline`](../create-component/conventions/09-mcp-multi-step-doc-pipeline.md).
+**Fallback:** parent inline or preassembled `code` per [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** when per-slice `Task`s are unavailable. Ad-hoc small Figma edits may stay inline in the parent. See [`13`](../create-component/conventions/13-component-draw-orchestrator.md) (multi-call ladder).
 
 The subagent-delegation rule for **style-guide** work applies **only** to the committed canvas bundles under [`../canvas-templates/bundles/`](../canvas-templates/bundles/) (use [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md) for those). **Do not** use component runners for 15a–c / 17 tables. A one-off 2k-char script for a single node edit stays inline in the parent.
 
@@ -75,14 +75,14 @@ The subagent-delegation rule for **style-guide** work applies **only** to the co
 | Priority | Mechanism | Notes |
 |----------|-----------|--------|
 | **1 — Canvas bundles (Step 15 / 17)** | **Delegate to [`canvas-bundle-runner`](../../canvas-bundle-runner/SKILL.md) subagent.** | Parent never `Read`s the bundle. |
-| **2 — `/create-component` Step 6 (parent default)** | **10×** `use_figma` in the **parent** per [13](../create-component/conventions/13-component-draw-orchestrator.md) + [EXECUTOR](../create-component/EXECUTOR.md) | Preferred; see **Non-canvas** section above. |
-| **2a — `/create-component` Step 6 (delegated `Task`s)** | **Up to 10** `Task`s → [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md) (one `use_figma` per `Task`; parent `handoffJson`) | Only when subagent can emit full tool args — see [13](../create-component/conventions/13-component-draw-orchestrator.md). |
+| **2 — `/create-component` Step 6 (parent default)** | **12×** `use_figma` in the **parent** (`SLUG_ORDER` in [`merge-create-component-handoff.mjs`](../../../scripts/merge-create-component-handoff.mjs)) per [13](../create-component/conventions/13-component-draw-orchestrator.md) + [EXECUTOR](../create-component/EXECUTOR.md) | Preferred; see **Non-canvas** section above. |
+| **2a — `/create-component` Step 6 (delegated `Task`s)** | **Up to 12** `Task`s → [`create-component-figma-slice-runner`](../../create-component-figma-slice-runner/SKILL.md) (one `use_figma` per `Task`; parent `handoffJson`) | Only when subagent can emit full tool args — see [13](../create-component/conventions/13-component-draw-orchestrator.md). |
 | **2b — `/create-component` Step 6 (inline / preassembled)** | Parent assembles per [`create-component/EXECUTOR.md`](../create-component/EXECUTOR.md) **§0** | Full-engine phased or single-call; same `configBlock` as slice path. |
 | **2c — Non-canvas inline (parent)** | Build plain Plugin API JS in the parent and pass as inline `code`. | Small ad-hoc edits. ~50k cap; `figma-use` when required. |
 | **Fallback (debug only)** | Editor **`Read`** the committed `.min.mcp.js` and pass **verbatim** as inline `code` from the parent. | Use only when the runner subagent can't reach the MCP and the parent must escalate. Do **not** pipe the full bundle through shell `cat` / `type` — some UIs **truncate** long stdout, corrupting `code`. |
 | **Forbidden** | Repo scratch files (`.mcp-*`, `*-payload.json`, …) to stage JSON for MCP. | See [`AGENTS.md`](../../../AGENTS.md). |
 | **Do not assume** | A MCP parameter that reads a file path for you (`codeWorkspacePath`, etc.). | Not in the shipping Figma MCP tool schema — only inline `code` exists. |
-| **Total bytes across calls (σ)** | If the org caps the **sum** of all `code` in one draw (~45K class), see [`../../create-component/conventions/12-sigma-budget-mcp.md`](../../create-component/conventions/12-sigma-budget-mcp.md). **Today’s** committed **per-doc-step** min bundles still **re-embed** a large shared `draw-engine` core across many slices, so σ can **exceed** a one-shot monolith unless the build partitions shared bytes; a **thinner** op runtime + **more** granular scaffold calls (see **10-slice** ladder) reduces per-call size. | `npm run measure-sigma` |
+| **Total bytes across calls (σ)** | Committed **per-doc-step** min bundles may **re-embed** a large shared `draw-engine` core across many slices, so σ can **exceed** a one-shot monolith unless the build partitions shared bytes; a thinner op runtime + **more** granular scaffold calls (see **12-slice** ladder in **[13](../create-component/conventions/13-component-draw-orchestrator.md)**) reduces per-call size. **`npm run measure-sigma`**; policy **[`AGENTS.md`](../../../AGENTS.md)** *MCP transport*. |
 
 ## Troubleshooting: truncated or invalid `code`
 

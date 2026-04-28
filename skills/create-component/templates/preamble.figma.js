@@ -25,11 +25,12 @@
 //   REGISTRY_COMPONENTS     Record<kebab, { nodeId, key, pageName, ... }>
 //   usesComposes            boolean — derived from CONFIG.composes
 //   logFileKeyMismatch()    fn     — logs the soft warning described below
+//   __ccPreflightFileKey()  fn|null — structured fail-fast for headless/wrong-file
 //   _fileKeyObserved        string | null   — `figma.fileKey` at draw time
 //   _fileKeyMismatch        boolean — set when ACTIVE_FILE_KEY disagrees
 //
-// The engine bundle references ALL SEVEN identifiers during its run. The
-// top-of-bundle preamble assertion (draw-engine.figma.js §0a) throws a
+// The engine bundle references identifiers from scope during its run. The
+// top-of-bundle preamble assertion (draw-engine / op-interpreter §0a) throws a
 // clear message listing which ones are missing — but that message only
 // fires if you remembered to inline the engine bundle. If you forgot to
 // inline this file too, you would see a raw `ReferenceError` mid-draw
@@ -104,4 +105,37 @@ const _fileKeyMismatch =
   !!(ACTIVE_FILE_KEY && _fileKeyObserved && _fileKeyObserved !== ACTIVE_FILE_KEY);
 if (_fileKeyMismatch) {
   logFileKeyMismatch(ACTIVE_FILE_KEY, _fileKeyObserved);
+}
+
+// File-binding preflight. Returns structured { ok: false, ... } when the running plugin
+// is not attached to the expected file — including figma.fileKey === "headless".
+// Returns null when the binding is acceptable to continue draws.
+function __ccPreflightFileKey() {
+  const observed =
+    typeof figma.fileKey === 'string' && figma.fileKey ? figma.fileKey : null;
+  const expected =
+    typeof ACTIVE_FILE_KEY === 'string' && ACTIVE_FILE_KEY ? ACTIVE_FILE_KEY : null;
+  if (observed === 'headless') {
+    return {
+      ok: false,
+      why: 'figma-headless-session',
+      fileKeyObserved: 'headless',
+      fileKeyExpected: expected,
+      remediation:
+        'figma.fileKey is "headless" — open ' +
+        (expected || 'the design file') +
+        ' in Figma Desktop with MCP linked, then re-run prepare.',
+    };
+  }
+  if (observed && expected && observed !== expected) {
+    return {
+      ok: false,
+      why: 'figma-file-mismatch',
+      fileKeyObserved: observed,
+      fileKeyExpected: expected,
+      remediation:
+        'Wrong file: expected ' + expected + ', got ' + observed + '. Switch file tab and re-run prepare.',
+    };
+  }
+  return null;
 }

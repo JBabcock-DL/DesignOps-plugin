@@ -10,7 +10,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
-import { getStep6Status, SLUG_ORDER } from "./lib/designops-step6-status.mjs";
+import { getStep6Status } from "./lib/designops-step6-status.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
@@ -28,8 +28,8 @@ function usage(code = 0) {
     `      --draw-dir <abs-path> --layout <chip|…> \\\n` +
     `      --config-block <path.js> --registry <path|.json|"{}"> --file-key <figmaKey> \\\n` +
     `      [--handoff path|default draw-dir/handoff.json] [--plugin-root <path>] \\\n` +
-    `      [--slug <slug>] [--force] [--strategy disk|inline] [--no-run]\n\n` +
-    `prepare writes draw-dir/current-step.manifest.json and .designops/staging/ for disk strategy.\n`;
+    `      [--slug <slug>] [--force] [--no-run]\n\n` +
+    `prepare writes draw-dir/current-step.manifest.json and .designops/staging/mcp-<slug>.json (disk-only).\n`;
   if (code === 0) console.log(msg);
   else console.error(msg);
   process.exit(code);
@@ -115,9 +115,15 @@ function cmdValidateDrawDir(argsIn) {
 }
 
 async function cmdPrepare(raw) {
+  if (raw.strategy === "inline") {
+    console.error(
+      "designops-step6-engine: --strategy inline removed: Composer-class hosts truncate inline tool JSON. Disk is the only supported transport.",
+    );
+    process.exit(2);
+  }
+
   const drawDir = resolve(raw["draw-dir"] || "");
   const layout = raw.layout || "";
-  const strategy = raw.strategy === "inline" ? "inline" : "disk";
   const skipRun = raw["no-run"] === true;
   const pluginRoot = resolve(raw["plugin-root"] || REPO_ROOT);
   const handoffArg = raw.handoff ? resolve(raw.handoff) : join(drawDir, "handoff.json");
@@ -187,50 +193,38 @@ async function cmdPrepare(raw) {
         ]
       : [];
 
-  if (strategy === "disk") {
-    assembleArgv.push("--emit-mcp-args", mcpPath);
-  }
+  assembleArgv.push("--emit-mcp-args", mcpPath);
 
   const manifest = {
     version: MANIFEST_VERSION,
     slug,
     designopsPluginRoot: pluginRoot,
     drawDir,
-    strategy,
+    strategy: "disk",
     assembleArgv,
-    payload:
-      strategy === "disk"
-        ? {
-            mode: "disk",
-            diskPaths: {
-              codeJs: outPath,
-              mcpArgsJson: mcpPath,
-            },
-          }
-        : {
-            mode: "inline",
-            diskPaths: { codeJs: outPath },
-            note: "Parent Read codeJs fully; pass contents to use_figma code field (omit emit-mcp-args if inline-only).",
-          },
+    payload: {
+      mode: "disk",
+      diskPaths: {
+        codeJs: outPath,
+        mcpArgsJson: mcpPath,
+      },
+    },
     finalizeHint: {
       mode: "stdin",
       examplePipe: `echo '<return-json>' | node scripts/finalize-slice.mjs ${slug} "${handoffArg}"`,
       returnPathDoc: `Or save return to ${join(drawDir, `return-${slug}.json`)} and use finalize-slice --return-path.`,
     },
-    parent_actions:
-      strategy === "disk"
-        ? [
-            { op: "RUN_SHELL", argv: assembleArgv, cwd: REPO_ROOT },
-            { op: "READ_PATH", path: mcpPath, purpose: "Full file; pass JSON to call_mcp use_figma" },
-            { op: "CALL_MCP_USE_FIGMA", fromMcpJson: "fileKey, code, description, skillNames" },
-            { op: "FINALIZE_STDIN", slug, handoffPath: handoffArg },
-          ]
-        : [
-            { op: "RUN_SHELL", argv: assembleArgv, cwd: REPO_ROOT },
-            { op: "READ_PATH", path: outPath, purpose: "Full assembled code string for use_figma" },
-            { op: "CALL_MCP_USE_FIGMA", fields: { fileKey, code: "<from read>", description: `create-component step=${slug} layout=${layout}`, skillNames: "figma-use,create-component-figma-slice-runner" } },
-            { op: "FINALIZE_STDIN", slug, handoffPath: handoffArg },
-          ],
+    parent_actions: [
+      {
+        op: "RUN_SHELL",
+        argv: assembleArgv,
+        cwd: REPO_ROOT,
+        exitOnFail: [10, 11, 17],
+      },
+      { op: "READ_PATH", path: mcpPath, purpose: "mcp-args" },
+      { op: "CALL_MCP_USE_FIGMA", fromMcpJson: mcpPath },
+      { op: "FINALIZE_STDIN", slug, handoffPath: handoffArg },
+    ],
   };
 
   const manifestPath = join(drawDir, "current-step.manifest.json");
@@ -254,7 +248,7 @@ async function cmdPrepare(raw) {
         ok: true,
         manifestPath,
         slug,
-        strategy,
+        strategy: "disk",
         ranAssemble: !skipRun,
       },
       null,

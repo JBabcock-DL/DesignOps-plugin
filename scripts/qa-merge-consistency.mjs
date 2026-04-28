@@ -3,7 +3,7 @@
 // scripts/qa-merge-consistency.mjs
 // ═══════════════════════════════════════════════════════════════════════════
 // Integration tests for the fail-fast guards added to:
-//   - merge-create-component-handoff.mjs (exit 14, 15, 16, 18)
+//   - merge-create-component-handoff.mjs (exit 14, 15, 16, 18, 19)
 //   - assemble-slice.mjs                  (exit 17)
 //   - resume-handoff.mjs                  (DAG replay)
 //   - validatePhaseStateSchema (unit)
@@ -15,7 +15,7 @@
 //
 // Exit 0 if all tests pass; non-zero with a summary if any fail.
 
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -226,8 +226,34 @@ console.log('\n[4] merge — exit 18 (schema violation)');
   assertStderrIncludes(r, 'lastCodeSha256', 'exit 18 message names the offending field');
 }
 
-// ─── 5. assemble-slice: non-canonical sibling guard (exit 17) ────────────────
-console.log('\n[5] assemble-slice — exit 17 (non-canonical sibling)');
+// ─── 5. merge: Figma structured fail ok:false (exit 19 — handoff unchanged) ──
+console.log('\n[5] merge — exit 19 (ok:false)');
+{
+  const dir = trackTmp(makeTmpDir('okfalse'));
+  writeJson(join(dir, 'handoff.json'), {});
+  writeJson(join(dir, 'return-cc-doc-scaffold-shell.json'), {
+    ok: false,
+    why: 'figma-headless-session',
+    remediation: 'Open the target Figma file and retry with the MCP session bound to it.',
+  });
+  const r = spawnNode(MERGE, [
+    'cc-doc-scaffold-shell',
+    join(dir, 'handoff.json'),
+    join(dir, 'return-cc-doc-scaffold-shell.json'),
+  ]);
+  assertExit(r, 19, 'merge with ok:false return triggers exit 19');
+  assertStderrIncludes(r, 'ok:false', 'exit 19 message mentions ok:false');
+  const handoffAfter = JSON.parse(
+    readFileSync(join(dir, 'handoff.json'), 'utf8'),
+  );
+  assert(
+    handoffAfter && typeof handoffAfter === 'object' && Object.keys(handoffAfter).length === 0,
+    'handoff.json unchanged after exit 19',
+  );
+}
+
+// ─── 6. assemble-slice: non-canonical sibling guard (exit 17) ────────────────
+console.log('\n[6] assemble-slice — exit 17 (non-canonical sibling)');
 {
   const dir = trackTmp(makeTmpDir('noncanon'));
   // Seed minimal inputs
@@ -259,8 +285,8 @@ console.log('\n[5] assemble-slice — exit 17 (non-canonical sibling)');
   assertStderrIncludes(r, 'mcp-invoke-use-figma.json', 'exit 17 names the offending file');
 }
 
-// ─── 6. resume-handoff: replay orphans + report next slug ────────────────────
-console.log('\n[6] resume-handoff — replays orphans, reports next slug');
+// ─── 7. resume-handoff: replay orphans + report next slug ────────────────────
+console.log('\n[7] resume-handoff — replays orphans, reports next slug');
 {
   const dir = trackTmp(makeTmpDir('resume'));
   const ret = { pageContentId: '1:2', docRootId: '1:3' };
@@ -290,8 +316,8 @@ console.log('\n[6] resume-handoff — replays orphans, reports next slug');
   }
 }
 
-// ─── 7. resume-handoff: handoff={} but phase-state claims progress ───────────
-console.log('\n[7] resume-handoff — state mismatch (exit 1)');
+// ─── 8. resume-handoff: handoff={} but phase-state claims progress ───────────
+console.log('\n[8] resume-handoff — state mismatch (exit 1)');
 {
   const dir = trackTmp(makeTmpDir('mismatch'));
   writeJson(join(dir, 'handoff.json'), {});

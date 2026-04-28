@@ -22,3 +22,34 @@ const _fileKeyMismatch =
 if (_fileKeyMismatch) {
   logFileKeyMismatch(ACTIVE_FILE_KEY, _fileKeyObserved);
 }
+
+
+function __ccPreflightFileKey() {
+  const observed =
+    typeof figma.fileKey === 'string' && figma.fileKey ? figma.fileKey : null;
+  const expected =
+    typeof ACTIVE_FILE_KEY === 'string' && ACTIVE_FILE_KEY ? ACTIVE_FILE_KEY : null;
+  if (observed === 'headless') {
+    return {
+      ok: false,
+      why: 'figma-headless-session',
+      fileKeyObserved: 'headless',
+      fileKeyExpected: expected,
+      remediation:
+        'figma.fileKey is "headless" — open ' +
+        (expected || 'the design file') +
+        ' in Figma Desktop with MCP linked, then re-run prepare.',
+    };
+  }
+  if (observed && expected && observed !== expected) {
+    return {
+      ok: false,
+      why: 'figma-file-mismatch',
+      fileKeyObserved: observed,
+      fileKeyExpected: expected,
+      remediation:
+        'Wrong file: expected ' + expected + ', got ' + observed + '. Switch file tab and re-run prepare.',
+    };
+  }
+  return null;
+}

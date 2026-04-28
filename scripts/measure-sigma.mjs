@@ -58,6 +58,6 @@ const TARGET = 45000;
 console.log(
   `---\n` +
     `Target σ ~${TARGET}: naive step0+doc1..6 above is NOT a byte partition of one monolith — ` +
-    `build recompiles overlapping draw-engine; see skills/create-component/conventions/12-sigma-budget-mcp.md ` +
+    `build recompiles overlapping draw-engine; see skills/create-component/conventions/18-mcp-payload-budget.md and AGENTS.md (MCP transport, σ) ` +
     `(partitioned entries + thin preamble 2–7 can approach monolith total).\n`,
 );

@@ -4,7 +4,7 @@ This document is the **full research roll-up** for turning the transport spike i
 
 **Primary references**
 
-- **Canonical transport doc:** this file (measurements, §3–5 closure, **§6** follow-ons). **Removed (2026 cleanup):** separate research spin-offs under `docs/research/` (phase log, closure Q&A, Plan A pre-ship plan) — substance merged here or in normative skills ([`13`](../skills/create-component/conventions/13-component-draw-orchestrator.md), phase [`04`](../skills/create-component/phases/04-slice-cc-doc-scaffold.md), [`17`](../skills/create-component/conventions/17-scaffold-sub-slice-states.md)).
+- **Canonical transport doc:** this file (measurements, §3–5 closure, **§6** follow-ons). **Removed (2026 cleanup):** separate research spin-offs under `docs/research/` (phase log, closure Q&A, Plan A pre-ship plan) — substance merged here or in normative skills ([`13`](../skills/create-component/conventions/13-component-draw-orchestrator.md), phase [`04`](../skills/create-component/phases/04-slice-cc-doc-scaffold.md); scaffold intermediate states folded into **`13`** **§1**).
 - **When JSON fails before Figma:** [mcp-transport-cursor-fallback.md](./mcp-transport-cursor-fallback.md) (operator order).
 
 ---
@@ -161,7 +161,7 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 **Hard product constraints (do not violate without an explicit spec change):**
 
 1. **Global DAG** — [`13-component-draw-orchestrator.md`](../skills/create-component/conventions/13-component-draw-orchestrator.md) **§1**: `cc-doc-scaffold-shell` → … → `cc-doc-scaffold-placeholders` → `cc-variants` → `cc-doc-component` → … Any new sub-step must sit **inside** this order (e.g. expand only the **scaffold** segment into more first-class slugs **before** `cc-variants`). You cannot run variant plane before `_PageContent` + `docRoot` + table shell + dashed reserves exist.
-2. **Table / placeholder contract** — [`04-doc-pipeline-contract.md`](../skills/create-component/conventions/04-doc-pipeline-contract.md) and [`09-mcp-multi-step-doc-pipeline.md`](../skills/create-component/conventions/09-mcp-multi-step-doc-pipeline.md) **§1.1**: no empty table body mid-ladder; placeholder row count = `CONFIG.properties.length`; header row geometry must not collapse. A split “scaffold” is only valid if **every** intermediate state still has a legal table shell (or an accepted placeholder-only state that the next slice completes in one go).
+2. **Table / placeholder contract** — [`04-doc-pipeline-contract.md`](../skills/create-component/conventions/04-doc-pipeline-contract.md) **§2.2–2.2.1**: no empty table body mid-ladder; placeholder row count = `CONFIG.properties.length`; header row geometry must not collapse. A split “scaffold” is only valid if **every** intermediate state still has a legal table shell (see [`13-component-draw-orchestrator.md`](../skills/create-component/conventions/13-component-draw-orchestrator.md) scaffold table — same gates as legacy **§1.1** in the retired multi-call doc).
 3. **Handoff IDs** — Resume for doc work uses `__CC_HANDOFF_PAGE_CONTENT_ID__` + `__CC_HANDOFF_DOC_ROOT_ID__` (and later `compSetId`, variant holder, etc.). The **first** granular call must create nodes whose ids are returned; **subsequent** calls must use the same `assemble-slice` **varGlobals** path as doc steps 2–6 today ([`assemble-slice.mjs`](../scripts/assemble-slice.mjs) `buildVarGlobals`), not the “first slice” branch that omits handoff ids.
 
 **What can be split (high level):**
@@ -183,13 +183,13 @@ This section **prioritizes** follow-on work. It does **not** change normative sk
 
 **Recommendation (order of attack):**
 
-1. **Scaffold only, 2–4 sub-slugs** (e.g. `cc-doc-scaffold-shell` → `cc-doc-scaffold-table` → `cc-doc-scaffold-placeholders`) — clearest **byte** win for the op-interpreter path, clearest handoff (`pageContentId` / `docRootId` after shell), aligns with **09** “smaller Plugin API runs.”
+1. **Scaffold only, 2–4 sub-slugs** (e.g. `cc-doc-scaffold-shell` → `cc-doc-scaffold-table` → `cc-doc-scaffold-placeholders`) — clearest **byte** win for the op-interpreter path, clearest handoff (`pageContentId` / `docRootId` after shell), aligns with **`13` + `04`** “smaller Plugin API runs.”
 2. **Implement merge + phase-state for true `.partN` merges** (or treat sub-slugs as **first-class** slugs in `SLUG_ORDER` — simpler than multipart state machine).
 3. **Matrix / variants** — only after scaffold sub-steps are stable; variant **combine** boundary is the tricky design review.
 
-**Shipped (2026):** Plan A **first-class** scaffold sub-slugs (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`) are in [`SLUG_ORDER`](../scripts/merge-create-component-handoff.mjs); normative runbooks (**13**, **09**, **EXECUTOR**, phase **04**) match. This section stays **research** for **further** splits (matrix, variants, `.partN` merge, thinner runtime).
+**Shipped (2026):** Plan A **first-class** scaffold sub-slugs (`cc-doc-scaffold-shell` … `cc-doc-scaffold-placeholders`) are in [`SLUG_ORDER`](../scripts/merge-create-component-handoff.mjs); normative runbooks (**13**, **EXECUTOR**, phase **04**) match. This section stays **research** for **further** splits (matrix, variants, `.partN` merge, thinner runtime).
 
-**Normative runbooks (shipped scaffolds):** [`13` §1](../skills/create-component/conventions/13-component-draw-orchestrator.md), [phase 04](../skills/create-component/phases/04-slice-cc-doc-scaffold.md), [intermediate states](../skills/create-component/conventions/17-scaffold-sub-slice-states.md); merge / `SLUG_ORDER` in [`merge-create-component-handoff.mjs`](../scripts/merge-create-component-handoff.mjs). Further splits (matrix, variants, true `.partN` merge) remain research.
+**Normative runbooks (shipped scaffolds):** [`13` §1](../skills/create-component/conventions/13-component-draw-orchestrator.md), [phase 04](../skills/create-component/phases/04-slice-cc-doc-scaffold.md); merge / `SLUG_ORDER` in [`merge-create-component-handoff.mjs`](../scripts/merge-create-component-handoff.mjs). Further splits (matrix, variants, true `.partN` merge) remain research.
 
 ### 6.1 Tier 1 — DesignOps / consumer repo (low cost, immediate)
 
@@ -303,7 +303,7 @@ The recurring “MCP spiral” is rarely **Figma’s ~50k `code` schema cap**. I
 | 2026 (proxy removal) | In-repo `tools/mcp-figma-file-proxy` **removed**; Figma remote MCP requires OAuth in catalog clients, not PAT; use **parent `Read` + official `use_figma`**. |
 | 2026-04-28 (c) | **§6.0.2** — granular sub-steps: constraints, scaffold/matrix/variant split ideas, repo touchpoints (pre-code). |
 | 2026-04-28 (d) | Link to plan-A from §6.0.2 (file since **removed** — see 2026-04-28 (f)). |
-| 2026-04-28 (e) | **§6.0.2** hard constraints + **§7** stakeholder row: **10-slice** ladder (four scaffold + rest); endnote — Plan A first-class sub-slugs **shipped** in repo runbooks. |
+| 2026-04-28 (e) | **§6.0.2** hard constraints + **§7** stakeholder row: **12-slice** ladder (five scaffold + rest); endnote — Plan A first-class sub-slugs **shipped** in repo runbooks. |
 | 2026-04-28 (f) | **Doc cleanup:** removed `docs/research/*` spin-offs; **this file** is the only long-form MCP transport write-up; path is `docs/mcp-transport-solution-architecture-2026.md`. §4.1 and §6.0.1 cross-links updated. |
 | 2026-04-27 (g) | **§6.7** — Deeper fix: H1–H4 (file-backed / chunked / IDE / non-LLM caller), dependencies, DesignOps stance until vendors ship; owner research prompts. **`AGENTS.md`** cross-link to anti-spiral + §6.7. |
 | 2026-04-27 (h) | §6.7 lead: explicit link to `memory.md` system thesis (one tree, no speculative layers until host-side args). |

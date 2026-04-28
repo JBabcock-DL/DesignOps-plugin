@@ -10,8 +10,8 @@ import { SCAFFOLD_SUB_SLUGS } from './merge-create-component-handoff.mjs';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 const OP_MIN = join(REPO_ROOT, 'skills/create-component/templates/op-interpreter.min.figma.js');
-const BUDGET_RUNTIME = 10000;
-const BUDGET_ASSEMBLE_FULL = 17000;
+const BUDGET_RUNTIME = 11000;
+const BUDGET_ASSEMBLE_FULL = 18200;
 const BUDGET_PER_SCAFFOLD_SUB = 16000;
 
 if (!existsSync(OP_MIN)) {

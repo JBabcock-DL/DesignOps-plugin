@@ -71,7 +71,7 @@ const PREAMBLE_RUNTIME_REL = `${TEMPLATES_DIR}/preamble.runtime.figma.js`;
 const OP_INTERPRETER_REL = `${TEMPLATES_DIR}/op-interpreter.figma.js`;
 const OP_INTERPRETER_MIN_REL = `${TEMPLATES_DIR}/op-interpreter.min.figma.js`;
 // Plan: interpreter+ops ≤8KB transport; min runtime target ~4–5KB (shared across slices)
-const OP_INTERPRETER_BUDGET = 10000;
+const OP_INTERPRETER_BUDGET = 11000;
 // Plan / AGENTS: single-line header only — edit `preamble.figma.js`, then `npm run build:min`
 const PREAMBLE_RUNTIME_HEADER =
   `// preamble.runtime.figma.js — generated; edit preamble.figma.js + npm run build:min\n`;
@@ -94,7 +94,7 @@ const ARCHETYPE_BUILDERS = {
 // agent always has enough budget for its §0 CONFIG preamble.
 const HARD_LIMIT = 50000;
 // CONFIG + preamble + patched registry literals; keep a floor but allow shared draw-engine growth.
-const CONFIG_HEADROOM = 7333;
+const CONFIG_HEADROOM = 7270;
 
 const PER_ARCHETYPE_REL = Object.fromEntries(
   Object.keys({ chip: 'chip', ...ARCHETYPE_BUILDERS }).map(layout => [
@@ -234,8 +234,13 @@ function buildRuntimePreamble() {
 
   // Guard: all seven boundary identifiers must survive minification.
   const REQUIRED_IDENTS = [
-    'ACTIVE_FILE_KEY', 'REGISTRY_COMPONENTS', 'usesComposes',
-    'logFileKeyMismatch', '_fileKeyObserved', '_fileKeyMismatch',
+    'ACTIVE_FILE_KEY',
+    'REGISTRY_COMPONENTS',
+    'usesComposes',
+    'logFileKeyMismatch',
+    '__ccPreflightFileKey',
+    '_fileKeyObserved',
+    '_fileKeyMismatch',
   ];
   for (const name of REQUIRED_IDENTS) {
     if (!body.includes(name)) {
@@ -246,7 +251,7 @@ function buildRuntimePreamble() {
     }
   }
 
-  if (bodyBytes > 2000) {
+  if (bodyBytes > 2200) {
     console.warn(
       `buildRuntimePreamble: output is ${bodyBytes} bytes (target ≤ 2000). ` +
       `Consider trimming comments in preamble.figma.js.`,

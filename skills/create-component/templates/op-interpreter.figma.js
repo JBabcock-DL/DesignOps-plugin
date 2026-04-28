@@ -10,13 +10,14 @@
 // ── Preamble gate (identical contract to draw-engine.figma.js §0a) ───────
 {
   const preambleGate = {
-    CONFIG:              typeof CONFIG,
+    CONFIG:               typeof CONFIG,
     ACTIVE_FILE_KEY:     typeof ACTIVE_FILE_KEY,
     REGISTRY_COMPONENTS: typeof REGISTRY_COMPONENTS,
     usesComposes:        typeof usesComposes,
     logFileKeyMismatch:  typeof logFileKeyMismatch,
-    _fileKeyObserved:     typeof _fileKeyObserved,
-    _fileKeyMismatch:     typeof _fileKeyMismatch,
+    __ccPreflightFileKey: typeof __ccPreflightFileKey,
+    _fileKeyObserved:    typeof _fileKeyObserved,
+    _fileKeyMismatch:    typeof _fileKeyMismatch,
   };
   const missing = Object.entries(preambleGate)
     .filter(([, t]) => t === 'undefined')
@@ -303,6 +304,9 @@ function normalizeOp(raw) {
  */
 async function __ccRunOps(ops) {
   const refs = Object.create(null);
+  const _fk = typeof __ccPreflightFileKey === 'function' ? __ccPreflightFileKey() : null;
+  if (_fk) return _fk;
+
   // Fresh scaffold shell (no handoff yet): mirror draw-engine §6.0 — keep `_Header` only.
   // Without this, `/new-project` pages already have `_PageContent` at y=320; shell would
   // append a *second* `_PageContent` and `findOne('_PageContent')` would return the *template*
@@ -316,18 +320,47 @@ async function __ccRunOps(ops) {
       node.remove();
     }
   }
-  // Continuation scaffold sub-slices: parent ids from merge handoff (same symbolic keys 'pc' / 'dr' as first slice)
+
+  const _handoffMisses = [];
+  const _handoffSupplied = [];
   if (typeof __CC_HANDOFF_DOC_ROOT_ID__ === 'string' && __CC_HANDOFF_DOC_ROOT_ID__.length) {
+    _handoffSupplied.push({ key: 'docRootId', id: __CC_HANDOFF_DOC_ROOT_ID__, refKey: 'dr' });
     const dr = await figma.getNodeByIdAsync(__CC_HANDOFF_DOC_ROOT_ID__);
     if (dr && 'appendChild' in dr) refs.dr = dr;
-    if (typeof __CC_HANDOFF_PAGE_CONTENT_ID__ === 'string' && __CC_HANDOFF_PAGE_CONTENT_ID__.length) {
-      const pc = await figma.getNodeByIdAsync(__CC_HANDOFF_PAGE_CONTENT_ID__);
-      if (pc && 'appendChild' in pc) refs.pc = pc;
-    }
+    else _handoffMisses.push({ key: 'docRootId', id: __CC_HANDOFF_DOC_ROOT_ID__, refKey: 'dr' });
+  }
+  if (typeof __CC_HANDOFF_PAGE_CONTENT_ID__ === 'string' && __CC_HANDOFF_PAGE_CONTENT_ID__.length) {
+    _handoffSupplied.push({ key: 'pageContentId', id: __CC_HANDOFF_PAGE_CONTENT_ID__, refKey: 'pc' });
+    const pc = await figma.getNodeByIdAsync(__CC_HANDOFF_PAGE_CONTENT_ID__);
+    if (pc && 'appendChild' in pc) refs.pc = pc;
+    else _handoffMisses.push({ key: 'pageContentId', id: __CC_HANDOFF_PAGE_CONTENT_ID__, refKey: 'pc' });
   }
   if (typeof __CC_HANDOFF_SCAFFOLD_TABLE_ID__ === 'string' && __CC_HANDOFF_SCAFFOLD_TABLE_ID__.length) {
+    _handoffSupplied.push({ key: 'scaffoldTableId', id: __CC_HANDOFF_SCAFFOLD_TABLE_ID__, refKey: 'table' });
     const tb = await figma.getNodeByIdAsync(__CC_HANDOFF_SCAFFOLD_TABLE_ID__);
     if (tb && 'appendChild' in tb) refs.table = tb;
+    else _handoffMisses.push({ key: 'scaffoldTableId', id: __CC_HANDOFF_SCAFFOLD_TABLE_ID__, refKey: 'table' });
+  }
+  if (_handoffMisses.length > 0) {
+    const observedFileKey = (typeof figma.fileKey === 'string' && figma.fileKey) || null;
+    const expectedFileKey = (typeof ACTIVE_FILE_KEY === 'string' && ACTIVE_FILE_KEY) || null;
+    return {
+      ok: false,
+      why: 'handoff-id-not-resolvable-in-current-file',
+      missingHandoffIds: _handoffMisses,
+      suppliedHandoffIds: _handoffSupplied,
+      fileKeyObserved: observedFileKey,
+      fileKeyExpected: expectedFileKey,
+      pageName: (figma.currentPage && figma.currentPage.name) || null,
+      remediation:
+        observedFileKey === 'headless'
+          ? 'Headless MCP session — open ' + (expectedFileKey || 'target file') + ' in Figma Desktop; re-run prepare.'
+          : observedFileKey &&
+              expectedFileKey &&
+              observedFileKey !== expectedFileKey
+            ? 'Wrong file: expected ' + expectedFileKey + ', got ' + observedFileKey + '.'
+            : 'Stale handoff ids — run resume-handoff --dry-run or reset handoff.json.',
+    };
   }
   for (const raw of ops) {
     const o = normalizeOp(raw);
@@ -394,6 +427,7 @@ function __ccHandoffAfter(pageContent, docRoot, docStep, scaffoldRefs) {
 // Assembly appends: return await runScaffold1();  which closes over __OPS
 async function runScaffold1FromOps(__OPS) {
   const scaffoldRefs = await __ccRunOps(__OPS);
+  if (scaffoldRefs && scaffoldRefs.ok === false) return scaffoldRefs;
   const pageContent = /** @type {import('@figma/plugin-typings').FrameNode} */ (figma.currentPage.findOne(
     n => n.name === '_PageContent',
   ));
@@ -401,10 +435,21 @@ async function runScaffold1FromOps(__OPS) {
     n => n.name === `doc/component/${CONFIG.component}`,
   ));
   if (!pageContent || pageContent.type !== 'FRAME') {
-    throw new Error('[op] scaffold: _PageContent missing');
+    return {
+      ok: false,
+      why: 'scaffold-missing-pagecontent',
+      fileKeyObserved: (typeof figma.fileKey === 'string' && figma.fileKey) || null,
+      pageName: (figma.currentPage && figma.currentPage.name) || null,
+    };
   }
   if (!docRoot || docRoot.type !== 'FRAME') {
-    throw new Error(`[op] scaffold: doc/component/${CONFIG.component} missing`);
+    return {
+      ok: false,
+      why: 'scaffold-missing-doc-root',
+      component: CONFIG.component,
+      fileKeyObserved: (typeof figma.fileKey === 'string' && figma.fileKey) || null,
+      pageName: (figma.currentPage && figma.currentPage.name) || null,
+    };
   }
   return __ccHandoffAfter(pageContent, docRoot, 1, scaffoldRefs);
 }
