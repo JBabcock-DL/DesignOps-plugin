@@ -27,7 +27,7 @@ That constraint applies to **every** Claude marketplace plugin skill you run fro
 
 - When **injected skill metadata** (**`agent_skills`**, **`available_skills`**, or equivalent) lists a skill with a **filesystem path** under **`.claude/plugins`**, treat that skill as **present** for delegation and routing even if the designer never typed a bypass flag — skills are allowed to assume installation when the registry exposes the path.
 - Prefer **`Read`** / **`Glob`** on paths that resolve **inside workspace folders**. If the registry shows a path **outside** the workspace, **`Read`** may still work when the host resolves absolute paths; if not, ask once to **Add Folder to Workspace** for that plugin root — **do not** assume missing workspace folders mean the skill is unavailable when the registry lists it.
-- **Cross-plugin delegation** (e.g. **`/dev-handoff`** → **`create-ticket`**): follow the **calling skill’s** detection steps (**Glob**, **`agent_skills`**, repo signals). Do **not** require `--use-*` overrides when downstream detection passes — see **`skills/dev-handoff/SKILL.md`** Step 3 for the **`labs-agent-workflow`** case.
+- **Cross-plugin delegation** (e.g. **`/dev-handoff`** → **`create-ticket`**): follow the **calling skill’s** detection steps (**Glob**, **`agent_skills`**, repo signals). Do **not** require `--use-*` overrides when downstream detection passes — see **`skills/dev-handoff/SKILL.md`** Step 3 for the **`labs-agent-workflow`** case. **`labs-agent-workflow`** loads **`workflow.md`** via **`skills/conventions/01-plugin-root-and-templates.md`** when cwd has no **`.github/templates/`** — do **not** treat that as a broken install.
 
 ## Agent behavior
 

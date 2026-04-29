@@ -89,11 +89,11 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
 
 **Cursor / non–Claude Code hosts:** To make Step 4’s **skill-proxy** path work, the agent must be able to **Read** `skills/create-ticket/SKILL.md`. Use **File → Add Folder to Workspace** and add the folder that contains **`labs-agent-workflow`** (for example the local marketplace copy: `%USERPROFILE%\.claude\plugins\marketplaces\local-desktop-app-uploads\labs-agent-workflow\` on Windows, or `~/.claude/plugins/marketplaces/.../labs-agent-workflow/` on macOS/Linux). That gives Step 4 a resolvable path even when the active project is not a ClaudeOps checkout. If the designer cannot add that folder, they can still pass **`--use-claude-ops`** after confirming **`create-ticket`** appears in **agent_skills**, and the agent follows Step 4 using the injected skill path when the host provides it. **Cursor:** workspace + **`agent_skills`** parity for **all** plugin skills is covered by [`.cursor/rules/cursor-designops-skill-root.mdc`](../../.cursor/rules/cursor-designops-skill-root.mdc) (**Companion marketplace plugins**, **skills registry vs workspace**, **cross-plugin delegation**).
 
-**Engineering repo vs plugin:** Delegation still needs the **ticket backend** and sprint layout from the **team’s repo** (ClaudeOps `.github/templates/workflow.md`, Sprint folders). If only the marketplace plugin folder is in the workspace, **`create-ticket`** may prompt for paths or fail until the **consumer repo** root is also added — `/dev-handoff` does not duplicate that repo detection; see ClaudeOps `create-ticket` skill Steps 1–10.
+**Plugin-first `workflow.md` (designers run from any repo):** Designers may open **any** git repo — **including empty or scratch folders** — and invoke **`/dev-handoff`**. They do **not** need **`.github/templates/workflow.md`** (or Sprint folders) **in that repo**. Claude Code resolves **`workflow.md`** from the **`labs-agent-workflow`** plugin installation (**`${CLAUDE_PLUGIN_ROOT}`** / marketplace folder); **`create-ticket`** follows **`skills/conventions/01-plugin-root-and-templates.md`** in the **ClaudeOps-plugin** repo for bundled **`templates/workflow.md`**, optional **`CLAUDE_OPS_PLUGIN_ROOT`**, and Glob-based discovery — **never** commit machine-specific paths in projects. **Team overrides** may still live under **`${cwd}/.github/templates/`** when present. **`/dev-handoff`** must **not** treat “no **`workflow.md`** under cwd” as proof that delegation cannot run — verify **`skills/create-ticket/SKILL.md`** and that convention before Step 4.5.
 
 ### Step 4 — Delegate to ClaudeOps `/create-ticket`
 
-> This path keeps the designer inside the team's normal sprint + project-board flow — `/create-ticket` owns folder creation, GitHub issue, and project-board sync.
+> This path keeps the designer inside the team's normal sprint + project-board flow — **`create-ticket`** owns folder creation, GitHub issue, and project-board sync. **`workflow.md`** and backend defaults come from the **`labs-agent-workflow`** plugin when cwd does not ship them — **do not** assume failure because **`./.github/templates/workflow.md`** is missing (see Step 3 **Plugin-first `workflow.md`**). If **`create-ticket`** still exits without a ticket after following **`skills/create-ticket/SKILL.md`** (including plugin-root resolution), continue at **Step 4.5**.
 
 1. Derive a **title**: if a Figma node was enriched in Step 2, use its `name` (e.g. `"Login Screen — onboarding checklist"`); otherwise derive a ≤ 80-char summary from `raw_note` (first sentence, trimmed).
 2. Ask for **ticket type** with **AskUserQuestion**. ClaudeOps supports three types and `/dev-handoff` recommends **`ctx`** for designers — it captures design context as a standalone backlog card without implying a committed work order or an active bug. `ctx` tickets intentionally do **not** get a `plan.md` — they stay in the **Context Backlog** until an engineer (or `/create-backlog` groomer) promotes them via `/create-ticket promote CTX-###`:
@@ -129,15 +129,31 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
    ```
    /create-ticket {ctx|wo|bug} "{title}"
    ```
-   The ClaudeOps `/create-ticket` skill will prompt for anything missing. When it asks for the ticket body, paste the composed body verbatim. ClaudeOps already knows the backend (GitHub vs Jira) from `.github/templates/workflow.md` → `## Ticket Backend`, so `/dev-handoff` does **not** ask about platform when delegating — skip straight past Step 5.
+   The ClaudeOps **`create-ticket`** skill resolves **`workflow.md`** from the **`labs-agent-workflow`** plugin (**`${CLAUDE_PLUGIN_ROOT}`**) when the open repo does not contain **`.github/templates/workflow.md`** — designers do **not** need those files in every project. When it asks for the ticket body, paste the composed body verbatim. Backend (**GitHub** vs **Jira**) comes from **`## Ticket Backend`** in that resolved **`workflow.md`**, so **`/dev-handoff`** does **not** ask about platform when delegating — skip straight past Step 5.
 
-   **Skill-proxy delegation:** If the runtime only exposes ClaudeOps skills as a file path (e.g. via the `agent_skills` registry), **`Read`** `skills/create-ticket/SKILL.md` — prefer the path **discovered in Step 3** (Glob hit or `agent_skills` entry for **labs-agent-workflow**) — and follow its Steps 1–10 inline with the values collected above.
+   **Skill-proxy delegation:** If the runtime only exposes ClaudeOps skills as a file path (e.g. via the `agent_skills` registry), **`Read`** `skills/create-ticket/SKILL.md` — prefer the path **discovered in Step 3** (Glob hit or `agent_skills` entry for **labs-agent-workflow**) — and follow its Steps 1–10 inline with the values collected above. Resolve **`workflow.md`** per that skill (**plugin defaults first**, cwd overrides when present); **do not** jump to Step 4.5 solely because cwd lacks **`.github/templates/`**.
 
 5. Capture the returned ticket ID, folder path, GitHub issue URL, and project-board item ID from `/create-ticket`, then jump to Step 7.
 
-### Step 5 — Platform prompt (fallback path only)
+### Step 4.5 — ClaudeOps delegation incomplete (recovery)
 
-Runs only when `claude_ops_available == false`.
+Run this when Step 4 **started** but **`create-ticket`** did **not** return a completed ticket (no issue key / URL / folder path from the skill) **after** **`skills/create-ticket/SKILL.md`** has been followed — including **plugin-root resolution of `workflow.md`**. Typical causes:
+
+- **`create-ticket`** runtime error, auth failure, or incomplete Steps 1–10.
+- Host cannot **`Read`** **`labs-agent-workflow`** files needed by **`create-ticket`** (add plugin folder to workspace — Step 3).
+
+**Do not** enter Step 4.5 **only** because **`Glob`** found no **`./.github/templates/workflow.md`** under cwd — that is often expected when running from an arbitrary repo.
+
+**Mandatory behavior**
+
+1. Tell the designer in **one short sentence** why **`create-ticket`** did not finish (quote stderr / skill outcome — **not** “your repo lacks **`workflow.md`**” unless **`skills/create-ticket`** confirmed plugin defaults were unreachable).
+2. **Fall through to Step 5** with the **same** title, body, and ticket type (**ctx** \| **wo** \| **bug**) already gathered in Steps 4.1–4.3. If Step 4 failed before ticket type was collected, ask the Step 4.2 question once, then continue.
+3. **Do not** call Atlassian MCP (`getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `createJiraIssue`) or run **`gh issue create`** until **after** the Step 5 platform **AskUserQuestion** (and any Step 5a/5b follow-ups). **Never** prefetch Jira sites or projects to “recover” — that bypasses **github vs jira** and Jira site/project picks and leaves the designer without a proper handoff flow.
+4. After a successful ticket in this path, Step 7 reports **`Ticket created via: github`** or **`jira`** (not **`claude-ops`**).
+
+### Step 5 — Platform prompt (fallback and recovery)
+
+Runs when **`claude_ops_available == false`** **or** **Step 4.5** applies (ClaudeOps delegation did not complete).
 
 Call **AskUserQuestion**:
 
@@ -269,6 +285,7 @@ Omit any section whose inputs are missing; never render an empty heading.
 - **No binary attachments.** The skill embeds the screenshot as a Figma-hosted URL or an MCP reference — it does not upload raster files to Jira or GitHub. If a team requires an attached PNG, the designer should drop the screenshot onto the created ticket manually.
 - **Ticket type mapping.** ClaudeOps uses `ctx | wo | bug` (designer handoffs should default to **`ctx` — context**); Jira uses `Task | Bug | Story`; GitHub uses labels. The skill asks the minimum question for the chosen path and avoids cross-mapping automatically — the designer controls the taxonomy per platform.
 - **Why `ctx` is the recommended type for designers.** A `ctx` card is a deliberate "here's the design, here's what's decided, here's what's still open" drop into the Context Backlog. It does not imply engineering has committed to a timebox (unlike a `wo`) and it does not imply something is broken (unlike a `bug`). ClaudeOps' `/create-ticket` deliberately skips `plan.md` generation for `ctx` tickets and parks them on the **Context Backlog** column / label (`phase:context-backlog`). During grooming, an engineer runs `/create-ticket promote CTX-###` — ClaudeOps converts the folder to `BUG-###` or `WO-###`, preserves the original CTX body inside a `<details>` block, keeps the same remote issue (just relabels + renames it), and leaves a tombstone file behind so the CTX number is never reused. `/dev-handoff` intentionally does **not** invoke `promote` — that's a deliberate engineering decision, not a designer one.
-- **Permissions.** The skill does not re-authenticate any connector. If `gh auth status`, the Atlassian MCP, or ClaudeOps delegation fails, the agent surfaces the error text + the remediation command and stops — it does not silently retry with a different path.
+- **Permissions.** The skill does not re-authenticate any connector. If **`gh`** or Atlassian MCP fails **during** Step 5a/5b after prompts, surface the error and remediation and stop. If **`create-ticket`** fails **after** plugin-default **`workflow.md`** resolution per **`skills/create-ticket/SKILL.md`**, use **Step 4.5** and the **Step 5** flow — do **not** stop after a failed delegation unless the designer declines the direct **github**/**jira** path.
+- **Step 4.5 vs ad hoc recovery.** Do not substitute API prefetch (e.g. listing every Jira site) for the Step 5 **AskUserQuestion** sequence. Interactive input contract applies to **fallback and recovery** the same way as to the primary path.
 - **Detection vs delegation.** Step 3's detection is heuristic. **`--skip-claude-ops`** forces the GitHub/Jira fallback. **`--use-claude-ops`** / **`--force-claude-ops`** forces the ClaudeOps path when the agent can follow Step 4 (slash command or **`Read`** + inline **`create-ticket`** steps). **`agent_skills`** / Glob **`create-ticket`** detection fixes false negatives in Cursor when the workflow repo is not at workspace root but the marketplace plugin is installed or added as a workspace folder.
 - **Repeat runs.** Re-running `/dev-handoff` against the same Figma node is allowed — it simply creates a second ticket. Dedupe is the responsibility of the destination platform.
