@@ -20,7 +20,7 @@ The **only** decisions this skill should ever ask about are:
 
 1. **Platform** — GitHub or Jira (fallback / recovery paths when not delegating to ClaudeOps).
 2. **Destination** — repo (GitHub) or project key (Jira) (same).
-3. **Ticket type / label** — when delegating to **ClaudeOps `/create-ticket`**, ask **before** the “anything additional for the engineer?” question (Step 4) so the body scaffold matches `ctx` / `wo` / `bug`. ClaudeOps supports `ctx | bug | wo`; **`ctx` (context) is the recommended default for designer handoffs**. Jira direct-create issue-type prompts stay as `Task | Bug | Story`.
+3. **Ticket type / label** — when delegating to **ClaudeOps `/create-ticket`**, ask **before** the “anything additional for the engineer?” question (Step 4) so the body scaffold matches `ctx` / `wo` / `bug`. ClaudeOps supports `ctx | bug | wo`; **`ctx` (context) is the recommended default for designer handoffs**. On the **Jira fallback** path (Step 5b), **never** assume `Task` / `Bug` / `Story`: call **`getJiraProjectIssueTypesMetadata`** for the chosen project **first**, then AskUserQuestion with **only** names returned (same rule as **`/create-ticket`** on Jira).
 4. **Additional notes for the engineer** — **after** ticket type on the ClaudeOps path (Step 4). On the fallback path, gather any missing prose when composing the body in Step 5 — **after** platform and destination (and Jira issue type when applicable).
 
 Everything else (title, description body, Figma link, screenshot reference) is derived automatically from the gathered context.
@@ -33,7 +33,7 @@ Everything else (title, description body, Figma link, screenshot reference) is d
 |---|---|
 | Figma MCP connector configured | Only required when the context source is a Figma node. Used for `get_design_context` + `get_screenshot`. |
 | `gh` CLI authenticated | Required only for the GitHub fallback path (no ClaudeOps). Check with `gh auth status`. |
-| Atlassian MCP connector | Required only for the Jira fallback path (no ClaudeOps). Tools used: `getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `createJiraIssue`. |
+| Atlassian MCP connector | Required only for the Jira fallback path (no ClaudeOps). Tools used: `getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `getJiraProjectIssueTypesMetadata`, `createJiraIssue`. |
 | ClaudeOps-plugin (optional) | When installed, the skill delegates via `/create-ticket` instead of calling GitHub/Jira directly. Detection rules in Step 3 apply in **Claude Code**, **Cursor**, and other IDEs (see *Hosts and `Read` paths* under Step 3). |
 
 **MCP payloads:** Pass any Figma `use_figma` / Atlassian tool payloads **inline** in each call. Do **not** stage `.mcp-*` or `*-payload.json` scratch files in this repo ([`AGENTS.md`](../../AGENTS.md)).
@@ -141,7 +141,7 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
    | `DELEGATED_BODY` | composed body from this step (Step 4.4) |
    | `DELEGATED_BACKEND` | `github` or `jira` from the precheck in Step 3 |
 
-   `create-ticket` reads these and jumps straight to remote sync — no re-ask for type, title, notes, or backend.
+   `create-ticket` reads these and skips re-asking for **workflow ticket type** (`ctx` / `wo` / `bug`), **title**, **body**, and **backend**. On **Jira**, **`/create-ticket`** builds the issue-type list **only** from the Atlassian MCP **`getJiraProjectIssueTypesMetadata`** response for the project — **not** from **`workflow.md`** — then **always** runs **AskUserQuestion** with those MCP-returned names (creatable types for the project — not existing issues). **`/dev-handoff`** does **not** replace that question or supply type names from **`workflow.md`**.
 
 6. Capture the returned ticket ID, folder path, GitHub issue URL, and project-board item ID from `/create-ticket`, then jump to Step 7.
 
@@ -197,22 +197,21 @@ Store the answer as `platform` (`github` | `jira`). Proceed to Step 5a or 5b.
    Resolve the chosen name back to its `cloudId`.
 2. Call `getVisibleJiraProjects` with the resolved `cloudId`. Present a short list of `{KEY} — {name}` rows (cap at 20). Call **AskUserQuestion**:
    > "Which Jira project? Reply with the project key (e.g. `DESIGN`, `MOB`)."
-3. Ask for **issue type** with **AskUserQuestion**:
-   > "Issue type? Reply **Task**, **Bug**, or **Story**."
-   (Default to `Task` if the project's metadata does not expose the chosen type; fall back to the first type returned by `getJiraProjectIssueTypesMetadata` if needed.)
-4. Build `summary` from the title rule (Step 4.1). Build `description` per **Step 4.4** and **Body template** (`contentFormat`: `markdown`).
-5. Call `createJiraIssue` with:
+3. Call **`getJiraProjectIssueTypesMetadata`** with `cloudId` and `projectIdOrKey` = the chosen project **key**. Build **`availableIssueTypeNames`** from every returned issue type **`name`**. If the list is empty, stop with a clear error.
+4. Ask for **issue type** with **AskUserQuestion** — **every option must be a name from `availableIssueTypeNames`** built **only** from the MCP response in step 3 (e.g. “Which Jira issue type should this card use?”). **Do not** add options from **`workflow.md`**, README examples, or guesses. If there are too many types for the question UI, paste the sorted MCP list and ask the designer to reply with an exact name from that list; reject until it matches (case-insensitive). Use the **canonical spelling from the metadata response** for `issueTypeName`. Do **not** offer **Task** / **Bug** / **Story** unless those strings appear in **`availableIssueTypeNames`**.
+5. Build `summary` from the title rule (Step 4.1). Build `description` per **Step 4.4** and **Body template** (`contentFormat`: `markdown`).
+6. Call `createJiraIssue` with:
    ```json
    {
      "cloudId": "{cloudId}",
      "projectKey": "{KEY}",
-     "issueTypeName": "{Task|Bug|Story}",
+     "issueTypeName": "{name from step 4 — must match Jira metadata}",
      "summary": "{title}",
      "description": "{body}",
      "contentFormat": "markdown"
    }
    ```
-6. Capture the returned issue key (e.g. `DESIGN-482`) and browse URL. Proceed to Step 7.
+7. Capture the returned issue key (e.g. `DESIGN-482`) and browse URL. Proceed to Step 7.
 
 ### Step 6 — (reserved)
 
