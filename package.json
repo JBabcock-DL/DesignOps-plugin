@@ -13,6 +13,7 @@
     "build:props:check": "node scripts/build-shadcn-props.mjs --check",
     "bundle-component": "node scripts/bundle-component-mcp.mjs",
     "validate-tokens": "node scripts/validate-tokens.mjs",
+    "validate-config-sync": "node scripts/validate-config-sync.mjs",
     "check-payload": "node scripts/check-payload.mjs",
     "check-use-figma-args": "node scripts/check-use-figma-mcp-args.mjs",
     "cache-tokens": "node scripts/cache-tokens.mjs",

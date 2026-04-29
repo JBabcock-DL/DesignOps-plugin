@@ -24,6 +24,20 @@
 - **Does not match:** e.g. **`checked`** → `variant=checked` — there is no `on` / `checked=true` / `pressed=true` substring, so the **unchecked** chrome may render for both axis values unless you rename variants (e.g. **`off` / `on`**) in Mode B or align a future engine change.
 - **`indeterminate`** → `variant=indeterminate` does **not** match the checked regex; expect **no** distinct indeterminate glyph unless `buildControlVariant` is extended.
 
+### §3.1.2 — Multi-export shadcn components: which sub-component to model
+
+When a shadcn package exports multiple sub-components (e.g. `RadioGroup` + `RadioGroupItem`, `Checkbox` + `CheckboxIndicator`), `CONFIG.properties[]` models the **sub-component that matches the archetype role**, not the root wrapper.
+
+| Archetype | Model this sub-component | Not this |
+|---|---|---|
+| `control` | The item/leaf (`RadioGroupItem`, `Checkbox`) | The wrapper (`RadioGroup`) |
+| `container` | The trigger/item (`AccordionItem`) | The root (`Accordion`) |
+| `chip` | The item when used in a group | The group wrapper |
+
+**Rationale:** The archetype builder draws one repeated cell per variant — that cell represents the interactive primitive the designer instances. The wrapper managing multiple items is implicit in the matrix layout itself.
+
+**For `radio-group`:** `CONFIG.properties[]` documents `RadioGroupItem` props (`value`, `disabled`, `id`). See [`shadcn-props/radio-group.json`](../shadcn-props/radio-group.json) (3-row atomic form).
+
 > **Slider note.** `slider` is currently routed to `tiny` because its canonical display is a 1-pixel-stripe track + thumb shape with no label/icon composition. It is the only **interactive** control in the `tiny` archetype — every other `tiny` component is pure display / passive chrome. Revisit this mapping if hover / drag states are ever needed: at that point a dedicated `range` archetype (or promoting `slider` into `control` with `shape: 'slider'`) becomes more accurate than `tiny`.
 
 **Fallback rule:** If `CONFIG.layout` is omitted or the dispatch encounters an unknown value, the engine falls back to `chip` and emits a `console.warn`. Never introduce a new archetype without also:

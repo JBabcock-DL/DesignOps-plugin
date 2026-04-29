@@ -347,6 +347,12 @@ if (!existsSync(outDir)) {
   mkdirSync(outDir, { recursive: true });
 }
 writeFileSync(outAbs, block, 'utf8');
+if (layout === 'control') {
+  console.warn(
+    '[build-config-block] REMINDER (control): ensure style[onVariant].fill !== style[offVariant].fill. ' +
+      'The checked background must differ from unchecked or the glyph will be invisible.'
+  );
+}
 console.log(`OK  ${componentName} CONFIG block → ${outAbs}`);
 
 const checkScript = join(REPO_ROOT, 'scripts', 'check-payload.mjs');

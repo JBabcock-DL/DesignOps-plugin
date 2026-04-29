@@ -35,9 +35,10 @@
 ### Icon slots ([`01-config-schema.md` §3.3](./01-config-schema.md#33--icon-slots--element-component-properties-designer-ready-polish))
 
 - [ ] **S9.7** Archetype / structure checks per [`SKILL.md` §9](../SKILL.md) — use `layout`, `compSetVariantRows`, and `firstVariantChildren` on the **`component-*`** return
+  - **Control archetype:** For `layout === 'control'`, the unchecked/off variant is **expected to have zero non-stroke children** — `firstVariantChildren` empty or border-only is **correct behavior**, not a structural failure. Only flag S9.7 failing if the *checked/on* variant also lacks its indicator child (`radio/dot` for radio, `checkbox/check-icon` for checkbox, `switch/thumb` for switch).
 - [ ] **V** Icon-only variants have **square** padding (`paddingTop == paddingLeft`) so they render as squares — matches shadcn `h-10 w-10`
 - [ ] **S9.7** Slot layer order is `icon-slot/leading → text → icon-slot/trailing` (reading order)
-- [ ] **S9.8** Icon-only rows: `hasText === false` and CONFIG implies icon-only → exactly one `icon-slot/center` in `childNames` and no stray label frame ([`SKILL.md` §9](../SKILL.md)); skip for composites when `composedWith.length > 0`
+- [ ] **S9.8** Icon-only rows: `hasText === false` and CONFIG implies icon-only → exactly one `icon-slot/center` in `childNames` and no stray label frame ([`SKILL.md` §9](../SKILL.md)); skip for composites when `composedWith.length > 0`. **Also skip for `layout === 'control'`** — control variants never use `icon-slot/center`; their indicator child is `radio/dot`, `checkbox/check-icon`, or `switch/thumb`.
 
 ### Element component properties ([`01-config-schema.md` §3.3.2](./01-config-schema.md#332--the-three-element-component-properties))
 
