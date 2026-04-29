@@ -104,24 +104,13 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
    > &nbsp;&nbsp;• **bug** — Bug report (something broken that needs fixing)"
 
    Present the three options in the AskUserQuestion payload with `ctx` listed first (and marked as the default / recommended choice). Accept `ctx`, `context`, `wo`, `work-order`, `bug`, or `bug-report` and normalise to one of `ctx | wo | bug` before passing downstream. If the designer replies with anything else, re-ask once with the same three options.
-3. Compose the body:
+3. Compose the body **from the normalized ticket type**:
 
-   ```md
-   ## Context
+   **`ctx`** — Use **Context (`ctx`) — design-handoff scaffold** under **Body template** (DDI-style Goal → Design reference table → Requirements subsections → Acceptance criteria → Out of scope → Notes for build agent). Produce this scaffold **only for `ctx`**; ground copy in **`get_design_context`** / layer summary when Step 2 ran.
 
-   {raw_note or "(no additional notes)"}
+   **`wo`** — Use **Work order (`wo`) — handoff scaffold** under **Body template**. Ground user stories, Requirements (Functional / Visual–UX / Technical), and stage blocks in **`get_design_context`**, `raw_note`, and layer summary. Align with ClaudeOps **`work_order.md`** so **`create-ticket`** can drop the same structure into `ticket.md`.
 
-   ## Design reference
-
-   - Figma: {figma_link}           ← omit this block if no Figma node
-   - Frame name: {name}
-   - Frame type: {type}
-   - Screenshot: {screenshot_ref}  ← omit line if unavailable
-
-   ## Layer summary
-
-   - ... top-level layer summary (from Step 2.1) ...
-   ```
+   **`bug`** — Use **Bug (`bug`) — handoff scaffold** under **Body template**. Populate reproduction, expected vs actual, severity, and verification from context; add **Design reference** when Step 2 ran. Align with **`bug_report.md`**.
 
 4. Invoke `/create-ticket` with the collected values. Two supported invocation shapes — use whichever your runtime exposes:
 
@@ -169,7 +158,7 @@ Store the answer as `platform` (`github` | `jira`). Proceed to Step 5a or 5b.
    - If the designer replies **list**, run `gh repo list --limit 20 --json nameWithOwner -q '.[].nameWithOwner'`, present the rows, and ask again for the exact `owner/repo`.
 3. Optionally ask for labels with **AskUserQuestion** (one call, comma-separated reply, may be empty):
    > "Any labels? (comma-separated, e.g. `design,backlog`) — reply **skip** for none."
-4. Build `--title` from the same rule as Step 4.1. Build `--body` from the template in Step 4.3.
+4. Build `--title` from the same rule as Step 4.1. Compose `--body` with the scaffold for **`ctx`**, **`wo`**, **`bug`** (**Body template** below); branch **`wo`** vs **`bug`** exactly — do not collapse to a minimal handoff anymore.
 5. Run:
    ```bash
    gh issue create \
@@ -190,7 +179,7 @@ Store the answer as `platform` (`github` | `jira`). Proceed to Step 5a or 5b.
 3. Ask for **issue type** with **AskUserQuestion**:
    > "Issue type? Reply **Task**, **Bug**, or **Story**."
    (Default to `Task` if the project's metadata does not expose the chosen type; fall back to the first type returned by `getJiraProjectIssueTypesMetadata` if needed.)
-4. Build `summary` from the title rule (Step 4.1). Build `description` from the template in Step 4.3 using `contentFormat: "markdown"`.
+4. Build `summary` from the title rule (Step 4.1). Build `description` per **Step 4.3** and **Body template** (`contentFormat`: `markdown`).
 5. Call `createJiraIssue` with:
    ```json
    {
@@ -254,29 +243,293 @@ Design handoff — {YYYY-MM-DD}
 
 ## Body template
 
-The composed body is shared across all three creation paths (ClaudeOps, GitHub, Jira):
+Choose **exactly one** downstream shape:
+
+| ClaudeOps ticket type | Body shape | Why |
+|---|---|---|
+| **`ctx`** | **Context (`ctx`) — design-handoff scaffold** | Intake aligned with ClaudeOps **`context.md`** — **[DDI-style](https://detroitlabs.jira.com/browse/DDI-8)** richness for grooming. |
+| **`wo`** | **Work order (`wo`) — handoff scaffold** | Matches **`work_order.md`** — goal, stories, phased requirements, Figma table when applicable, **🔍📋🛠️** stage cues for **`/research` · `/plan` · `/build`**. |
+| **`bug`** | **Bug (`bug`) — handoff scaffold** | Matches **`bug_report.md`** — reproduction, impact, verification, design reference for UI defects, **`/research` · `/plan` · `/build`** hooks. |
+
+Delivery path (**ClaudeOps**, **GitHub**, **Jira**) does **not** change which scaffold — **`ctx`** vs **`wo`** vs **`bug`** does.
+
+---
+
+### Context (`ctx`) — design-handoff scaffold
+
+Use **only when** the normalized ClaudeOps ticket type is **`ctx`**.
 
 ```md
-## Context
+## Goal
 
-{raw_note or "(no additional notes)"}
+{One paragraph: what engineering should ship or understand — frame name + validation / a11y / parity hooks when Step 2 ran. Fold substantive `raw_note` here as a second short paragraph when useful.}
+
+---
 
 ## Design reference
 
-- **Figma:** {figma_link}
-- **Frame:** {name} ({type})
-- **Screenshot:** {screenshot_ref}
+| | |
+| --- | --- |
+| **Figma** | [{display_name} …](canonical_figma_url) |
+| **File key** | `{file_key}` |
+| **Node ID** | `{node_id}` |
+| **Frame type** | {FRAME\|COMPONENT\|…} |
 
-## Layer summary
+**Screenshot / preview:** {screenshot_ref or "See Figma link above."}
 
-{bulleted summary of top-level children / text nodes from get_design_context — omit block entirely if no Figma node}
+---
+
+## Requirements
+
+### Functional
+
+…
+
+### Visual \| layout
+
+…
+
+### Technical
+
+…
+
+---
+
+## Acceptance criteria
+
+- [ ] …
+- [ ] …
+
+---
+
+## Out of scope
+
+…
+
+---
+
+## Notes for build agent
+
+…
 
 ---
 
 _Created via `/dev-handoff` — DesignOps plugin._
 ```
 
-Omit any section whose inputs are missing; never render an empty heading.
+**Pure text intake** (`raw_note` only, no Step 2): fill **Goal** + **Notes** / **Raw Notes** from `raw_note`; omit empty scaffolding sections entirely.
+
+---
+
+### Work order (`wo`) — handoff scaffold
+
+Use when the normalized ClaudeOps ticket type is **`wo`**.
+
+Populate from **`get_design_context`**, **`raw_note`**, and Step 2 layer summary. Mirror fields in **`labs-agent-workflow`** **`templates/work_order.md`** so **`/create-ticket`** merges cleanly.
+
+```md
+## Goal
+
+{Ship outcome — grounded in MCP + designer notes}
+
+---
+
+## Problem story
+
+{# As a … I want … so that … — infer from brief if incomplete #}
+
+## Hypothesis *(optional)*
+
+…
+
+---
+
+## User stories
+
+- [ ] …
+
+---
+
+## Design reference *(omit with "N/A — no UI" if purely backend/API WO)*
+
+| | |
+| --- | --- |
+| **Figma** | [{name} …](canonical_figma_url) |
+| **File key** | `{file_key}` |
+| **Node ID** | `{node_id}` |
+| **Frame / scope** | {FRAME\|COMPONENT\|… — name} |
+
+**Screenshot / preview:** {screenshot_ref or "See Figma link."}
+
+---
+
+## Requirements
+
+### Functional
+
+{# Numbered behaviours from MCP + notes #}
+
+### Visual \| UX
+
+{# tokens / layout / breakpoints from MCP hints #}
+
+### Technical \| architectural
+
+{# Code Connect imports, routes, repos, integrations #}
+
+---
+
+## Acceptance criteria *(definition of done)*
+
+- [ ] …
+
+## Out of scope
+
+-
+
+---
+
+## Testing & verification
+
+### Functional QA
+
+-
+
+### Visual \| accessibility
+
+-
+
+---
+
+## 🔍 Ready for `/research`
+
+-
+
+## 📋 Ready for `/plan`
+
+-
+
+## 🛠️ Ready for `/build`
+
+-
+
+---
+
+## References
+
+-
+
+---
+
+_Created via `/dev-handoff` — DesignOps plugin._
+```
+
+---
+
+### Bug (`bug`) — handoff scaffold
+
+Use when the normalized ClaudeOps ticket type is **`bug`**.
+
+Populate reproduction and impact from **`raw_note`** + designer detail; enrich with **Design reference** table when Step 2 ran.
+
+```md
+## Goal
+
+{# Acceptable resolved state — one paragraph #}
+
+---
+
+## Summary
+
+{# One sentence defect statement #}
+
+---
+
+## Severity & user impact
+
+| | |
+| --- | --- |
+| **Who is affected** | … |
+| **Frequency** | … |
+| **Workaround exists?** | … |
+
+---
+
+## Steps to reproduce
+
+1. …
+2. …
+
+**Fast path:** {# one-liner if possible #}
+
+---
+
+## Expected vs actual
+
+### Expected
+
+…
+
+### Actual
+
+…
+
+### Environment *(fill what applies)*
+
+| **OS \| device** | |
+| **Browser \| app version** | |
+| **Branch \| deployment** | |
+
+---
+
+## Design reference *(N/A — non-UI bug)*
+
+| **Figma** | … |
+| **Node \| frame** | `{node_id}` |
+
+---
+
+## User story *(who loses)*
+
+ {# As … I expected … because … #}
+
+---
+
+## Acceptance criteria *(fix verification)*
+
+- [ ] …
+
+## Regression \| blast radius
+
+…
+
+---
+
+## 🔍 Ready for `/research`
+
+-
+
+## 📋 Ready for `/plan`
+
+-
+
+## 🛠️ Ready for `/build`
+
+-
+
+---
+
+## Additional context *(optional)*
+
+{# logs \/ HAR \/ metrics — redact secrets #}
+
+---
+
+_Created via `/dev-handoff` — DesignOps plugin._
+```
+
+Omit subsections agents cannot populate — never emit an empty **`##`** heading (`TBD` in prose allowed).
+
 
 ---
 
@@ -284,6 +537,7 @@ Omit any section whose inputs are missing; never render an empty heading.
 
 - **No binary attachments.** The skill embeds the screenshot as a Figma-hosted URL or an MCP reference — it does not upload raster files to Jira or GitHub. If a team requires an attached PNG, the designer should drop the screenshot onto the created ticket manually.
 - **Ticket type mapping.** ClaudeOps uses `ctx | wo | bug` (designer handoffs should default to **`ctx` — context**); Jira uses `Task | Bug | Story`; GitHub uses labels. The skill asks the minimum question for the chosen path and avoids cross-mapping automatically — the designer controls the taxonomy per platform.
+- **`ctx` vs `wo` / `bug` body.** Use **three distinct scaffolds** (see **Body template**): **`ctx`** matches **`context.md`**, **`wo`** aligns with **`templates/work_order.md`**, **`bug`** aligns with **`templates/bug_report.md`**. WO/BUG intake is **deep** enough for **`/research`**, **`/plan`**, **`/build`**, **`/vqa`** without rewriting the skeleton.
 - **Why `ctx` is the recommended type for designers.** A `ctx` card is a deliberate "here's the design, here's what's decided, here's what's still open" drop into the Context Backlog. It does not imply engineering has committed to a timebox (unlike a `wo`) and it does not imply something is broken (unlike a `bug`). ClaudeOps' `/create-ticket` deliberately skips `plan.md` generation for `ctx` tickets and parks them on the **Context Backlog** column / label (`phase:context-backlog`). During grooming, an engineer runs `/create-ticket promote CTX-###` — ClaudeOps converts the folder to `BUG-###` or `WO-###`, preserves the original CTX body inside a `<details>` block, keeps the same remote issue (just relabels + renames it), and leaves a tombstone file behind so the CTX number is never reused. `/dev-handoff` intentionally does **not** invoke `promote` — that's a deliberate engineering decision, not a designer one.
 - **Permissions.** The skill does not re-authenticate any connector. If **`gh`** or Atlassian MCP fails **during** Step 5a/5b after prompts, surface the error and remediation and stop. If **`create-ticket`** fails **after** plugin-default **`workflow.md`** resolution per **`skills/create-ticket/SKILL.md`**, use **Step 4.5** and the **Step 5** flow — do **not** stop after a failed delegation unless the designer declines the direct **github**/**jira** path.
 - **Step 4.5 vs ad hoc recovery.** Do not substitute API prefetch (e.g. listing every Jira site) for the Step 5 **AskUserQuestion** sequence. Interactive input contract applies to **fallback and recovery** the same way as to the primary path.
