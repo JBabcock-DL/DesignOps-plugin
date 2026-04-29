@@ -1,5 +1,5 @@
 ---
-description: Cursor must include the DesignOps plugin directory in the workspace so bundle paths resolve (multi-root parity with Claude Code)
+description: Cursor workspace parity with Claude Code — DesignOps and companion Claude marketplace plugins (skills/, agent_skills, cross-plugin delegation)
 alwaysApply: true
 ---
 
@@ -7,16 +7,27 @@ alwaysApply: true
 
 Claude Code resolves `skills/create-design-system/...` from **`${CLAUDE_PLUGIN_ROOT}`** — the installed plugin directory. Marketplace installs are **copied** into the user’s plugin cache (see [Claude Code plugins reference — cache behavior](https://code.claude.com/docs/en/plugins-reference)); `${CLAUDE_PLUGIN_ROOT}` points at that copy, not at the designer’s unrelated project.
 
-**Cursor** only exposes files that sit under **workspace folders**. If the user opened **only** another repo (e.g. a client app), paths such as `skills/create-design-system/canvas-templates/bundles/*.min.mcp.js` will **not** exist relative to that single root.
+**Cursor** only exposes files that sit under **workspace folders**. If the user opened **only** another repo (e.g. a client app), paths such as `skills/create-design-system/...` will **not** exist relative to that single root.
+
+That constraint applies to **every** Claude marketplace plugin skill you run from Cursor — **labs-design-ops**, **labs-agent-workflow**, and any other installed plugin whose **`skills/`** tree you need to **`Read`** or **`Glob`**. Claude Code resolves those paths via **`${CLAUDE_PLUGIN_ROOT}`** per plugin; Cursor does not unless that plugin folder is **added to the workspace**.
 
 ## One-time setup (pick one)
 
-1. **Multi-root (recommended):** **File → Add Folder to Workspace…** and add the **DesignOps plugin root** — the folder that contains **`skills/create-design-system/`** and **`.claude-plugin/plugin.json`** (`name`: **`labs-design-ops`**). Typical locations:
+1. **Multi-root (recommended):** **File → Add Folder to Workspace…** and add **each plugin root you rely on**:
+   - **DesignOps** — folder containing **`skills/create-design-system/`** and **`.claude-plugin/plugin.json`** (`name`: **`labs-design-ops`**).
+   - **Other Claude marketplace plugins** (when skills delegate across plugins or you invoke them directly) — e.g. **labs-agent-workflow** under `%USERPROFILE%\.claude\plugins\marketplaces\local-desktop-app-uploads\labs-agent-workflow\` (Windows) or `~/.claude/plugins/marketplaces/.../` (macOS/Linux).
+   Typical **labs-design-ops** locations:
    - **Windows:** under `%USERPROFILE%\.claude\plugins\cache\` (each installed version is its own subfolder — choose the one that contains this plugin).
    - **macOS / Linux:** under `~/.claude/plugins/cache/` (same pattern).
    - **Dev:** a git clone of **DesignOps-plugin** used as the added folder.
    If `CLAUDE_CONFIG_DIR` is set, the `.claude` segment is under that directory instead of the home folder ([Claude directory](https://code.claude.com/docs/en/claude-directory)).
-2. **Single-folder:** Open the **DesignOps-plugin** checkout (or the cache copy above) as the only workspace when doing design-system canvas work.
+2. **Single-folder:** Open the **DesignOps-plugin** checkout (or the cache copy above) as the only workspace when doing design-system canvas work — **unless** you also need another plugin’s **`skills/`** on disk; then use multi-root.
+
+## Cursor agents — skills registry vs workspace
+
+- When **injected skill metadata** (**`agent_skills`**, **`available_skills`**, or equivalent) lists a skill with a **filesystem path** under **`.claude/plugins`**, treat that skill as **present** for delegation and routing even if the designer never typed a bypass flag — skills are allowed to assume installation when the registry exposes the path.
+- Prefer **`Read`** / **`Glob`** on paths that resolve **inside workspace folders**. If the registry shows a path **outside** the workspace, **`Read`** may still work when the host resolves absolute paths; if not, ask once to **Add Folder to Workspace** for that plugin root — **do not** assume missing workspace folders mean the skill is unavailable when the registry lists it.
+- **Cross-plugin delegation** (e.g. **`/dev-handoff`** → **`create-ticket`**): follow the **calling skill’s** detection steps (**Glob**, **`agent_skills`**, repo signals). Do **not** require `--use-*` overrides when downstream detection passes — see **`skills/dev-handoff/SKILL.md`** Step 3 for the **`labs-agent-workflow`** case.
 
 ## Agent behavior
 

@@ -34,7 +34,7 @@ Everything else (title, description body, Figma link, screenshot reference) is d
 | Figma MCP connector configured | Only required when the context source is a Figma node. Used for `get_design_context` + `get_screenshot`. |
 | `gh` CLI authenticated | Required only for the GitHub fallback path (no ClaudeOps). Check with `gh auth status`. |
 | Atlassian MCP connector | Required only for the Jira fallback path (no ClaudeOps). Tools used: `getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `createJiraIssue`. |
-| ClaudeOps-plugin (optional) | When installed, the skill delegates via `/create-ticket` instead of calling GitHub/Jira directly. Detection rules in Step 3. |
+| ClaudeOps-plugin (optional) | When installed, the skill delegates via `/create-ticket` instead of calling GitHub/Jira directly. Detection rules in Step 3 — includes Cursor and IDEs where the workflow repo is not the workspace root (see *Cursor / non–Claude Code hosts* under Step 3). |
 
 **MCP payloads:** Pass any Figma `use_figma` / Atlassian tool payloads **inline** in each call. Do **not** stage `.mcp-*` or `*-payload.json` scratch files in this repo ([`AGENTS.md`](../../AGENTS.md)).
 
@@ -70,14 +70,26 @@ Run this step only when Step 1 produced a `node_id` + `file_key`.
 
 ### Step 3 — Detect ClaudeOps `/create-ticket`
 
-Check, in order, whether the ClaudeOps workflow is installed in the current workspace:
+Goal: set `claude_ops_available` when delegation to `/create-ticket` is actually possible **or** when the designer explicitly asks for it. Claude Code often has the **consumer repo** open, so Sprint folders + templates exist at workspace root. **Cursor** may open only this plugin repo (or another app): Steps 1–3 below can all be false even though **`create-ticket` is on disk** under `~/.claude/plugins/marketplaces/.../labs-agent-workflow/` **or** listed in the host **agent skills** registry — use Steps 4–6 so `/dev-handoff` does not false-negative.
 
-1. A directory matching `.github/Sprint */` (ClaudeOps sprint folder convention) exists at the workspace root. **Use Glob**, not `find`.
-2. `.github/templates/work_order.md` **or** `.github/templates/bug_report.md` exists (ClaudeOps ticket templates).
-3. `.claude-plugin/plugin.json` at the workspace root declares `labs-agent-workflow` as a dependency, or the plugin is listed by `claude plugin list` if that CLI is available.
+**Overrides ($ARGUMENTS):**
 
-If **any** of 1–3 is true, set `claude_ops_available = true` and proceed to Step 4.
-Otherwise set `claude_ops_available = false` and skip directly to Step 5.
+- If `$ARGUMENTS` contains **`--skip-claude-ops`**, set `claude_ops_available = false` and skip directly to Step 5 (same as today).
+- Else if `$ARGUMENTS` contains **`--use-claude-ops`** or **`--force-claude-ops`**, set `claude_ops_available = true` and proceed to Step 4 — **unless** `--skip-claude-ops` is also present (`--skip-claude-ops` wins).
+
+**Automatic signals** — evaluate after overrides; if **any** check passes, set `claude_ops_available = true`:
+
+1. A directory matching `.github/Sprint */` exists at **some workspace folder root**. **Use Glob**, not `find` — e.g. pattern `.github/Sprint */` scoped to workspace roots (multi-root workspaces count).
+2. `.github/templates/work_order.md` **or** `.github/templates/bug_report.md` exists under **any** workspace folder (same Glob approach).
+3. `.claude-plugin/plugin.json` at **some** workspace root declares `labs-agent-workflow` as a dependency, or `claude plugin list` includes that marketplace plugin when the CLI is available.
+4. **Marketplace / plugin checkout on disk (Cursor-friendly):** Glob `**/labs-agent-workflow/**/skills/create-ticket/SKILL.md` across workspace folders — **any** hit → ClaudeOps available. If that misses (folder naming differs), Glob `**/skills/create-ticket/SKILL.md` and treat as available **only when** the matching path contains `labs-agent-workflow` **or** `.claude/plugins` / `plugins/marketplaces` (marketplace cache layout).
+5. **Host skill injection (Cursor / Composer):** If the runtime exposes **`agent_skills`**, **`available_skills`**, or equivalent metadata listing **`create-ticket`** from **labs-agent-workflow** (path ending in `skills/create-ticket/SKILL.md` or skill id/name `create-ticket`), set `claude_ops_available = true` — **without** requiring `.github/Sprint` in the same workspace.
+
+If none of the automatic signals fired and no `--use-claude-ops` flag was passed, set `claude_ops_available = false` and skip directly to Step 5.
+
+**Cursor / non–Claude Code hosts:** To make Step 4’s **skill-proxy** path work, the agent must be able to **Read** `skills/create-ticket/SKILL.md`. Use **File → Add Folder to Workspace** and add the folder that contains **`labs-agent-workflow`** (for example the local marketplace copy: `%USERPROFILE%\.claude\plugins\marketplaces\local-desktop-app-uploads\labs-agent-workflow\` on Windows, or `~/.claude/plugins/marketplaces/.../labs-agent-workflow/` on macOS/Linux). That gives Step 4 a resolvable path even when the active project is not a ClaudeOps checkout. If the designer cannot add that folder, they can still pass **`--use-claude-ops`** after confirming **`create-ticket`** appears in **agent_skills**, and the agent follows Step 4 using the injected skill path when the host provides it. **Cursor:** workspace + **`agent_skills`** parity for **all** plugin skills is covered by [`.cursor/rules/cursor-designops-skill-root.mdc`](../../.cursor/rules/cursor-designops-skill-root.mdc) (**Companion marketplace plugins**, **skills registry vs workspace**, **cross-plugin delegation**).
+
+**Engineering repo vs plugin:** Delegation still needs the **ticket backend** and sprint layout from the **team’s repo** (ClaudeOps `.github/templates/workflow.md`, Sprint folders). If only the marketplace plugin folder is in the workspace, **`create-ticket`** may prompt for paths or fail until the **consumer repo** root is also added — `/dev-handoff` does not duplicate that repo detection; see ClaudeOps `create-ticket` skill Steps 1–10.
 
 ### Step 4 — Delegate to ClaudeOps `/create-ticket`
 
@@ -119,7 +131,7 @@ Otherwise set `claude_ops_available = false` and skip directly to Step 5.
    ```
    The ClaudeOps `/create-ticket` skill will prompt for anything missing. When it asks for the ticket body, paste the composed body verbatim. ClaudeOps already knows the backend (GitHub vs Jira) from `.github/templates/workflow.md` → `## Ticket Backend`, so `/dev-handoff` does **not** ask about platform when delegating — skip straight past Step 5.
 
-   **Skill-proxy delegation:** If the runtime only exposes ClaudeOps skills as a file path (e.g. via the `agent_skills` registry), read `skills/create-ticket/SKILL.md` from that plugin and follow its Steps 1–10 inline with the values collected above.
+   **Skill-proxy delegation:** If the runtime only exposes ClaudeOps skills as a file path (e.g. via the `agent_skills` registry), **`Read`** `skills/create-ticket/SKILL.md` — prefer the path **discovered in Step 3** (Glob hit or `agent_skills` entry for **labs-agent-workflow**) — and follow its Steps 1–10 inline with the values collected above.
 
 5. Capture the returned ticket ID, folder path, GitHub issue URL, and project-board item ID from `/create-ticket`, then jump to Step 7.
 
@@ -258,5 +270,5 @@ Omit any section whose inputs are missing; never render an empty heading.
 - **Ticket type mapping.** ClaudeOps uses `ctx | wo | bug` (designer handoffs should default to **`ctx` — context**); Jira uses `Task | Bug | Story`; GitHub uses labels. The skill asks the minimum question for the chosen path and avoids cross-mapping automatically — the designer controls the taxonomy per platform.
 - **Why `ctx` is the recommended type for designers.** A `ctx` card is a deliberate "here's the design, here's what's decided, here's what's still open" drop into the Context Backlog. It does not imply engineering has committed to a timebox (unlike a `wo`) and it does not imply something is broken (unlike a `bug`). ClaudeOps' `/create-ticket` deliberately skips `plan.md` generation for `ctx` tickets and parks them on the **Context Backlog** column / label (`phase:context-backlog`). During grooming, an engineer runs `/create-ticket promote CTX-###` — ClaudeOps converts the folder to `BUG-###` or `WO-###`, preserves the original CTX body inside a `<details>` block, keeps the same remote issue (just relabels + renames it), and leaves a tombstone file behind so the CTX number is never reused. `/dev-handoff` intentionally does **not** invoke `promote` — that's a deliberate engineering decision, not a designer one.
 - **Permissions.** The skill does not re-authenticate any connector. If `gh auth status`, the Atlassian MCP, or ClaudeOps delegation fails, the agent surfaces the error text + the remediation command and stops — it does not silently retry with a different path.
-- **Detection vs delegation.** Step 3's detection is heuristic. If the designer wants to force the fallback path (e.g. ClaudeOps is installed but they want a raw GitHub issue), they can pass `--skip-claude-ops` in `$ARGUMENTS`; the skill honours it by setting `claude_ops_available = false` regardless of workspace signals.
+- **Detection vs delegation.** Step 3's detection is heuristic. **`--skip-claude-ops`** forces the GitHub/Jira fallback. **`--use-claude-ops`** / **`--force-claude-ops`** forces the ClaudeOps path when the agent can follow Step 4 (slash command or **`Read`** + inline **`create-ticket`** steps). **`agent_skills`** / Glob **`create-ticket`** detection fixes false negatives in Cursor when the workflow repo is not at workspace root but the marketplace plugin is installed or added as a workspace folder.
 - **Repeat runs.** Re-running `/dev-handoff` against the same Figma node is allowed — it simply creates a second ticket. Dedupe is the responsibility of the destination platform.
