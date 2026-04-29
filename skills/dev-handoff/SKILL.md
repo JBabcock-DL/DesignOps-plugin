@@ -85,6 +85,8 @@ Goal: set `claude_ops_available` when delegation to `/create-ticket` is actually
 
 If none of the automatic signals fired and no `--use-claude-ops` flag was passed, set `claude_ops_available = false` and skip directly to Step 5.
 
+**Backend precheck (mandatory before setting `claude_ops_available = true`):** After any signal above would set `claude_ops_available = true`, resolve `workflow.md` per `skills/conventions/01-plugin-root-and-templates.md` in the **`labs-agent-workflow`** plugin. Read the **Backend:** field under **## Ticket Backend**. If the value is `[CONFIGURE: github | jira]`, blank, or the file is unreachable, set `claude_ops_available = false` immediately — do **not** surface this as an error to the designer; fall directly to Step 5. The direct-create path handles unconfigured backends gracefully. Only proceed to Step 4 when a real `github` or `jira` backend is confirmed.
+
 **Hosts and `Read` paths (Claude Code + Cursor):** **Claude Code** resolves plugin **`skills/`** via **`${CLAUDE_PLUGIN_ROOT}`** per installed plugin — paths from **item 1** usually **`Read`** cleanly. **Cursor** (and any host where **Glob** does not see `~/.claude/plugins/...` unless added as a workspace root): **File → Add Folder to Workspace** — add the folder that contains **`labs-agent-workflow`** (e.g. local marketplace copy: `%USERPROFILE%\.claude\plugins\marketplaces\local-desktop-app-uploads\labs-agent-workflow\` on Windows, or `~/.claude/plugins/marketplaces/.../labs-agent-workflow/` on macOS/Linux) so Step 4 can **`Read`** `skills/create-ticket/SKILL.md` when the listing path is not enough. If the designer cannot add that folder, they can still pass **`--use-claude-ops`** after **`create-ticket`** appears in the session listing. **Cursor-only** workspace + registry notes: [`.cursor/rules/cursor-designops-skill-root.mdc`](../../.cursor/rules/cursor-designops-skill-root.mdc) (**Companion marketplace plugins**, **skills registry vs workspace**, **cross-plugin delegation**).
 
 **Plugin-first `workflow.md` (designers run from any repo):** Designers may open **any** git repo — **including empty or scratch folders** — and invoke **`/dev-handoff`**. They do **not** need **`.github/templates/workflow.md`** (or Sprint folders) **in that repo**. Claude Code resolves **`workflow.md`** from the **`labs-agent-workflow`** plugin installation (**`${CLAUDE_PLUGIN_ROOT}`** / marketplace folder); **`create-ticket`** follows **`skills/conventions/01-plugin-root-and-templates.md`** in the **ClaudeOps-plugin** repo for bundled **`templates/workflow.md`**, optional **`CLAUDE_OPS_PLUGIN_ROOT`**, and Glob-based discovery — **never** commit machine-specific paths in projects. **Team overrides** may still live under **`${cwd}/.github/templates/`** when present. **`/dev-handoff`** must **not** treat “no **`workflow.md`** under cwd” as proof that delegation cannot run — verify **`skills/create-ticket/SKILL.md`** and that convention before Step 4.5.
@@ -105,7 +107,16 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
 3. **Additional notes for the engineer** — after type is set, call **AskUserQuestion** once:
    > "Anything **additional** for the engineer picking this up? (Acceptance criteria, edge cases, priority hints — or reply **skip**.)"
    Merge the answer into `raw_note` (append if `raw_note` already exists from Step 1; treat **skip** as no change).
-4. Compose the body **from the normalized ticket type**:
+4. Compose the body **from the normalized ticket type**. Populate every section richly from available sources — `get_design_context` output, layer summary, `raw_note`, Code Connect hints. **Do not leave sections as bare placeholders when the Figma source provides the information.** A thin body defeats the purpose of the handoff. The target fidelity for a `ctx` ticket from Figma:
+
+   - **Goal** — one focused paragraph naming the exact surface to ship, what it must do, and any key constraints (validation, a11y, routing hooks). Not a vague summary.
+   - **Design reference** — table with Figma deep link, file key, node ID, and frame type. Screenshot ref when Step 2 produced one.
+   - **Requirements — Functional** — numbered, one requirement per interactive element or behaviour. Cover labels, placeholder copy, validation rules (pattern, min length, required), error states, and submit/CTA logic. Pull exact copy from layer text nodes.
+   - **Requirements — Visual / layout** — token-referenced specs: spacing (`--space-*`), radius (`--radius-*`), typography style names, color tokens. Describe card/container treatment, vertical rhythm, and gap between sections. Hard-code hex only when a token cannot be identified.
+   - **Requirements — Technical** — Code Connect component targets (`src/components/ui/…`), form library if detectable from the repo, routing expectations, accessibility requirements (`htmlFor`/`id` pairing, `aria-live`, keyboard operability).
+   - **Acceptance criteria** — checkbox list. Each item is independently verifiable by QA: visual parity on the design viewport, field-level validation confirmed, submit guard confirmed, a11y smoke (tab order, no traps), token/component reuse confirmed.
+   - **Out of scope** — explicit list of what is deliberately excluded (backend integration, i18n, flows not shown in the frame).
+   - **Notes for build agent** — concrete file pointers, which primitives to compose from, any CodeConnect snippet notes, pixel-QA method.
 
    **`ctx`** — Use **Context (`ctx`) — design-handoff scaffold** under **Body template** (DDI-style Goal → Design reference table → Requirements subsections → Acceptance criteria → Out of scope → Notes for build agent). Produce this scaffold **only for `ctx`**; ground copy in **`get_design_context`** / layer summary when Step 2 ran.
 
@@ -119,9 +130,18 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
    ```
    /create-ticket {ctx|wo|bug} "{title}"
    ```
-   The ClaudeOps **`create-ticket`** skill resolves **`workflow.md`** from the **`labs-agent-workflow`** plugin (**`${CLAUDE_PLUGIN_ROOT}`**) when the open repo does not contain **`.github/templates/workflow.md`** — designers do **not** need those files in every project. When it asks for the ticket body, paste the composed body verbatim. Backend (**GitHub** vs **Jira**) comes from **`## Ticket Backend`** in that resolved **`workflow.md`**, so **`/dev-handoff`** does **not** ask about platform when delegating — skip straight past Step 5.
+   The ClaudeOps **`create-ticket`** skill resolves **`workflow.md`** from the **`labs-agent-workflow`** plugin (**`${CLAUDE_PLUGIN_ROOT}`**) when the open repo does not contain **`.github/templates/workflow.md`** — designers do **not** need those files in every project. Backend (**GitHub** vs **Jira**) comes from **`## Ticket Backend`** in that resolved **`workflow.md`**. **`/dev-handoff`** does **not** ask about platform when delegating — skip straight past Step 5.
 
-   **Skill-proxy delegation:** If the runtime only exposes ClaudeOps skills as a file path (e.g. Claude Code session skills, **`agent_skills`**, or Cursor **Skills** list), **`Read`** `skills/create-ticket/SKILL.md` — **first** use the path from **Step 3 item 1** (**`fullPath` / injected listing**) when present; else the path discovered by **Glob** in Step 3 items 2–5 — and follow its Steps 1–10 inline with the values collected above. Resolve **`workflow.md`** per that skill (**plugin defaults first**, cwd overrides when present); **do not** jump to Step 4.5 solely because cwd lacks **`.github/templates/`**.
+   **Skill-proxy delegation:** If the runtime only exposes ClaudeOps skills as a file path (e.g. Claude Code session skills, **`agent_skills`**, or Cursor **Skills** list), **`Read`** `skills/create-ticket/SKILL.md` — **first** use the path from **Step 3 item 1** (**`fullPath` / injected listing**) when present; else the path discovered by **Glob** in Step 3 items 2–5 — and follow its Steps 1–10 inline, passing these delegation context variables so `create-ticket` skips questions already answered here:
+
+   | Variable | Value |
+   |---|---|
+   | `DELEGATED_TYPE` | `{ctx\|wo\|bug}` from Step 4.2 |
+   | `DELEGATED_TITLE` | derived title from Step 4.1 |
+   | `DELEGATED_BODY` | composed body from this step (Step 4.4) |
+   | `DELEGATED_BACKEND` | `github` or `jira` from the precheck in Step 3 |
+
+   `create-ticket` reads these and jumps straight to remote sync — no re-ask for type, title, notes, or backend.
 
 6. Capture the returned ticket ID, folder path, GitHub issue URL, and project-board item ID from `/create-ticket`, then jump to Step 7.
 
@@ -212,13 +232,13 @@ URL:                {issue_url}
 Figma:              {figma_link or "(none)"}
 ```
 
-Update `plugin/templates/agent-handoff.md` frontmatter:
+If `plugin/templates/agent-handoff.md` exists, update its frontmatter:
 
 ```yaml
 last_skill_run: "dev-handoff"
 ```
 
-Append to `open_items`:
+And append to `open_items`:
 
 - `"Dev handoff created: {ticket_id_or_url}"`
 - If a Figma node was attached: `"Linked Figma node: {node_id} on file {file_key}"`
