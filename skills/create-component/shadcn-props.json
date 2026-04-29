@@ -2237,7 +2237,7 @@
     "labelKey": "variant",
     "layout": "control",
     "docsUrl": "https://ui.shadcn.com/docs/components/radio-group",
-    "summary": "Single-selection group of radio buttons.",
+    "summary": "Atomic radio button item (RadioGroupItem). Drawn as a single selectable circle; compose into a RadioGroup wrapper in code.",
     "control": {
       "shape": "radio",
       "size": 24,
@@ -2258,78 +2258,22 @@
         "value",
         "string",
         "—",
-        "no",
-        "Controlled selected item value (must match a RadioGroupItem value)."
-      ],
-      [
-        "defaultValue",
-        "string",
-        "—",
-        "no",
-        "Initial selected value when uncontrolled."
-      ],
-      [
-        "onValueChange",
-        "(value: string) => void",
-        "—",
-        "no",
-        "Called when the selected RadioGroupItem changes."
+        "yes",
+        "Unique value token that identifies this option within the group."
       ],
       [
         "disabled",
         "boolean",
         "false",
         "no",
-        "Disables every RadioGroupItem in the group."
+        "Disables this item independently of the group."
       ],
       [
-        "required",
-        "boolean",
-        "false",
-        "no",
-        "Marks the group required before form submission."
-      ],
-      [
-        "name",
+        "id",
         "string",
         "—",
         "no",
-        "Native form field name for the radio group."
-      ],
-      [
-        "orientation",
-        "horizontal | vertical",
-        "—",
-        "no",
-        "Layout of items (Radix RadioGroup.Root)."
-      ],
-      [
-        "dir",
-        "ltr | rtl",
-        "—",
-        "no",
-        "Reading direction for the group."
-      ],
-      [
-        "className",
-        "string",
-        "—",
-        "no",
-        "Additional classes on RadioGroup root (shadcn wrapper)."
-      ],
-      [
-        "value (RadioGroupItem)",
-        "string",
-        "—",
-        "yes",
-        "Unique token for this option; identifies selection."
-      ],
-      [
-        "disabled (RadioGroupItem)",
-        "boolean",
-        "false",
-        "no",
-        "Disables only this item."
+        "HTML id for associating a <label> via htmlFor."
       ]
     ],
     "category": "Form & Input"
