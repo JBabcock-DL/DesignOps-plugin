@@ -107,7 +107,11 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
 3. **Additional notes for the engineer** — after type is set, call **AskUserQuestion** once:
    > "Anything **additional** for the engineer picking this up? (Acceptance criteria, edge cases, priority hints — or reply **skip**.)"
    Merge the answer into `raw_note` (append if `raw_note` already exists from Step 1; treat **skip** as no change).
-4. Compose the body **from the normalized ticket type**. Populate every section richly from available sources — `get_design_context` output, layer summary, `raw_note`, Code Connect hints. **Do not leave sections as bare placeholders when the Figma source provides the information.** A thin body defeats the purpose of the handoff. The target fidelity for a `ctx` ticket from Figma:
+4. Compose the body **from the normalized ticket type**. Populate every section richly from available sources — `get_design_context` output, layer summary, `raw_note`, Code Connect hints. **Do not leave sections as bare placeholders when the Figma source provides the information.** A thin body defeats the purpose of the handoff.
+
+   **One-body rule (mandatory):** The complete scaffold goes into the `description` field of a single `createJiraIssue` call (or a follow-up `editJiraIssue` if the first call needs adjustment). **Never** split content between a short description and one or more comments. Never compress the body because of a perceived payload limit — if the MCP call approaches a size limit, use `editJiraIssue` immediately after to append the remainder. One authoritative record: description only. An engineer reading the issue should never need to open a comment to find requirements.
+
+   The target fidelity for a `ctx` ticket from Figma:
 
    - **Goal** — one focused paragraph naming the exact surface to ship, what it must do, and any key constraints (validation, a11y, routing hooks). Not a vague summary.
    - **Design reference** — table with Figma deep link, file key, node ID, and frame type. Screenshot ref when Step 2 produced one.
@@ -117,6 +121,13 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
    - **Acceptance criteria** — checkbox list. Each item is independently verifiable by QA: visual parity on the design viewport, field-level validation confirmed, submit guard confirmed, a11y smoke (tab order, no traps), token/component reuse confirmed.
    - **Out of scope** — explicit list of what is deliberately excluded (backend integration, i18n, flows not shown in the frame).
    - **Notes for build agent** — concrete file pointers, which primitives to compose from, any CodeConnect snippet notes, pixel-QA method.
+
+   **Fidelity requirements from `get_design_context` — mandatory when Step 2 ran:**
+
+   - **Functional copy:** Every `TEXT` node from the MCP output that labels a field, placeholder, helper, or CTA must appear as exact copy in a numbered requirement. Do not paraphrase — `"Enter your email"` ≠ `"email field"`.
+   - **Validation rules:** Extract min/max length, patterns, required/optional, and CTA guard state from the MCP output or Code Connect hints and write as testable rules (e.g. `Min 8 characters`, `Validate on blur`, `CTA disabled until all fields valid and checkbox checked`).
+   - **Token names:** Use the exact `var(--token-name)` strings from the MCP output. Do not substitute generic descriptions (`"border token"`, `"purple button"`). Include fallback hex when the MCP provides it.
+   - **Code Connect props:** Name every Code Connect component target and its exact props (variant, size, leadingIcon, trailingIcon, etc.) as shown in the MCP snippets. `"Use Input from src/components/ui"` is insufficient — include prop assignments.
 
    **`ctx`** — Use **Context (`ctx`) — design-handoff scaffold** under **Body template** (DDI-style Goal → Design reference table → Requirements subsections → Acceptance criteria → Out of scope → Notes for build agent). Produce this scaffold **only for `ctx`**; ground copy in **`get_design_context`** / layer summary when Step 2 ran.
 
@@ -160,6 +171,27 @@ Run this when Step 4 **started** but **`create-ticket`** did **not** return a co
 2. **Fall through to Step 5** with the **same** title, body, and ticket type (**ctx** \| **wo** \| **bug**) already gathered through **Step 4.4** (body composition). If Step 4 failed before ticket type was collected, ask the Step 4.2 question once, then continue (run Step 4.3 → 4.4 when you still need additional notes and composed body).
 3. **Do not** call Atlassian MCP (`getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `createJiraIssue`) or run **`gh issue create`** until **after** the Step 5 platform **AskUserQuestion** (and any Step 5a/5b follow-ups). **Never** prefetch Jira sites or projects to “recover” — that bypasses **github vs jira** and Jira site/project picks and leaves the designer without a proper handoff flow.
 4. After a successful ticket in this path, Step 7 reports **`Ticket created via: github`** or **`jira`** (not **`claude-ops`**).
+
+### Step 4.6 — Pre-submit self-check
+
+Run this immediately before calling `createJiraIssue` or `gh issue create`. Verify every item below. If any item fails, fix it before submitting — do not skip and submit anyway.
+
+**Structure (all ticket types):**
+- [ ] All content is in the `description` field — nothing deferred to a comment, follow-up, or linked doc that isn't part of the scaffold
+- [ ] No section headings were merged, renamed, or reordered relative to the heading contract
+
+**`ctx` heading contract (when ticket type is `ctx`):**
+- [ ] `## Requirements` is a parent H2 heading with exactly three H3 child subsections (`### Functional`, `### Visual | layout`, `### Technical`) — not three standalone `##` headings
+- [ ] Each subsection is populated; none is left as a bare heading or `TBD`
+
+**Fidelity (when Step 2 ran):**
+- [ ] `### Functional` has a numbered requirement for every interactive control in the frame, using exact label and placeholder copy from the MCP output — not paraphrased
+- [ ] Every validation rule is a testable statement (e.g. `min 8 characters`, `validate on blur`, `CTA disabled until valid + checkbox checked`) — not vague phrasing (`"typical submit guard"`, `"when in scope"`)
+- [ ] `### Visual | layout` uses `var(--…)` token names from the MCP output — no generic descriptions (`"border token"`, `"purple button"`)
+- [ ] `### Technical` names specific Code Connect component targets with explicit prop assignments — not just a list of component names
+
+**Acceptance criteria:**
+- [ ] Every AC item is independently verifiable by QA (visual parity, field-level validation, submit guard, a11y smoke, token/component reuse)
 
 ### Step 5 — Platform prompt (fallback and recovery)
 
@@ -336,6 +368,20 @@ Use **only when** the normalized ClaudeOps ticket type is **`ctx`**.
 
 _Created via `/dev-handoff` — DesignOps plugin._
 ```
+
+**Heading contract for `ctx` tickets — these exact heading strings must appear in this order. Any deviation (e.g., `## Functional` instead of `### Functional` under `## Requirements`, or omitting the `## Requirements` parent) makes the ticket non-conformant and breaks downstream tooling and promote flows:**
+
+| Heading | Level | Rule |
+|---|---|---|
+| `## Goal` | H2 | One focused paragraph — required |
+| `## Design reference` | H2 | Table + screenshot line — required when Step 2 ran |
+| `## Requirements` | H2 | Parent heading only — no body text; subsections follow |
+| `### Functional` | H3 | Numbered requirements — required |
+| `### Visual \| layout` | H3 | Token specs + layout — required |
+| `### Technical` | H3 | Code Connect paths + a11y — required |
+| `## Acceptance criteria` | H2 | Checkbox list — required |
+| `## Out of scope` | H2 | Explicit exclusions — required |
+| `## Notes for build agent` | H2 | File pointers + component API notes — required |
 
 **Pure text intake** (`raw_note` only, no Step 2): fill **Goal** + **Notes** / **Raw Notes** from `raw_note`; omit empty scaffolding sections entirely.
 
