@@ -18,10 +18,10 @@ Whenever this skill needs a **platform**, **repo / project key**, **ticket type*
 
 The **only** decisions this skill should ever ask about are:
 
-1. Whether to include additional typed notes alongside the Figma context (if a Figma node is available).
-2. **Platform** — GitHub or Jira.
-3. **Destination** — repo (GitHub) or project key (Jira).
-4. **Ticket type / label** — only when the downstream system requires it. ClaudeOps supports `ctx | bug | wo`; **`ctx` (context) is the recommended default for designer handoffs** — it captures design context without committing engineering to a specific work order or bug. Jira issue type prompts stay as `Task | Bug | Story`.
+1. **Platform** — GitHub or Jira (fallback / recovery paths when not delegating to ClaudeOps).
+2. **Destination** — repo (GitHub) or project key (Jira) (same).
+3. **Ticket type / label** — when delegating to **ClaudeOps `/create-ticket`**, ask **before** the “anything additional for the engineer?” question (Step 4) so the body scaffold matches `ctx` / `wo` / `bug`. ClaudeOps supports `ctx | bug | wo`; **`ctx` (context) is the recommended default for designer handoffs**. Jira direct-create issue-type prompts stay as `Task | Bug | Story`.
+4. **Additional notes for the engineer** — **after** ticket type on the ClaudeOps path (Step 4). On the fallback path, gather any missing prose when composing the body in Step 5 — **after** platform and destination (and Jira issue type when applicable).
 
 Everything else (title, description body, Figma link, screenshot reference) is derived automatically from the gathered context.
 
@@ -64,9 +64,7 @@ Run this step only when Step 1 produced a `node_id` + `file_key`.
    - A compact layer summary (top-level children + any `TEXT` node contents, capped at ~25 items).
 2. Call `mcp__claude_ai_Figma__get_screenshot` with the same `{ fileKey, nodeId }`. Record the returned image URL / data reference as `screenshot_ref`. If the call fails, continue without a screenshot — do not block.
 3. Build the canonical Figma link: `https://www.figma.com/design/{file_key}?node-id={node_id_with_dash}` where `{node_id_with_dash}` replaces `:` with `-` (Figma's deep-link form).
-4. If the designer has not yet volunteered a note, call **AskUserQuestion** once:
-   > "Anything to add for the engineer picking this up? (Acceptance criteria, edge cases, priority hints — or reply **skip**.)"
-   Store the answer as `raw_note` unless they reply **skip**.
+4. **Do not** prompt here for “anything to add for the engineer.” Step 3 has not run yet — defer that prompt to **after** ticket type in Step 4 (ClaudeOps), or to Step 5 when building the body on the fallback path, so the question always lands on the correct template shape.
 
 ### Step 3 — Detect ClaudeOps `/create-ticket`
 
@@ -104,7 +102,10 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
    > &nbsp;&nbsp;• **bug** — Bug report (something broken that needs fixing)"
 
    Present the three options in the AskUserQuestion payload with `ctx` listed first (and marked as the default / recommended choice). Accept `ctx`, `context`, `wo`, `work-order`, `bug`, or `bug-report` and normalise to one of `ctx | wo | bug` before passing downstream. If the designer replies with anything else, re-ask once with the same three options.
-3. Compose the body **from the normalized ticket type**:
+3. **Additional notes for the engineer** — after type is set, call **AskUserQuestion** once:
+   > "Anything **additional** for the engineer picking this up? (Acceptance criteria, edge cases, priority hints — or reply **skip**.)"
+   Merge the answer into `raw_note` (append if `raw_note` already exists from Step 1; treat **skip** as no change).
+4. Compose the body **from the normalized ticket type**:
 
    **`ctx`** — Use **Context (`ctx`) — design-handoff scaffold** under **Body template** (DDI-style Goal → Design reference table → Requirements subsections → Acceptance criteria → Out of scope → Notes for build agent). Produce this scaffold **only for `ctx`**; ground copy in **`get_design_context`** / layer summary when Step 2 ran.
 
@@ -112,7 +113,7 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
 
    **`bug`** — Use **Bug (`bug`) — handoff scaffold** under **Body template**. Populate reproduction, expected vs actual, severity, and verification from context; add **Design reference** when Step 2 ran. Align with **`bug_report.md`**.
 
-4. Invoke `/create-ticket` with the collected values. Two supported invocation shapes — use whichever your runtime exposes:
+5. Invoke `/create-ticket` with the collected values. Two supported invocation shapes — use whichever your runtime exposes:
 
    **Slash-command delegation (preferred when available):**
    ```
@@ -122,7 +123,7 @@ If none of the automatic signals fired and no `--use-claude-ops` flag was passed
 
    **Skill-proxy delegation:** If the runtime only exposes ClaudeOps skills as a file path (e.g. Claude Code session skills, **`agent_skills`**, or Cursor **Skills** list), **`Read`** `skills/create-ticket/SKILL.md` — **first** use the path from **Step 3 item 1** (**`fullPath` / injected listing**) when present; else the path discovered by **Glob** in Step 3 items 2–5 — and follow its Steps 1–10 inline with the values collected above. Resolve **`workflow.md`** per that skill (**plugin defaults first**, cwd overrides when present); **do not** jump to Step 4.5 solely because cwd lacks **`.github/templates/`**.
 
-5. Capture the returned ticket ID, folder path, GitHub issue URL, and project-board item ID from `/create-ticket`, then jump to Step 7.
+6. Capture the returned ticket ID, folder path, GitHub issue URL, and project-board item ID from `/create-ticket`, then jump to Step 7.
 
 ### Step 4.5 — ClaudeOps delegation incomplete (recovery)
 
@@ -136,7 +137,7 @@ Run this when Step 4 **started** but **`create-ticket`** did **not** return a co
 **Mandatory behavior**
 
 1. Tell the designer in **one short sentence** why **`create-ticket`** did not finish (quote stderr / skill outcome — **not** “your repo lacks **`workflow.md`**” unless **`skills/create-ticket`** confirmed plugin defaults were unreachable).
-2. **Fall through to Step 5** with the **same** title, body, and ticket type (**ctx** \| **wo** \| **bug**) already gathered in Steps 4.1–4.3. If Step 4 failed before ticket type was collected, ask the Step 4.2 question once, then continue.
+2. **Fall through to Step 5** with the **same** title, body, and ticket type (**ctx** \| **wo** \| **bug**) already gathered through **Step 4.4** (body composition). If Step 4 failed before ticket type was collected, ask the Step 4.2 question once, then continue (run Step 4.3 → 4.4 when you still need additional notes and composed body).
 3. **Do not** call Atlassian MCP (`getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `createJiraIssue`) or run **`gh issue create`** until **after** the Step 5 platform **AskUserQuestion** (and any Step 5a/5b follow-ups). **Never** prefetch Jira sites or projects to “recover” — that bypasses **github vs jira** and Jira site/project picks and leaves the designer without a proper handoff flow.
 4. After a successful ticket in this path, Step 7 reports **`Ticket created via: github`** or **`jira`** (not **`claude-ops`**).
 
@@ -179,7 +180,7 @@ Store the answer as `platform` (`github` | `jira`). Proceed to Step 5a or 5b.
 3. Ask for **issue type** with **AskUserQuestion**:
    > "Issue type? Reply **Task**, **Bug**, or **Story**."
    (Default to `Task` if the project's metadata does not expose the chosen type; fall back to the first type returned by `getJiraProjectIssueTypesMetadata` if needed.)
-4. Build `summary` from the title rule (Step 4.1). Build `description` per **Step 4.3** and **Body template** (`contentFormat`: `markdown`).
+4. Build `summary` from the title rule (Step 4.1). Build `description` per **Step 4.4** and **Body template** (`contentFormat`: `markdown`).
 5. Call `createJiraIssue` with:
    ```json
    {
