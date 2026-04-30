@@ -1,0 +1,99 @@
+{
+  "$schema": "Tailwind theme mapping for shadcn semantic class names. Pairs with tokens-css-shadcn.json — every alias listed there is registered with Tailwind so utilities like `bg-primary`, `text-primary-foreground`, `border-input`, `ring-ring` resolve to the project's CSS variables instead of producing empty / wrong styles.",
+  "$why": "shadcn components ship with classes like `bg-primary` and `text-primary-foreground`. Without this mapping the Tailwind compiler has no `primary` color in scope, so utilities are silently dropped (no fill / wrong color). Step 13d wires this once at design-system build time so /create-component never has to patch consumer projects per-component.",
+  "tailwindV4": {
+    "$note": "Tailwind v4 — append a `@theme inline` block to tokens.css (or the project's globals.css). Each entry registers a named color whose value resolves through the shadcn alias var (which itself resolves to a canonical --color-* token).",
+    "blockSelector": "@theme inline",
+    "entries": [
+      { "tw": "--color-background",             "css": "var(--background)" },
+      { "tw": "--color-foreground",             "css": "var(--foreground)" },
+      { "tw": "--color-card",                   "css": "var(--card)" },
+      { "tw": "--color-card-foreground",        "css": "var(--card-foreground)" },
+      { "tw": "--color-popover",                "css": "var(--popover)" },
+      { "tw": "--color-popover-foreground",     "css": "var(--popover-foreground)" },
+      { "tw": "--color-primary",                "css": "var(--primary)" },
+      { "tw": "--color-primary-foreground",     "css": "var(--primary-foreground)" },
+      { "tw": "--color-secondary",              "css": "var(--secondary)" },
+      { "tw": "--color-secondary-foreground",   "css": "var(--secondary-foreground)" },
+      { "tw": "--color-muted",                  "css": "var(--muted)" },
+      { "tw": "--color-muted-foreground",       "css": "var(--muted-foreground)" },
+      { "tw": "--color-accent",                 "css": "var(--accent)" },
+      { "tw": "--color-accent-foreground",      "css": "var(--accent-foreground)" },
+      { "tw": "--color-destructive",            "css": "var(--destructive)" },
+      { "tw": "--color-destructive-foreground", "css": "var(--destructive-foreground)" },
+      { "tw": "--color-border",                 "css": "var(--border)" },
+      { "tw": "--color-input",                  "css": "var(--input)" },
+      { "tw": "--color-ring",                   "css": "var(--ring)" },
+      { "tw": "--color-sidebar",                "css": "var(--sidebar)" },
+      { "tw": "--color-sidebar-foreground",     "css": "var(--sidebar-foreground)" },
+      { "tw": "--radius-sm",                    "css": "calc(var(--radius) - 4px)" },
+      { "tw": "--radius-md",                    "css": "calc(var(--radius) - 2px)" },
+      { "tw": "--radius-lg",                    "css": "var(--radius)" },
+      { "tw": "--radius-xl",                    "css": "calc(var(--radius) + 4px)" }
+    ]
+  },
+  "tailwindV3": {
+    "$note": "Tailwind v3 — emit a `theme.extend` block in tailwind.config.{js,ts,cjs,mjs}. Colors object mirrors v4 entries minus the leading `--color-` prefix; nested `{ DEFAULT, foreground }` shapes use shadcn's standard nested form.",
+    "themeExtend": {
+      "colors": {
+        "background": "var(--background)",
+        "foreground": "var(--foreground)",
+        "card": {
+          "DEFAULT": "var(--card)",
+          "foreground": "var(--card-foreground)"
+        },
+        "popover": {
+          "DEFAULT": "var(--popover)",
+          "foreground": "var(--popover-foreground)"
+        },
+        "primary": {
+          "DEFAULT": "var(--primary)",
+          "foreground": "var(--primary-foreground)"
+        },
+        "secondary": {
+          "DEFAULT": "var(--secondary)",
+          "foreground": "var(--secondary-foreground)"
+        },
+        "muted": {
+          "DEFAULT": "var(--muted)",
+          "foreground": "var(--muted-foreground)"
+        },
+        "accent": {
+          "DEFAULT": "var(--accent)",
+          "foreground": "var(--accent-foreground)"
+        },
+        "destructive": {
+          "DEFAULT": "var(--destructive)",
+          "foreground": "var(--destructive-foreground)"
+        },
+        "border": "var(--border)",
+        "input": "var(--input)",
+        "ring": "var(--ring)",
+        "sidebar": {
+          "DEFAULT": "var(--sidebar)",
+          "foreground": "var(--sidebar-foreground)"
+        }
+      },
+      "borderRadius": {
+        "lg": "var(--radius)",
+        "md": "calc(var(--radius) - 2px)",
+        "sm": "calc(var(--radius) - 4px)"
+      }
+    }
+  },
+  "detection": {
+    "$note": "How agents decide which block to emit. Read consumer `package.json` once.",
+    "v4Signals": [
+      "dependencies.tailwindcss starts with ^4 / 4. (e.g. ^4.0.0)",
+      "devDependencies.tailwindcss starts with ^4 / 4.",
+      "dependencies['@tailwindcss/postcss'] or devDependencies['@tailwindcss/postcss'] is present",
+      "dependencies['@tailwindcss/vite'] or devDependencies['@tailwindcss/vite'] is present"
+    ],
+    "v3Signals": [
+      "dependencies.tailwindcss starts with ^3 / 3.",
+      "devDependencies.tailwindcss starts with ^3 / 3.",
+      "tailwind.config.{js,ts,cjs,mjs} exists at project root"
+    ],
+    "ambiguous": "If neither signal is present, ask via AskUserQuestion: `tailwind v4 (recommended)` / `tailwind v3` / `skip — no Tailwind in this project`."
+  }
+}

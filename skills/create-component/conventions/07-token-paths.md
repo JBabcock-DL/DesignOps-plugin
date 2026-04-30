@@ -103,6 +103,28 @@ node scripts/validate-tokens.mjs <config.json> <variable-defs.json>
 
 Run it on a staged CONFIG before drawing. Exit code ≠ 0 means the draw will fall back to hex — fix CONFIG first.
 
+## 7.5.1 — Tailwind theme map preflight (EXECUTOR Step 4.7.5)
+
+`tokens.css` defines the CSS custom properties shadcn components consume (`--primary`, `--primary-foreground`, `--border`, `--input`, `--ring`, …). **Tailwind does not see those names** until they are registered in the theme — it can only generate utilities for color names it knows about. Skipping this registration is what produces the **"button has no fill"** class of failures: the class string is `bg-primary text-primary-foreground`, the CSS variables exist, but Tailwind silently emits no rule because it has no `primary` color in scope.
+
+**The rule.** Before `shadcn add`, the consumer project must carry the shadcn theme registration in whichever shape its Tailwind version expects:
+
+| Tailwind | Shape | Lives in |
+|---|---|---|
+| **v4** | `@theme inline { --color-primary: var(--primary); … }` block | `tokens.css` (preferred) or the project's imported `globals.css` |
+| **v3** | `theme.extend.colors.{primary,secondary,destructive,border,input,ring,…}` keyed to `var(--…)` | `tailwind.config.{js,ts,cjs,mjs}` |
+
+**Source of truth:** [`../../create-design-system/data/tailwind-theme-shadcn.json`](../../create-design-system/data/tailwind-theme-shadcn.json) (`tailwindV4.entries`, `tailwindV3.themeExtend`, `detection`). Both `/create-design-system` Step 13d and this skill's Step 4.7.5 read from this single file so the mapping cannot drift between phases.
+
+**Required check at runtime** (per [`EXECUTOR.md` §0.2 Step 4.7.5](../EXECUTOR.md)):
+
+1. Detect Tailwind version via `package.json` signals.
+2. Open the relevant target file and look for the DesignOps marker block (v4) or the named color entries (v3).
+3. If absent or partial, write the missing block / merge the missing keys using `tailwind-theme-shadcn.json` as the data source — same routine `/create-design-system` Step 13d uses. Do **not** install shadcn components on top of a project missing this mapping; the install will succeed but every variant will render with broken / absent fills.
+4. If the project has no Tailwind dependency at all, skip and log; raw CSS-variable usage (`bg-[var(--color-primary)]`) is the only fallback and components must be patched manually to use it.
+
+**Do not** treat Tailwind class breakage as a token-path bug — see §7.1. The tokens are correct; it is the Tailwind theme map that is missing.
+
 ## 7.6 — Banned strategies
 
 > **Not allowed as a source of truth for token paths:**

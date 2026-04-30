@@ -1,6 +1,6 @@
 ---
 name: create-design-system
-description: Push brand tokens into five Figma variable collections — Primitives (including `typeface/display` + `typeface/body` STRING primitives), Theme (Light/Dark modes), Typography (M3 baseline — 15 slots × 4 properties × 8 Android-curve scale modes; font-family aliases typeface primitives), Layout, and Effects. Platform mapping (Web/Android/iOS) is encoded as codeSyntax on every variable instead of separate alias collections. Local tokens.css is optional (explicit opt-in after variables are pushed).
+description: Push brand tokens into five Figma variable collections — Primitives (including `typeface/display` + `typeface/body` STRING primitives), Theme (Light/Dark modes), Typography (M3 baseline — 15 slots × 4 properties × 8 Android-curve scale modes; font-family aliases typeface primitives), Layout, and Effects. Platform mapping (Web/Android/iOS) is encoded as codeSyntax on every variable instead of separate alias collections. Local tokens.css is optional (explicit opt-in after variables are pushed) and, when written, is paired with a Tailwind theme map (v4 `@theme inline` or v3 `theme.extend`) so shadcn semantic classes (`bg-primary`, `text-primary-foreground`, …) resolve to the design tokens out of the box.
 argument-hint: "Optional: --theme brand|baseline (default brand). Optional: --file-key <key-or-figma-design-url> (e.g. when chaining from /new-project). Baseline uses Material 3 static baseline seed hues for Primitives ramps; Brand uses wizard or pasted hexes."
 agent: general-purpose
 ---
@@ -128,7 +128,7 @@ Current: Building Primitives…
 - [ ] Preparing plan — waiting for your approval
 - [ ] Pushing variable collections to Figma (Plugin API + REST `codeSyntax`)
 - [ ] Verifying variables wrote correctly
-- [ ] Optional: write `tokens.css` (your choice — Step 12.5, then Step 13 if yes)
+- [ ] Optional: write `tokens.css` + Tailwind theme map (your choice — Step 12.5, then Steps 13a–13d if yes)
 - [ ] Summarizing results (counts & file links)
 - [ ] Publishing Doc/\* text styles + Effect/shadow-\* (at **Step 11 close** — see §0.4; if phases 02–04 were skipped, run the Step 11 close / 15c §0 idempotent block **before** canvas so 15a/15b bind on first pass)
 - [ ] Drawing ↳ Primitives style guide (Step 15a)
@@ -138,7 +138,7 @@ Current: Building Primitives…
 - [ ] Updating Thumbnail cover (brand gradient) (Step 18)
 - [ ] Offering next step (`/create-component`)
 
-**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Step 13 (`tokens.css`, skip row 9 body if declined) · row 10 → Step 14 · row 11 → **Step 11 close** (Doc/\* + Effect styles; 15c §0 only when running that idempotent block because styles were missing) · rows 12–14 → Steps 15a–15c canvas bodies · rows 15–16 → Steps 17–18 · row 17 → Step 19.
+**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Steps 13a–13d (`tokens.css` + Tailwind theme map, skip row 9 body if declined) · row 10 → Step 14 · row 11 → **Step 11 close** (Doc/\* + Effect styles; 15c §0 only when running that idempotent block because styles were missing) · rows 12–14 → Steps 15a–15c canvas bodies · rows 15–16 → Steps 17–18 · row 17 → Step 19.
 
 **Docs-only path** (variables already present — see "After Step 4" below): mark rows 1–10 `[x] (skipped — variables present)`, run **Step 11 close** (row 11 — publish Doc/\* + Effect styles if not already in the file), then continue with rows 12–17.
 
