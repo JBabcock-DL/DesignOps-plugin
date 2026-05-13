@@ -9,9 +9,10 @@ if (typeof figma === 'undefined') {
   throw new Error('[preflight-snapshot.figma.js] Must run inside use_figma.');
 }
 
-const PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_SHARED_NS = 'labs.designops';
+const PAGE_SLUG_SUBKEY = 'pageSlug';
 const REGISTRY_FRAME_NAME = '_DesignOpsRegistry';
-const REGISTRY_KEY = 'labs.designops/collectionRegistry';
+const REGISTRY_SUBKEY = 'collectionRegistry';
 
 function hasHeaderInstance(page) {
   for (const c of page.children) {
@@ -34,7 +35,7 @@ const warnings = [];
 const pages = [];
 for (const p of figma.root.children) {
   if (p.type !== 'PAGE') continue;
-  const slug = p.getPluginData(PAGE_SLUG_KEY) || null;
+  const slug = p.getSharedPluginData(DESIGNOPS_SHARED_NS, PAGE_SLUG_SUBKEY) || null;
   pages.push({
     id: p.id,
     name: p.name,
@@ -80,7 +81,7 @@ let registryRaw = null;
 let registryParsed = {};
 let registryPresent = false;
 if (registryFrame) {
-  registryRaw = registryFrame.getPluginData(REGISTRY_KEY) || null;
+  registryRaw = registryFrame.getSharedPluginData(DESIGNOPS_SHARED_NS, REGISTRY_SUBKEY) || null;
   if (registryRaw) {
     try {
       registryParsed = JSON.parse(registryRaw);

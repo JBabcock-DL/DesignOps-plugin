@@ -20,18 +20,26 @@ After **Step 11 close** (Doc/* text styles + Effect/shadow-* published) and **be
 1. Load **figma-use** if required.
 2. `const FILE_KEY = '<same key as use_figma fileKey>';` — required for TOC hyperlinks.
 3. Optionally `const MANIFEST_VERSION_EMBED = '2026-05-13';` (match [`designops-foundations-shell.json`](../../shared/designops-foundations-shell.json) `manifestVersion`).
-4. **`Read`** [`foundations-shell.figma.js`](./foundations-shell.figma.js) in full and paste as the script body (it embeds `MANIFEST.shellPages`; keep in sync with the JSON file when editing — repo CI runs `npm run qa:foundations-shell-manifest`).
+4. **Optional — no `_Header` master on `Documentation components`:** before the script body, set `const DESIGNOPS_HEADER_PLACEHOLDER = true;` so the shell **creates** a minimal `_Header` `COMPONENT` (1800×320, `_title` + `_description` text) and then places instances. If you omit this and the master is missing, the shell **does not throw**: it still writes the registry, stamps slugs, and sets TOC links, but skips header instances and returns `headerMasterMissing: true`.
+5. **`Read`** [`foundations-shell.figma.js`](./foundations-shell.figma.js) in full and paste as the script body (it embeds `MANIFEST.shellPages`; keep in sync with the JSON file when editing — repo CI runs `npm run qa:foundations-shell-manifest`).
 
-**No** `_shared-token-helpers` inlay is required for the default shell — header instances clone the existing `_Header` master from Phase 05b.
+**No** `_shared-token-helpers` inlay is required for the default shell — header instances clone the existing `_Header` master from Phase 05b (or the placeholder master when step 4 opt-in is used).
 
 ## Success criteria
 
-- Return JSON includes `ok: true`, `createdCount`, `stampedCount`, `headersPlaced`, `linksSet`, `registryKeys`.
+- Return JSON includes `ok: true`, `createdCount`, `stampedCount`, `headersPlaced`, `linksSet`, `registryKeys`, and booleans `headerMasterMissing`, `placeholderHeaderCreated` (both default `false` when a real master was present).
 - Second run on the same file: `createdCount === 0` (idempotent).
+
+## `_Header` master missing — agent (parent) branch
+
+If the return has `headerMasterMissing: true` and `placeholderHeaderCreated: false`, the file has no `_Header` `COMPONENT` and the run did **not** use the placeholder opt-in. **One `AskUserQuestion`** with:
+
+- **Placeholder** — Re-run this phase with `const DESIGNOPS_HEADER_PLACEHOLDER = true;` before the script body (minimal master + instances).
+- **Skip** — Continue to Phase 07; style-guide canvas may assert on `_Header` until the designer adds a real master or re-runs shell with placeholder.
+- **Stop** — Designer adds a proper `_Header` (e.g. `/new-project` Phase 05b or paste from template), then re-run Phase 06b.
 
 ## Failure modes
 
-- **`_Header` master missing** — re-run `/new-project` Phase 05b.
 - **Ambiguous legacy page match** — resolve duplicate page names in Figma, then re-run.
 
 ## Payload size

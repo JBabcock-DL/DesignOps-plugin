@@ -3,15 +3,22 @@
 // Standalone script for use_figma — no _shared-token-helpers inlay (see 06b-foundations-shell.md).
 // Before this block, set: const FILE_KEY = '<figma file key>';
 //
-// Preconditions: /new-project through 05b ( _Header master on Documentation components ),
-// 05c (TOC rows include toc-link/↳ … targets). Variables + Step 11 close should have run first.
+// Optional (MCP / migrated files without /new-project 05b):
+//   const DESIGNOPS_HEADER_PLACEHOLDER = true;
+// → creates a minimal `_Header` COMPONENT on Documentation components (1800×320, _title + _description).
+// If omitted and no `_Header` master exists, the shell still writes registry + slugs + TOC links but skips
+// header instances and returns `headerMasterMissing: true` (parent should ask designer: re-run with
+// DESIGNOPS_HEADER_PLACEHOLDER true, add a real master from /new-project 05b, or accept skip and fix canvas).
+//
+// Preconditions: /new-project through 05c when using the full template. Variables + Step 11 close should have run first.
 
 if (typeof figma === 'undefined') {
   throw new Error('[foundations-shell.figma.js] Must run inside use_figma.');
 }
 
-const PAGE_SLUG_KEY = 'labs.designops/pageSlug';
-const REGISTRY_KEY = 'labs.designops/collectionRegistry';
+const DESIGNOPS_SHARED_NS = 'labs.designops';
+const PAGE_SLUG_SUBKEY = 'pageSlug';
+const REGISTRY_SUBKEY = 'collectionRegistry';
 const REGISTRY_FRAME = '_DesignOpsRegistry';
 
 const MANIFEST = {
@@ -68,6 +75,44 @@ function hasHeaderOnPage(page) {
     return true;
   }
   return false;
+}
+
+/** Minimal `_Header` master for Tier-3 shell when /new-project 05b was never run (canvas expects INSTANCE at 0,0). */
+async function createPlaceholderHeaderMaster(page) {
+  const comp = figma.createComponent();
+  comp.name = '_Header';
+  comp.layoutMode = 'VERTICAL';
+  comp.primaryAxisSizingMode = 'FIXED';
+  comp.counterAxisSizingMode = 'FIXED';
+  comp.resize(1800, 320);
+  comp.cornerRadius = 0;
+  comp.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 1 }];
+  comp.paddingLeft = comp.paddingRight = 40;
+  comp.paddingTop = comp.paddingBottom = 32;
+  comp.itemSpacing = 8;
+  page.appendChild(comp);
+
+  const title = figma.createText();
+  title.name = '_title';
+  await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
+  title.fontName = { family: 'Inter', style: 'Bold' };
+  title.fontSize = 28;
+  title.characters = 'Title';
+  title.textAutoResize = 'HEIGHT';
+  title.resize(1720, 1);
+  comp.appendChild(title);
+
+  const desc = figma.createText();
+  desc.name = '_description';
+  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+  desc.fontName = { family: 'Inter', style: 'Regular' };
+  desc.fontSize = 16;
+  desc.characters = 'Description';
+  desc.textAutoResize = 'HEIGHT';
+  desc.resize(1720, 1);
+  comp.appendChild(desc);
+
+  return comp;
 }
 
 await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
@@ -129,15 +174,26 @@ if (effects) idMap.effects = effects.id;
 
 let prevRegistry = {};
 try {
-  prevRegistry = JSON.parse(registryFrame.getPluginData(REGISTRY_KEY) || '{}') || {};
+  prevRegistry = JSON.parse(registryFrame.getSharedPluginData(DESIGNOPS_SHARED_NS, REGISTRY_SUBKEY) || '{}') || {};
 } catch (_) {
   prevRegistry = {};
 }
 const mergedRegistry = { ...prevRegistry, ...idMap };
-registryFrame.setPluginData(REGISTRY_KEY, JSON.stringify(mergedRegistry));
+registryFrame.setSharedPluginData(DESIGNOPS_SHARED_NS, REGISTRY_SUBKEY, JSON.stringify(mergedRegistry));
 
-const headerMaster = docPage.findOne((n) => n.type === 'COMPONENT' && n.name === '_Header');
-if (!headerMaster) throw new Error('_Header COMPONENT missing on Documentation components — re-run /new-project Phase 05b');
+let headerMaster = docPage.findOne((n) => n.type === 'COMPONENT' && n.name === '_Header');
+let headerMasterMissing = false;
+let placeholderHeaderCreated = false;
+
+if (!headerMaster) {
+  if (typeof DESIGNOPS_HEADER_PLACEHOLDER !== 'undefined' && DESIGNOPS_HEADER_PLACEHOLDER === true) {
+    headerMaster = await createPlaceholderHeaderMaster(docPage);
+    placeholderHeaderCreated = true;
+  } else {
+    headerMasterMissing = true;
+    headerMaster = null;
+  }
+}
 
 let createdCount = 0;
 let stampedCount = 0;
@@ -145,7 +201,7 @@ let headersPlaced = 0;
 
 for (const row of MANIFEST.shellPages) {
   const allPages = figma.root.children.filter((p) => p.type === 'PAGE');
-  let page = allPages.find((p) => p.getPluginData(PAGE_SLUG_KEY) === row.pageSlug);
+  let page = allPages.find((p) => p.getSharedPluginData(DESIGNOPS_SHARED_NS, PAGE_SLUG_SUBKEY) === row.pageSlug);
 
   if (!page) {
     for (const nm of row.legacyNameCandidates) {
@@ -169,9 +225,9 @@ for (const row of MANIFEST.shellPages) {
     createdCount += 1;
   }
 
-  const existingSlug = page.getPluginData(PAGE_SLUG_KEY);
+  const existingSlug = page.getSharedPluginData(DESIGNOPS_SHARED_NS, PAGE_SLUG_SUBKEY);
   if (!existingSlug) {
-    page.setPluginData(PAGE_SLUG_KEY, row.pageSlug);
+    page.setSharedPluginData(DESIGNOPS_SHARED_NS, PAGE_SLUG_SUBKEY, row.pageSlug);
     stampedCount += 1;
   } else if (existingSlug !== row.pageSlug) {
     throw new Error(`Page "${page.name}" has slug ${existingSlug} (expected ${row.pageSlug})`);
@@ -179,7 +235,7 @@ for (const row of MANIFEST.shellPages) {
 
   if (page.name === 'Documentation components') continue;
 
-  if (!hasHeaderOnPage(page)) {
+  if (!hasHeaderOnPage(page) && headerMaster) {
     const inst = headerMaster.createInstance();
     inst.x = 0;
     inst.y = 0;
@@ -199,8 +255,8 @@ for (const row of MANIFEST.shellPages) {
 }
 
 const tokenOverviewPage = figma.root.children.find((p) => p.type === 'PAGE' && p.name === '\u21B3 Token Overview');
-if (tokenOverviewPage && !tokenOverviewPage.getPluginData(PAGE_SLUG_KEY)) {
-  tokenOverviewPage.setPluginData(PAGE_SLUG_KEY, 'token-overview');
+if (tokenOverviewPage && !tokenOverviewPage.getSharedPluginData(DESIGNOPS_SHARED_NS, PAGE_SLUG_SUBKEY)) {
+  tokenOverviewPage.setSharedPluginData(DESIGNOPS_SHARED_NS, PAGE_SLUG_SUBKEY, 'token-overview');
 }
 
 let linksSet = 0;
@@ -236,4 +292,6 @@ return {
   headersPlaced,
   linksSet,
   registryKeys: Object.keys(mergedRegistry),
+  headerMasterMissing,
+  placeholderHeaderCreated,
 };

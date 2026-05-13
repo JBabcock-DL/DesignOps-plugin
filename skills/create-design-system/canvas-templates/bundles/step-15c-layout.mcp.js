@@ -77,13 +77,19 @@ function bindStrokeToVar(node, variable) {
 }
 
 // ─── Tier 3: DesignOps page slug + collection registry (Foundations shell) ───
+// Figma MCP `use_figma` requires getSharedPluginData / setSharedPluginData (pluginData is web-only).
 
-const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_SHARED_NS = 'labs.designops';
+const DESIGNOPS_PAGE_SLUG_SUBKEY = 'pageSlug';
+const DESIGNOPS_COLLECTION_REGISTRY_SUBKEY = 'collectionRegistry';
 const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
-const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+
+function readDesignOpsPageSlug(page) {
+  return page.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_PAGE_SLUG_SUBKEY) || '';
+}
 
 /**
- * Resolve a Foundations style-guide page by pluginData slug first, then legacy exact names, then regexes.
+ * Resolve a Foundations style-guide page by shared-plugin slug first, then legacy exact names, then regexes.
  * @param {string} pageSlug e.g. 'primitives', 'text-styles'
  * @param {{ legacyExact?: string[], legacyRegex?: RegExp[] }} [opts]
  * @returns {PageNode | undefined}
@@ -91,7 +97,7 @@ const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
 function findDesignOpsPage(pageSlug, opts) {
   opts = opts || {};
   const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
-  var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+  var bySlug = pages.find(function (p) { return readDesignOpsPageSlug(p) === pageSlug; });
   if (bySlug) return bySlug;
 
   var legacyExact = opts.legacyExact || [];
@@ -126,7 +132,7 @@ function readDesignOpsCollectionRegistry() {
   if (!docPage) return {};
   var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
   if (!frame) return {};
-  var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+  var raw = frame.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_COLLECTION_REGISTRY_SUBKEY);
   if (!raw) return {};
   try {
     var o = JSON.parse(raw);

@@ -52,13 +52,17 @@ const base = node.strokes.length > 0 ? { ...node.strokes[0] } : { type: 'SOLID',
 const bound = figma.variables.setBoundVariableForPaint(base, 'color', variable);
 node.strokes = [bound];
 }
-const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_SHARED_NS = 'labs.designops';
+const DESIGNOPS_PAGE_SLUG_SUBKEY = 'pageSlug';
+const DESIGNOPS_COLLECTION_REGISTRY_SUBKEY = 'collectionRegistry';
 const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
-const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+function readDesignOpsPageSlug(page) {
+return page.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_PAGE_SLUG_SUBKEY) || '';
+}
 function findDesignOpsPage(pageSlug, opts) {
 opts = opts || {};
 const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
-var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+var bySlug = pages.find(function (p) { return readDesignOpsPageSlug(p) === pageSlug; });
 if (bySlug) return bySlug;
 var legacyExact = opts.legacyExact || [];
 var exactMatches = [];
@@ -89,7 +93,7 @@ var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' &
 if (!docPage) return {};
 var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
 if (!frame) return {};
-var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+var raw = frame.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_COLLECTION_REGISTRY_SUBKEY);
 if (!raw) return {};
 try {
 var o = JSON.parse(raw);
