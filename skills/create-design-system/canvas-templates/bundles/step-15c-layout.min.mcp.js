@@ -312,6 +312,16 @@ const SPACING_COLUMNS = [
 { id: 'iOS', width: 200 },
 ];
 const RADIUS_COLUMNS = SPACING_COLUMNS;
+const LAYOUT_GROUP_META = {
+space:   { title: 'Spacing',      caption: 'Semantic spacing aliases mapped to Primitive space steps.',  type: 'spacing' },
+spacing: { title: 'Spacing',      caption: 'Semantic spacing aliases mapped to Primitive space steps.',  type: 'spacing' },
+radius:  { title: 'Radius',       caption: 'Semantic radius aliases mapped to Primitive corner steps.',  type: 'radius'  },
+corner:  { title: 'Corner Radius',caption: 'Semantic radius aliases mapped to Primitive corner steps.',  type: 'radius'  },
+padding: { title: 'Padding',      caption: 'Component padding scale.',                                    type: 'spacing' },
+border:  { title: 'Border Width', caption: 'Border width tokens.',                                        type: 'spacing' },
+gap:     { title: 'Gap',          caption: 'Flex / grid gap scale.',                                      type: 'spacing' },
+};
+const LAYOUT_KNOWN_ORDER = ['space', 'spacing', 'padding', 'radius', 'corner', 'border', 'gap'];
 async function build(ctx) {
 await ensureLocalVariableMapOnCtx(ctx);
 const { pageId, variableMap, docStyles, rows } = ctx;
@@ -330,25 +340,34 @@ variables[path] = await figma.variables.getVariableByIdAsync(variableMap[path]);
 }
 const content = await buildPageContent(page);
 content.layoutMode = 'NONE';
+const RADIUS_TYPES = new Set(['radius', 'corner']);
+const allLayoutGroupKeys = Object.keys(rows || {}).filter((k) => (rows[k] || []).length > 0);
+const orderedLayoutKeys = [
+...LAYOUT_KNOWN_ORDER.filter((k) => allLayoutGroupKeys.includes(k)),
+...allLayoutGroupKeys.filter((k) => !LAYOUT_KNOWN_ORDER.includes(k)).sort(),
+];
+let tableCount = 0;
+for (const key of orderedLayoutKeys) {
+const grpRows = rows[key] || [];
+if (!grpRows.length) continue;
+const meta = LAYOUT_GROUP_META[key] || {};
+const slug = meta.slug || `layout/${key}`;
+const title = meta.title || (key.charAt(0).toUpperCase() + key.slice(1).replace(/-/g, ' '));
+const caption = meta.caption || `${title} tokens.`;
+const isRadius = meta.type === 'radius' || RADIUS_TYPES.has(key.toLowerCase());
 await buildTable({
-slug: 'layout/spacing',
-title: 'Spacing',
-caption: 'Semantic spacing aliases mapped to Primitive space steps.',
-columns: SPACING_COLUMNS,
-rows: rows.spacing || [],
-buildRow: buildLayoutSpacingRow,
+slug,
+title,
+caption,
+columns: isRadius ? RADIUS_COLUMNS : SPACING_COLUMNS,
+rows: grpRows,
+buildRow: isRadius ? buildLayoutRadiusRow : buildLayoutSpacingRow,
 }, content, variables, docStyles, variableMap);
-await buildTable({
-slug: 'layout/radius',
-title: 'Radius',
-caption: 'Semantic radius aliases mapped to Primitive corner steps.',
-columns: RADIUS_COLUMNS,
-rows: rows.radius || [],
-buildRow: buildLayoutRadiusRow,
-}, content, variables, docStyles, variableMap);
+tableCount++;
+}
 content.layoutMode = 'VERTICAL';
 content.layoutSizingVertical = 'HUG';
-console.log('Canvas: Step 15c ↳ Layout — done (2 tables)');
+console.log(`Canvas: Step 15c ↳ Layout — done (${tableCount} tables)`);
 }
 async function buildLayoutSpacingRow(row, rowData, columns, deps) {
 const { variables, docStyles, contentVar, mutedVar, variableMap } = deps;
@@ -450,36 +469,13 @@ row.appendChild(cell);
 cell.fills = [];
 }
 }
-const LAYOUT_DATA = {
-spacing: [
-{ path: 'space/xs',  alias: 'Space/100',  codeSyntax: { WEB: 'var(--space-xs)',  ANDROID: 'space-xs',  iOS: '.Layout.space.xs' } },
-{ path: 'space/sm',  alias: 'Space/200',  codeSyntax: { WEB: 'var(--space-sm)',  ANDROID: 'space-sm',  iOS: '.Layout.space.sm' } },
-{ path: 'space/md',  alias: 'Space/300',  codeSyntax: { WEB: 'var(--space-md)',  ANDROID: 'space-md',  iOS: '.Layout.space.md' } },
-{ path: 'space/lg',  alias: 'Space/400',  codeSyntax: { WEB: 'var(--space-lg)',  ANDROID: 'space-lg',  iOS: '.Layout.space.lg' } },
-{ path: 'space/xl',  alias: 'Space/600',  codeSyntax: { WEB: 'var(--space-xl)',  ANDROID: 'space-xl',  iOS: '.Layout.space.xl' } },
-{ path: 'space/2xl', alias: 'Space/800',  codeSyntax: { WEB: 'var(--space-2xl)', ANDROID: 'space-2xl', iOS: '.Layout.space.2xl' } },
-{ path: 'space/3xl', alias: 'Space/1200', codeSyntax: { WEB: 'var(--space-3xl)', ANDROID: 'space-3xl', iOS: '.Layout.space.3xl' } },
-{ path: 'space/4xl', alias: 'Space/1600', codeSyntax: { WEB: 'var(--space-4xl)', ANDROID: 'space-4xl', iOS: '.Layout.space.4xl' } },
-],
-radius: [
-{ path: 'radius/none', alias: 'Corner/None',        codeSyntax: { WEB: 'var(--radius-none)', ANDROID: 'radius-none', iOS: '.Layout.radius.none' } },
-{ path: 'radius/xs',   alias: 'Corner/Extra-small', codeSyntax: { WEB: 'var(--radius-xs)',   ANDROID: 'radius-xs',   iOS: '.Layout.radius.xs' } },
-{ path: 'radius/sm',   alias: 'Corner/Small',       codeSyntax: { WEB: 'var(--radius-sm)',   ANDROID: 'radius-sm',   iOS: '.Layout.radius.sm' } },
-{ path: 'radius/md',   alias: 'Corner/Medium',      codeSyntax: { WEB: 'var(--radius-md)',   ANDROID: 'radius-md',   iOS: '.Layout.radius.md' } },
-{ path: 'radius/lg',   alias: 'Corner/Large',       codeSyntax: { WEB: 'var(--radius-lg)',   ANDROID: 'radius-lg',   iOS: '.Layout.radius.lg' } },
-{ path: 'radius/xl',   alias: 'Corner/Extra-large', codeSyntax: { WEB: 'var(--radius-xl)',   ANDROID: 'radius-xl',   iOS: '.Layout.radius.xl' } },
-{ path: 'radius/full', alias: 'Corner/Full',        codeSyntax: { WEB: 'var(--radius-full)', ANDROID: 'radius-full', iOS: '.Layout.radius.full' } },
-],
-};
 const allVars = await figma.variables.getLocalVariablesAsync();
-const byName = Object.fromEntries(allVars.map((v) => [v.name, v]));
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
 const layoutColl = collections.find((c) => c.name === 'Layout');
 const primColl = collections.find((c) => c.name === 'Primitives');
 if (!layoutColl) throw new Error('Layout collection missing');
-if (!primColl) throw new Error('Primitives collection missing');
 const layoutModeId = layoutColl.modes[0].modeId;
-const primModeId = primColl.modes[0].modeId;
+const primModeId = primColl ? primColl.modes[0].modeId : layoutModeId;
 async function resolvePx(varId) {
 let v = await figma.variables.getVariableByIdAsync(varId);
 let m = v.variableCollectionId === layoutColl.id ? layoutModeId : primModeId;
@@ -488,7 +484,9 @@ const val = v.valuesByMode[m];
 if (val == null) return 0;
 if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
 const next = await figma.variables.getVariableByIdAsync(val.id);
-m = next.variableCollectionId === layoutColl.id ? layoutModeId : primModeId;
+if (next.variableCollectionId === layoutColl.id) m = layoutModeId;
+else if (primColl && next.variableCollectionId === primColl.id) m = primModeId;
+else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
 v = next;
 continue;
 }
@@ -497,17 +495,48 @@ return 0;
 }
 return 0;
 }
-async function buildRow(r) {
-const v = byName[r.path];
-if (!v) return null;
-let px = await resolvePx(v.id);
-if (r.alias === 'Corner/Full') px = 9999;
-return { tokenPath: r.path, resolvedPx: px, aliasPath: r.alias, codeSyntax: r.codeSyntax };
+function readCS(v) {
+const cs = v.codeSyntax || {};
+return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
-const spacing = [];
-for (const r of LAYOUT_DATA.spacing) { const row = await buildRow(r); if (row) spacing.push(row); }
-const radius = [];
-for (const r of LAYOUT_DATA.radius) { const row = await buildRow(r); if (row) radius.push(row); }
+function getAliasName(v) {
+const val = v.valuesByMode[layoutModeId];
+if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
+const av = figma.variables.getVariableById(val.id);
+return av ? av.name : '';
+}
+return '';
+}
+const layoutVars = allVars.filter(
+(v) => v.variableCollectionId === layoutColl.id && v.resolvedType === 'FLOAT'
+);
+const groupMap = {};
+const groupOrder = [];
+for (const v of layoutVars) {
+const firstSeg = v.name.split('/')[0];
+if (!groupMap[firstSeg]) {
+groupMap[firstSeg] = [];
+groupOrder.push(firstSeg);
+}
+groupMap[firstSeg].push(v);
+}
+const rows = {};
+for (const group of groupOrder) {
+const groupRows = [];
+for (const v of groupMap[group]) {
+const px = await resolvePx(v.id);
+const isFullOrPill =
+v.name.toLowerCase().includes('full') || v.name.toLowerCase().includes('pill') || px >= 9999;
+groupRows.push({
+tokenPath: v.name,
+resolvedPx: isFullOrPill ? 9999 : px,
+aliasPath: getAliasName(v),
+codeSyntax: readCS(v),
+});
+}
+groupRows.sort((a, b) => a.resolvedPx - b.resolvedPx);
+rows[group] = groupRows;
+}
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
 Section:   textStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
@@ -515,14 +544,14 @@ TokenName: textStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
 Code:      textStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
 Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
-const layoutPage = figma.root.children.find((pg) => pg.name === '\u21B3 Layout');
+const layoutPage = figma.root.children.find((pg) => pg.name === '↳ Layout');
 if (!layoutPage || layoutPage.type !== 'PAGE') {
-throw new Error('Page not found (expected \\u21B3 Layout)');
+throw new Error('Page not found (expected ↳ Layout)');
 }
 const ctx = {
 pageId: layoutPage.id,
 docStyles,
-rows: { spacing, radius },
+rows,
 };
 await build(ctx);
 const tableGroups = layoutPage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;

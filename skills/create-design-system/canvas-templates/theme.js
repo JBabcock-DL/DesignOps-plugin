@@ -33,15 +33,19 @@ const THEME_COLUMNS = [
   { id: 'iOS', width: 240 },
 ];
 
-const THEME_GROUPS = [
-  { key: 'background', slug: 'theme/background', title: 'Background', caption: 'Surfaces, containers, scrims, and overlays.' },
-  { key: 'border', slug: 'theme/border', title: 'Border', caption: 'Stroke tokens for dividers and outlines.' },
-  { key: 'primary', slug: 'theme/primary', title: 'Primary', caption: 'Primary brand roles and their on-color companions.' },
-  { key: 'secondary', slug: 'theme/secondary', title: 'Secondary', caption: 'Secondary brand roles for supporting actions.' },
-  { key: 'tertiary', slug: 'theme/tertiary', title: 'Tertiary', caption: 'Tertiary / decorative accent roles.' },
-  { key: 'error', slug: 'theme/error', title: 'Error', caption: 'Feedback color for destructive and error states.' },
-  { key: 'component', slug: 'theme/component', title: 'Component', caption: 'shadcn-aligned component tokens (ring, input, muted, popover).' },
-];
+// Known-group metadata — used when the file has these keys; unknown keys get auto-generated titles.
+const THEME_GROUP_META = {
+  background: { title: 'Background', caption: 'Surfaces, containers, scrims, and overlays.' },
+  border:     { title: 'Border',     caption: 'Stroke tokens for dividers and outlines.' },
+  primary:    { title: 'Primary',    caption: 'Primary brand roles and their on-color companions.' },
+  secondary:  { title: 'Secondary',  caption: 'Secondary brand roles for supporting actions.' },
+  tertiary:   { title: 'Tertiary',   caption: 'Tertiary / decorative accent roles.' },
+  error:      { title: 'Error',      caption: 'Feedback color for destructive and error states.' },
+  component:  { title: 'Component',  caption: 'shadcn-aligned component tokens (ring, input, muted, popover).' },
+  button:     { title: 'Button',     caption: 'Component-level button state tokens.' },
+  text:       { title: 'Text',       caption: 'Text and content color tokens.' },
+};
+const THEME_GROUP_KNOWN_ORDER = ['background', 'border', 'primary', 'secondary', 'tertiary', 'error', 'component', 'button', 'text'];
 
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
@@ -76,12 +80,23 @@ async function build(ctx) {
     themeDarkModeId,
   };
 
-  for (const g of THEME_GROUPS) {
-    const tableRows = rows[g.key] || [];
+  // Render a table for every group present in ctx.rows (known groups first, rest alphabetically)
+  const allGroupKeys = Object.keys(rows).filter((k) => (rows[k] || []).length > 0);
+  const orderedGroupKeys = [
+    ...THEME_GROUP_KNOWN_ORDER.filter((k) => allGroupKeys.includes(k)),
+    ...allGroupKeys.filter((k) => !THEME_GROUP_KNOWN_ORDER.includes(k)).sort(),
+  ];
+  for (const key of orderedGroupKeys) {
+    const tableRows = rows[key] || [];
+    if (!tableRows.length) continue;
+    const meta = THEME_GROUP_META[key] || {};
+    const slug = `theme/${key.replace(/\//g, '-')}`;
+    const title = meta.title || (key.charAt(0).toUpperCase() + key.slice(1).replace(/-/g, ' '));
+    const caption = meta.caption || `${title} tokens.`;
     await buildTable({
-      slug: g.slug,
-      title: g.title,
-      caption: g.caption,
+      slug,
+      title,
+      caption,
       columns: THEME_COLUMNS,
       rows: tableRows,
       buildRow: buildThemeRow,
@@ -92,7 +107,7 @@ async function build(ctx) {
   content.layoutMode = 'VERTICAL';
   content.layoutSizingVertical = 'HUG';
 
-  console.log('Canvas: Step 15b ↳ Theme — done (7 tables)');
+  console.log(`Canvas: Step 15b ↳ Theme — done (${orderedGroupKeys.length} tables)`);
 }
 
 async function buildThemeRow(row, rowData, columns, deps) {

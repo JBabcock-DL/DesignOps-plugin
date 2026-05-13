@@ -24,6 +24,18 @@ const SPACING_COLUMNS = [
 
 const RADIUS_COLUMNS = SPACING_COLUMNS;
 
+// Known-group metadata; unknown groups get auto-generated titles
+const LAYOUT_GROUP_META = {
+  space:   { title: 'Spacing',      caption: 'Semantic spacing aliases mapped to Primitive space steps.',  type: 'spacing' },
+  spacing: { title: 'Spacing',      caption: 'Semantic spacing aliases mapped to Primitive space steps.',  type: 'spacing' },
+  radius:  { title: 'Radius',       caption: 'Semantic radius aliases mapped to Primitive corner steps.',  type: 'radius'  },
+  corner:  { title: 'Corner Radius',caption: 'Semantic radius aliases mapped to Primitive corner steps.',  type: 'radius'  },
+  padding: { title: 'Padding',      caption: 'Component padding scale.',                                    type: 'spacing' },
+  border:  { title: 'Border Width', caption: 'Border width tokens.',                                        type: 'spacing' },
+  gap:     { title: 'Gap',          caption: 'Flex / grid gap scale.',                                      type: 'spacing' },
+};
+const LAYOUT_KNOWN_ORDER = ['space', 'spacing', 'padding', 'radius', 'corner', 'border', 'gap'];
+
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
   const { pageId, variableMap, docStyles, rows } = ctx;
@@ -47,28 +59,37 @@ async function build(ctx) {
   const content = await buildPageContent(page);
   content.layoutMode = 'NONE';
 
-  await buildTable({
-    slug: 'layout/spacing',
-    title: 'Spacing',
-    caption: 'Semantic spacing aliases mapped to Primitive space steps.',
-    columns: SPACING_COLUMNS,
-    rows: rows.spacing || [],
-    buildRow: buildLayoutSpacingRow,
-  }, content, variables, docStyles, variableMap);
-
-  await buildTable({
-    slug: 'layout/radius',
-    title: 'Radius',
-    caption: 'Semantic radius aliases mapped to Primitive corner steps.',
-    columns: RADIUS_COLUMNS,
-    rows: rows.radius || [],
-    buildRow: buildLayoutRadiusRow,
-  }, content, variables, docStyles, variableMap);
+  // Render a table for every group in ctx.rows (known groups first, rest alphabetically)
+  const RADIUS_TYPES = new Set(['radius', 'corner']);
+  const allLayoutGroupKeys = Object.keys(rows || {}).filter((k) => (rows[k] || []).length > 0);
+  const orderedLayoutKeys = [
+    ...LAYOUT_KNOWN_ORDER.filter((k) => allLayoutGroupKeys.includes(k)),
+    ...allLayoutGroupKeys.filter((k) => !LAYOUT_KNOWN_ORDER.includes(k)).sort(),
+  ];
+  let tableCount = 0;
+  for (const key of orderedLayoutKeys) {
+    const grpRows = rows[key] || [];
+    if (!grpRows.length) continue;
+    const meta = LAYOUT_GROUP_META[key] || {};
+    const slug = meta.slug || `layout/${key}`;
+    const title = meta.title || (key.charAt(0).toUpperCase() + key.slice(1).replace(/-/g, ' '));
+    const caption = meta.caption || `${title} tokens.`;
+    const isRadius = meta.type === 'radius' || RADIUS_TYPES.has(key.toLowerCase());
+    await buildTable({
+      slug,
+      title,
+      caption,
+      columns: isRadius ? RADIUS_COLUMNS : SPACING_COLUMNS,
+      rows: grpRows,
+      buildRow: isRadius ? buildLayoutRadiusRow : buildLayoutSpacingRow,
+    }, content, variables, docStyles, variableMap);
+    tableCount++;
+  }
 
   content.layoutMode = 'VERTICAL';
   content.layoutSizingVertical = 'HUG';
 
-  console.log('Canvas: Step 15c ↳ Layout — done (2 tables)');
+  console.log(`Canvas: Step 15c ↳ Layout — done (${tableCount} tables)`);
 }
 
 async function buildLayoutSpacingRow(row, rowData, columns, deps) {

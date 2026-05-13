@@ -56,6 +56,10 @@ async function build(ctx) {
     error:     { title: 'Error',     caption: 'Destructive and error feedback — do not use for incidental UI.' },
     neutral:   { title: 'Neutral',   caption: 'Greyscale foundation for text, borders, and calm surfaces.' },
   };
+  // Format ramp keys that may contain slashes (e.g. "opacity/dark" → "Opacity / Dark")
+  function formatRampTitle(ramp) {
+    return ramp.split('/').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' / ');
+  }
   const RAMP_ORDER = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
   const rampMeta = Object.keys(rows.colorRamps || {})
     .filter((ramp) => Array.isArray(rows.colorRamps[ramp]) && rows.colorRamps[ramp].length > 0)
@@ -69,8 +73,8 @@ async function build(ctx) {
     })
     .map((ramp) => ({
       ramp,
-      title: rampDefaults[ramp]?.title || (ramp.charAt(0).toUpperCase() + ramp.slice(1)),
-      caption: rampDefaults[ramp]?.caption || `${ramp.charAt(0).toUpperCase() + ramp.slice(1)} ramp.`,
+      title: rampDefaults[ramp]?.title || formatRampTitle(ramp),
+      caption: rampDefaults[ramp]?.caption || `${formatRampTitle(ramp)} ramp.`,
     }));
 
   const colorColumns = [

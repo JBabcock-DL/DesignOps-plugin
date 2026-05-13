@@ -1,97 +1,113 @@
-// Concatenate after _lib.js + text-styles.js (phase 07). Builds the 27-row typography table in-plugin.
-const TYPO_DATA = {
-  baseSlots: [
-    { slot: 'Display/LG',  fontSize: 57, fontWeight: 400, lineHeight: 64, category: 'Display',  size: 'LG' },
-    { slot: 'Display/MD',  fontSize: 45, fontWeight: 400, lineHeight: 52, category: 'Display',  size: 'MD' },
-    { slot: 'Display/SM',  fontSize: 36, fontWeight: 400, lineHeight: 44, category: 'Display',  size: 'SM' },
-    { slot: 'Headline/LG', fontSize: 32, fontWeight: 400, lineHeight: 40, category: 'Headline', size: 'LG' },
-    { slot: 'Headline/MD', fontSize: 28, fontWeight: 400, lineHeight: 36, category: 'Headline', size: 'MD' },
-    { slot: 'Headline/SM', fontSize: 24, fontWeight: 400, lineHeight: 32, category: 'Headline', size: 'SM' },
-    { slot: 'Title/LG',    fontSize: 22, fontWeight: 400, lineHeight: 28, category: 'Title',    size: 'LG' },
-    { slot: 'Title/MD',    fontSize: 16, fontWeight: 500, lineHeight: 24, category: 'Title',    size: 'MD' },
-    { slot: 'Title/SM',    fontSize: 14, fontWeight: 500, lineHeight: 20, category: 'Title',    size: 'SM' },
-    { slot: 'Body/LG',     fontSize: 16, fontWeight: 400, lineHeight: 24, category: 'Body',     size: 'LG' },
-    { slot: 'Body/MD',     fontSize: 14, fontWeight: 400, lineHeight: 20, category: 'Body',     size: 'MD' },
-    { slot: 'Body/SM',     fontSize: 12, fontWeight: 400, lineHeight: 16, category: 'Body',     size: 'SM' },
-    { slot: 'Label/LG',    fontSize: 14, fontWeight: 500, lineHeight: 20, category: 'Label',    size: 'LG' },
-    { slot: 'Label/MD',    fontSize: 12, fontWeight: 500, lineHeight: 16, category: 'Label',    size: 'MD' },
-    { slot: 'Label/SM',    fontSize: 11, fontWeight: 500, lineHeight: 16, category: 'Label',    size: 'SM' },
-  ],
-  bodyVariants: ['regular', 'emphasis', 'italic', 'link', 'strikethrough'],
-  bodySizes: ['LG', 'MD', 'SM'],
-  fontFamilyFor: { Display: 'Display', Headline: 'Display', Title: 'Display', Body: 'Body', Label: 'Body' },
-  specimens: {
-    Display: 'Dream design systems',
-    Headline: 'Ship it with confidence',
-    Title: 'Tokens keep us honest',
-    Body: 'The quick brown fox jumps over the lazy dog.',
-    Label: 'STATUS — ACTIVE',
-  },
+// Concatenate after _lib.js + text-styles.js (phase 07). Builds typography table in-plugin.
+// Fully dynamic — discovers all local text styles (excluding Doc/*), groups by first path segment.
+// Reads fontSize, lineHeight, fontWeight, fontFamily directly from each text style.
+const allTextStyles = await figma.getLocalTextStylesAsync();
+
+// Exclude infrastructure styles
+const typographyStyles = allTextStyles.filter(
+  (s) => !s.name.startsWith('Doc/') && !s.name.startsWith('Effect/')
+);
+
+// Group by first path segment (category)
+const categoryMap = {};
+const categoryOrder = [];
+for (const s of typographyStyles) {
+  const firstSeg = s.name.split('/')[0];
+  if (!categoryMap[firstSeg]) {
+    categoryMap[firstSeg] = [];
+    categoryOrder.push(firstSeg);
+  }
+  categoryMap[firstSeg].push(s);
+}
+
+// Sort categories in known order; unknown categories appended alphabetically
+const CATEGORY_ORDER = ['Display', 'Headline', 'Title', 'Body', 'Label'];
+const orderedCategories = [
+  ...CATEGORY_ORDER.filter((c) => categoryMap[c]),
+  ...categoryOrder.filter((c) => !CATEGORY_ORDER.includes(c)).sort(),
+];
+
+const SPECIMENS = {
+  Display: 'Dream design systems',
+  Headline: 'Ship it with confidence',
+  Title: 'Tokens keep us honest',
+  Body: 'The quick brown fox jumps over the lazy dog.',
+  Label: 'STATUS — ACTIVE',
 };
 
-function cs(stylePath, prop) {
-  const lower = stylePath.toLowerCase();
-  const kebab = lower.replace(/\//g, '-') + '-' + prop;
+function csFor(styleName) {
+  const lower = styleName.toLowerCase().replace(/\s+/g, '-');
+  const kebab = lower.replace(/\//g, '-');
   const parts = lower.split('/');
   return {
     WEB: 'var(--' + kebab + ')',
     ANDROID: kebab,
-    iOS: '.Typography.' + parts.join('.') + '.' + prop.replace(/-/g, '.'),
+    iOS: '.Typography.' + parts.join('.'),
   };
 }
 
-const textStyles = await figma.getLocalTextStylesAsync();
-function styleIdFor(name) {
-  const s = textStyles.find((t) => t.name === name);
-  return s ? s.id : null;
+function readCS(s) {
+  const cs = s.codeSyntax || {};
+  if (cs.WEB || cs.ANDROID || cs.iOS || cs.IOS) {
+    return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
+  }
+  return csFor(s.name);
 }
 
-const docStyles = {
-  Section:   styleIdFor('Doc/Section'),
-  TokenName: styleIdFor('Doc/TokenName'),
-  Code:      styleIdFor('Doc/Code'),
-  Caption:   styleIdFor('Doc/Caption'),
-};
-
-function baseRow(s, stylePath, variant) {
-  const family = TYPO_DATA.fontFamilyFor[s.category];
-  const effectiveWeight = variant === 'emphasis' ? 500 : s.fontWeight;
-  return {
-    type: 'slot',
-    tokenPath: stylePath,
-    styleId: styleIdFor(stylePath),
-    specimenChars: TYPO_DATA.specimens[s.category] || stylePath,
-    sizeLine1: s.fontSize + 'px size',
-    sizeLine2: s.lineHeight + 'px line',
-    weightLine1: String(effectiveWeight) + ' weight',
-    weightLine2: family,
-    codeSyntax: cs(stylePath, 'font-size'),
-    variant: variant || 'base',
-  };
+function lineHeightStr(lh) {
+  if (!lh) return '—';
+  if (lh.unit === 'AUTO') return 'auto line';
+  if (lh.unit === 'PIXELS') return `${Math.round(lh.value)}px line`;
+  if (lh.unit === 'PERCENT') return `${lh.value}% line`;
+  return `${lh.value} line`;
 }
+
+const SIZE_PRIORITY = { '2XL': -2, XL: -1, LG: 0, MD: 1, SM: 2, XS: 3 };
 
 const rows = [];
-const CATEGORIES = ['Display', 'Headline', 'Title', 'Body', 'Label'];
-for (const cat of CATEGORIES) {
+for (const cat of orderedCategories) {
   rows.push({ type: 'category', label: cat });
-  if (cat === 'Body') {
-    for (const size of TYPO_DATA.bodySizes) {
-      const base = TYPO_DATA.baseSlots.find((s) => s.category === 'Body' && s.size === size);
-      for (const variant of TYPO_DATA.bodyVariants) {
-        const path = 'Body/' + size + '/' + variant;
-        rows.push(baseRow(base, path, variant));
-      }
-    }
-  } else {
-    for (const s of TYPO_DATA.baseSlots.filter((s) => s.category === cat)) {
-      rows.push(baseRow(s, s.slot, 'base'));
-    }
+  const catStyles = categoryMap[cat].slice().sort((a, b) => {
+    const partsA = a.name.split('/');
+    const partsB = b.name.split('/');
+    const sizeA = (partsA[1] || '').toUpperCase();
+    const sizeB = (partsB[1] || '').toUpperCase();
+    const prioA = SIZE_PRIORITY[sizeA] ?? 99;
+    const prioB = SIZE_PRIORITY[sizeB] ?? 99;
+    if (prioA !== prioB) return prioA - prioB;
+    return a.name.localeCompare(b.name);
+  });
+  for (const s of catStyles) {
+    const parts = s.name.split('/');
+    const rawVariant = parts.length >= 3 ? parts[2].toLowerCase() : 'base';
+    const variant = ['emphasis', 'italic', 'link', 'strikethrough'].includes(rawVariant)
+      ? rawVariant
+      : 'base';
+    rows.push({
+      type: 'slot',
+      tokenPath: s.name,
+      styleId: s.id,
+      specimenChars: SPECIMENS[cat] || s.name,
+      sizeLine1: `${Math.round(s.fontSize)}px size`,
+      sizeLine2: lineHeightStr(s.lineHeight),
+      weightLine1: `${s.fontWeight} weight`,
+      weightLine2: s.fontName ? s.fontName.family : '—',
+      codeSyntax: readCS(s),
+      variant,
+    });
   }
 }
 
-const textStylesPage = figma.root.children.find((pg) => pg.name === '\u21B3 Text Styles');
+const docStyles = {
+  Section:   allTextStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
+  TokenName: allTextStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
+  Code:      allTextStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
+  Caption:   allTextStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
+};
+
+const textStylesPage = figma.root.children.find((pg) => pg.name === '↳ Text Styles');
 if (!textStylesPage || textStylesPage.type !== 'PAGE') {
-  throw new Error('Page not found (expected \\u21B3 Text Styles)');
+  throw new Error('Page not found (expected ↳ Text Styles)');
 }
 
 const ctx = {
