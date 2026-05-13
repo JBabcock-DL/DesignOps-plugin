@@ -8,9 +8,20 @@ jobs.push(figma.loadFontAsync({ family, style }).catch(() => {}));
 }
 await Promise.all(jobs);
 }
+async function loadFontsForTextStyles(textStyles) {
+const seen = new Set();
+const jobs = [];
+for (const s of textStyles) {
+const fn = s.fontName;
+if (!fn || !fn.family) continue;
+const key = `${fn.family}\0${fn.style || 'Regular'}`;
+if (seen.has(key)) continue;
+seen.add(key);
+jobs.push(figma.loadFontAsync({ family: fn.family, style: fn.style || 'Regular' }).catch(() => {}));
+}
+await Promise.all(jobs);
+}
 async function ensureLocalVariableMapOnCtx(ctx) {
-const m = ctx.variableMap;
-if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
 const allVars = await figma.variables.getLocalVariablesAsync();
 ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 }
@@ -41,6 +52,61 @@ const base = node.strokes.length > 0 ? { ...node.strokes[0] } : { type: 'SOLID',
 const bound = figma.variables.setBoundVariableForPaint(base, 'color', variable);
 node.strokes = [bound];
 }
+const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+function findDesignOpsPage(pageSlug, opts) {
+opts = opts || {};
+const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
+var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+if (bySlug) return bySlug;
+var legacyExact = opts.legacyExact || [];
+var exactMatches = [];
+for (var i = 0; i < legacyExact.length; i++) {
+var nm = legacyExact[i];
+for (var j = 0; j < pages.length; j++) {
+if (pages[j].name === nm) exactMatches.push(pages[j]);
+}
+}
+if (exactMatches.length === 1) return exactMatches[0];
+if (exactMatches.length > 1) return undefined;
+var regexList = opts.legacyRegex || [];
+var regMatches = [];
+for (var r = 0; r < pages.length; r++) {
+var p = pages[r];
+for (var k = 0; k < regexList.length; k++) {
+if (regexList[k].test(p.name)) {
+regMatches.push(p);
+break;
+}
+}
+}
+if (regMatches.length === 1) return regMatches[0];
+return undefined;
+}
+function readDesignOpsCollectionRegistry() {
+var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' && p.name === 'Documentation components'; });
+if (!docPage) return {};
+var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
+if (!frame) return {};
+var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+if (!raw) return {};
+try {
+var o = JSON.parse(raw);
+return typeof o === 'object' && o !== null ? o : {};
+} catch (_) {
+return {};
+}
+}
+function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
+var want = registryIds && registryIds[logicalKey];
+if (want) {
+var live = collections.find(function (c) { return c.id === want; });
+if (live) return live;
+}
+if (typeof fallbackFn === 'function') return fallbackFn();
+return null;
+}
 async function makeText(characters, colWidth, styleId, fillVariable) {
 const t = figma.createText();
 t.characters = String(characters);
@@ -65,7 +131,9 @@ cell.paddingLeft = 16;
 cell.paddingRight = 16;
 cell.counterAxisAlignItems = 'CENTER';
 cell.fills = [];
-const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
+const mutedFillVar = variables['color/background/content-muted'];
+const t = await makeText(label, colWidth, docStyles.Code || null, mutedFillVar);
+if (!mutedFillVar) t.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
 cell.appendChild(t);
 return cell;
 }
@@ -112,13 +180,13 @@ row.paddingTop = 14;
 row.paddingBottom = 14;
 row.counterAxisAlignItems = 'CENTER';
 row.fills = [];
-if (borderVariable) {
-row.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+if (borderVariable !== null) {
+row.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 row.strokeBottomWeight = 1;
 row.strokeTopWeight = 0;
 row.strokeLeftWeight = 0;
 row.strokeRightWeight = 0;
-bindStrokeToVar(row, borderVariable);
+if (borderVariable) bindStrokeToVar(row, borderVariable);
 }
 return row;
 }
@@ -187,11 +255,13 @@ group.fills = [];
 group.clipsContent = false;
 if (title) {
 const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
+if (!contentVar) titleText.fills = [{ type: 'SOLID', color: { r: 0.09, g: 0.09, b: 0.11 } }];
 titleText.name = `doc/table-group/${slug}/title`;
 group.appendChild(titleText);
 }
 if (caption) {
 const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
+if (!mutedVar) capText.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
 capText.name = `doc/table-group/${slug}/caption`;
 group.appendChild(capText);
 }
@@ -203,7 +273,7 @@ table.counterAxisSizingMode = 'FIXED';
 table.resizeWithoutConstraints(1640, 1);
 table.cornerRadius = 16;
 table.clipsContent = true;
-table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+table.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 table.strokeWeight = 1;
 if (borderVar) bindStrokeToVar(table, borderVar);
 if (bgDefault) bindPaintToVar(table, bgDefault);
@@ -215,9 +285,9 @@ header.primaryAxisSizingMode = 'FIXED';
 header.counterAxisSizingMode = 'FIXED';
 header.resize(1640, 48);
 header.counterAxisAlignItems = 'CENTER';
-header.fills = [];
 if (bgVariant) bindPaintToVar(header, bgVariant);
-header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+else header.fills = [{ type: 'SOLID', color: { r: 0.965, g: 0.965, b: 0.969 } }];
+header.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 header.strokeBottomWeight = 1;
 header.strokeTopWeight = 0;
 header.strokeLeftWeight = 0;
@@ -576,7 +646,11 @@ tbdReplacements: tbdFixed,
 missingVariablePaths: missingMinRows,
 };
 }
-const overviewPage = figma.root.children.find((pg) => pg.name === '\u21B3 Token Overview');
+const overviewPage =
+findDesignOpsPage('token-overview', {
+legacyExact: ['\u21B3 Token Overview'],
+legacyRegex: [/token\s*overview/i],
+}) || null;
 if (!overviewPage || overviewPage.type !== 'PAGE') {
 return {
 ok: false,

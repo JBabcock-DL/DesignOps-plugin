@@ -12,6 +12,7 @@ When the parent delegates a style-guide redraw to [`canvas-bundle-runner`](../..
    - **§0.6 / §0.2** — No table `TEXT` (including headers) may keep `textAutoResize: 'NONE'` on shipped tables.
    - **§0.7** — Primitives color swatches: `RECTANGLE` fills bound to the row’s variable (not resolved hex only).
    - **§0.9** — `doc/table/token-overview/platform-mapping` subtree: no stacked shadow / `effectStyleId` on the table or its rows/cells; elevation only on the outer section shell.
+   - **15c Text Styles runner** — If the returned JSON has `ok: false` **or** `specimenStyleMissing` / `specimenStyleMismatch` is greater than zero (when those fields are present), the Text Styles canvas did not attach slot `textStyleId` to every specimen — **FAIL** until re-run or Step 11 close (slot styles) is fixed.
    - Optionally run the **read-only** script in § *Optional machine gate* below (`badHeaderCells`, `badSwatchFills`, etc.) — empty arrays = pass for those probes.
 
 Do not treat `{ ok: true }` from the runner as proof of table fidelity without this gate. See also [`AGENTS.md`](../../../AGENTS.md) § *Table fidelity*.
@@ -52,6 +53,7 @@ Do not treat `{ ok: true }` from the runner as proof of table fidelity without t
 - [ ] Do Body slots include all 5 variants (`regular` / `emphasis` / `italic` / `link` / `strikethrough`) nested inside `Body/{size}/`?
 - [ ] Do `/link` specimen rows bind fill to `color/primary/default` and `/strikethrough` to `color/background/content-muted`?
 - [ ] Are the 5 category sub-header rows present (Display / Headline / Title / Body / Label)?
+- [ ] Does every **slot** row’s SPECIMEN (`TEXT` named `text/specimen` under `cell/specimen`) have `textStyleId` set to that row’s published local text style (same id as the slot style), not default body text?
 
 ## Pages
 - [ ] Did I avoid creating `↳ MCP Tokens` or `[MCP] Token Manifest`?
@@ -79,6 +81,7 @@ After the first full table exists on a style-guide page, run **one** small scrip
 - **`badTableText`** — any `TEXT` whose `name` or `parent.name` includes `/cell/` and `textAutoResize === 'NONE'`.
 - **`badSwatchFills`** — any `RECTANGLE` under a `.../cell/swatch` frame (case-insensitive `swatch`) on a **`doc/table/primitives/color/...`** row where `fills[0]` is `SOLID` and **not** bound (`!fills[0].boundVariables || !fills[0].boundVariables.color`).
 - **`badPageContent`** — any `_PageContent` on a style-guide page where `primaryAxisSizingMode !== 'AUTO'` or `layoutSizingVertical === 'FIXED'` with height **under ~2000px** while it has **`doc/table-group`** descendants (likely clipped).
+- **`badTypographySpecimens`** — any `TEXT` named `text/specimen` under `doc/table/typography/styles` where `!textStyleId` **or** the node’s `textStyleId` does not match the slot style id for the parent row (`row/{tokenPath}` → expected style for that `tokenPath` from the runner’s slot list). Easiest check: `textStyleId` empty, or specimen cell missing under `cell/specimen`.
 - **`badTableGroups`** — any `FRAME` named `doc/table-group/*` with `clipsContent === true` **or** `primaryAxisSizingMode === 'FIXED'` **or** height **under ~200px** while a child `doc/table/*` is **over ~300px** tall (group is clipping the table).
 
 Do **not** treat “the header row frame is 56px tall” as success if `badHeaderCells` is non-empty — child frames can still be 1px slivers. Do **not** treat “the swatch shows color” as success if `badSwatchFills` is non-empty — that is only resolved paint, not token-linked.

@@ -28,6 +28,8 @@ If `step` matches neither table in §2, return `{ ok: false, step, errors: ["unk
 
 Given input `{ step, fileKey, description? }` (parent passes these in its Task prompt):
 
+**Tier 3 (parent scheduling):** On Foundations files from `/new-project` v2 scaffold, the **parent** must run **`/create-design-system`** checklist **Pre-flight snapshot** + **Foundations shell** ([`preflight-snapshot.md`](../create-design-system/phases/preflight-snapshot.md), [`06b-foundations-shell.md`](../create-design-system/phases/06b-foundations-shell.md)) **before** the first style-guide `step` Task — this skill does **not** run those probes.
+
 1. **`Read`** exactly one file — the `.min.mcp.js` that matches `step` (§2 **Canvas** table). No globbing, no enumerating `bundles/`, no reading `_lib.js`, no reading phase files. One `Read`, one path.
 2. **Call `use_figma`** on the Figma MCP server with:
    - `fileKey` — exactly as passed.
@@ -68,6 +70,8 @@ Given input `{ step, fileKey, assembledCodePath, description? }`:
 ```
 
 For **create-component**, set `"workflow": "create-component"`. Surface the same top-level keys the bundle returns when useful (`pageName`, `section`, `compSetVariants`, etc.); always pass the full tool response body through in `raw`.
+
+**Optional step-specific keys:** Canvas bundles may add fields to the success object (e.g. Step `15c-text-styles` may return `specimenStyleOk`, `specimenStyleMissing`, `specimenStyleMismatch`, `slotCount`). Parents must treat unknown keys as **opaque telemetry** — not errors — unless a skill explicitly gates on them (see [`create-design-system/conventions/14-audit.md`](../create-design-system/conventions/14-audit.md) minimum lites for `15c-text-styles`).
 
 **Failure:**
 

@@ -68,6 +68,8 @@ Incident history (which Figma files failed and why) is in [`CHANGELOG.md`](./CHA
 | 02 | Steps 5–9 | [`conventions/01-collections.md`](./conventions/01-collections.md), [`conventions/02-codesyntax.md`](./conventions/02-codesyntax.md) |
 | 03 | Step 10 | **None** |
 | 04 | Step 11 | **None** |
+| pre | After Step 4 or before 15a — read-only snapshot | [`conventions/foundations-shell-and-preflight.md`](./conventions/foundations-shell-and-preflight.md) · [`phases/preflight-snapshot.md`](./phases/preflight-snapshot.md) |
+| 06b | After Step 11 close — Foundations shell (mutating) | [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md) · [`conventions/foundations-shell-and-preflight.md`](./conventions/foundations-shell-and-preflight.md) |
 | 05 | Steps 12–14 | **None** |
 | 06 | Canvas documentation spec | [`conventions/03-through-07-geometry-and-doc-styles.md`](./conventions/03-through-07-geometry-and-doc-styles.md), [`conventions/08-hierarchy-and-09-autolayout.md`](./conventions/08-hierarchy-and-09-autolayout.md) |
 | 07 | Steps 15a–c / any `use_figma` on style-guide tables | [`conventions/16-mcp-use-figma-workflow.md`](./conventions/16-mcp-use-figma-workflow.md) (required for agents) · [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) · [`canvas-templates/_lib.js`](./canvas-templates/_lib.js) + the page template. Open [`conventions/column-widths.json`](./conventions/column-widths.json) when verifying column math. For debugging bindings only: [`conventions/11-cells-12-bindings-13-build-order.md`](./conventions/11-cells-12-bindings-13-build-order.md), [`conventions/00-gotchas.md`](./conventions/00-gotchas.md). |
@@ -131,6 +133,8 @@ Current: Building Primitives…
 - [ ] Optional: write `tokens.css` + Tailwind theme map (your choice — Step 12.5, then Steps 13a–13d if yes)
 - [ ] Summarizing results (counts & file links)
 - [ ] Publishing Doc/\* text styles + Effect/shadow-\* (at **Step 11 close** — see §0.4; if phases 02–04 were skipped, run the Step 11 close / 15c §0 idempotent block **before** canvas so 15a/15b bind on first pass)
+- [ ] Pre-flight snapshot (Tier 3 — read [`phases/preflight-snapshot.md`](./phases/preflight-snapshot.md); observe-only)
+- [ ] Foundations shell (Tier 3 — read [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md); creates five style-guide `PAGE`s + registry + TOC links after variables exist)
 - [ ] Drawing ↳ Primitives style guide (Step 15a)
 - [ ] Drawing ↳ Theme style guide (Step 15b)
 - [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (rest of Step 15c)
@@ -138,15 +142,15 @@ Current: Building Primitives…
 - [ ] Updating Thumbnail cover (brand gradient) (Step 18)
 - [ ] Offering next step (`/create-component`)
 
-**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Steps 13a–13d (`tokens.css` + Tailwind theme map, skip row 9 body if declined) · row 10 → Step 14 · row 11 → **Step 11 close** (Doc/\* + Effect styles; 15c §0 only when running that idempotent block because styles were missing) · rows 12–14 → Steps 15a–15c canvas bodies · rows 15–16 → Steps 17–18 · row 17 → Step 19.
+**Maps to skill steps:** rows 1–5 → Steps 5–9 · row 6 → Step 10 · rows 7–8 → Steps 11–12 · row 9 → Step 12.5 + Steps 13a–13d (`tokens.css` + Tailwind theme map, skip row 9 body if declined) · row 10 → Step 14 · row 11 → **Step 11 close** (Doc/\* + Effect styles; 15c §0 only when running that idempotent block because styles were missing) · rows 12–13 → **pre-flight + Foundations shell (Tier 3)** · rows 14–16 → Steps 15a–15c canvas bodies · rows 17–18 → Steps 17–18 · row 19 → Step 19.
 
-**Docs-only path** (variables already present — see "After Step 4" below): mark rows 1–10 `[x] (skipped — variables present)`, run **Step 11 close** (row 11 — publish Doc/\* + Effect styles if not already in the file), then continue with rows 12–17.
+**Docs-only path** (variables already present — see "After Step 4" below): mark rows 1–10 `[x] (skipped — variables present)`, run **Step 11 close** (row 11 — publish Doc/\* + Effect styles if not already in the file), then **rows 12–13** (pre-flight + Foundations shell when the five style-guide pages are still absent — typical after `/new-project` v2 scaffold), then continue with rows 14–19.
 
 ---
 
 ## Phase execution (required)
 
-Work through the phases **in order**, except when **After Step 4 — variables present vs missing** (subsection below) says to **skip 02–04** and go straight to **06 → 07 → 08** (documentation draw/update). For each phase you execute, **`Read` the linked phase file in full** — phase files are authoritative; this orchestrator only routes. Apply **Conventions load map** for that phase **before** `use_figma` canvas work.
+Work through the phases **in order**, except when **After Step 4 — variables present vs missing** (subsection below) says to **skip 02–04** and go straight to **pre → 06b → 06 → 07 → 08** (documentation draw/update). For Tier 3 files from `/new-project`, **pre** and **06b** run after Step 11 close whenever the five style-guide leaf pages are absent. For each phase you execute, **`Read` the linked phase file in full** — phase files are authoritative; this orchestrator only routes. Apply **Conventions load map** for that phase **before** `use_figma` canvas work.
 
 | Phase | Scope | Read path |
 |------|--------|-----------|
@@ -154,6 +158,8 @@ Work through the phases **in order**, except when **After Step 4 — variables p
 | 02 | Steps 5–9 — generate Primitives, Theme, Typography (+7b), Layout, Effects | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) |
 | 03 | Step 10 — plan approval | [`phases/03-step10.md`](./phases/03-step10.md) |
 | 04 | Step 11 — push (Plugin API + REST `codeSyntax`) | [`phases/04-step11-push.md`](./phases/04-step11-push.md) |
+| pre | Pre-flight snapshot (read-only, Tier 3) | [`phases/preflight-snapshot.md`](./phases/preflight-snapshot.md) |
+| 06b | Foundations shell — five style-guide pages + registry + TOC links | [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md) |
 | 05 | Steps 12–14 — verify, optional CSS, confirm | [`phases/05-steps12-through14.md`](./phases/05-steps12-through14.md) |
 | 06 | Canvas documentation visual spec (§A–H) | [`phases/06-canvas-documentation-spec.md`](./phases/06-canvas-documentation-spec.md) |
 | 07 | Steps 15a–15c — style-guide pages | [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) |
@@ -167,8 +173,8 @@ Work through the phases **in order**, except when **After Step 4 — variables p
 
 | Situation | What to run |
 |-----------|-------------|
-| **No or insufficient variables** — e.g. missing **`Primitives`** or **`Theme`**, collections empty, or nothing local to bind the style guide to | Continue in order: **02 → 03 → 04 → 05**, then **06 → 07 → 08** (full pipeline). |
-| **Variables already in the file** — the registry shows the expected collections (at minimum **`Primitives`** and **`Theme`**) populated with variables suitable for bindings, and the designer has **not** asked to regenerate or replace tokens | **Skip 02–04** (no new generation, no Step 10 plan for a fresh build). **Read 06**, then run **07** and **08** to **draw or refresh** style-guide canvas work (Steps 15a–c, 17–19). Optionally run **05** Step 12 (verify) after canvas if useful. |
+| **No or insufficient variables** — e.g. missing **`Primitives`** or **`Theme`**, collections empty, or nothing local to bind the style guide to | Continue in order: **02 → 03 → 04 → 05**, then **pre → 06b → 06 → 07 → 08** (full pipeline with Tier 3 shell before canvas). |
+| **Variables already in the file** — the registry shows the expected collections (at minimum **`Primitives`** and **`Theme`**) populated with variables suitable for bindings, and the designer has **not** asked to regenerate or replace tokens | **Skip 02–04** (no new generation, no Step 10 plan for a fresh build). Run **Step 11 close** if Doc/* are missing, then **pre → 06b** when the five style-guide pages are absent, then **Read 06**, then run **07** and **08** to **draw or refresh** style-guide canvas work (Steps 15a–c, 17–19). Optionally run **05** Step 12 (verify) after canvas if useful. |
 | Designer **explicitly** wants new ramps, Theme changes, or a full token rebuild | Run **02 → 03 → 04** even when variables already exist. |
 
 If the snapshot is **ambiguous** (partial collections, legacy naming, missing `codeSyntax` on some variables), fire **one** `AskUserQuestion` with three options and commit to the answer — do **not** re-probe variables after the user answers, and do **not** second-guess by asking again later:
@@ -185,4 +191,4 @@ Whichever the designer picks is load-bearing for the rest of the run.
 
 **Do not** use the repo or this skill folder as a clipboard for Figma work: no canvas helper `.js`, no `.mcp-*` / `_mcp-*` files, no `*-once.js`, no `*-payload.json`, no `_tmp*`, and no folders **under this skill** used only to stage plugin code for MCP or to JSON-escape payloads. Those are throwaways — delete them immediately if created by mistake; the deliverable is the **Figma file state**, not staged source files.
 
-**Foundations page list (shared with `/new-project`):** [`../shared/pages.json`](../shared/pages.json).
+**Foundations page list (shared with `/new-project`):** [`../shared/pages.json`](../shared/pages.json). **Tier 3 shell manifest (deferred five leaves + slugs):** [`../shared/designops-foundations-shell.json`](../shared/designops-foundations-shell.json).

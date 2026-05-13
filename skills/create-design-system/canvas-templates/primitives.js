@@ -1,20 +1,19 @@
 // canvas-templates/primitives.js — Step 15a ↳ Primitives
-// Builds 10 tables: 5 color ramps, space, radius, elevation, typeface, font-weight.
+// Fully dynamic — draws whatever is present in ctx.rows. All table sections are optional.
 // Call shape: [_lib.js source] + [this source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"
 //
 // ctx shape:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId }   // optional — _lib ensureLocalVariableMapOnCtx fills when omitted
-//   primitivesModeId: string,                    // Default mode id for Primitives collection
+//   variableMap: (ignored at runtime — _lib ensureLocalVariableMapOnCtx overwrites from local file variables)
 //   docStyles: { Section: id, TokenName: id, Code: id, Caption: id },
 //   rows: {
 //     colorRamps: { [ramp]: [{ tokenPath, resolvedHex, codeSyntax: {WEB,ANDROID,iOS} }] },
-//     space:      [{ tokenPath, resolvedPx, codeSyntax }],
-//     radius:     [{ tokenPath, resolvedPx, codeSyntax }],
-//     elevation:  [{ tokenPath, resolvedValue, codeSyntax }],
-//     typeface:   [{ tokenPath, resolvedValue, codeSyntax }],
-//     fontWeight: [{ tokenPath, resolvedValue, codeSyntax }],
+//     space?:     [{ tokenPath, resolvedPx, codeSyntax }],
+//     radius?:    [{ tokenPath, resolvedPx, codeSyntax }],
+//     elevation?: [{ tokenPath, resolvedValue, codeSyntax }],
+//     typeface?:  [{ tokenPath, resolvedValue, codeSyntax }],
+//     fontWeight?:[{ tokenPath, resolvedValue, codeSyntax }],
 //   }
 // }
 
@@ -98,109 +97,69 @@ async function build(ctx) {
     }, content, variables, docStyles, variableMap);
   }
 
-  // ─── 6: Space ────────────────────────────────────────────────────────────
+  // ─── 6–10: Optional tables (drawn only when runner passes them) ──────────
 
   const spaceColumns = [
-    { id: 'TOKEN',   width: 260 },
-    { id: 'VALUE',   width: 100 },
-    { id: 'PREVIEW', width: 260 },
-    { id: 'WEB',     width: 340 },
-    { id: 'ANDROID', width: 320 },
-    { id: 'iOS',     width: 360 },
+    { id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+    { id: 'PREVIEW', width: 260 }, { id: 'WEB',     width: 340 },
+    { id: 'ANDROID', width: 320 }, { id: 'iOS',     width: 360 },
   ];
-
-  await buildTable({
-    slug: 'primitives/space',
-    title: 'Space',
-    caption: 'Spacing scale on a 4px base grid.',
-    columns: spaceColumns,
-    rows: rows.space,
-    buildRow: buildSpaceRow,
-  }, content, variables, docStyles, variableMap);
-
-  // ─── 7: Radius ───────────────────────────────────────────────────────────
+  if (rows.space && rows.space.length > 0) {
+    await buildTable({ slug: 'primitives/space', title: 'Space', caption: 'Spacing scale on a 4px base grid.',
+      columns: spaceColumns, rows: rows.space, buildRow: buildSpaceRow,
+    }, content, variables, docStyles, variableMap);
+  }
 
   const radiusColumns = [
-    { id: 'TOKEN',   width: 260 },
-    { id: 'VALUE',   width: 100 },
-    { id: 'PREVIEW', width: 260 },
-    { id: 'WEB',     width: 340 },
-    { id: 'ANDROID', width: 320 },
-    { id: 'iOS',     width: 360 },
+    { id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+    { id: 'PREVIEW', width: 260 }, { id: 'WEB',     width: 340 },
+    { id: 'ANDROID', width: 320 }, { id: 'iOS',     width: 360 },
   ];
-
-  await buildTable({
-    slug: 'primitives/radius',
-    title: 'Corner Radius',
-    caption: 'Corner rounding primitives from square through pill.',
-    columns: radiusColumns,
-    rows: rows.radius,
-    buildRow: buildRadiusRow,
-  }, content, variables, docStyles, variableMap);
-
-  // ─── 8: Elevation ────────────────────────────────────────────────────────
+  if (rows.radius && rows.radius.length > 0) {
+    await buildTable({ slug: 'primitives/radius', title: 'Corner Radius',
+      caption: 'Corner rounding primitives from square through pill.',
+      columns: radiusColumns, rows: rows.radius, buildRow: buildRadiusRow,
+    }, content, variables, docStyles, variableMap);
+  }
 
   const elevationColumns = [
-    { id: 'TOKEN',   width: 260 },
-    { id: 'VALUE',   width: 100 },
-    { id: 'WEB',     width: 400 },
-    { id: 'ANDROID', width: 380 },
-    { id: 'iOS',     width: 500 },
+    { id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+    { id: 'WEB',     width: 400 }, { id: 'ANDROID', width: 380 }, { id: 'iOS', width: 500 },
   ];
-
-  await buildTable({
-    slug: 'primitives/elevation',
-    title: 'Elevation',
-    caption: 'Raw blur steps consumed by shadow/*/blur aliases in Effects.',
-    columns: elevationColumns,
-    rows: rows.elevation,
-    buildRow: buildMonoRow,
-  }, content, variables, docStyles, variableMap);
-
-  // ─── 9: Typeface ─────────────────────────────────────────────────────────
+  if (rows.elevation && rows.elevation.length > 0) {
+    await buildTable({ slug: 'primitives/elevation', title: 'Elevation',
+      caption: 'Raw blur steps consumed by shadow/*/blur aliases in Effects.',
+      columns: elevationColumns, rows: rows.elevation, buildRow: buildMonoRow,
+    }, content, variables, docStyles, variableMap);
+  }
 
   const typefaceColumns = [
-    { id: 'TOKEN',    width: 320 },
-    { id: 'SPECIMEN', width: 460 },
-    { id: 'VALUE',    width: 200 },
-    { id: 'WEB',      width: 320 },
-    { id: 'ANDROID',  width: 160 },
-    { id: 'iOS',      width: 180 },
+    { id: 'TOKEN',    width: 320 }, { id: 'SPECIMEN', width: 460 }, { id: 'VALUE',   width: 200 },
+    { id: 'WEB',      width: 320 }, { id: 'ANDROID',  width: 160 }, { id: 'iOS',     width: 180 },
   ];
-
-  await buildTable({
-    slug: 'primitives/typeface',
-    title: 'Typeface',
-    caption: 'Font family primitives. Display for headings, Body for paragraph text.',
-    columns: typefaceColumns,
-    rows: rows.typeface,
-    buildRow: buildTypefaceRow,
-  }, content, variables, docStyles, variableMap);
-
-  // ─── 10: Font weight ─────────────────────────────────────────────────────
+  if (rows.typeface && rows.typeface.length > 0) {
+    await buildTable({ slug: 'primitives/typeface', title: 'Typeface',
+      caption: 'Font family primitives. Display for headings, Body for paragraph text.',
+      columns: typefaceColumns, rows: rows.typeface, buildRow: buildTypefaceRow,
+    }, content, variables, docStyles, variableMap);
+  }
 
   const fontWeightColumns = [
-    { id: 'TOKEN',   width: 260 },
-    { id: 'VALUE',   width: 100 },
-    { id: 'WEB',     width: 400 },
-    { id: 'ANDROID', width: 380 },
-    { id: 'iOS',     width: 500 },
+    { id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+    { id: 'WEB',     width: 400 }, { id: 'ANDROID', width: 380 }, { id: 'iOS',     width: 500 },
   ];
-
-  await buildTable({
-    slug: 'primitives/font-weight',
-    title: 'Font weight',
-    caption: 'Shared emphasis weight (Typography Body/*/emphasis aliases this Primitive).',
-    columns: fontWeightColumns,
-    rows: rows.fontWeight,
-    buildRow: buildMonoRow,
-  }, content, variables, docStyles, variableMap);
+  if (rows.fontWeight && rows.fontWeight.length > 0) {
+    await buildTable({ slug: 'primitives/font-weight', title: 'Font weight',
+      caption: 'Shared emphasis weight (Typography Body/*/emphasis aliases this Primitive).',
+      columns: fontWeightColumns, rows: rows.fontWeight, buildRow: buildMonoRow,
+    }, content, variables, docStyles, variableMap);
+  }
 
   // ── Restore auto-layout (C2) ───────────────────────────────────────────────
   content.layoutMode = 'VERTICAL';
   content.layoutSizingVertical = 'HUG';
 
-  console.log('Canvas: Step 15a ↳ Primitives — done (10 tables)');
+  console.log(`Canvas: Step 15a ↳ Primitives — done`);
 }
 
 // ─── Row builders ─────────────────────────────────────────────────────────────

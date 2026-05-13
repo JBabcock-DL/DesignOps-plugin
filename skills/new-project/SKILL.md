@@ -89,6 +89,8 @@ Capture the returned `fileKey`. This is the file you will scaffold in Step 5.
 
 Immediately after the Step 5 `use_figma` succeeds, show the checklist below in chat. After **each** later phase succeeds, **repost the entire checklist** with updated `[x]` markers and advance the `Current:` line. Do not paste phase scripts into these progress messages. If a phase fails, leave its box `[ ]`, add a one-line note, `Read` that phase file again, and retry **only** that phase — never check later items until earlier ones succeed.
 
+**Optional (Tier 3):** After Step 5, you may run the read-only pre-flight probe from [`../create-design-system/phases/preflight-snapshot.md`](../create-design-system/phases/preflight-snapshot.md) to confirm the five style-guide `PAGE`s are absent and log `shellCandidateBranch` (e.g. `fresh_shell`).
+
 **Progress (`/new-project`)**
 
 Current: Step 5c — Table of Contents
@@ -154,10 +156,12 @@ For each row below, in order:
 
 The following pages are sourced directly from the Detroit Labs Foundations template (`rJQsr4aou5yjzUhaEM0I2f`). The canonical ordered list lives in [`skills/shared/pages.json`](../shared/pages.json) and is mirrored in `skills/new-project/phases/05-scaffold-pages.md` for the scaffold script. To update them, edit the JSON first, then align the `pages` array in that phase file.
 
+**Style-guide leaf pages (Tier 3):** The five token table pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`) are **not** in `pages.json` / Step 5 — they are created by **`/create-design-system`** Phase **06b** (Foundations shell) after variables exist. Their titles, header blurbs, and machine slugs are defined in [`skills/shared/designops-foundations-shell.json`](../shared/designops-foundations-shell.json). TOC rows for those names still appear from Phase 05c; hyperlinks wire in 06b (see [`../create-design-system/phases/06b-foundations-shell.md`](../create-design-system/phases/06b-foundations-shell.md)).
+
 **Sections:**
 - Thumbnail
 - Table of Contents (Token Overview)
-- Style Guide (Primitives, Theme, Layout, Text Styles, Effects)
+- Style Guide section header page `🖍️ Style Guide` only at scaffold time — **leaf pages** created by `/create-design-system` 06b (see above)
 - Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
 - Atoms (Typography, Text blocks, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)
 - Buttons & Controls (Buttons, Button Group, Toggle, Toggle Group, Segmented Controller) — component pages populated later by `/create-component`; see [`skills/create-component/conventions/01-config-schema.md` §3.3](../create-component/conventions/01-config-schema.md) for the drawing spec

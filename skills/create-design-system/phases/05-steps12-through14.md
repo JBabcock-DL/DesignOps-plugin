@@ -1,3 +1,9 @@
+## Tier 3 note (Foundations shell)
+
+Before **Step 15a** canvas (see [`07-steps15a-15c.md`](./07-steps15a-15c.md)), complete **`/create-design-system`** checklist rows **Pre-flight snapshot** and **Foundations shell** ([`06b-foundations-shell.md`](./06b-foundations-shell.md)) whenever the file was scaffolded without the five style-guide leaf pages — see [`../SKILL.md`](../SKILL.md).
+
+---
+
 ## Step 12 — Verify the write
 
 After all five Step 11 collection passes complete, read the current variable state:

@@ -1,8 +1,9 @@
 // canvas-templates/_lib.js — shared helpers for all Step 15 canvas templates
 // §0 rules from conventions/00-gotchas.md are enforced in every helper below.
 // Agent call shape: [_lib.js source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"
-// Optional: omit ctx.variableMap to shrink MCP `code` — each page template calls
-// ensureLocalVariableMapOnCtx(ctx) first; it fills path → id from getLocalVariablesAsync() when missing or {}.
+// Optional: omit ctx.variableMap from JSON — each page template calls
+// ensureLocalVariableMapOnCtx(ctx) first; it always rebuilds path → id from
+// getLocalVariablesAsync() so host-injected maps cannot override file truth.
 
 // ─── Font loading ────────────────────────────────────────────────────────────
 
@@ -17,13 +18,25 @@ async function loadFonts(families) {
   await Promise.all(jobs);
 }
 
+// Load every fontName referenced by local text styles (e.g. slot styles before SPECIMEN textStyleId).
+async function loadFontsForTextStyles(textStyles) {
+  const seen = new Set();
+  const jobs = [];
+  for (const s of textStyles) {
+    const fn = s.fontName;
+    if (!fn || !fn.family) continue;
+    const key = `${fn.family}\0${fn.style || 'Regular'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    jobs.push(figma.loadFontAsync({ family: fn.family, style: fn.style || 'Regular' }).catch(() => {}));
+  }
+  await Promise.all(jobs);
+}
+
 // ─── Variable helpers ────────────────────────────────────────────────────────
 
-// Hydrate ctx.variableMap inside Figma when the agent omits it (smaller JSON.stringify(ctx) for MCP).
-// No-op if variableMap is already a non-empty object (backward-compatible with full ctx).
+// Always rebuild ctx.variableMap from local file variables (ignores host ctx.variableMap).
 async function ensureLocalVariableMapOnCtx(ctx) {
-  const m = ctx.variableMap;
-  if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
   const allVars = await figma.variables.getLocalVariablesAsync();
   ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 }
@@ -63,6 +76,83 @@ function bindStrokeToVar(node, variable) {
   node.strokes = [bound];
 }
 
+// ─── Tier 3: DesignOps page slug + collection registry (Foundations shell) ───
+
+const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+
+/**
+ * Resolve a Foundations style-guide page by pluginData slug first, then legacy exact names, then regexes.
+ * @param {string} pageSlug e.g. 'primitives', 'text-styles'
+ * @param {{ legacyExact?: string[], legacyRegex?: RegExp[] }} [opts]
+ * @returns {PageNode | undefined}
+ */
+function findDesignOpsPage(pageSlug, opts) {
+  opts = opts || {};
+  const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
+  var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+  if (bySlug) return bySlug;
+
+  var legacyExact = opts.legacyExact || [];
+  var exactMatches = [];
+  for (var i = 0; i < legacyExact.length; i++) {
+    var nm = legacyExact[i];
+    for (var j = 0; j < pages.length; j++) {
+      if (pages[j].name === nm) exactMatches.push(pages[j]);
+    }
+  }
+  if (exactMatches.length === 1) return exactMatches[0];
+  if (exactMatches.length > 1) return undefined;
+
+  var regexList = opts.legacyRegex || [];
+  var regMatches = [];
+  for (var r = 0; r < pages.length; r++) {
+    var p = pages[r];
+    for (var k = 0; k < regexList.length; k++) {
+      if (regexList[k].test(p.name)) {
+        regMatches.push(p);
+        break;
+      }
+    }
+  }
+  if (regMatches.length === 1) return regMatches[0];
+  return undefined;
+}
+
+/** @returns {Record<string, string>} */
+function readDesignOpsCollectionRegistry() {
+  var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' && p.name === 'Documentation components'; });
+  if (!docPage) return {};
+  var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
+  if (!frame) return {};
+  var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+  if (!raw) return {};
+  try {
+    var o = JSON.parse(raw);
+    return typeof o === 'object' && o !== null ? o : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+/**
+ * Resolve a variable collection for canvas runners. Plan §5.4 heuristic order when resolving by logical key:
+ * 1) registry id for key K → use live collection with that id if it exists;
+ * 2) else exact-name match for the conventional collection name;
+ * 3) else manifest-style alias / conservative fuzzy (caller supplies fallbackFn);
+ * 4) ambiguous 0 or >1 matches → caller returns null / escalates (shell throws; runners log).
+ */
+function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
+  var want = registryIds && registryIds[logicalKey];
+  if (want) {
+    var live = collections.find(function (c) { return c.id === want; });
+    if (live) return live;
+  }
+  if (typeof fallbackFn === 'function') return fallbackFn();
+  return null;
+}
+
 // ─── Text helpers (§0.2, §0.6) ───────────────────────────────────────────────
 
 // §0.2: characters → resize(w,1) → textAutoResize='HEIGHT'. Never 'NONE'.
@@ -96,7 +186,9 @@ async function makeHeaderCell(colWidth, label, docStyles, variables) {
   cell.counterAxisAlignItems = 'CENTER';
   cell.fills = [];
 
-  const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
+  const mutedFillVar = variables['color/background/content-muted'];
+  const t = await makeText(label, colWidth, docStyles.Code || null, mutedFillVar);
+  if (!mutedFillVar) t.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
   cell.appendChild(t);
   return cell;
 }
@@ -159,13 +251,14 @@ function makeBodyRow(tokenPath, borderVariable) {
   row.paddingBottom = 14;
   row.counterAxisAlignItems = 'CENTER';
   row.fills = [];
-  if (borderVariable) {
-    row.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  // borderVariable===null means last row (no border); undefined or Variable means add border
+  if (borderVariable !== null) {
+    row.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
     row.strokeBottomWeight = 1;
     row.strokeTopWeight = 0;
     row.strokeLeftWeight = 0;
     row.strokeRightWeight = 0;
-    bindStrokeToVar(row, borderVariable);
+    if (borderVariable) bindStrokeToVar(row, borderVariable);
   }
   return row;
 }
@@ -256,11 +349,13 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   // title + caption (§0.6: textAutoResize='HEIGHT' on direct TEXT children)
   if (title) {
     const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
+    if (!contentVar) titleText.fills = [{ type: 'SOLID', color: { r: 0.09, g: 0.09, b: 0.11 } }];
     titleText.name = `doc/table-group/${slug}/title`;
     group.appendChild(titleText);
   }
   if (caption) {
     const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
+    if (!mutedVar) capText.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
     capText.name = `doc/table-group/${slug}/caption`;
     group.appendChild(capText);
   }
@@ -274,7 +369,7 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   table.resizeWithoutConstraints(1640, 1);
   table.cornerRadius = 16;
   table.clipsContent = true;
-  table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  table.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   table.strokeWeight = 1;
   if (borderVar) bindStrokeToVar(table, borderVar);
   if (bgDefault) bindPaintToVar(table, bgDefault);
@@ -288,9 +383,9 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   header.counterAxisSizingMode = 'FIXED';
   header.resize(1640, 48);
   header.counterAxisAlignItems = 'CENTER';
-  header.fills = [];
   if (bgVariant) bindPaintToVar(header, bgVariant);
-  header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  else header.fills = [{ type: 'SOLID', color: { r: 0.965, g: 0.965, b: 0.969 } }];
+  header.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   header.strokeBottomWeight = 1;
   header.strokeTopWeight = 0;
   header.strokeLeftWeight = 0;
@@ -409,7 +504,7 @@ async function buildPageContent(page) {
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
+//   variableMap: (ignored at runtime — _lib ensureLocalVariableMapOnCtx overwrites from local file variables)
 //   docStyles: { Section, TokenName, Code, Caption },
 //   themeCollectionId: string,
 //   themeLightModeId: string,
@@ -576,17 +671,60 @@ async function buildThemeRow(row, rowData, columns, deps) {
     cell.fills = [];
   }
 }
-// Concatenate after _lib.js + theme.js (phase 07). Resolves Theme rows in-plugin; ctx omits variableMap.
-// Fully dynamic — discovers all Theme COLOR variables grouped by first path segment.
-// Accepts any mode name: "Light", "Light mode", "light", "Dark", "Dark mode", etc.
+// Concatenate after _lib.js + theme.js (phase 07). Resolves Theme rows in-plugin.
+// Collection-scoped: finds the Theme-like collection by fuzzy name match (or Light/Dark mode
+// detection), then draws ONLY COLOR vars from that collection grouped by first path segment.
+
 const allVars = await figma.variables.getLocalVariablesAsync();
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const themeColl = collections.find((c) => c.name === 'Theme');
-const primColl = collections.find((c) => c.name === 'Primitives');
-if (!themeColl) throw new Error('Theme collection missing');
-if (!primColl) throw new Error('Primitives collection missing');
+const registryIds = readDesignOpsCollectionRegistry();
 
-// Flexible mode detection: accept "Light", "Light mode", "light" etc.
+// ── Find the Theme-like collection (fuzzy) ────────────────────────────────────
+// Priority: registry id → exact "Theme" → keyword match → any collection with both Light AND Dark modes
+function findThemeCollection() {
+  return resolveCollectionByLogicalKey('theme', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Theme');
+  if (exact) return exact;
+  const fuzzy = collections.find((c) => /theme|semantic/i.test(c.name));
+  if (fuzzy) return fuzzy;
+  return (
+    collections.find(
+      (c) =>
+        c.modes.some((m) => /^light/i.test(m.name.trim())) &&
+        c.modes.some((m) => /^dark/i.test(m.name.trim()))
+    ) || null
+  );
+  });
+}
+
+// ── Find the base/primitives collection for alias resolution ──────────────────
+function findPrimitivesCollection(themeCollId) {
+  return resolveCollectionByLogicalKey('primitives', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Primitives' && c.id !== themeCollId);
+  if (exact) return exact;
+  const fuzzy = collections.find((c) =>
+    /primitiv|core|foundation|base/i.test(c.name) && c.id !== themeCollId
+  );
+  if (fuzzy) return fuzzy;
+  const candidates = collections
+    .filter((c) => c.id !== themeCollId && c.modes.length === 1)
+    .map((c) => ({
+      c,
+      colorCount: allVars.filter((v) => v.variableCollectionId === c.id && v.resolvedType === 'COLOR').length,
+    }))
+    .sort((a, b) => b.colorCount - a.colorCount);
+  return candidates[0]?.c || null;
+  });
+}
+
+const themeColl = findThemeCollection();
+if (!themeColl) {
+  throw new Error(
+    'No Theme-like collection found. Available: ' + collections.map((c) => c.name).join(', ')
+  );
+}
+const primColl = findPrimitivesCollection(themeColl.id);
+
 const themeLightModeId = (
   themeColl.modes.find((m) => /^light/i.test(m.name.trim())) || themeColl.modes[0]
 ).modeId;
@@ -595,7 +733,7 @@ const themeDarkModeId = (
   themeColl.modes[1] ||
   themeColl.modes[0]
 ).modeId;
-const primModeId = primColl.modes[0].modeId;
+const primModeId = primColl ? primColl.modes[0].modeId : themeLightModeId;
 
 function colorToHex(c) {
   if (!c) return '#000000';
@@ -611,10 +749,10 @@ async function resolveHex(varId, themeModeId) {
     if (val == null) return '#000000';
     if (typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
       const next = await figma.variables.getVariableByIdAsync(val.id);
-      const nextColl = await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId);
-      if (nextColl.id === primColl.id) m = primModeId;
-      else if (nextColl.id === themeColl.id) m = themeModeId;
-      else m = nextColl.modes[0].modeId;
+      const nextColl = collections.find((c) => c.id === next.variableCollectionId);
+      if (nextColl?.id === primColl?.id) m = primModeId;
+      else if (nextColl?.id === themeColl.id) m = themeModeId;
+      else m = nextColl ? nextColl.modes[0].modeId : m;
       v = next;
       continue;
     }
@@ -630,10 +768,8 @@ async function resolveFirstAlias(varId, themeModeId) {
   if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
     try {
       const next = await figma.variables.getVariableByIdAsync(val.id);
-      return next && next.name ? next.name : null;
-    } catch (_) {
-      return null;
-    }
+      return next?.name || null;
+    } catch (_) { return null; }
   }
   return null;
 }
@@ -643,7 +779,7 @@ function readCS(v) {
   return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
 
-// Discover ALL Theme COLOR variables, group by first path segment
+// All COLOR vars from this collection only, grouped by first path segment
 const themeVars = allVars.filter(
   (v) => v.variableCollectionId === themeColl.id && v.resolvedType === 'COLOR'
 );
@@ -651,10 +787,7 @@ const groupOrder = [];
 const groupMap = {};
 for (const v of themeVars) {
   const firstSeg = v.name.split('/')[0];
-  if (!groupMap[firstSeg]) {
-    groupMap[firstSeg] = [];
-    groupOrder.push(firstSeg);
-  }
+  if (!groupMap[firstSeg]) { groupMap[firstSeg] = []; groupOrder.push(firstSeg); }
   groupMap[firstSeg].push(v);
 }
 
@@ -663,15 +796,13 @@ for (const group of groupOrder) {
   allRows[group] = [];
   for (const v of groupMap[group]) {
     const light = await resolveHex(v.id, themeLightModeId);
-    const dark = await resolveHex(v.id, themeDarkModeId);
-    const aliasLightLive = await resolveFirstAlias(v.id, themeLightModeId);
-    const aliasDarkLive = await resolveFirstAlias(v.id, themeDarkModeId);
+    const dark  = await resolveHex(v.id, themeDarkModeId);
+    const aliasLight = await resolveFirstAlias(v.id, themeLightModeId);
+    const aliasDark  = await resolveFirstAlias(v.id, themeDarkModeId);
     allRows[group].push({
       tokenPath: v.name,
-      resolvedHexLight: light,
-      resolvedHexDark: dark,
-      aliasLight: aliasLightLive,
-      aliasDark: aliasDarkLive,
+      resolvedHexLight: light, resolvedHexDark: dark,
+      aliasLight, aliasDark,
       codeSyntax: readCS(v),
     });
   }
@@ -679,25 +810,33 @@ for (const group of groupOrder) {
 
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
-  Section: textStyles.find((s) => s.name === 'Doc/Section')?.id || null,
+  Section:   textStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
   TokenName: textStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
-  Code: textStyles.find((s) => s.name === 'Doc/Code')?.id || null,
-  Caption: textStyles.find((s) => s.name === 'Doc/Caption')?.id || null,
+  Code:      textStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
+  Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 
-const themePage = figma.root.children.find((pg) => pg.name === '↳ Theme');
+const themePage =
+  findDesignOpsPage('theme', {
+    legacyExact: ['↳ Theme'],
+    legacyRegex: [/^↳?\s*theme/i],
+  }) || null;
 if (!themePage || themePage.type !== 'PAGE') {
-  throw new Error('Page not found (expected ↳ Theme)');
+  throw new Error(
+    'Page not found (expected ↳ Theme / slug theme). Pages: ' +
+      figma.root.children.filter((c) => c.type === 'PAGE').map((c) => c.name).join(' | ')
+  );
 }
 
 const ctx = {
-  pageId: themePage.id,
-  docStyles,
+  pageId: themePage.id, docStyles,
   themeCollectionId: themeColl.id,
-  themeLightModeId,
-  themeDarkModeId,
+  themeLightModeId, themeDarkModeId,
   rows: allRows,
 };
 await build(ctx);
 const tableGroups = themePage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
-return { ok: true, step: '15b-theme', pageId: themePage.id, tableGroups, pageName: themePage.name };
+return {
+  ok: true, step: '15b-theme', pageId: themePage.id,
+  collection: themeColl.name, tableGroups, pageName: themePage.name,
+};

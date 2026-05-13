@@ -5,7 +5,10 @@
 The ordered `pages` array must stay **byte-for-byte aligned** with [`skills/shared/pages.json`](../../shared/pages.json) (`pages` field). When you add or rename a Foundations page, update the JSON first, then mirror the same strings (including emoji and `---` section markers) in the `const pages = [...]` array below.
 
 ## Goal
-Create every page in the Detroit Labs Foundations template via one `use_figma` invocation.
+
+Create every **scaffolded** page in the Detroit Labs Foundations template via one `use_figma` invocation.
+
+The five style-guide **leaf** pages (`↳ Primitives`, `↳ Theme`, `↳ Layout`, `↳ Text Styles`, `↳ Effects`) are **not** created here — they are created or reconciled by **`/create-design-system`** Phase **06b** (Foundations shell) after variables and Step 11 close. TOC rows for those names still exist from Phase 05c; hyperlinks wire when 06b runs (see [`../../create-design-system/phases/06b-foundations-shell.md`](../../create-design-system/phases/06b-foundations-shell.md)).
 
 ## Prerequisites
 - Step 4 returned a `fileKey` for the new Foundations file.
@@ -33,14 +36,9 @@ const pages = [
   "📝 Table of Contents",
   "↳ Token Overview",
 
-  // ── Style Guide ───────────────────────────────────
+  // ── Style Guide (leaf token pages created by /create-design-system Phase 06b) ──
   "---",
   "🖍️ Style Guide",
-  "↳ Primitives",
-  "↳ Theme",
-  "↳ Layout",
-  "↳ Text Styles",
-  "↳ Effects",
 
   // ── Brand ─────────────────────────────────────────
   "---",

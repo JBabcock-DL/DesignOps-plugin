@@ -1,8 +1,9 @@
 // canvas-templates/_lib.js — shared helpers for all Step 15 canvas templates
 // §0 rules from conventions/00-gotchas.md are enforced in every helper below.
 // Agent call shape: [_lib.js source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"
-// Optional: omit ctx.variableMap to shrink MCP `code` — each page template calls
-// ensureLocalVariableMapOnCtx(ctx) first; it fills path → id from getLocalVariablesAsync() when missing or {}.
+// Optional: omit ctx.variableMap from JSON — each page template calls
+// ensureLocalVariableMapOnCtx(ctx) first; it always rebuilds path → id from
+// getLocalVariablesAsync() so host-injected maps cannot override file truth.
 
 // ─── Font loading ────────────────────────────────────────────────────────────
 
@@ -17,13 +18,25 @@ async function loadFonts(families) {
   await Promise.all(jobs);
 }
 
+// Load every fontName referenced by local text styles (e.g. slot styles before SPECIMEN textStyleId).
+async function loadFontsForTextStyles(textStyles) {
+  const seen = new Set();
+  const jobs = [];
+  for (const s of textStyles) {
+    const fn = s.fontName;
+    if (!fn || !fn.family) continue;
+    const key = `${fn.family}\0${fn.style || 'Regular'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    jobs.push(figma.loadFontAsync({ family: fn.family, style: fn.style || 'Regular' }).catch(() => {}));
+  }
+  await Promise.all(jobs);
+}
+
 // ─── Variable helpers ────────────────────────────────────────────────────────
 
-// Hydrate ctx.variableMap inside Figma when the agent omits it (smaller JSON.stringify(ctx) for MCP).
-// No-op if variableMap is already a non-empty object (backward-compatible with full ctx).
+// Always rebuild ctx.variableMap from local file variables (ignores host ctx.variableMap).
 async function ensureLocalVariableMapOnCtx(ctx) {
-  const m = ctx.variableMap;
-  if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
   const allVars = await figma.variables.getLocalVariablesAsync();
   ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 }
@@ -63,6 +76,83 @@ function bindStrokeToVar(node, variable) {
   node.strokes = [bound];
 }
 
+// ─── Tier 3: DesignOps page slug + collection registry (Foundations shell) ───
+
+const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+
+/**
+ * Resolve a Foundations style-guide page by pluginData slug first, then legacy exact names, then regexes.
+ * @param {string} pageSlug e.g. 'primitives', 'text-styles'
+ * @param {{ legacyExact?: string[], legacyRegex?: RegExp[] }} [opts]
+ * @returns {PageNode | undefined}
+ */
+function findDesignOpsPage(pageSlug, opts) {
+  opts = opts || {};
+  const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
+  var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+  if (bySlug) return bySlug;
+
+  var legacyExact = opts.legacyExact || [];
+  var exactMatches = [];
+  for (var i = 0; i < legacyExact.length; i++) {
+    var nm = legacyExact[i];
+    for (var j = 0; j < pages.length; j++) {
+      if (pages[j].name === nm) exactMatches.push(pages[j]);
+    }
+  }
+  if (exactMatches.length === 1) return exactMatches[0];
+  if (exactMatches.length > 1) return undefined;
+
+  var regexList = opts.legacyRegex || [];
+  var regMatches = [];
+  for (var r = 0; r < pages.length; r++) {
+    var p = pages[r];
+    for (var k = 0; k < regexList.length; k++) {
+      if (regexList[k].test(p.name)) {
+        regMatches.push(p);
+        break;
+      }
+    }
+  }
+  if (regMatches.length === 1) return regMatches[0];
+  return undefined;
+}
+
+/** @returns {Record<string, string>} */
+function readDesignOpsCollectionRegistry() {
+  var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' && p.name === 'Documentation components'; });
+  if (!docPage) return {};
+  var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
+  if (!frame) return {};
+  var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+  if (!raw) return {};
+  try {
+    var o = JSON.parse(raw);
+    return typeof o === 'object' && o !== null ? o : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+/**
+ * Resolve a variable collection for canvas runners. Plan §5.4 heuristic order when resolving by logical key:
+ * 1) registry id for key K → use live collection with that id if it exists;
+ * 2) else exact-name match for the conventional collection name;
+ * 3) else manifest-style alias / conservative fuzzy (caller supplies fallbackFn);
+ * 4) ambiguous 0 or >1 matches → caller returns null / escalates (shell throws; runners log).
+ */
+function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
+  var want = registryIds && registryIds[logicalKey];
+  if (want) {
+    var live = collections.find(function (c) { return c.id === want; });
+    if (live) return live;
+  }
+  if (typeof fallbackFn === 'function') return fallbackFn();
+  return null;
+}
+
 // ─── Text helpers (§0.2, §0.6) ───────────────────────────────────────────────
 
 // §0.2: characters → resize(w,1) → textAutoResize='HEIGHT'. Never 'NONE'.
@@ -96,7 +186,9 @@ async function makeHeaderCell(colWidth, label, docStyles, variables) {
   cell.counterAxisAlignItems = 'CENTER';
   cell.fills = [];
 
-  const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
+  const mutedFillVar = variables['color/background/content-muted'];
+  const t = await makeText(label, colWidth, docStyles.Code || null, mutedFillVar);
+  if (!mutedFillVar) t.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
   cell.appendChild(t);
   return cell;
 }
@@ -159,13 +251,14 @@ function makeBodyRow(tokenPath, borderVariable) {
   row.paddingBottom = 14;
   row.counterAxisAlignItems = 'CENTER';
   row.fills = [];
-  if (borderVariable) {
-    row.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  // borderVariable===null means last row (no border); undefined or Variable means add border
+  if (borderVariable !== null) {
+    row.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
     row.strokeBottomWeight = 1;
     row.strokeTopWeight = 0;
     row.strokeLeftWeight = 0;
     row.strokeRightWeight = 0;
-    bindStrokeToVar(row, borderVariable);
+    if (borderVariable) bindStrokeToVar(row, borderVariable);
   }
   return row;
 }
@@ -256,11 +349,13 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   // title + caption (§0.6: textAutoResize='HEIGHT' on direct TEXT children)
   if (title) {
     const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
+    if (!contentVar) titleText.fills = [{ type: 'SOLID', color: { r: 0.09, g: 0.09, b: 0.11 } }];
     titleText.name = `doc/table-group/${slug}/title`;
     group.appendChild(titleText);
   }
   if (caption) {
     const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
+    if (!mutedVar) capText.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
     capText.name = `doc/table-group/${slug}/caption`;
     group.appendChild(capText);
   }
@@ -274,7 +369,7 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   table.resizeWithoutConstraints(1640, 1);
   table.cornerRadius = 16;
   table.clipsContent = true;
-  table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  table.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   table.strokeWeight = 1;
   if (borderVar) bindStrokeToVar(table, borderVar);
   if (bgDefault) bindPaintToVar(table, bgDefault);
@@ -288,9 +383,9 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   header.counterAxisSizingMode = 'FIXED';
   header.resize(1640, 48);
   header.counterAxisAlignItems = 'CENTER';
-  header.fills = [];
   if (bgVariant) bindPaintToVar(header, bgVariant);
-  header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  else header.fills = [{ type: 'SOLID', color: { r: 0.965, g: 0.965, b: 0.969 } }];
+  header.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   header.strokeBottomWeight = 1;
   header.strokeTopWeight = 0;
   header.strokeLeftWeight = 0;
@@ -408,7 +503,7 @@ async function buildPageContent(page) {
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
+//   variableMap: (ignored at runtime — _lib ensureLocalVariableMapOnCtx overwrites from local file variables)
 //   docStyles: { Section, TokenName, Code, Caption },
 //   rows: {
 //     spacing: [{ tokenPath, resolvedPx, aliasPath, codeSyntax: {WEB,ANDROID,iOS} }],
@@ -601,28 +696,65 @@ async function buildLayoutRadiusRow(row, rowData, columns, deps) {
     cell.fills = [];
   }
 }
-// Concatenate after _lib.js + layout.js (phase 07). Resolves Layout rows in-plugin; ctx omits variableMap.
-// Fully dynamic — discovers all Layout FLOAT variables grouped by first path segment.
-// Handles any naming convention (space/xs, padding/md, radius/lg, border/sm, etc.).
+// Concatenate after _lib.js + layout.js (phase 07). Resolves Layout rows in-plugin.
+// Collection-scoped: finds the Layout-like collection by fuzzy name match, then draws
+// ONLY FLOAT vars from that collection grouped by first path segment.
+// Nothing is cross-collected — variables in other collections are untouched.
+
 const allVars = await figma.variables.getLocalVariablesAsync();
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const layoutColl = collections.find((c) => c.name === 'Layout');
-const primColl = collections.find((c) => c.name === 'Primitives');
-if (!layoutColl) throw new Error('Layout collection missing');
+const registryIds = readDesignOpsCollectionRegistry();
+
+// ── Find the Layout-like collection (fuzzy) ───────────────────────────────────
+// Priority: registry id → exact "Layout" → keyword match → FLOAT-dominant non-theme collection
+function findLayoutCollection() {
+  return resolveCollectionByLogicalKey('layout', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Layout');
+  if (exact) return exact;
+  const fuzzy = collections.find((c) => /layout|spacing|dimensional/i.test(c.name));
+  if (fuzzy) return fuzzy;
+  const themed = new Set(
+    collections
+      .filter((c) => c.modes.some((m) => /^light/i.test(m.name)) && c.modes.some((m) => /^dark/i.test(m.name)))
+      .map((c) => c.id)
+  );
+  const floatDominant = collections
+    .filter((c) => !themed.has(c.id))
+    .map((c) => {
+      const vars = allVars.filter((v) => v.variableCollectionId === c.id);
+      const floats = vars.filter((v) => v.resolvedType === 'FLOAT').length;
+      return { c, ratio: vars.length > 0 ? floats / vars.length : 0, total: vars.length };
+    })
+    .filter(({ ratio, total }) => ratio > 0.6 && total > 2)
+    .sort((a, b) => b.ratio - a.ratio);
+  return floatDominant[0]?.c || null;
+  });
+}
+
+const layoutColl = findLayoutCollection();
+if (!layoutColl) {
+  throw new Error(
+    'No Layout-like collection found. Available: ' + collections.map((c) => c.name).join(', ')
+  );
+}
+
 const layoutModeId = layoutColl.modes[0].modeId;
-const primModeId = primColl ? primColl.modes[0].modeId : layoutModeId;
+
+// All FLOAT vars scoped to this collection only
+const layoutVars = allVars.filter(
+  (v) => v.variableCollectionId === layoutColl.id && v.resolvedType === 'FLOAT'
+);
 
 async function resolvePx(varId) {
   let v = await figma.variables.getVariableByIdAsync(varId);
-  let m = v.variableCollectionId === layoutColl.id ? layoutModeId : primModeId;
+  let m = layoutModeId;
   for (let d = 0; d < 10; d++) {
     const val = v.valuesByMode[m];
     if (val == null) return 0;
     if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
       const next = await figma.variables.getVariableByIdAsync(val.id);
-      if (next.variableCollectionId === layoutColl.id) m = layoutModeId;
-      else if (primColl && next.variableCollectionId === primColl.id) m = primModeId;
-      else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
+      const nextColl = collections.find((c) => c.id === next.variableCollectionId);
+      m = nextColl ? nextColl.modes[0].modeId : Object.keys(next.valuesByMode)[0];
       v = next;
       continue;
     }
@@ -646,10 +778,7 @@ function getAliasName(v) {
   return '';
 }
 
-// Group all Layout FLOAT variables by first path segment
-const layoutVars = allVars.filter(
-  (v) => v.variableCollectionId === layoutColl.id && v.resolvedType === 'FLOAT'
-);
+// Group all FLOAT vars by first path segment
 const groupMap = {};
 const groupOrder = [];
 for (const v of layoutVars) {
@@ -688,16 +817,23 @@ const docStyles = {
   Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 
-const layoutPage = figma.root.children.find((pg) => pg.name === '↳ Layout');
+const layoutPage =
+  findDesignOpsPage('layout', {
+    legacyExact: ['↳ Layout'],
+    legacyRegex: [/^↳?\s*layout/i],
+  }) || null;
 if (!layoutPage || layoutPage.type !== 'PAGE') {
-  throw new Error('Page not found (expected ↳ Layout)');
+  throw new Error(
+    'Page not found (expected ↳ Layout / slug layout). Pages: ' +
+      figma.root.children.filter((c) => c.type === 'PAGE').map((c) => c.name).join(' | ')
+  );
 }
 
-const ctx = {
-  pageId: layoutPage.id,
-  docStyles,
-  rows,
-};
+const ctx = { pageId: layoutPage.id, docStyles, rows };
 await build(ctx);
 const tableGroups = layoutPage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
-return { ok: true, step: '15c-layout', pageId: layoutPage.id, tableGroups, pageName: layoutPage.name };
+return {
+  ok: true, step: '15c-layout', pageId: layoutPage.id,
+  collection: layoutColl.name,
+  tableGroups, pageName: layoutPage.name,
+};

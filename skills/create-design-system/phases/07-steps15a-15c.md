@@ -1,5 +1,7 @@
 # Steps 15a–15c — Style guide canvas
 
+**Tier 3 prerequisite:** On files scaffolded by `/new-project` after the deferred-leaf change, the five style-guide `PAGE`s (`↳ Primitives` … `↳ Effects`) are created in **Phase 06b** (Foundations shell), not in `/new-project` Step 5. Ensure **Phase 06b** has run after Step 11 close before delegating Step 15a — see [`../phases/06b-foundations-shell.md`](../phases/06b-foundations-shell.md) and [`../SKILL.md`](../SKILL.md) checklist rows *Pre-flight snapshot* / *Foundations shell*.
+
 This file owns: which page, which slug, which row set. Canvas rules (geometry, hierarchy, columns, cells, auto-layout, bindings, build order) are baked into [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js) and the per-page templates. §0 rules apply — see index in [`../SKILL.md`](../SKILL.md); full rules in [`../conventions/00-gotchas.md`](../conventions/00-gotchas.md).
 
 ### Canvas is bundle-driven, subagent-delivered (happy path)
@@ -20,7 +22,7 @@ Each Step 15 / 17 page has a committed self-contained bundle under [`../canvas-t
 | 15c — Text Styles      | `15c-text-styles`   | [`../canvas-templates/bundles/step-15c-text-styles.min.mcp.js`](../canvas-templates/bundles/step-15c-text-styles.min.mcp.js) |
 | 15c — Effects          | `15c-effects`       | [`../canvas-templates/bundles/step-15c-effects.min.mcp.js`](../canvas-templates/bundles/step-15c-effects.min.mcp.js) |
 
-Each bundle concatenates `_lib.js` + page template + a per-step runner fragment. The runner resolves the live variable registry, data aliases, Doc/* style IDs, and target page inside the plugin and calls `await build(ctx)`. **Never assemble `ctx` in the Task prompt**, **never pass `ctx.variableMap`**, and **never stage the bundle as a `.mcp-*` / `*-payload.json`** — the subagent reads the `.min.mcp.js` directly and passes its contents to `use_figma` verbatim.
+Each bundle concatenates `_lib.js` + page template + a per-step runner fragment. The runner resolves the live variable registry, data aliases, Doc/* style IDs, and target page inside the plugin and calls `await build(ctx)`. **Never assemble `ctx` in the Task prompt** — the subagent reads the `.min.mcp.js` directly and passes its contents to `use_figma` verbatim. (`ctx.variableMap` is not used: [`ensureLocalVariableMapOnCtx`](../canvas-templates/_lib.js) always rebuilds local `name → id` inside `build(ctx)` — do **not** stage the bundle as a `.mcp-*` / `*-payload.json`.)
 
 Regenerate after editing `_lib.js`, any `canvas-templates/*.js`, or any `bundles/_*-runner.fragment.js`:
 
@@ -32,7 +34,7 @@ See [`../canvas-templates/bundles/README.md`](../canvas-templates/bundles/README
 
 ### Debug / fallback path (only when a runner subagent returns `ok: false`)
 
-If a runner subagent returns a real error and the fix needs source-level edits, **then** (and only then) the parent may open [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js), the relevant page template in [`../canvas-templates/`](../canvas-templates/), and the runner fragment in [`../canvas-templates/bundles/`](../canvas-templates/bundles/) to diagnose. Fix the source, regenerate bundles (`node skills/create-design-system/scripts/bundle-canvas-mcp.mjs`), and re-delegate to the runner subagent — do **not** hand-compose a payload in the parent thread. The last-resort escape hatch (inline `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; await build(ctx);"` as `code` from the parent) exists only when the runner subagent cannot reach the MCP at all. [`ensureLocalVariableMapOnCtx`](../canvas-templates/_lib.js) hydrates `variableMap` inside `build(ctx)`; keep it out of any inline `ctx`.
+If a runner subagent returns a real error and the fix needs source-level edits, **then** (and only then) the parent may open [`../canvas-templates/_lib.js`](../canvas-templates/_lib.js), the relevant page template in [`../canvas-templates/`](../canvas-templates/), and the runner fragment in [`../canvas-templates/bundles/`](../canvas-templates/bundles/) to diagnose. Fix the source, regenerate bundles (`node skills/create-design-system/scripts/bundle-canvas-mcp.mjs`), and re-delegate to the runner subagent — do **not** hand-compose a payload in the parent thread. The last-resort escape hatch (inline `[_lib source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; await build(ctx);"` as `code` from the parent) exists only when the runner subagent cannot reach the MCP at all. [`ensureLocalVariableMapOnCtx`](../canvas-templates/_lib.js) **always** overwrites `ctx.variableMap` from `getLocalVariablesAsync()` at the start of `build(ctx)` — any `variableMap` inside stringified `ctx` is ignored; omit it from inline payloads to save bytes.
 
 **Template `ctx` shapes** (what each runner constructs inside the plugin — reference only):
 

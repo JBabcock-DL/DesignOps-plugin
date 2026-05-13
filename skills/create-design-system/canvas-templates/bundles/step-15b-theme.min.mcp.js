@@ -8,9 +8,20 @@ jobs.push(figma.loadFontAsync({ family, style }).catch(() => {}));
 }
 await Promise.all(jobs);
 }
+async function loadFontsForTextStyles(textStyles) {
+const seen = new Set();
+const jobs = [];
+for (const s of textStyles) {
+const fn = s.fontName;
+if (!fn || !fn.family) continue;
+const key = `${fn.family}\0${fn.style || 'Regular'}`;
+if (seen.has(key)) continue;
+seen.add(key);
+jobs.push(figma.loadFontAsync({ family: fn.family, style: fn.style || 'Regular' }).catch(() => {}));
+}
+await Promise.all(jobs);
+}
 async function ensureLocalVariableMapOnCtx(ctx) {
-const m = ctx.variableMap;
-if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
 const allVars = await figma.variables.getLocalVariablesAsync();
 ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 }
@@ -41,6 +52,61 @@ const base = node.strokes.length > 0 ? { ...node.strokes[0] } : { type: 'SOLID',
 const bound = figma.variables.setBoundVariableForPaint(base, 'color', variable);
 node.strokes = [bound];
 }
+const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+function findDesignOpsPage(pageSlug, opts) {
+opts = opts || {};
+const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
+var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+if (bySlug) return bySlug;
+var legacyExact = opts.legacyExact || [];
+var exactMatches = [];
+for (var i = 0; i < legacyExact.length; i++) {
+var nm = legacyExact[i];
+for (var j = 0; j < pages.length; j++) {
+if (pages[j].name === nm) exactMatches.push(pages[j]);
+}
+}
+if (exactMatches.length === 1) return exactMatches[0];
+if (exactMatches.length > 1) return undefined;
+var regexList = opts.legacyRegex || [];
+var regMatches = [];
+for (var r = 0; r < pages.length; r++) {
+var p = pages[r];
+for (var k = 0; k < regexList.length; k++) {
+if (regexList[k].test(p.name)) {
+regMatches.push(p);
+break;
+}
+}
+}
+if (regMatches.length === 1) return regMatches[0];
+return undefined;
+}
+function readDesignOpsCollectionRegistry() {
+var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' && p.name === 'Documentation components'; });
+if (!docPage) return {};
+var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
+if (!frame) return {};
+var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+if (!raw) return {};
+try {
+var o = JSON.parse(raw);
+return typeof o === 'object' && o !== null ? o : {};
+} catch (_) {
+return {};
+}
+}
+function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
+var want = registryIds && registryIds[logicalKey];
+if (want) {
+var live = collections.find(function (c) { return c.id === want; });
+if (live) return live;
+}
+if (typeof fallbackFn === 'function') return fallbackFn();
+return null;
+}
 async function makeText(characters, colWidth, styleId, fillVariable) {
 const t = figma.createText();
 t.characters = String(characters);
@@ -65,7 +131,9 @@ cell.paddingLeft = 16;
 cell.paddingRight = 16;
 cell.counterAxisAlignItems = 'CENTER';
 cell.fills = [];
-const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
+const mutedFillVar = variables['color/background/content-muted'];
+const t = await makeText(label, colWidth, docStyles.Code || null, mutedFillVar);
+if (!mutedFillVar) t.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
 cell.appendChild(t);
 return cell;
 }
@@ -112,13 +180,13 @@ row.paddingTop = 14;
 row.paddingBottom = 14;
 row.counterAxisAlignItems = 'CENTER';
 row.fills = [];
-if (borderVariable) {
-row.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+if (borderVariable !== null) {
+row.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 row.strokeBottomWeight = 1;
 row.strokeTopWeight = 0;
 row.strokeLeftWeight = 0;
 row.strokeRightWeight = 0;
-bindStrokeToVar(row, borderVariable);
+if (borderVariable) bindStrokeToVar(row, borderVariable);
 }
 return row;
 }
@@ -187,11 +255,13 @@ group.fills = [];
 group.clipsContent = false;
 if (title) {
 const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
+if (!contentVar) titleText.fills = [{ type: 'SOLID', color: { r: 0.09, g: 0.09, b: 0.11 } }];
 titleText.name = `doc/table-group/${slug}/title`;
 group.appendChild(titleText);
 }
 if (caption) {
 const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
+if (!mutedVar) capText.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
 capText.name = `doc/table-group/${slug}/caption`;
 group.appendChild(capText);
 }
@@ -203,7 +273,7 @@ table.counterAxisSizingMode = 'FIXED';
 table.resizeWithoutConstraints(1640, 1);
 table.cornerRadius = 16;
 table.clipsContent = true;
-table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+table.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 table.strokeWeight = 1;
 if (borderVar) bindStrokeToVar(table, borderVar);
 if (bgDefault) bindPaintToVar(table, bgDefault);
@@ -215,9 +285,9 @@ header.primaryAxisSizingMode = 'FIXED';
 header.counterAxisSizingMode = 'FIXED';
 header.resize(1640, 48);
 header.counterAxisAlignItems = 'CENTER';
-header.fills = [];
 if (bgVariant) bindPaintToVar(header, bgVariant);
-header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+else header.fills = [{ type: 'SOLID', color: { r: 0.965, g: 0.965, b: 0.969 } }];
+header.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 header.strokeBottomWeight = 1;
 header.strokeTopWeight = 0;
 header.strokeLeftWeight = 0;
@@ -437,10 +507,47 @@ cell.fills = [];
 }
 const allVars = await figma.variables.getLocalVariablesAsync();
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const themeColl = collections.find((c) => c.name === 'Theme');
-const primColl = collections.find((c) => c.name === 'Primitives');
-if (!themeColl) throw new Error('Theme collection missing');
-if (!primColl) throw new Error('Primitives collection missing');
+const registryIds = readDesignOpsCollectionRegistry();
+function findThemeCollection() {
+return resolveCollectionByLogicalKey('theme', collections, registryIds, function () {
+const exact = collections.find((c) => c.name === 'Theme');
+if (exact) return exact;
+const fuzzy = collections.find((c) => /theme|semantic/i.test(c.name));
+if (fuzzy) return fuzzy;
+return (
+collections.find(
+(c) =>
+c.modes.some((m) => /^light/i.test(m.name.trim())) &&
+c.modes.some((m) => /^dark/i.test(m.name.trim()))
+) || null
+);
+});
+}
+function findPrimitivesCollection(themeCollId) {
+return resolveCollectionByLogicalKey('primitives', collections, registryIds, function () {
+const exact = collections.find((c) => c.name === 'Primitives' && c.id !== themeCollId);
+if (exact) return exact;
+const fuzzy = collections.find((c) =>
+/primitiv|core|foundation|base/i.test(c.name) && c.id !== themeCollId
+);
+if (fuzzy) return fuzzy;
+const candidates = collections
+.filter((c) => c.id !== themeCollId && c.modes.length === 1)
+.map((c) => ({
+c,
+colorCount: allVars.filter((v) => v.variableCollectionId === c.id && v.resolvedType === 'COLOR').length,
+}))
+.sort((a, b) => b.colorCount - a.colorCount);
+return candidates[0]?.c || null;
+});
+}
+const themeColl = findThemeCollection();
+if (!themeColl) {
+throw new Error(
+'No Theme-like collection found. Available: ' + collections.map((c) => c.name).join(', ')
+);
+}
+const primColl = findPrimitivesCollection(themeColl.id);
 const themeLightModeId = (
 themeColl.modes.find((m) => /^light/i.test(m.name.trim())) || themeColl.modes[0]
 ).modeId;
@@ -449,7 +556,7 @@ themeColl.modes.find((m) => /^dark/i.test(m.name.trim())) ||
 themeColl.modes[1] ||
 themeColl.modes[0]
 ).modeId;
-const primModeId = primColl.modes[0].modeId;
+const primModeId = primColl ? primColl.modes[0].modeId : themeLightModeId;
 function colorToHex(c) {
 if (!c) return '#000000';
 const r = Math.round(c.r * 255), g = Math.round(c.g * 255), b = Math.round(c.b * 255);
@@ -463,10 +570,10 @@ const val = v.valuesByMode[m];
 if (val == null) return '#000000';
 if (typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
 const next = await figma.variables.getVariableByIdAsync(val.id);
-const nextColl = await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId);
-if (nextColl.id === primColl.id) m = primModeId;
-else if (nextColl.id === themeColl.id) m = themeModeId;
-else m = nextColl.modes[0].modeId;
+const nextColl = collections.find((c) => c.id === next.variableCollectionId);
+if (nextColl?.id === primColl?.id) m = primModeId;
+else if (nextColl?.id === themeColl.id) m = themeModeId;
+else m = nextColl ? nextColl.modes[0].modeId : m;
 v = next;
 continue;
 }
@@ -481,10 +588,8 @@ const val = v.valuesByMode[themeModeId];
 if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
 try {
 const next = await figma.variables.getVariableByIdAsync(val.id);
-return next && next.name ? next.name : null;
-} catch (_) {
-return null;
-}
+return next?.name || null;
+} catch (_) { return null; }
 }
 return null;
 }
@@ -499,10 +604,7 @@ const groupOrder = [];
 const groupMap = {};
 for (const v of themeVars) {
 const firstSeg = v.name.split('/')[0];
-if (!groupMap[firstSeg]) {
-groupMap[firstSeg] = [];
-groupOrder.push(firstSeg);
-}
+if (!groupMap[firstSeg]) { groupMap[firstSeg] = []; groupOrder.push(firstSeg); }
 groupMap[firstSeg].push(v);
 }
 const allRows = {};
@@ -510,38 +612,44 @@ for (const group of groupOrder) {
 allRows[group] = [];
 for (const v of groupMap[group]) {
 const light = await resolveHex(v.id, themeLightModeId);
-const dark = await resolveHex(v.id, themeDarkModeId);
-const aliasLightLive = await resolveFirstAlias(v.id, themeLightModeId);
-const aliasDarkLive = await resolveFirstAlias(v.id, themeDarkModeId);
+const dark  = await resolveHex(v.id, themeDarkModeId);
+const aliasLight = await resolveFirstAlias(v.id, themeLightModeId);
+const aliasDark  = await resolveFirstAlias(v.id, themeDarkModeId);
 allRows[group].push({
 tokenPath: v.name,
-resolvedHexLight: light,
-resolvedHexDark: dark,
-aliasLight: aliasLightLive,
-aliasDark: aliasDarkLive,
+resolvedHexLight: light, resolvedHexDark: dark,
+aliasLight, aliasDark,
 codeSyntax: readCS(v),
 });
 }
 }
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
-Section: textStyles.find((s) => s.name === 'Doc/Section')?.id || null,
+Section:   textStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
 TokenName: textStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
-Code: textStyles.find((s) => s.name === 'Doc/Code')?.id || null,
-Caption: textStyles.find((s) => s.name === 'Doc/Caption')?.id || null,
+Code:      textStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
+Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
-const themePage = figma.root.children.find((pg) => pg.name === '↳ Theme');
+const themePage =
+findDesignOpsPage('theme', {
+legacyExact: ['↳ Theme'],
+legacyRegex: [/^↳?\s*theme/i],
+}) || null;
 if (!themePage || themePage.type !== 'PAGE') {
-throw new Error('Page not found (expected ↳ Theme)');
+throw new Error(
+'Page not found (expected ↳ Theme / slug theme). Pages: ' +
+figma.root.children.filter((c) => c.type === 'PAGE').map((c) => c.name).join(' | ')
+);
 }
 const ctx = {
-pageId: themePage.id,
-docStyles,
+pageId: themePage.id, docStyles,
 themeCollectionId: themeColl.id,
-themeLightModeId,
-themeDarkModeId,
+themeLightModeId, themeDarkModeId,
 rows: allRows,
 };
 await build(ctx);
 const tableGroups = themePage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
-return { ok: true, step: '15b-theme', pageId: themePage.id, tableGroups, pageName: themePage.name };
+return {
+ok: true, step: '15b-theme', pageId: themePage.id,
+collection: themeColl.name, tableGroups, pageName: themePage.name,
+};

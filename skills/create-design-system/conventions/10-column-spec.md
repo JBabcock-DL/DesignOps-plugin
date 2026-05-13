@@ -64,15 +64,15 @@ Structured widths also live in [`column-widths.json`](./column-widths.json) for 
 
 | Col | Header | Width | Cell pattern |
 |---|---|---|---|
-| 1 | `SLOT` | 220 | Doc/TokenName — slot name (`Headline/LG`, `Body/LG/strikethrough`) |
-| 2 | `SPECIMEN` | 360 | TEXT with `textStyleId` → published slot style. **Copy (gold):** Display / Headline / Title → `Aa Gg 12`. Body (all variants) and Label → `The quick brown fox jumps over the lazy dog.` (not the slot path as specimen). `resize(colW-40, 1)` → `textAutoResize = 'HEIGHT'`. |
-| 3 | `SIZE / LINE` | 140 | **Single** Doc/Code line: `{fontSize} / {lineHeight}px` (e.g. `57 / 64px`) — gold standard is one line, not a two-line stack. |
-| 4 | `WEIGHT / FAMILY` | 180 | **Single** Doc/Code line: `{weight} / {family}` (e.g. `400 / Inter`). |
-| 5 | `WEB` | 280 | Doc/Code |
-| 6 | `ANDROID` | 200 | Doc/Code |
-| 7 | `iOS` | 260 | Doc/Code — 5- to 6-segment dot path |
+| 1 | `SLOT` | 220 | Doc/TokenName — slot name (`Headline/LG`, `Body/LG/strikethrough`). Body cell frame: `cell/slot`. |
+| 2 | `SPECIMEN` | 360 | `TEXT` named `text/specimen` inside frame `cell/specimen`. Pipeline matches [`00-gotchas.md`](./00-gotchas.md) §0.5 / `_lib` `makeText`: `characters` → `resize(colW-40, 1)` → `textAutoResize = 'HEIGHT'` → `textStyleId` (published slot style for that row) → variant fill (`bindPaintToVar`). **Specimen copy** matches the bundled runner ([`_step15c-text-styles-runner.fragment.js`](../canvas-templates/bundles/_step15c-text-styles-runner.fragment.js) `SPECIMENS`): Display / Headline / Title use the long marketing phrases; Body (all variants) and Label use `The quick brown fox jumps over the lazy dog.` / `STATUS — ACTIVE` — not the raw slot path as specimen. |
+| 3 | `SIZE / LINE` | 140 | VERTICAL stack: two `Doc/Code` lines (`{fontSize}px size`, line-height string) — same as [`phases/07-steps15a-15c.md`](../phases/07-steps15a-15c.md) Text Styles table. Cell: `cell/size-line`. |
+| 4 | `WEIGHT / FAMILY` | 180 | VERTICAL stack: two `Doc/Code` lines (weight + family). Cell: `cell/weight-family`. |
+| 5 | `WEB` | 280 | Doc/Code — cell `cell/web` |
+| 6 | `ANDROID` | 200 | Doc/Code — cell `cell/android` |
+| 7 | `iOS` | 260 | Doc/Code — 5- to 6-segment dot path — cell `cell/ios` |
 
-**Sum: 1640.** **Page group title (gold):** `Type Styles` (not “Typography styles”). Row order: 3 Display + 3 Headline + 3 Title + 15 Body + 3 Label, with **5 category sub-header rows** (full-width 1640 × 40, fill `color/background/variant`) preceding each category — **sentence-case** category label on `Doc/Caption` (e.g. `Display`, `Body`), not all-caps unless the brand template says otherwise.
+**Sum: 1640.** **Page group title:** `Typography` (matches [`text-styles.js`](../canvas-templates/text-styles.js) `buildTable` `title`). Row order: 3 Display + 3 Headline + 3 Title + 15 Body + 3 Label, with **5 category sub-header rows** (full-width 1640 × 40, fill `color/background/variant`) preceding each category — **sentence-case** category label on `Doc/Caption` (e.g. `Display`, `Body`), not all-caps unless the brand template says otherwise.
 
 **Body block order per size (fixed):** `regular → emphasis → italic → link → strikethrough`. Regular is always first so the reader sees the default before decorated variants.
 

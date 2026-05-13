@@ -1,8 +1,9 @@
 // canvas-templates/_lib.js — shared helpers for all Step 15 canvas templates
 // §0 rules from conventions/00-gotchas.md are enforced in every helper below.
 // Agent call shape: [_lib.js source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"
-// Optional: omit ctx.variableMap to shrink MCP `code` — each page template calls
-// ensureLocalVariableMapOnCtx(ctx) first; it fills path → id from getLocalVariablesAsync() when missing or {}.
+// Optional: omit ctx.variableMap from JSON — each page template calls
+// ensureLocalVariableMapOnCtx(ctx) first; it always rebuilds path → id from
+// getLocalVariablesAsync() so host-injected maps cannot override file truth.
 
 // ─── Font loading ────────────────────────────────────────────────────────────
 
@@ -17,13 +18,25 @@ async function loadFonts(families) {
   await Promise.all(jobs);
 }
 
+// Load every fontName referenced by local text styles (e.g. slot styles before SPECIMEN textStyleId).
+async function loadFontsForTextStyles(textStyles) {
+  const seen = new Set();
+  const jobs = [];
+  for (const s of textStyles) {
+    const fn = s.fontName;
+    if (!fn || !fn.family) continue;
+    const key = `${fn.family}\0${fn.style || 'Regular'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    jobs.push(figma.loadFontAsync({ family: fn.family, style: fn.style || 'Regular' }).catch(() => {}));
+  }
+  await Promise.all(jobs);
+}
+
 // ─── Variable helpers ────────────────────────────────────────────────────────
 
-// Hydrate ctx.variableMap inside Figma when the agent omits it (smaller JSON.stringify(ctx) for MCP).
-// No-op if variableMap is already a non-empty object (backward-compatible with full ctx).
+// Always rebuild ctx.variableMap from local file variables (ignores host ctx.variableMap).
 async function ensureLocalVariableMapOnCtx(ctx) {
-  const m = ctx.variableMap;
-  if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
   const allVars = await figma.variables.getLocalVariablesAsync();
   ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 }
@@ -63,6 +76,83 @@ function bindStrokeToVar(node, variable) {
   node.strokes = [bound];
 }
 
+// ─── Tier 3: DesignOps page slug + collection registry (Foundations shell) ───
+
+const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+
+/**
+ * Resolve a Foundations style-guide page by pluginData slug first, then legacy exact names, then regexes.
+ * @param {string} pageSlug e.g. 'primitives', 'text-styles'
+ * @param {{ legacyExact?: string[], legacyRegex?: RegExp[] }} [opts]
+ * @returns {PageNode | undefined}
+ */
+function findDesignOpsPage(pageSlug, opts) {
+  opts = opts || {};
+  const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
+  var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+  if (bySlug) return bySlug;
+
+  var legacyExact = opts.legacyExact || [];
+  var exactMatches = [];
+  for (var i = 0; i < legacyExact.length; i++) {
+    var nm = legacyExact[i];
+    for (var j = 0; j < pages.length; j++) {
+      if (pages[j].name === nm) exactMatches.push(pages[j]);
+    }
+  }
+  if (exactMatches.length === 1) return exactMatches[0];
+  if (exactMatches.length > 1) return undefined;
+
+  var regexList = opts.legacyRegex || [];
+  var regMatches = [];
+  for (var r = 0; r < pages.length; r++) {
+    var p = pages[r];
+    for (var k = 0; k < regexList.length; k++) {
+      if (regexList[k].test(p.name)) {
+        regMatches.push(p);
+        break;
+      }
+    }
+  }
+  if (regMatches.length === 1) return regMatches[0];
+  return undefined;
+}
+
+/** @returns {Record<string, string>} */
+function readDesignOpsCollectionRegistry() {
+  var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' && p.name === 'Documentation components'; });
+  if (!docPage) return {};
+  var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
+  if (!frame) return {};
+  var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+  if (!raw) return {};
+  try {
+    var o = JSON.parse(raw);
+    return typeof o === 'object' && o !== null ? o : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+/**
+ * Resolve a variable collection for canvas runners. Plan §5.4 heuristic order when resolving by logical key:
+ * 1) registry id for key K → use live collection with that id if it exists;
+ * 2) else exact-name match for the conventional collection name;
+ * 3) else manifest-style alias / conservative fuzzy (caller supplies fallbackFn);
+ * 4) ambiguous 0 or >1 matches → caller returns null / escalates (shell throws; runners log).
+ */
+function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
+  var want = registryIds && registryIds[logicalKey];
+  if (want) {
+    var live = collections.find(function (c) { return c.id === want; });
+    if (live) return live;
+  }
+  if (typeof fallbackFn === 'function') return fallbackFn();
+  return null;
+}
+
 // ─── Text helpers (§0.2, §0.6) ───────────────────────────────────────────────
 
 // §0.2: characters → resize(w,1) → textAutoResize='HEIGHT'. Never 'NONE'.
@@ -96,7 +186,9 @@ async function makeHeaderCell(colWidth, label, docStyles, variables) {
   cell.counterAxisAlignItems = 'CENTER';
   cell.fills = [];
 
-  const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
+  const mutedFillVar = variables['color/background/content-muted'];
+  const t = await makeText(label, colWidth, docStyles.Code || null, mutedFillVar);
+  if (!mutedFillVar) t.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
   cell.appendChild(t);
   return cell;
 }
@@ -159,13 +251,14 @@ function makeBodyRow(tokenPath, borderVariable) {
   row.paddingBottom = 14;
   row.counterAxisAlignItems = 'CENTER';
   row.fills = [];
-  if (borderVariable) {
-    row.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  // borderVariable===null means last row (no border); undefined or Variable means add border
+  if (borderVariable !== null) {
+    row.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
     row.strokeBottomWeight = 1;
     row.strokeTopWeight = 0;
     row.strokeLeftWeight = 0;
     row.strokeRightWeight = 0;
-    bindStrokeToVar(row, borderVariable);
+    if (borderVariable) bindStrokeToVar(row, borderVariable);
   }
   return row;
 }
@@ -256,11 +349,13 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   // title + caption (§0.6: textAutoResize='HEIGHT' on direct TEXT children)
   if (title) {
     const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
+    if (!contentVar) titleText.fills = [{ type: 'SOLID', color: { r: 0.09, g: 0.09, b: 0.11 } }];
     titleText.name = `doc/table-group/${slug}/title`;
     group.appendChild(titleText);
   }
   if (caption) {
     const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
+    if (!mutedVar) capText.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
     capText.name = `doc/table-group/${slug}/caption`;
     group.appendChild(capText);
   }
@@ -274,7 +369,7 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   table.resizeWithoutConstraints(1640, 1);
   table.cornerRadius = 16;
   table.clipsContent = true;
-  table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  table.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   table.strokeWeight = 1;
   if (borderVar) bindStrokeToVar(table, borderVar);
   if (bgDefault) bindPaintToVar(table, bgDefault);
@@ -288,9 +383,9 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   header.counterAxisSizingMode = 'FIXED';
   header.resize(1640, 48);
   header.counterAxisAlignItems = 'CENTER';
-  header.fills = [];
   if (bgVariant) bindPaintToVar(header, bgVariant);
-  header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  else header.fills = [{ type: 'SOLID', color: { r: 0.965, g: 0.965, b: 0.969 } }];
+  header.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   header.strokeBottomWeight = 1;
   header.strokeTopWeight = 0;
   header.strokeLeftWeight = 0;
@@ -408,7 +503,7 @@ async function buildPageContent(page) {
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
+//   variableMap: (ignored — ensureLocalVariableMapOnCtx always rebuilds from local file variables)
 //   docStyles: { Section, TokenName, Code, Caption },
 //   rows: Array<
 //   | { type: 'category', label: string }
@@ -433,6 +528,10 @@ const TYPO_COLUMNS = [
   { id: 'iOS', width: 260 },
 ];
 
+function typoCellSlug(colId) {
+  return colId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cell';
+}
+
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
   const { pageId, variableMap, docStyles, rows } = ctx;
@@ -441,6 +540,12 @@ async function build(ctx) {
   const page = figma.currentPage;
 
   await loadFonts(['Inter', 'Roboto Mono', 'SF Mono']);
+  const slotRows = (rows || []).filter((r) => r.type === 'slot');
+  if (slotRows.length) {
+    const allSt = await figma.getLocalTextStylesAsync();
+    const idSet = new Set(slotRows.map((r) => r.styleId).filter(Boolean));
+    await loadFontsForTextStyles(allSt.filter((s) => idSet.has(s.id)));
+  }
 
   const variables = {};
   for (const path of [
@@ -479,18 +584,20 @@ async function buildTypographyRow(row, rowData, columns, deps) {
   for (const col of columns) {
     const cell = makeBodyCell(col.width, 'VERTICAL');
     const colId = col.id;
+    cell.name = `cell/${typoCellSlug(colId)}`;
 
     if (colId === 'SLOT') {
       const t = await makeText(rowData.tokenPath, col.width, docStyles.TokenName || null, contentVar);
       cell.appendChild(t);
     } else if (colId === 'SPECIMEN') {
       const t = figma.createText();
-      try {
-        if (rowData.styleId) t.textStyleId = rowData.styleId;
-      } catch (_) {}
+      t.name = 'text/specimen';
       t.characters = rowData.specimenChars || rowData.tokenPath;
       t.resize(col.width - 40, 1);
       t.textAutoResize = 'HEIGHT';
+      if (rowData.styleId) {
+        t.textStyleId = rowData.styleId;
+      }
       if (fillVar) bindPaintToVar(t, fillVar);
       cell.appendChild(t);
     } else if (colId === 'SIZE / LINE') {
@@ -530,6 +637,8 @@ const allTextStyles = await figma.getLocalTextStylesAsync();
 const typographyStyles = allTextStyles.filter(
   (s) => !s.name.startsWith('Doc/') && !s.name.startsWith('Effect/')
 );
+
+await loadFontsForTextStyles(typographyStyles);
 
 // Group by first path segment (category)
 const categoryMap = {};
@@ -628,9 +737,13 @@ const docStyles = {
   Caption:   allTextStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 
-const textStylesPage = figma.root.children.find((pg) => pg.name === '↳ Text Styles');
+const textStylesPage =
+  findDesignOpsPage('text-styles', {
+    legacyExact: ['↳ Text Styles'],
+    legacyRegex: [/^↳?\s*text\s*styles/i],
+  }) || null;
 if (!textStylesPage || textStylesPage.type !== 'PAGE') {
-  throw new Error('Page not found (expected ↳ Text Styles)');
+  throw new Error('Page not found (expected ↳ Text Styles / slug text-styles)');
 }
 
 const ctx = {
@@ -640,6 +753,62 @@ const ctx = {
 };
 await build(ctx);
 const tableGroups = textStylesPage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
+
+const expected = new Map();
+for (const r of rows) {
+  if (r.type === 'slot' && r.tokenPath && r.styleId) expected.set(r.tokenPath, r.styleId);
+}
+const table = textStylesPage.findOne((n) => n.name === 'doc/table/typography/styles' && n.type === 'FRAME');
+const body = table && table.children.find((c) => c.name === 'doc/table/typography/styles/body');
+let specimenStyleOk = 0;
+let specimenStyleMissing = 0;
+let specimenStyleMismatch = 0;
+const auditErrors = [];
+if (!table) auditErrors.push('doc/table/typography/styles not found');
+else if (!body) auditErrors.push('doc/table/typography/styles/body not found');
+else {
+  for (const [tokenPath, wantId] of expected) {
+    const rowFrame = body.children.find((c) => c.type === 'FRAME' && c.name === `row/${tokenPath}`);
+    if (!rowFrame) {
+      specimenStyleMissing++;
+      continue;
+    }
+    const specCell = rowFrame.children.find((c) => c.type === 'FRAME' && c.name === 'cell/specimen');
+    const specimenNode = specCell && specCell.findOne((n) => n.type === 'TEXT' && n.name === 'text/specimen');
+    if (!specimenNode || !specimenNode.textStyleId) {
+      specimenStyleMissing++;
+      continue;
+    }
+    if (specimenNode.textStyleId !== wantId) {
+      specimenStyleMismatch++;
+      continue;
+    }
+    specimenStyleOk++;
+  }
+}
+
+const slotCount = expected.size;
+const auditFail = specimenStyleMissing > 0 || specimenStyleMismatch > 0 || auditErrors.length > 0;
+if (auditFail) {
+  const parts = [];
+  if (auditErrors.length) parts.push(...auditErrors);
+  if (specimenStyleMissing) parts.push(`specimenStyleMissing: ${specimenStyleMissing}`);
+  if (specimenStyleMismatch) parts.push(`specimenStyleMismatch: ${specimenStyleMismatch}`);
+  return {
+    ok: false,
+    step: '15c-text-styles',
+    pageId: textStylesPage.id,
+    tableGroups,
+    pageName: textStylesPage.name,
+    rowCount: rows.length,
+    specimenStyleOk,
+    specimenStyleMissing,
+    specimenStyleMismatch,
+    slotCount,
+    errors: parts,
+  };
+}
+
 return {
   ok: true,
   step: '15c-text-styles',
@@ -647,4 +816,8 @@ return {
   tableGroups,
   pageName: textStylesPage.name,
   rowCount: rows.length,
+  specimenStyleOk,
+  specimenStyleMissing,
+  specimenStyleMismatch,
+  slotCount,
 };

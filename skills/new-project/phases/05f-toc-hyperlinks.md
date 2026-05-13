@@ -6,6 +6,8 @@ Runs **last** among Figma write phases: **after** 05e so `Cover` exists for the 
 ## Goal
 Set URL hyperlinks on TOC page-name text only (`toc-link/{pageName}` rows).
 
+> **Tier 3 / deferred scaffold:** If `/new-project` Step 5 did **not** create the five style-guide leaf pages (`↳ Primitives` … `↳ Effects`), those `toc-link/…` rows exist from Phase 05c but **05f** skips them (`targetPage` missing). **`/create-design-system`** Phase **06b** creates the pages and re-runs the same hyperlink pattern for **all** `toc-link/*` rows — you do **not** need to re-run 05f for the five after 06b.
+
 ## Prerequisites
 - Phases 05b ( `_Header` targets) and 05e (`Cover` on Thumbnail) complete.
 

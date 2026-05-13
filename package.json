@@ -23,6 +23,7 @@
     "qa:assembled-size": "node scripts/qa-assembled-size.mjs",
     "report:delegate-sizes": "node scripts/report-delegate-sizes.mjs",
     "qa:config-projection": "node scripts/qa-config-projection.mjs",
+    "qa:foundations-shell-manifest": "node scripts/qa-foundations-shell-manifest.mjs",
     "qa:lively-oasis-contract": "node scripts/qa-lively-oasis-contract.mjs",
     "qa:visual-diff": "node scripts/qa-visual-diff.mjs",
     "build-config-block": "node scripts/build-config-block.mjs",
@@ -35,7 +36,7 @@
     "sync-cache": "bash scripts/sync-cache.sh",
     "verify-cache": "bash scripts/verify-cache.sh",
     "build": "npm run build:props && npm run build:docs && npm run bundle-component",
-    "verify": "npm run build:props:check && npm run build:docs:check && npm run bundle-component && npm run qa:create-component-skill && npm run qa:assemble-component-code && npm run qa:step6-orchestration && npm run qa:config-projection && npm run qa:lively-oasis-contract && npm run qa:visual-diff && npm run verify-cache"
+    "verify": "npm run build:props:check && npm run build:docs:check && npm run bundle-component && npm run qa:create-component-skill && npm run qa:assemble-component-code && npm run qa:step6-orchestration && npm run qa:config-projection && npm run qa:foundations-shell-manifest && npm run qa:lively-oasis-contract && npm run qa:visual-diff && npm run verify-cache"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

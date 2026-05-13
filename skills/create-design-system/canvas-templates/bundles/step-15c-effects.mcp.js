@@ -1,8 +1,9 @@
 // canvas-templates/_lib.js — shared helpers for all Step 15 canvas templates
 // §0 rules from conventions/00-gotchas.md are enforced in every helper below.
 // Agent call shape: [_lib.js source] + [template source] + "const ctx = " + JSON.stringify(ctx) + "; build(ctx);"
-// Optional: omit ctx.variableMap to shrink MCP `code` — each page template calls
-// ensureLocalVariableMapOnCtx(ctx) first; it fills path → id from getLocalVariablesAsync() when missing or {}.
+// Optional: omit ctx.variableMap from JSON — each page template calls
+// ensureLocalVariableMapOnCtx(ctx) first; it always rebuilds path → id from
+// getLocalVariablesAsync() so host-injected maps cannot override file truth.
 
 // ─── Font loading ────────────────────────────────────────────────────────────
 
@@ -17,13 +18,25 @@ async function loadFonts(families) {
   await Promise.all(jobs);
 }
 
+// Load every fontName referenced by local text styles (e.g. slot styles before SPECIMEN textStyleId).
+async function loadFontsForTextStyles(textStyles) {
+  const seen = new Set();
+  const jobs = [];
+  for (const s of textStyles) {
+    const fn = s.fontName;
+    if (!fn || !fn.family) continue;
+    const key = `${fn.family}\0${fn.style || 'Regular'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    jobs.push(figma.loadFontAsync({ family: fn.family, style: fn.style || 'Regular' }).catch(() => {}));
+  }
+  await Promise.all(jobs);
+}
+
 // ─── Variable helpers ────────────────────────────────────────────────────────
 
-// Hydrate ctx.variableMap inside Figma when the agent omits it (smaller JSON.stringify(ctx) for MCP).
-// No-op if variableMap is already a non-empty object (backward-compatible with full ctx).
+// Always rebuild ctx.variableMap from local file variables (ignores host ctx.variableMap).
 async function ensureLocalVariableMapOnCtx(ctx) {
-  const m = ctx.variableMap;
-  if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
   const allVars = await figma.variables.getLocalVariablesAsync();
   ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 }
@@ -63,6 +76,83 @@ function bindStrokeToVar(node, variable) {
   node.strokes = [bound];
 }
 
+// ─── Tier 3: DesignOps page slug + collection registry (Foundations shell) ───
+
+const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+
+/**
+ * Resolve a Foundations style-guide page by pluginData slug first, then legacy exact names, then regexes.
+ * @param {string} pageSlug e.g. 'primitives', 'text-styles'
+ * @param {{ legacyExact?: string[], legacyRegex?: RegExp[] }} [opts]
+ * @returns {PageNode | undefined}
+ */
+function findDesignOpsPage(pageSlug, opts) {
+  opts = opts || {};
+  const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
+  var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+  if (bySlug) return bySlug;
+
+  var legacyExact = opts.legacyExact || [];
+  var exactMatches = [];
+  for (var i = 0; i < legacyExact.length; i++) {
+    var nm = legacyExact[i];
+    for (var j = 0; j < pages.length; j++) {
+      if (pages[j].name === nm) exactMatches.push(pages[j]);
+    }
+  }
+  if (exactMatches.length === 1) return exactMatches[0];
+  if (exactMatches.length > 1) return undefined;
+
+  var regexList = opts.legacyRegex || [];
+  var regMatches = [];
+  for (var r = 0; r < pages.length; r++) {
+    var p = pages[r];
+    for (var k = 0; k < regexList.length; k++) {
+      if (regexList[k].test(p.name)) {
+        regMatches.push(p);
+        break;
+      }
+    }
+  }
+  if (regMatches.length === 1) return regMatches[0];
+  return undefined;
+}
+
+/** @returns {Record<string, string>} */
+function readDesignOpsCollectionRegistry() {
+  var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' && p.name === 'Documentation components'; });
+  if (!docPage) return {};
+  var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
+  if (!frame) return {};
+  var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+  if (!raw) return {};
+  try {
+    var o = JSON.parse(raw);
+    return typeof o === 'object' && o !== null ? o : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+/**
+ * Resolve a variable collection for canvas runners. Plan §5.4 heuristic order when resolving by logical key:
+ * 1) registry id for key K → use live collection with that id if it exists;
+ * 2) else exact-name match for the conventional collection name;
+ * 3) else manifest-style alias / conservative fuzzy (caller supplies fallbackFn);
+ * 4) ambiguous 0 or >1 matches → caller returns null / escalates (shell throws; runners log).
+ */
+function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
+  var want = registryIds && registryIds[logicalKey];
+  if (want) {
+    var live = collections.find(function (c) { return c.id === want; });
+    if (live) return live;
+  }
+  if (typeof fallbackFn === 'function') return fallbackFn();
+  return null;
+}
+
 // ─── Text helpers (§0.2, §0.6) ───────────────────────────────────────────────
 
 // §0.2: characters → resize(w,1) → textAutoResize='HEIGHT'. Never 'NONE'.
@@ -96,7 +186,9 @@ async function makeHeaderCell(colWidth, label, docStyles, variables) {
   cell.counterAxisAlignItems = 'CENTER';
   cell.fills = [];
 
-  const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
+  const mutedFillVar = variables['color/background/content-muted'];
+  const t = await makeText(label, colWidth, docStyles.Code || null, mutedFillVar);
+  if (!mutedFillVar) t.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
   cell.appendChild(t);
   return cell;
 }
@@ -159,13 +251,14 @@ function makeBodyRow(tokenPath, borderVariable) {
   row.paddingBottom = 14;
   row.counterAxisAlignItems = 'CENTER';
   row.fills = [];
-  if (borderVariable) {
-    row.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  // borderVariable===null means last row (no border); undefined or Variable means add border
+  if (borderVariable !== null) {
+    row.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
     row.strokeBottomWeight = 1;
     row.strokeTopWeight = 0;
     row.strokeLeftWeight = 0;
     row.strokeRightWeight = 0;
-    bindStrokeToVar(row, borderVariable);
+    if (borderVariable) bindStrokeToVar(row, borderVariable);
   }
   return row;
 }
@@ -256,11 +349,13 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   // title + caption (§0.6: textAutoResize='HEIGHT' on direct TEXT children)
   if (title) {
     const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
+    if (!contentVar) titleText.fills = [{ type: 'SOLID', color: { r: 0.09, g: 0.09, b: 0.11 } }];
     titleText.name = `doc/table-group/${slug}/title`;
     group.appendChild(titleText);
   }
   if (caption) {
     const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
+    if (!mutedVar) capText.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
     capText.name = `doc/table-group/${slug}/caption`;
     group.appendChild(capText);
   }
@@ -274,7 +369,7 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   table.resizeWithoutConstraints(1640, 1);
   table.cornerRadius = 16;
   table.clipsContent = true;
-  table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  table.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   table.strokeWeight = 1;
   if (borderVar) bindStrokeToVar(table, borderVar);
   if (bgDefault) bindPaintToVar(table, bgDefault);
@@ -288,9 +383,9 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   header.counterAxisSizingMode = 'FIXED';
   header.resize(1640, 48);
   header.counterAxisAlignItems = 'CENTER';
-  header.fills = [];
   if (bgVariant) bindPaintToVar(header, bgVariant);
-  header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+  else header.fills = [{ type: 'SOLID', color: { r: 0.965, g: 0.965, b: 0.969 } }];
+  header.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
   header.strokeBottomWeight = 1;
   header.strokeTopWeight = 0;
   header.strokeLeftWeight = 0;
@@ -408,7 +503,7 @@ async function buildPageContent(page) {
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
+//   variableMap: (ignored at runtime — _lib ensureLocalVariableMapOnCtx overwrites from local file variables)
 //   docStyles: { Section, TokenName, Code, Caption },
 //   effectsCollectionId: string,
 //   effectsLightModeId: string,
@@ -681,17 +776,55 @@ async function buildShadowColorRow(row, rowData, columns, deps) {
     cell.fills = [];
   }
 }
-// Concatenate after _lib.js + effects.js (phase 07). Resolves Effects rows in-plugin; ctx omits variableMap.
-// Fully dynamic — discovers Effects FLOAT vars (shadow blur tiers) and COLOR vars (shadow colors).
-// Maps FLOAT vars to shadow tier names sm/md/lg/xl/2xl by sort order, so any elevation naming works.
+// Concatenate after _lib.js + effects.js (phase 07). Resolves Effects rows in-plugin.
+// Collection-scoped: finds the Effects-like collection by fuzzy name match, then draws
+// ONLY vars from that collection. FLOAT vars → shadow tiers; COLOR vars → shadow colors.
+
 const allVars = await figma.variables.getLocalVariablesAsync();
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const effectsColl = collections.find((c) => c.name === 'Effects');
-const primColl = collections.find((c) => c.name === 'Primitives');
-const themeColl = collections.find((c) => c.name === 'Theme');
-if (!effectsColl) throw new Error('Effects collection missing');
+const registryIds = readDesignOpsCollectionRegistry();
 
-// Flexible mode detection: accepts "light", "Light", "Light mode", etc.
+// ── Find the Effects-like collection (fuzzy) ──────────────────────────────────
+// Priority: registry id → exact "Effects" → keyword match → collection with elevation/shadow FLOAT vars
+function findEffectsCollection() {
+  return resolveCollectionByLogicalKey('effects', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Effects');
+  if (exact) return exact;
+  const fuzzy = collections.find((c) => /effects?|shadow|elevation/i.test(c.name));
+  if (fuzzy) return fuzzy;
+  const themed = new Set(
+    collections
+      .filter((c) => c.modes.some((m) => /^light/i.test(m.name)) && c.modes.some((m) => /^dark/i.test(m.name)))
+      .map((c) => c.id)
+  );
+  return (
+    collections.find((c) => {
+      if (themed.has(c.id)) return false;
+      return allVars.some(
+        (v) => v.variableCollectionId === c.id && v.resolvedType === 'FLOAT' &&
+          /elevation|shadow|blur|elev/i.test(v.name)
+      );
+    }) || null
+  );
+  });
+}
+
+function findPrimitivesCollection(effectsCollId) {
+  return resolveCollectionByLogicalKey('primitives', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Primitives' && c.id !== effectsCollId);
+  if (exact) return exact;
+  return collections.find((c) => /primitiv|core|foundation|base/i.test(c.name) && c.id !== effectsCollId) || null;
+  });
+}
+
+const effectsColl = findEffectsCollection();
+if (!effectsColl) {
+  throw new Error(
+    'No Effects-like collection found. Available: ' + collections.map((c) => c.name).join(', ')
+  );
+}
+const primColl = findPrimitivesCollection(effectsColl.id);
+
 const effectsLightModeId = (
   effectsColl.modes.find((m) => /^light/i.test(m.name.trim())) || effectsColl.modes[0]
 ).modeId;
@@ -701,14 +834,16 @@ const effectsDarkModeId = (
   effectsColl.modes[0]
 ).modeId;
 const primModeId = primColl ? primColl.modes[0].modeId : effectsLightModeId;
+
+const themeColl = collections.find(
+  (c) => c.id !== effectsColl.id &&
+    c.modes.some((m) => /^light/i.test(m.name.trim())) &&
+    c.modes.some((m) => /^dark/i.test(m.name.trim()))
+);
 const themeLightModeId = themeColl
-  ? (themeColl.modes.find((m) => /^light/i.test(m.name.trim())) || themeColl.modes[0]).modeId
-  : null;
+  ? (themeColl.modes.find((m) => /^light/i.test(m.name.trim())) || themeColl.modes[0]).modeId : null;
 const themeDarkModeId = themeColl
-  ? (themeColl.modes.find((m) => /^dark/i.test(m.name.trim())) ||
-     themeColl.modes[1] ||
-     themeColl.modes[0]).modeId
-  : null;
+  ? (themeColl.modes.find((m) => /^dark/i.test(m.name.trim())) || themeColl.modes[1] || themeColl.modes[0]).modeId : null;
 
 function colorToHex(c) {
   if (!c) return '#000000';
@@ -729,9 +864,10 @@ async function resolvePx(varId, startModeId) {
     if (val == null) return 0;
     if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
       const next = await figma.variables.getVariableByIdAsync(val.id);
+      const nextColl = collections.find((c) => c.id === next.variableCollectionId);
       if (primColl && next.variableCollectionId === primColl.id) m = primModeId;
       else if (next.variableCollectionId === effectsColl.id) m = startModeId;
-      else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
+      else m = nextColl ? nextColl.modes[0].modeId : m;
       v = next;
       continue;
     }
@@ -749,9 +885,10 @@ async function resolveColor(varId, modeId) {
     if (!val) return { r: 0, g: 0, b: 0, a: 1 };
     if (typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
       const next = await figma.variables.getVariableByIdAsync(val.id);
+      const nextColl = collections.find((c) => c.id === next.variableCollectionId);
       if (primColl && next.variableCollectionId === primColl.id) m = primModeId;
       else if (next.variableCollectionId === effectsColl.id) m = modeId;
-      else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
+      else m = nextColl ? nextColl.modes[0].modeId : m;
       v = next;
       continue;
     }
@@ -761,12 +898,12 @@ async function resolveColor(varId, modeId) {
   return { r: 0, g: 0, b: 0, a: 1 };
 }
 
-// Tier names in order for mapping FLOAT vars
+// All vars scoped to this collection only
+const myVars = allVars.filter((v) => v.variableCollectionId === effectsColl.id);
 const TIER_NAMES = ['sm', 'md', 'lg', 'xl', '2xl'];
 
-// Discover FLOAT vars in Effects collection (elevation / blur steps) → shadow tiers
-const effectsFloatVars = allVars
-  .filter((v) => v.variableCollectionId === effectsColl.id && v.resolvedType === 'FLOAT')
+const effectsFloatVars = myVars
+  .filter((v) => v.resolvedType === 'FLOAT')
   .sort((a, b) => a.name.localeCompare(b.name));
 
 const shadows = [];
@@ -774,7 +911,6 @@ for (let i = 0; i < effectsFloatVars.length; i++) {
   const v = effectsFloatVars[i];
   const tier = TIER_NAMES[i] || `tier${i + 1}`;
   const blurPx = await resolvePx(v.id, effectsLightModeId);
-  // Get the alias target name for display
   const modeVal = v.valuesByMode[effectsLightModeId] ?? v.valuesByMode[Object.keys(v.valuesByMode)[0]];
   let aliasPath = '';
   if (modeVal && typeof modeVal === 'object' && modeVal.type === 'VARIABLE_ALIAS') {
@@ -784,23 +920,18 @@ for (let i = 0; i < effectsFloatVars.length; i++) {
   shadows.push({ tokenPath: v.name, tier, blurPx, aliasPath, codeSyntax: readCS(v) });
 }
 
-// Discover COLOR vars in Effects collection → shadow color entries
-const effectsColorVars = allVars.filter(
-  (v) => v.variableCollectionId === effectsColl.id && v.resolvedType === 'COLOR'
-);
+const effectsColorVars = myVars.filter((v) => v.resolvedType === 'COLOR');
 const shadowColor = [];
 for (const v of effectsColorVars) {
   const lightC = await resolveColor(v.id, effectsLightModeId);
-  const darkC = await resolveColor(v.id, effectsDarkModeId);
+  const darkC  = await resolveColor(v.id, effectsDarkModeId);
   const la = Math.round((lightC.a ?? 1) * 100) / 100;
   const da = Math.round((darkC.a ?? 1) * 100) / 100;
   shadowColor.push({
-    tokenPath: v.name,
-    themeVariableId: v.id,
-    resolvedHexLight: colorToHex(lightC),
-    resolvedHexDark: colorToHex(darkC),
-    rgbaLight: `rgba(${Math.round(lightC.r * 255)},${Math.round(lightC.g * 255)},${Math.round(lightC.b * 255)},${la})`,
-    rgbaDark: `rgba(${Math.round(darkC.r * 255)},${Math.round(darkC.g * 255)},${Math.round(darkC.b * 255)},${da})`,
+    tokenPath: v.name, themeVariableId: v.id,
+    resolvedHexLight: colorToHex(lightC), resolvedHexDark: colorToHex(darkC),
+    rgbaLight: `rgba(${Math.round(lightC.r*255)},${Math.round(lightC.g*255)},${Math.round(lightC.b*255)},${la})`,
+    rgbaDark:  `rgba(${Math.round(darkC.r*255)},${Math.round(darkC.g*255)},${Math.round(darkC.b*255)},${da})`,
     codeSyntax: readCS(v),
   });
 }
@@ -813,22 +944,29 @@ const docStyles = {
   Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 
-const effectsPage = figma.root.children.find((pg) => pg.name === '↳ Effects');
+const effectsPage =
+  findDesignOpsPage('effects', {
+    legacyExact: ['↳ Effects'],
+    legacyRegex: [/^↳?\s*effects?/i],
+  }) || null;
 if (!effectsPage || effectsPage.type !== 'PAGE') {
-  throw new Error('Page not found (expected ↳ Effects)');
+  throw new Error(
+    'Page not found (expected ↳ Effects / slug effects). Pages: ' +
+      figma.root.children.filter((c) => c.type === 'PAGE').map((c) => c.name).join(' | ')
+  );
 }
 
 const ctx = {
-  pageId: effectsPage.id,
-  docStyles,
+  pageId: effectsPage.id, docStyles,
   effectsCollectionId: effectsColl.id,
-  effectsLightModeId,
-  effectsDarkModeId,
+  effectsLightModeId, effectsDarkModeId,
   themeCollectionId: themeColl ? themeColl.id : null,
-  themeLightModeId,
-  themeDarkModeId,
+  themeLightModeId, themeDarkModeId,
   rows: { shadows, shadowColor },
 };
 await build(ctx);
 const tableGroups = effectsPage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
-return { ok: true, step: '15c-effects', pageId: effectsPage.id, tableGroups, pageName: effectsPage.name };
+return {
+  ok: true, step: '15c-effects', pageId: effectsPage.id,
+  collection: effectsColl.name, tableGroups, pageName: effectsPage.name,
+};

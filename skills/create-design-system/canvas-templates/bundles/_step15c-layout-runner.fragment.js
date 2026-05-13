@@ -1,25 +1,62 @@
-// Concatenate after _lib.js + layout.js (phase 07). Resolves Layout rows in-plugin; ctx omits variableMap.
-// Fully dynamic — discovers all Layout FLOAT variables grouped by first path segment.
-// Handles any naming convention (space/xs, padding/md, radius/lg, border/sm, etc.).
+// Concatenate after _lib.js + layout.js (phase 07). Resolves Layout rows in-plugin.
+// Collection-scoped: finds the Layout-like collection by fuzzy name match, then draws
+// ONLY FLOAT vars from that collection grouped by first path segment.
+// Nothing is cross-collected — variables in other collections are untouched.
+
 const allVars = await figma.variables.getLocalVariablesAsync();
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const layoutColl = collections.find((c) => c.name === 'Layout');
-const primColl = collections.find((c) => c.name === 'Primitives');
-if (!layoutColl) throw new Error('Layout collection missing');
+const registryIds = readDesignOpsCollectionRegistry();
+
+// ── Find the Layout-like collection (fuzzy) ───────────────────────────────────
+// Priority: registry id → exact "Layout" → keyword match → FLOAT-dominant non-theme collection
+function findLayoutCollection() {
+  return resolveCollectionByLogicalKey('layout', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Layout');
+  if (exact) return exact;
+  const fuzzy = collections.find((c) => /layout|spacing|dimensional/i.test(c.name));
+  if (fuzzy) return fuzzy;
+  const themed = new Set(
+    collections
+      .filter((c) => c.modes.some((m) => /^light/i.test(m.name)) && c.modes.some((m) => /^dark/i.test(m.name)))
+      .map((c) => c.id)
+  );
+  const floatDominant = collections
+    .filter((c) => !themed.has(c.id))
+    .map((c) => {
+      const vars = allVars.filter((v) => v.variableCollectionId === c.id);
+      const floats = vars.filter((v) => v.resolvedType === 'FLOAT').length;
+      return { c, ratio: vars.length > 0 ? floats / vars.length : 0, total: vars.length };
+    })
+    .filter(({ ratio, total }) => ratio > 0.6 && total > 2)
+    .sort((a, b) => b.ratio - a.ratio);
+  return floatDominant[0]?.c || null;
+  });
+}
+
+const layoutColl = findLayoutCollection();
+if (!layoutColl) {
+  throw new Error(
+    'No Layout-like collection found. Available: ' + collections.map((c) => c.name).join(', ')
+  );
+}
+
 const layoutModeId = layoutColl.modes[0].modeId;
-const primModeId = primColl ? primColl.modes[0].modeId : layoutModeId;
+
+// All FLOAT vars scoped to this collection only
+const layoutVars = allVars.filter(
+  (v) => v.variableCollectionId === layoutColl.id && v.resolvedType === 'FLOAT'
+);
 
 async function resolvePx(varId) {
   let v = await figma.variables.getVariableByIdAsync(varId);
-  let m = v.variableCollectionId === layoutColl.id ? layoutModeId : primModeId;
+  let m = layoutModeId;
   for (let d = 0; d < 10; d++) {
     const val = v.valuesByMode[m];
     if (val == null) return 0;
     if (typeof val === 'object' && val !== null && val.type === 'VARIABLE_ALIAS') {
       const next = await figma.variables.getVariableByIdAsync(val.id);
-      if (next.variableCollectionId === layoutColl.id) m = layoutModeId;
-      else if (primColl && next.variableCollectionId === primColl.id) m = primModeId;
-      else m = (await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId)).modes[0].modeId;
+      const nextColl = collections.find((c) => c.id === next.variableCollectionId);
+      m = nextColl ? nextColl.modes[0].modeId : Object.keys(next.valuesByMode)[0];
       v = next;
       continue;
     }
@@ -43,10 +80,7 @@ function getAliasName(v) {
   return '';
 }
 
-// Group all Layout FLOAT variables by first path segment
-const layoutVars = allVars.filter(
-  (v) => v.variableCollectionId === layoutColl.id && v.resolvedType === 'FLOAT'
-);
+// Group all FLOAT vars by first path segment
 const groupMap = {};
 const groupOrder = [];
 for (const v of layoutVars) {
@@ -85,16 +119,23 @@ const docStyles = {
   Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 
-const layoutPage = figma.root.children.find((pg) => pg.name === '↳ Layout');
+const layoutPage =
+  findDesignOpsPage('layout', {
+    legacyExact: ['↳ Layout'],
+    legacyRegex: [/^↳?\s*layout/i],
+  }) || null;
 if (!layoutPage || layoutPage.type !== 'PAGE') {
-  throw new Error('Page not found (expected ↳ Layout)');
+  throw new Error(
+    'Page not found (expected ↳ Layout / slug layout). Pages: ' +
+      figma.root.children.filter((c) => c.type === 'PAGE').map((c) => c.name).join(' | ')
+  );
 }
 
-const ctx = {
-  pageId: layoutPage.id,
-  docStyles,
-  rows,
-};
+const ctx = { pageId: layoutPage.id, docStyles, rows };
 await build(ctx);
 const tableGroups = layoutPage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
-return { ok: true, step: '15c-layout', pageId: layoutPage.id, tableGroups, pageName: layoutPage.name };
+return {
+  ok: true, step: '15c-layout', pageId: layoutPage.id,
+  collection: layoutColl.name,
+  tableGroups, pageName: layoutPage.name,
+};

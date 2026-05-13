@@ -8,9 +8,20 @@ jobs.push(figma.loadFontAsync({ family, style }).catch(() => {}));
 }
 await Promise.all(jobs);
 }
+async function loadFontsForTextStyles(textStyles) {
+const seen = new Set();
+const jobs = [];
+for (const s of textStyles) {
+const fn = s.fontName;
+if (!fn || !fn.family) continue;
+const key = `${fn.family}\0${fn.style || 'Regular'}`;
+if (seen.has(key)) continue;
+seen.add(key);
+jobs.push(figma.loadFontAsync({ family: fn.family, style: fn.style || 'Regular' }).catch(() => {}));
+}
+await Promise.all(jobs);
+}
 async function ensureLocalVariableMapOnCtx(ctx) {
-const m = ctx.variableMap;
-if (m && typeof m === 'object' && Object.keys(m).length > 0) return;
 const allVars = await figma.variables.getLocalVariablesAsync();
 ctx.variableMap = Object.fromEntries(allVars.map(v => [v.name, v.id]));
 }
@@ -41,6 +52,61 @@ const base = node.strokes.length > 0 ? { ...node.strokes[0] } : { type: 'SOLID',
 const bound = figma.variables.setBoundVariableForPaint(base, 'color', variable);
 node.strokes = [bound];
 }
+const DESIGNOPS_PAGE_SLUG_KEY = 'labs.designops/pageSlug';
+const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+const DESIGNOPS_COLLECTION_REGISTRY_KEY = 'labs.designops/collectionRegistry';
+function findDesignOpsPage(pageSlug, opts) {
+opts = opts || {};
+const pages = figma.root.children.filter(function (n) { return n.type === 'PAGE'; });
+var bySlug = pages.find(function (p) { return p.getPluginData(DESIGNOPS_PAGE_SLUG_KEY) === pageSlug; });
+if (bySlug) return bySlug;
+var legacyExact = opts.legacyExact || [];
+var exactMatches = [];
+for (var i = 0; i < legacyExact.length; i++) {
+var nm = legacyExact[i];
+for (var j = 0; j < pages.length; j++) {
+if (pages[j].name === nm) exactMatches.push(pages[j]);
+}
+}
+if (exactMatches.length === 1) return exactMatches[0];
+if (exactMatches.length > 1) return undefined;
+var regexList = opts.legacyRegex || [];
+var regMatches = [];
+for (var r = 0; r < pages.length; r++) {
+var p = pages[r];
+for (var k = 0; k < regexList.length; k++) {
+if (regexList[k].test(p.name)) {
+regMatches.push(p);
+break;
+}
+}
+}
+if (regMatches.length === 1) return regMatches[0];
+return undefined;
+}
+function readDesignOpsCollectionRegistry() {
+var docPage = figma.root.children.find(function (p) { return p.type === 'PAGE' && p.name === 'Documentation components'; });
+if (!docPage) return {};
+var frame = docPage.findOne(function (n) { return n.type === 'FRAME' && n.name === DESIGNOPS_REGISTRY_FRAME; });
+if (!frame) return {};
+var raw = frame.getPluginData(DESIGNOPS_COLLECTION_REGISTRY_KEY);
+if (!raw) return {};
+try {
+var o = JSON.parse(raw);
+return typeof o === 'object' && o !== null ? o : {};
+} catch (_) {
+return {};
+}
+}
+function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
+var want = registryIds && registryIds[logicalKey];
+if (want) {
+var live = collections.find(function (c) { return c.id === want; });
+if (live) return live;
+}
+if (typeof fallbackFn === 'function') return fallbackFn();
+return null;
+}
 async function makeText(characters, colWidth, styleId, fillVariable) {
 const t = figma.createText();
 t.characters = String(characters);
@@ -65,7 +131,9 @@ cell.paddingLeft = 16;
 cell.paddingRight = 16;
 cell.counterAxisAlignItems = 'CENTER';
 cell.fills = [];
-const t = await makeText(label, colWidth, docStyles.Code || null, variables['color/background/content-muted']);
+const mutedFillVar = variables['color/background/content-muted'];
+const t = await makeText(label, colWidth, docStyles.Code || null, mutedFillVar);
+if (!mutedFillVar) t.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
 cell.appendChild(t);
 return cell;
 }
@@ -112,13 +180,13 @@ row.paddingTop = 14;
 row.paddingBottom = 14;
 row.counterAxisAlignItems = 'CENTER';
 row.fills = [];
-if (borderVariable) {
-row.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+if (borderVariable !== null) {
+row.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 row.strokeBottomWeight = 1;
 row.strokeTopWeight = 0;
 row.strokeLeftWeight = 0;
 row.strokeRightWeight = 0;
-bindStrokeToVar(row, borderVariable);
+if (borderVariable) bindStrokeToVar(row, borderVariable);
 }
 return row;
 }
@@ -187,11 +255,13 @@ group.fills = [];
 group.clipsContent = false;
 if (title) {
 const titleText = await makeText(title, 1640, docStyles.Section || null, contentVar);
+if (!contentVar) titleText.fills = [{ type: 'SOLID', color: { r: 0.09, g: 0.09, b: 0.11 } }];
 titleText.name = `doc/table-group/${slug}/title`;
 group.appendChild(titleText);
 }
 if (caption) {
 const capText = await makeText(caption, 1640, docStyles.Caption || null, mutedVar);
+if (!mutedVar) capText.fills = [{ type: 'SOLID', color: { r: 0.44, g: 0.44, b: 0.48 } }];
 capText.name = `doc/table-group/${slug}/caption`;
 group.appendChild(capText);
 }
@@ -203,7 +273,7 @@ table.counterAxisSizingMode = 'FIXED';
 table.resizeWithoutConstraints(1640, 1);
 table.cornerRadius = 16;
 table.clipsContent = true;
-table.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+table.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 table.strokeWeight = 1;
 if (borderVar) bindStrokeToVar(table, borderVar);
 if (bgDefault) bindPaintToVar(table, bgDefault);
@@ -215,9 +285,9 @@ header.primaryAxisSizingMode = 'FIXED';
 header.counterAxisSizingMode = 'FIXED';
 header.resize(1640, 48);
 header.counterAxisAlignItems = 'CENTER';
-header.fills = [];
 if (bgVariant) bindPaintToVar(header, bgVariant);
-header.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }];
+else header.fills = [{ type: 'SOLID', color: { r: 0.965, g: 0.965, b: 0.969 } }];
+header.strokes = [{ type: 'SOLID', color: { r: 0.898, g: 0.898, b: 0.918 } }];
 header.strokeBottomWeight = 1;
 header.strokeTopWeight = 0;
 header.strokeLeftWeight = 0;
@@ -367,86 +437,59 @@ buildRow: buildColorRow,
 }, content, variables, docStyles, variableMap);
 }
 const spaceColumns = [
-{ id: 'TOKEN',   width: 260 },
-{ id: 'VALUE',   width: 100 },
-{ id: 'PREVIEW', width: 260 },
-{ id: 'WEB',     width: 340 },
-{ id: 'ANDROID', width: 320 },
-{ id: 'iOS',     width: 360 },
+{ id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+{ id: 'PREVIEW', width: 260 }, { id: 'WEB',     width: 340 },
+{ id: 'ANDROID', width: 320 }, { id: 'iOS',     width: 360 },
 ];
-await buildTable({
-slug: 'primitives/space',
-title: 'Space',
-caption: 'Spacing scale on a 4px base grid.',
-columns: spaceColumns,
-rows: rows.space,
-buildRow: buildSpaceRow,
+if (rows.space && rows.space.length > 0) {
+await buildTable({ slug: 'primitives/space', title: 'Space', caption: 'Spacing scale on a 4px base grid.',
+columns: spaceColumns, rows: rows.space, buildRow: buildSpaceRow,
 }, content, variables, docStyles, variableMap);
+}
 const radiusColumns = [
-{ id: 'TOKEN',   width: 260 },
-{ id: 'VALUE',   width: 100 },
-{ id: 'PREVIEW', width: 260 },
-{ id: 'WEB',     width: 340 },
-{ id: 'ANDROID', width: 320 },
-{ id: 'iOS',     width: 360 },
+{ id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+{ id: 'PREVIEW', width: 260 }, { id: 'WEB',     width: 340 },
+{ id: 'ANDROID', width: 320 }, { id: 'iOS',     width: 360 },
 ];
-await buildTable({
-slug: 'primitives/radius',
-title: 'Corner Radius',
+if (rows.radius && rows.radius.length > 0) {
+await buildTable({ slug: 'primitives/radius', title: 'Corner Radius',
 caption: 'Corner rounding primitives from square through pill.',
-columns: radiusColumns,
-rows: rows.radius,
-buildRow: buildRadiusRow,
+columns: radiusColumns, rows: rows.radius, buildRow: buildRadiusRow,
 }, content, variables, docStyles, variableMap);
+}
 const elevationColumns = [
-{ id: 'TOKEN',   width: 260 },
-{ id: 'VALUE',   width: 100 },
-{ id: 'WEB',     width: 400 },
-{ id: 'ANDROID', width: 380 },
-{ id: 'iOS',     width: 500 },
+{ id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+{ id: 'WEB',     width: 400 }, { id: 'ANDROID', width: 380 }, { id: 'iOS', width: 500 },
 ];
-await buildTable({
-slug: 'primitives/elevation',
-title: 'Elevation',
+if (rows.elevation && rows.elevation.length > 0) {
+await buildTable({ slug: 'primitives/elevation', title: 'Elevation',
 caption: 'Raw blur steps consumed by shadow/*/blur aliases in Effects.',
-columns: elevationColumns,
-rows: rows.elevation,
-buildRow: buildMonoRow,
+columns: elevationColumns, rows: rows.elevation, buildRow: buildMonoRow,
 }, content, variables, docStyles, variableMap);
+}
 const typefaceColumns = [
-{ id: 'TOKEN',    width: 320 },
-{ id: 'SPECIMEN', width: 460 },
-{ id: 'VALUE',    width: 200 },
-{ id: 'WEB',      width: 320 },
-{ id: 'ANDROID',  width: 160 },
-{ id: 'iOS',      width: 180 },
+{ id: 'TOKEN',    width: 320 }, { id: 'SPECIMEN', width: 460 }, { id: 'VALUE',   width: 200 },
+{ id: 'WEB',      width: 320 }, { id: 'ANDROID',  width: 160 }, { id: 'iOS',     width: 180 },
 ];
-await buildTable({
-slug: 'primitives/typeface',
-title: 'Typeface',
+if (rows.typeface && rows.typeface.length > 0) {
+await buildTable({ slug: 'primitives/typeface', title: 'Typeface',
 caption: 'Font family primitives. Display for headings, Body for paragraph text.',
-columns: typefaceColumns,
-rows: rows.typeface,
-buildRow: buildTypefaceRow,
+columns: typefaceColumns, rows: rows.typeface, buildRow: buildTypefaceRow,
 }, content, variables, docStyles, variableMap);
+}
 const fontWeightColumns = [
-{ id: 'TOKEN',   width: 260 },
-{ id: 'VALUE',   width: 100 },
-{ id: 'WEB',     width: 400 },
-{ id: 'ANDROID', width: 380 },
-{ id: 'iOS',     width: 500 },
+{ id: 'TOKEN',   width: 260 }, { id: 'VALUE',   width: 100 },
+{ id: 'WEB',     width: 400 }, { id: 'ANDROID', width: 380 }, { id: 'iOS',     width: 500 },
 ];
-await buildTable({
-slug: 'primitives/font-weight',
-title: 'Font weight',
+if (rows.fontWeight && rows.fontWeight.length > 0) {
+await buildTable({ slug: 'primitives/font-weight', title: 'Font weight',
 caption: 'Shared emphasis weight (Typography Body/*/emphasis aliases this Primitive).',
-columns: fontWeightColumns,
-rows: rows.fontWeight,
-buildRow: buildMonoRow,
+columns: fontWeightColumns, rows: rows.fontWeight, buildRow: buildMonoRow,
 }, content, variables, docStyles, variableMap);
+}
 content.layoutMode = 'VERTICAL';
 content.layoutSizingVertical = 'HUG';
-console.log('Canvas: Step 15a ↳ Primitives — done (10 tables)');
+console.log(`Canvas: Step 15a ↳ Primitives — done`);
 }
 async function buildColorRow(row, rowData, columns, deps) {
 const { variables, docStyles, contentVar, mutedVar, variableMap } = deps;
@@ -658,24 +701,48 @@ cell.fills = [];
 }
 }
 const RAMP_ORDER = ['primary', 'secondary', 'tertiary', 'error', 'neutral'];
+const SPACE_RE    = /^(space|size|spacing)(\/|$)/i;
+const RADIUS_RE   = /^(corner|radius)(\/|$)/i;
+const ELEV_RE     = /^(elevation|elev|shadow|blur)(\/|$)/i;
+const WEIGHT_RE   = /weight/i;
+const TYPEFACE_RE = /font|typeface|face/i;
 const allVars = await figma.variables.getLocalVariablesAsync();
-const p = Object.fromEntries(allVars.map((v) => [v.name, v.id]));
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const primColl = collections.find((c) => c.name === 'Primitives');
-if (!primColl) throw new Error('Primitives collection missing');
-const primitivesModeId = primColl.modes[0].modeId;
+const registryIds = readDesignOpsCollectionRegistry();
+function findPrimitivesCollection() {
+return resolveCollectionByLogicalKey('primitives', collections, registryIds, function () {
+const exact = collections.find((c) => c.name === 'Primitives');
+if (exact) return exact;
+const fuzzy = collections.find((c) => /primitiv|core|foundation|base/i.test(c.name));
+if (fuzzy) return fuzzy;
+const colorCount = (c) => allVars.filter((v) => v.variableCollectionId === c.id && v.resolvedType === 'COLOR').length;
+const themed = new Set(
+collections
+.filter((c) => c.modes.some((m) => /^light/i.test(m.name)) && c.modes.some((m) => /^dark/i.test(m.name)))
+.map((c) => c.id)
+);
+const candidates = collections.filter((c) => !themed.has(c.id));
+return candidates.sort((a, b) => colorCount(b) - colorCount(a))[0] || null;
+});
+}
+const primColl = findPrimitivesCollection();
+if (!primColl) {
+throw new Error(
+'No Primitives-like collection found. Available: ' + collections.map((c) => c.name).join(', ')
+);
+}
+const collModeId = primColl.modes[0].modeId;
+const myVars = allVars.filter((v) => v.variableCollectionId === primColl.id);
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
-Section: textStyles.find((s) => s.name === 'Doc/Section')?.id || null,
+Section:   textStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
 TokenName: textStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
-Code: textStyles.find((s) => s.name === 'Doc/Code')?.id || null,
-Caption: textStyles.find((s) => s.name === 'Doc/Caption')?.id || null,
+Code:      textStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
+Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 function colorToHex(val) {
 if (!val || typeof val !== 'object' || typeof val.r !== 'number') return '#000000';
-const r = Math.round(val.r * 255);
-const g = Math.round(val.g * 255);
-const b = Math.round(val.b * 255);
+const r = Math.round(val.r * 255), g = Math.round(val.g * 255), b = Math.round(val.b * 255);
 return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 async function resolveRaw(vid, m) {
@@ -683,7 +750,10 @@ let v = await figma.variables.getVariableByIdAsync(vid);
 for (let d = 0; d < 10; d++) {
 const val = v.valuesByMode[m] ?? v.valuesByMode[Object.keys(v.valuesByMode)[0]];
 if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
-v = await figma.variables.getVariableByIdAsync(val.id);
+const next = await figma.variables.getVariableByIdAsync(val.id);
+const nextColl = collections.find((c) => c.id === next.variableCollectionId);
+m = nextColl ? nextColl.modes[0].modeId : Object.keys(next.valuesByMode)[0];
+v = next;
 continue;
 }
 return val;
@@ -694,30 +764,24 @@ function readCS(v) {
 const cs = v.codeSyntax || {};
 return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
-async function floatAlias(vid, m) {
-const raw = await resolveRaw(vid, m);
+async function floatVal(vid) {
+const raw = await resolveRaw(vid, collModeId);
 return typeof raw === 'number' ? raw : 0;
 }
 const discoveredRamps = {};
-for (const v of allVars) {
-if (v.resolvedType !== 'COLOR') continue;
+for (const v of myVars.filter((v) => v.resolvedType === 'COLOR')) {
 const parts = v.name.split('/');
 if (parts.length < 2) continue;
 const lastSeg = parts[parts.length - 1];
 if (!/^\d+$/.test(lastSeg)) continue;
-let rampParts;
-if (parts.length === 2) {
-rampParts = [parts[0]];
-} else {
-rampParts = parts.slice(1, -1);
-}
+const rampParts = parts.length === 2 ? [parts[0]] : parts.slice(1, -1);
 const rampKey = rampParts.map((s) => s.toLowerCase()).join('/');
 if (!discoveredRamps[rampKey]) discoveredRamps[rampKey] = [];
 discoveredRamps[rampKey].push({ stop: lastSeg, tokenPath: v.name, vid: v.id });
 }
 const colorRamps = {};
 const rampNames = Object.keys(discoveredRamps).sort((a, b) => {
-const ia = RAMP_ORDER.indexOf(a); const ib = RAMP_ORDER.indexOf(b);
+const ia = RAMP_ORDER.indexOf(a), ib = RAMP_ORDER.indexOf(b);
 if (ia !== -1 && ib !== -1) return ia - ib;
 if (ia !== -1) return -1; if (ib !== -1) return 1;
 return a.localeCompare(b);
@@ -727,97 +791,73 @@ const stops = discoveredRamps[ramp].sort((a, b) => parseInt(a.stop, 10) - parseI
 colorRamps[ramp] = [];
 for (const s of stops) {
 const v = await figma.variables.getVariableByIdAsync(s.vid);
-let raw = await resolveRaw(s.vid, primitivesModeId);
-if (!raw || typeof raw.r !== 'number') {
-const firstMode = Object.keys(v.valuesByMode)[0];
-raw = await resolveRaw(s.vid, firstMode);
-}
+let raw = await resolveRaw(s.vid, collModeId);
+if (!raw || typeof raw.r !== 'number') raw = await resolveRaw(s.vid, Object.keys(v.valuesByMode)[0]);
 colorRamps[ramp].push({ tokenPath: s.tokenPath, resolvedHex: colorToHex(raw), codeSyntax: readCS(v) });
 }
 }
-const SPACE_PREFIXES = ['space/', 'Space/', 'size/', 'Size/', 'spacing/', 'Spacing/'];
-const spaceVarObjs = allVars.filter((v) =>
-v.resolvedType === 'FLOAT' && SPACE_PREFIXES.some((pfx) => v.name.startsWith(pfx))
-);
-const spaceSorted = [];
-for (const v of spaceVarObjs) {
-const col = collections.find((c) => c.id === v.variableCollectionId);
-const m = col ? col.modes[0].modeId : primitivesModeId;
-const px = await floatAlias(v.id, m);
-spaceSorted.push({ v, px });
+const floatVars = myVars.filter((v) => v.resolvedType === 'FLOAT');
+const spaceArr = [], radiusArr = [], elevArr = [], weightArr = [], otherFloatArr = [];
+for (const v of floatVars) {
+if (SPACE_RE.test(v.name))       spaceArr.push(v);
+else if (RADIUS_RE.test(v.name)) radiusArr.push(v);
+else if (ELEV_RE.test(v.name))   elevArr.push(v);
+else if (WEIGHT_RE.test(v.name)) weightArr.push(v);
+else                             otherFloatArr.push(v);
 }
-spaceSorted.sort((a, b) => a.px - b.px);
-const space = spaceSorted.map(({ v, px }) => ({ tokenPath: v.name, resolvedPx: px, codeSyntax: readCS(v) }));
-const RADIUS_PREFIXES = ['corner/', 'Corner/', 'radius/', 'Radius/'];
-const radiusVarObjs = allVars.filter((v) =>
-v.resolvedType === 'FLOAT' && RADIUS_PREFIXES.some((pfx) => v.name.startsWith(pfx))
-);
-const radiusSorted = [];
-for (const v of radiusVarObjs) {
-const col = collections.find((c) => c.id === v.variableCollectionId);
-const m = col ? col.modes[0].modeId : primitivesModeId;
-const px = await floatAlias(v.id, m);
-radiusSorted.push({ v, px });
+async function buildFloatRows(vars, sorted) {
+const rows = [];
+for (const v of vars) {
+const px = await floatVal(v.id);
+rows.push({ tokenPath: v.name, resolvedPx: px, resolvedValue: String(px), codeSyntax: readCS(v) });
 }
-radiusSorted.sort((a, b) => a.px - b.px);
-const radius = radiusSorted.map(({ v, px }) => {
-const isFullOrPill =
-v.name.toLowerCase().includes('full') || v.name.toLowerCase().includes('pill') || px >= 9999;
-return { tokenPath: v.name, resolvedPx: isFullOrPill ? 9999 : px, codeSyntax: readCS(v) };
-});
-const ELEV_PREFIXES = ['elevation/', 'Elevation/', 'elev/'];
-const elevation = [];
-for (const v of allVars
-.filter((v) => v.resolvedType === 'FLOAT' && ELEV_PREFIXES.some((pfx) => v.name.startsWith(pfx)))
-.sort((a, b) => a.name.localeCompare(b.name))) {
-const col = collections.find((c) => c.id === v.variableCollectionId);
-const m = col ? col.modes[0].modeId : primitivesModeId;
-const px = await floatAlias(v.id, m);
-elevation.push({ tokenPath: v.name, resolvedValue: String(px), codeSyntax: readCS(v) });
+if (sorted) rows.sort((a, b) => a.resolvedPx - b.resolvedPx);
+return rows;
 }
-const typeface = [];
-for (const v of allVars) {
-if (v.resolvedType !== 'STRING') continue;
-const lower = v.name.toLowerCase();
-if (!lower.includes('font') && !lower.includes('typeface') && !lower.includes('face')) continue;
-const col = collections.find((c) => c.id === v.variableCollectionId);
-const m = col ? col.modes[0].modeId : primitivesModeId;
-const raw = await resolveRaw(v.id, m);
-typeface.push({ tokenPath: v.name, resolvedValue: typeof raw === 'string' ? raw : '—', codeSyntax: readCS(v) });
+const spaceRows  = await buildFloatRows(spaceArr,  true);
+const radiusRows = (await buildFloatRows(radiusArr, true)).map((r) => ({
+...r,
+resolvedPx: (r.tokenPath.toLowerCase().includes('full') || r.tokenPath.toLowerCase().includes('pill') || r.resolvedPx >= 9999) ? 9999 : r.resolvedPx,
+}));
+const elevRows   = await buildFloatRows(elevArr.sort((a, b) => a.name.localeCompare(b.name)), false);
+const weightRows = await buildFloatRows(weightArr, false);
+weightRows.sort((a, b) => parseFloat(a.resolvedValue) - parseFloat(b.resolvedValue));
+const typefaceRows = [];
+for (const v of myVars.filter((v) => v.resolvedType === 'STRING')) {
+if (!TYPEFACE_RE.test(v.name.toLowerCase())) continue;
+const raw = await resolveRaw(v.id, collModeId);
+typefaceRows.push({ tokenPath: v.name, resolvedValue: typeof raw === 'string' ? raw : '—', codeSyntax: readCS(v) });
 }
-const fontWeightVars = allVars.filter(
-(v) => v.resolvedType === 'FLOAT' && v.name.toLowerCase().includes('weight')
-);
-const fontWeight = [];
-for (const v of fontWeightVars) {
-const col = collections.find((c) => c.id === v.variableCollectionId);
-const m = col ? col.modes[0].modeId : primitivesModeId;
-const px = await floatAlias(v.id, m);
-fontWeight.push({ tokenPath: v.name, resolvedValue: String(px), codeSyntax: readCS(v) });
-}
-fontWeight.sort((a, b) => parseFloat(a.resolvedValue) - parseFloat(b.resolvedValue));
-const primPage = figma.root.children.find((pg) => pg.name === '↳ Primitives');
-if (!primPage || primPage.type !== 'PAGE') {
+const primPage =
+findDesignOpsPage('primitives', {
+legacyExact: ['↳ Primitives'],
+legacyRegex: [/primitives/i],
+}) || null;
+if (!primPage) {
 throw new Error(
-'Page not found (expected ↳ Primitives): ' +
+'Page not found (expected ↳ Primitives / slug primitives). Pages: ' +
 figma.root.children.filter((c) => c.type === 'PAGE').map((c) => c.name).join(' | ')
 );
 }
 const ctx = {
 pageId: primPage.id,
-primitivesModeId,
 docStyles,
-rows: { colorRamps, space, radius, elevation, typeface, fontWeight },
+rows: {
+colorRamps,
+...(spaceRows.length  > 0 && { space:      spaceRows  }),
+...(radiusRows.length > 0 && { radius:     radiusRows }),
+...(elevRows.length   > 0 && { elevation:  elevRows   }),
+...(typefaceRows.length > 0 && { typeface: typefaceRows }),
+...(weightRows.length > 0 && { fontWeight: weightRows }),
+},
 };
 const hadVm = 'variableMap' in ctx;
 await build(ctx);
 const tableGroups = primPage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
 return {
-ok: true,
-step: '15a-primitives',
-pageId: primPage.id,
+ok: true, step: '15a-primitives', pageId: primPage.id,
+collection: primColl.name,
 hadVariableMapBeforeBuild: hadVm,
 variableMapKeysAfterHydrate: Object.keys(ctx.variableMap || {}).length,
-tableGroups,
-pageName: primPage.name,
+tableGroups, pageName: primPage.name,
 };

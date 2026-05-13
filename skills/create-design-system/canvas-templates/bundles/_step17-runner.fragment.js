@@ -1,5 +1,9 @@
 // Concatenate after _lib.js + token-overview.js (phase 08 / sync 9d).
-const overviewPage = figma.root.children.find((pg) => pg.name === '\u21B3 Token Overview');
+const overviewPage =
+  findDesignOpsPage('token-overview', {
+    legacyExact: ['\u21B3 Token Overview'],
+    legacyRegex: [/token\s*overview/i],
+  }) || null;
 if (!overviewPage || overviewPage.type !== 'PAGE') {
   return {
     ok: false,

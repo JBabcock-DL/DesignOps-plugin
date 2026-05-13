@@ -175,6 +175,8 @@ figma.getLocalTextStylesAsync() / figma.getLocalEffectStylesAsync(); loadFontAsy
 
 Log: `Doc/* published · N text styles · Effect/shadow-* published · M styles`
 
+**Next (Tier 3 Foundations):** Before canvas Step 15a on files from `/new-project` v2 scaffold, the skill checklist requires **pre-flight snapshot** + **Foundations shell** ([`phases/preflight-snapshot.md`](./preflight-snapshot.md), [`phases/06b-foundations-shell.md`](./06b-foundations-shell.md)) so the five style-guide `PAGE`s and collection registry exist — see [`../SKILL.md`](../SKILL.md).
+
 ---
 
 ## Step 12 handoff

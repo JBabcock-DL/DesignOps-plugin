@@ -4,7 +4,7 @@
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
+//   variableMap: (ignored — ensureLocalVariableMapOnCtx always rebuilds from local file variables)
 //   docStyles: { Section, TokenName, Code, Caption },
 //   rows: Array<
 //   | { type: 'category', label: string }
@@ -29,6 +29,10 @@ const TYPO_COLUMNS = [
   { id: 'iOS', width: 260 },
 ];
 
+function typoCellSlug(colId) {
+  return colId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cell';
+}
+
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
   const { pageId, variableMap, docStyles, rows } = ctx;
@@ -37,6 +41,12 @@ async function build(ctx) {
   const page = figma.currentPage;
 
   await loadFonts(['Inter', 'Roboto Mono', 'SF Mono']);
+  const slotRows = (rows || []).filter((r) => r.type === 'slot');
+  if (slotRows.length) {
+    const allSt = await figma.getLocalTextStylesAsync();
+    const idSet = new Set(slotRows.map((r) => r.styleId).filter(Boolean));
+    await loadFontsForTextStyles(allSt.filter((s) => idSet.has(s.id)));
+  }
 
   const variables = {};
   for (const path of [
@@ -75,18 +85,20 @@ async function buildTypographyRow(row, rowData, columns, deps) {
   for (const col of columns) {
     const cell = makeBodyCell(col.width, 'VERTICAL');
     const colId = col.id;
+    cell.name = `cell/${typoCellSlug(colId)}`;
 
     if (colId === 'SLOT') {
       const t = await makeText(rowData.tokenPath, col.width, docStyles.TokenName || null, contentVar);
       cell.appendChild(t);
     } else if (colId === 'SPECIMEN') {
       const t = figma.createText();
-      try {
-        if (rowData.styleId) t.textStyleId = rowData.styleId;
-      } catch (_) {}
+      t.name = 'text/specimen';
       t.characters = rowData.specimenChars || rowData.tokenPath;
       t.resize(col.width - 40, 1);
       t.textAutoResize = 'HEIGHT';
+      if (rowData.styleId) {
+        t.textStyleId = rowData.styleId;
+      }
       if (fillVar) bindPaintToVar(t, fillVar);
       cell.appendChild(t);
     } else if (colId === 'SIZE / LINE') {

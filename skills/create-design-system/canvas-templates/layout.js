@@ -4,7 +4,7 @@
 // ctx:
 // {
 //   pageId: string,
-//   variableMap: { [tokenPath]: variableId },  // optional — _lib ensureLocalVariableMapOnCtx
+//   variableMap: (ignored at runtime — _lib ensureLocalVariableMapOnCtx overwrites from local file variables)
 //   docStyles: { Section, TokenName, Code, Caption },
 //   rows: {
 //     spacing: [{ tokenPath, resolvedPx, aliasPath, codeSyntax: {WEB,ANDROID,iOS} }],

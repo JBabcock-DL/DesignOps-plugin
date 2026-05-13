@@ -4,6 +4,20 @@ Preserved historical context for gotcha rules in [`conventions/00-gotchas.md`](.
 
 ---
 
+## 2026 — Tier 3 Foundations shell (deferred style-guide pages + stable refs)
+
+**Change:** `/new-project` Step 5 no longer creates the five style-guide leaf `PAGE`s; they are created (or legacy-matched) by **`/create-design-system`** after variables + Step 11 close via [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md). [`designops-foundations-shell.json`](../shared/designops-foundations-shell.json) + `pluginData` page slugs + [`_DesignOpsRegistry`](./conventions/foundations-shell-and-preflight.md) collection ids; canvas runners use [`_lib.js`](./canvas-templates/_lib.js) `findDesignOpsPage` / `readDesignOpsCollectionRegistry` / `resolveCollectionByLogicalKey`. Read-only probe: [`phases/preflight-snapshot.md`](./phases/preflight-snapshot.md). **Spec polish:** pre-flight emits `blocked_ambiguous` + `duplicate_legacy_match:` for ambiguous display-title collisions; `npm run qa:foundations-shell-manifest` keeps embedded `MANIFEST` aligned with the JSON file.
+
+---
+
+## 2026 — Text Styles canvas: SPECIMEN audit, variableMap authority, fonts
+
+**Observed:** Agents running on existing files sometimes saw Typography table specimens without the row’s published `textStyleId`, or wrong variable bindings when a stale host `ctx.variableMap` was merged.
+
+**Fix:** [`canvas-templates/_lib.js`](./canvas-templates/_lib.js) always rebuilds `variableMap` from `getLocalVariablesAsync()`; [`loadFontsForTextStyles`](./canvas-templates/_lib.js) + runner pre-load slot fonts; [`text-styles.js`](./canvas-templates/text-styles.js) names `cell/*` / `text/specimen`, applies §0.5 text pipeline order, and [`_step15c-text-styles-runner.fragment.js`](./canvas-templates/bundles/_step15c-text-styles-runner.fragment.js) post-audits specimens and returns `ok: false` when counts fail. §14 + [`10-column-spec.md`](./conventions/10-column-spec.md) updated.
+
+---
+
 ## 2026 — MCP audit: header cells reusing body recipe (→ §0.5)
 
 **Observed (MCP diff):**

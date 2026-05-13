@@ -35,7 +35,7 @@ Commit both the `.mcp.js` and `.min.mcp.js` outputs.
 | 15c ↳ Effects       | [`step-15c-effects.mcp.js`](./step-15c-effects.mcp.js)             | [`step-15c-effects.min.mcp.js`](./step-15c-effects.min.mcp.js) |
 | 17 ↳ Token Overview | [`step-17-token-overview.mcp.js`](./step-17-token-overview.mcp.js) | [`step-17-token-overview.min.mcp.js`](./step-17-token-overview.min.mcp.js) |
 
-Each bundle concatenates `_lib.js` + the page template + the per-step runner fragment. The runner resolves variables, mode IDs, Doc/* style IDs, and the target page **inside the plugin** and calls `await build(ctx)`. `ctx.variableMap` is never passed inline — [`ensureLocalVariableMapOnCtx`](../_lib.js) hydrates it on entry to `build(ctx)`.
+Each bundle concatenates `_lib.js` + the page template + the per-step runner fragment. The runner resolves variables, mode IDs, Doc/* style IDs, and the target page **inside the plugin** and calls `await build(ctx)`. Omit `ctx.variableMap` from inline payloads — [`ensureLocalVariableMapOnCtx`](../_lib.js) **always** overwrites it from `getLocalVariablesAsync()` at the start of `build(ctx)`.
 
 ## Minifier rules (why strip-only, not esbuild)
 

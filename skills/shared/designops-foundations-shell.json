@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "2026-05-13",
+  "enforceDisplayTitle": false,
+  "pluginDataPageSlugKey": "labs.designops/pageSlug",
+  "pluginDataCollectionRegistryKey": "labs.designops/collectionRegistry",
+  "registryFrameName": "_DesignOpsRegistry",
+  "shellPages": [
+    {
+      "pageSlug": "primitives",
+      "displayTitle": "↳ Primitives",
+      "legacyNameCandidates": ["↳ Primitives"],
+      "headerTitle": "Primitives",
+      "headerDescription": "Raw color ramps, spacing scale, corner radius scale, and elevation values."
+    },
+    {
+      "pageSlug": "theme",
+      "displayTitle": "↳ Theme",
+      "legacyNameCandidates": ["↳ Theme"],
+      "headerTitle": "Theme",
+      "headerDescription": "Semantic color tokens — light and dark mode aliases into Primitives."
+    },
+    {
+      "pageSlug": "layout",
+      "displayTitle": "↳ Layout",
+      "legacyNameCandidates": ["↳ Layout"],
+      "headerTitle": "Layout",
+      "headerDescription": "Space and radius semantic tokens wired to the spacing and corner scale."
+    },
+    {
+      "pageSlug": "text-styles",
+      "displayTitle": "↳ Text Styles",
+      "legacyNameCandidates": ["↳ Text Styles"],
+      "headerTitle": "Text Styles",
+      "headerDescription": "Typography scale — 12 style slots across Display, Headline, Body, and Label."
+    },
+    {
+      "pageSlug": "effects",
+      "displayTitle": "↳ Effects",
+      "legacyNameCandidates": ["↳ Effects"],
+      "headerTitle": "Effects",
+      "headerDescription": "Shadow and elevation tokens — light and dark mode opacity variants."
+    }
+  ]
+}

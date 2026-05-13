@@ -4,6 +4,8 @@
 >
 > **Next:** [`07-10-axes-BC.md`](./07-10-axes-BC.md) (Steps 7–10).
 
+**Tier 3 parity:** When refreshing style-guide canvas bundles after `/new-project` v2 scaffold, ensure the Foundations file has completed **`/create-design-system`** Phase **06b** (five leaf pages + registry) before `canvas-bundle-runner` Step 15a — same ordering as [`../../create-design-system/SKILL.md`](../../create-design-system/SKILL.md) checklist.
+
 ---
 
 ## Step 6 — Execute Axis A

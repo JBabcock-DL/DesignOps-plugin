@@ -8,6 +8,8 @@ const typographyStyles = allTextStyles.filter(
   (s) => !s.name.startsWith('Doc/') && !s.name.startsWith('Effect/')
 );
 
+await loadFontsForTextStyles(typographyStyles);
+
 // Group by first path segment (category)
 const categoryMap = {};
 const categoryOrder = [];
@@ -105,9 +107,13 @@ const docStyles = {
   Caption:   allTextStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 
-const textStylesPage = figma.root.children.find((pg) => pg.name === '↳ Text Styles');
+const textStylesPage =
+  findDesignOpsPage('text-styles', {
+    legacyExact: ['↳ Text Styles'],
+    legacyRegex: [/^↳?\s*text\s*styles/i],
+  }) || null;
 if (!textStylesPage || textStylesPage.type !== 'PAGE') {
-  throw new Error('Page not found (expected ↳ Text Styles)');
+  throw new Error('Page not found (expected ↳ Text Styles / slug text-styles)');
 }
 
 const ctx = {
@@ -117,6 +123,62 @@ const ctx = {
 };
 await build(ctx);
 const tableGroups = textStylesPage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
+
+const expected = new Map();
+for (const r of rows) {
+  if (r.type === 'slot' && r.tokenPath && r.styleId) expected.set(r.tokenPath, r.styleId);
+}
+const table = textStylesPage.findOne((n) => n.name === 'doc/table/typography/styles' && n.type === 'FRAME');
+const body = table && table.children.find((c) => c.name === 'doc/table/typography/styles/body');
+let specimenStyleOk = 0;
+let specimenStyleMissing = 0;
+let specimenStyleMismatch = 0;
+const auditErrors = [];
+if (!table) auditErrors.push('doc/table/typography/styles not found');
+else if (!body) auditErrors.push('doc/table/typography/styles/body not found');
+else {
+  for (const [tokenPath, wantId] of expected) {
+    const rowFrame = body.children.find((c) => c.type === 'FRAME' && c.name === `row/${tokenPath}`);
+    if (!rowFrame) {
+      specimenStyleMissing++;
+      continue;
+    }
+    const specCell = rowFrame.children.find((c) => c.type === 'FRAME' && c.name === 'cell/specimen');
+    const specimenNode = specCell && specCell.findOne((n) => n.type === 'TEXT' && n.name === 'text/specimen');
+    if (!specimenNode || !specimenNode.textStyleId) {
+      specimenStyleMissing++;
+      continue;
+    }
+    if (specimenNode.textStyleId !== wantId) {
+      specimenStyleMismatch++;
+      continue;
+    }
+    specimenStyleOk++;
+  }
+}
+
+const slotCount = expected.size;
+const auditFail = specimenStyleMissing > 0 || specimenStyleMismatch > 0 || auditErrors.length > 0;
+if (auditFail) {
+  const parts = [];
+  if (auditErrors.length) parts.push(...auditErrors);
+  if (specimenStyleMissing) parts.push(`specimenStyleMissing: ${specimenStyleMissing}`);
+  if (specimenStyleMismatch) parts.push(`specimenStyleMismatch: ${specimenStyleMismatch}`);
+  return {
+    ok: false,
+    step: '15c-text-styles',
+    pageId: textStylesPage.id,
+    tableGroups,
+    pageName: textStylesPage.name,
+    rowCount: rows.length,
+    specimenStyleOk,
+    specimenStyleMissing,
+    specimenStyleMismatch,
+    slotCount,
+    errors: parts,
+  };
+}
+
 return {
   ok: true,
   step: '15c-text-styles',
@@ -124,4 +186,8 @@ return {
   tableGroups,
   pageName: textStylesPage.name,
   rowCount: rows.length,
+  specimenStyleOk,
+  specimenStyleMissing,
+  specimenStyleMismatch,
+  slotCount,
 };

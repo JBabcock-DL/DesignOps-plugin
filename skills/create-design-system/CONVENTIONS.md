@@ -41,6 +41,7 @@
 | Body text variant rules            | [`phases/02-steps5-9.md`](./phases/02-steps5-9.md) § **7b** + [`phases/07-steps15a-15c.md`](./phases/07-steps15a-15c.md) §0 |
 | Sync redraw steps (9b, 9d, 9e)     | [`skills/sync-design-system/SKILL.md`](../sync-design-system/SKILL.md) (router) · canvas chain detail [`skills/sync-design-system/phases/06-axis-A-and-canvas.md`](../sync-design-system/phases/06-axis-A-and-canvas.md) · figma-only canvas [`skills/sync-design-system/phases/figma-only-path.md`](../sync-design-system/phases/figma-only-path.md) §6.figma     |
 | New-project page scaffold          | [`skills/shared/pages.json`](../shared/pages.json) + [`skills/new-project/phases/05-scaffold-pages.md`](../new-project/phases/05-scaffold-pages.md) |
+| Foundations shell manifest (Tier 3) | [`skills/shared/designops-foundations-shell.json`](../shared/designops-foundations-shell.json) + [`phases/06b-foundations-shell.md`](../phases/06b-foundations-shell.md) |
 | `_Header` template                 | [`skills/new-project/phases/05b-documentation-headers.md`](../new-project/phases/05b-documentation-headers.md) |
 
 When you are unsure, **`Read` the relevant shard** rather than guessing.

@@ -1,14 +1,57 @@
-// Concatenate after _lib.js + theme.js (phase 07). Resolves Theme rows in-plugin; ctx omits variableMap.
-// Fully dynamic — discovers all Theme COLOR variables grouped by first path segment.
-// Accepts any mode name: "Light", "Light mode", "light", "Dark", "Dark mode", etc.
+// Concatenate after _lib.js + theme.js (phase 07). Resolves Theme rows in-plugin.
+// Collection-scoped: finds the Theme-like collection by fuzzy name match (or Light/Dark mode
+// detection), then draws ONLY COLOR vars from that collection grouped by first path segment.
+
 const allVars = await figma.variables.getLocalVariablesAsync();
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const themeColl = collections.find((c) => c.name === 'Theme');
-const primColl = collections.find((c) => c.name === 'Primitives');
-if (!themeColl) throw new Error('Theme collection missing');
-if (!primColl) throw new Error('Primitives collection missing');
+const registryIds = readDesignOpsCollectionRegistry();
 
-// Flexible mode detection: accept "Light", "Light mode", "light" etc.
+// ── Find the Theme-like collection (fuzzy) ────────────────────────────────────
+// Priority: registry id → exact "Theme" → keyword match → any collection with both Light AND Dark modes
+function findThemeCollection() {
+  return resolveCollectionByLogicalKey('theme', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Theme');
+  if (exact) return exact;
+  const fuzzy = collections.find((c) => /theme|semantic/i.test(c.name));
+  if (fuzzy) return fuzzy;
+  return (
+    collections.find(
+      (c) =>
+        c.modes.some((m) => /^light/i.test(m.name.trim())) &&
+        c.modes.some((m) => /^dark/i.test(m.name.trim()))
+    ) || null
+  );
+  });
+}
+
+// ── Find the base/primitives collection for alias resolution ──────────────────
+function findPrimitivesCollection(themeCollId) {
+  return resolveCollectionByLogicalKey('primitives', collections, registryIds, function () {
+  const exact = collections.find((c) => c.name === 'Primitives' && c.id !== themeCollId);
+  if (exact) return exact;
+  const fuzzy = collections.find((c) =>
+    /primitiv|core|foundation|base/i.test(c.name) && c.id !== themeCollId
+  );
+  if (fuzzy) return fuzzy;
+  const candidates = collections
+    .filter((c) => c.id !== themeCollId && c.modes.length === 1)
+    .map((c) => ({
+      c,
+      colorCount: allVars.filter((v) => v.variableCollectionId === c.id && v.resolvedType === 'COLOR').length,
+    }))
+    .sort((a, b) => b.colorCount - a.colorCount);
+  return candidates[0]?.c || null;
+  });
+}
+
+const themeColl = findThemeCollection();
+if (!themeColl) {
+  throw new Error(
+    'No Theme-like collection found. Available: ' + collections.map((c) => c.name).join(', ')
+  );
+}
+const primColl = findPrimitivesCollection(themeColl.id);
+
 const themeLightModeId = (
   themeColl.modes.find((m) => /^light/i.test(m.name.trim())) || themeColl.modes[0]
 ).modeId;
@@ -17,7 +60,7 @@ const themeDarkModeId = (
   themeColl.modes[1] ||
   themeColl.modes[0]
 ).modeId;
-const primModeId = primColl.modes[0].modeId;
+const primModeId = primColl ? primColl.modes[0].modeId : themeLightModeId;
 
 function colorToHex(c) {
   if (!c) return '#000000';
@@ -33,10 +76,10 @@ async function resolveHex(varId, themeModeId) {
     if (val == null) return '#000000';
     if (typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
       const next = await figma.variables.getVariableByIdAsync(val.id);
-      const nextColl = await figma.variables.getVariableCollectionByIdAsync(next.variableCollectionId);
-      if (nextColl.id === primColl.id) m = primModeId;
-      else if (nextColl.id === themeColl.id) m = themeModeId;
-      else m = nextColl.modes[0].modeId;
+      const nextColl = collections.find((c) => c.id === next.variableCollectionId);
+      if (nextColl?.id === primColl?.id) m = primModeId;
+      else if (nextColl?.id === themeColl.id) m = themeModeId;
+      else m = nextColl ? nextColl.modes[0].modeId : m;
       v = next;
       continue;
     }
@@ -52,10 +95,8 @@ async function resolveFirstAlias(varId, themeModeId) {
   if (val && typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
     try {
       const next = await figma.variables.getVariableByIdAsync(val.id);
-      return next && next.name ? next.name : null;
-    } catch (_) {
-      return null;
-    }
+      return next?.name || null;
+    } catch (_) { return null; }
   }
   return null;
 }
@@ -65,7 +106,7 @@ function readCS(v) {
   return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
 
-// Discover ALL Theme COLOR variables, group by first path segment
+// All COLOR vars from this collection only, grouped by first path segment
 const themeVars = allVars.filter(
   (v) => v.variableCollectionId === themeColl.id && v.resolvedType === 'COLOR'
 );
@@ -73,10 +114,7 @@ const groupOrder = [];
 const groupMap = {};
 for (const v of themeVars) {
   const firstSeg = v.name.split('/')[0];
-  if (!groupMap[firstSeg]) {
-    groupMap[firstSeg] = [];
-    groupOrder.push(firstSeg);
-  }
+  if (!groupMap[firstSeg]) { groupMap[firstSeg] = []; groupOrder.push(firstSeg); }
   groupMap[firstSeg].push(v);
 }
 
@@ -85,15 +123,13 @@ for (const group of groupOrder) {
   allRows[group] = [];
   for (const v of groupMap[group]) {
     const light = await resolveHex(v.id, themeLightModeId);
-    const dark = await resolveHex(v.id, themeDarkModeId);
-    const aliasLightLive = await resolveFirstAlias(v.id, themeLightModeId);
-    const aliasDarkLive = await resolveFirstAlias(v.id, themeDarkModeId);
+    const dark  = await resolveHex(v.id, themeDarkModeId);
+    const aliasLight = await resolveFirstAlias(v.id, themeLightModeId);
+    const aliasDark  = await resolveFirstAlias(v.id, themeDarkModeId);
     allRows[group].push({
       tokenPath: v.name,
-      resolvedHexLight: light,
-      resolvedHexDark: dark,
-      aliasLight: aliasLightLive,
-      aliasDark: aliasDarkLive,
+      resolvedHexLight: light, resolvedHexDark: dark,
+      aliasLight, aliasDark,
       codeSyntax: readCS(v),
     });
   }
@@ -101,25 +137,33 @@ for (const group of groupOrder) {
 
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
-  Section: textStyles.find((s) => s.name === 'Doc/Section')?.id || null,
+  Section:   textStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
   TokenName: textStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
-  Code: textStyles.find((s) => s.name === 'Doc/Code')?.id || null,
-  Caption: textStyles.find((s) => s.name === 'Doc/Caption')?.id || null,
+  Code:      textStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
+  Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
 };
 
-const themePage = figma.root.children.find((pg) => pg.name === '↳ Theme');
+const themePage =
+  findDesignOpsPage('theme', {
+    legacyExact: ['↳ Theme'],
+    legacyRegex: [/^↳?\s*theme/i],
+  }) || null;
 if (!themePage || themePage.type !== 'PAGE') {
-  throw new Error('Page not found (expected ↳ Theme)');
+  throw new Error(
+    'Page not found (expected ↳ Theme / slug theme). Pages: ' +
+      figma.root.children.filter((c) => c.type === 'PAGE').map((c) => c.name).join(' | ')
+  );
 }
 
 const ctx = {
-  pageId: themePage.id,
-  docStyles,
+  pageId: themePage.id, docStyles,
   themeCollectionId: themeColl.id,
-  themeLightModeId,
-  themeDarkModeId,
+  themeLightModeId, themeDarkModeId,
   rows: allRows,
 };
 await build(ctx);
 const tableGroups = themePage.findAll((n) => n.name && n.name.startsWith('doc/table-group/')).length;
-return { ok: true, step: '15b-theme', pageId: themePage.id, tableGroups, pageName: themePage.name };
+return {
+  ok: true, step: '15b-theme', pageId: themePage.id,
+  collection: themeColl.name, tableGroups, pageName: themePage.name,
+};
