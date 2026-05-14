@@ -52,9 +52,9 @@ If RESOLVED items were dropped but nothing was ALTERED or NEW, log (not prompt):
 
 ## Step 8 — Execute Axis B
 
-### 8.F — Axis B, direction F (Figma wins → PR)
+### 8.F — Axis B, direction F (Figma wins → drift report + optional git)
 
-**Emit a drift-report PR. Do NOT auto-regenerate TSX.**
+**Emit a drift report for engineers. Do NOT auto-regenerate TSX.**
 
 1. **Render drift markdown.** Use the template at [`../drift-report-template.md`](../drift-report-template.md). One section per drifted component, with:
    - cva variants expected vs. Figma variants present
@@ -67,30 +67,26 @@ If RESOLVED items were dropped but nothing was ALTERED or NEW, log (not prompt):
    - Preferred path: `.changeset/design-drift-{YYYYMMDD-HHmm}.md` if a `.changeset/` directory exists at the repo root.
    - Fallback: `docs/design-drift/design-drift-{YYYYMMDD-HHmm}.md`, creating the directory if needed.
 
-3. **Open a PR.**
-   ```bash
-   git checkout -b sync/design-drift-{YYYYMMDD-HHmm}
-   git add <drift-file>
-   git commit -m "chore(sync): design drift report $(date +%Y-%m-%d)"
-   git push -u origin HEAD
-   gh pr create --title "Design drift — {YYYY-MM-DD HH:mm}" --body "$(cat <<'EOF'
-## Summary
-Figma is source of truth for components this run. This report lists every drift the reconciler surfaced so code can be updated manually.
+3. **Git publish (optional).** After the drift file exists on disk, run the **git publish gate** in [`../reference/git-publish-after-figma-code.md`](../reference/git-publish-after-figma-code.md) (Steps A–C) with `<paths>` = **only** the drift markdown file. For **Open pull request**, use branch prefix `sync/design-drift-`, commit message `chore(sync): design drift report $(date +%Y-%m-%d)`, PR title `Design drift — {YYYY-MM-DD HH:mm}`, PR body pointing at the drift file (same content intent as the historical template below — adapt paths/timestamps).
 
-## Drift report
-See `<drift-file>` in this PR.
+   Historical PR body template (embed in `gh pr create --body` when the user chooses **Open pull request**):
 
-## Recommended actions
-- For `code-only` components with no matching ComponentSet, run `/create-component <name>` to draw them.
-- For `figma-only` components, scaffold the source in `components/ui/<name>.tsx` using shadcn conventions, then run `/code-connect` to wire the mapping.
-- For prop / variant / binding drift, edit the component source or its cva config to match the Figma side.
-EOF
-)"
+   ```markdown
+   ## Summary
+   Figma is source of truth for components this run. This report lists every drift the reconciler surfaced so code can be updated manually.
+
+   ## Drift report
+   See `<drift-file>` in this PR.
+
+   ## Recommended actions
+   - For `code-only` components with no matching ComponentSet, run `/create-component <name>` to draw them.
+   - For `figma-only` components, scaffold the source in `components/ui/<name>.tsx` using shadcn conventions, then run `/code-connect` to wire the mapping.
+   - For prop / variant / binding drift, edit the component source or its cva config to match the Figma side.
    ```
 
-   Record the PR URL.
+   Record the PR URL when the PR path succeeds; otherwise log per the reference doc.
 
-4. **Do NOT run any Figma writes.** Axis B F-wins is code-side-only.
+4. **Do NOT run any Figma writes.** Axis B F-wins is code-side-only for the drift artifact + git.
 
 ### 8.C — Axis B, direction C (Code wins → scoped redraw)
 
@@ -114,11 +110,11 @@ For **composition drift** items (`B.*.composition.*`), prefer scoping `/create-c
 ### 8.R — Axis B, direction R
 
 Apply `plan.B.items` resolutions:
-- F-resolved items → roll into the drift-report PR (8.F mechanism, scoped to those items).
+- F-resolved items → emit drift markdown scoped to those items (same template as 8.F), write the file, then run the **git publish gate** in [`../reference/git-publish-after-figma-code.md`](../reference/git-publish-after-figma-code.md) for **only** that drift file path (`sync/design-drift-` branch prefix for PRs).
 - C-resolved items → invoke `/create-component --components=<list>` scoped to their components.
 - S-resolved items → skip and log.
 
-If the resolutions are mixed (some F, some C) and both are non-empty, run the PR writer first (code side) and then the redraw (Figma side) — the drift-report PR only documents F-resolved items, so there is no conflict with the redraw.
+If the resolutions are mixed (some F, some C) and both are non-empty, run the **F** path first (drift file + git gate), then the **C** path (`/create-component`) — the drift report documents F-resolved items only, so there is no conflict with the redraw.
 
 ### 8.S — Axis B, direction S
 

@@ -20,6 +20,8 @@ For each token in the MISSING bucket and each token in the CONFLICTS bucket (usi
 - Preserve all existing tokens that were already in sync.
 - Report: `Axis A: updated N tokens in <token-file-path>.`
 
+**Git publish (optional).** After the file write succeeds, run the **git publish gate** in [`../reference/git-publish-after-figma-code.md`](../reference/git-publish-after-figma-code.md) (Steps A–C) with `<paths>` = the token file path only. Use branch prefix `sync/figma-tokens-` for the **Open pull request** option.
+
 **No canvas redraw runs** — Figma is unchanged.
 
 ### 6.C — Axis A, direction C (Code wins)
@@ -62,6 +64,8 @@ Apply per-item resolutions from `plan.A.items`:
 Report: `Axis A: pushed N tokens to Figma; updated M tokens in code; skipped K.`
 
 **Canvas chain runs iff ≥ 1 token was actually written to Figma.**
+
+**Git publish (optional) — code-side writes only.** If `M > 0` (at least one token was written to the local token file from F‑resolved items), after the write completes run the **git publish gate** in [`../reference/git-publish-after-figma-code.md`](../reference/git-publish-after-figma-code.md) (Steps A–C) with `<paths>` = the token file path(s) touched. Use branch prefix `sync/figma-tokens-` for **Open pull request**. If `M === 0`, skip the git gate for Axis A (no code file updates from F‑resolved items).
 
 ### 6.S — Axis A, direction S
 

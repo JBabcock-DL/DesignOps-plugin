@@ -63,3 +63,16 @@ If the CLI returns a **non-empty** listing, build the per-mapping `publishedStat
 > `Axis C: published-state read unavailable (MCP + CLI both failed); diff limited to orphaned mappings (source files deleted).`
 
 The user can still push in the C-wins direction (delegates to `/code-connect`, which has its own auth path and will idempotently no-op for already-published mappings — same guarantee that surfaces the *"Component is already mapped to code"* response); F-wins on an axis without published-state read is disabled for this run.
+
+### Git publish (`gh`, remotes, push failures)
+
+After Figma→code writes, the **git publish gate** may fail for reasons outside the skill. See [`./git-publish-after-figma-code.md`](./git-publish-after-figma-code.md).
+
+> "Git publish failed: `<first line of stderr>`.
+>
+> Common causes: `gh` not installed or not logged in (`gh auth login`), no `origin` remote, branch protection blocking push, or unrelated uncommitted changes conflicting with `git add` of only the written paths.
+>
+> Your file changes are already on disk — commit, push, or open a PR manually if needed."
+
+Do **not** retry the same `git push` / `gh pr create` in a tight loop; one diagnostic attempt, then hand off to the user.
+

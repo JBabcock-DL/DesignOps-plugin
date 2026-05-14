@@ -40,7 +40,7 @@ This skill audits every design-system surface in a single pass: tokens (**Axis A
 
 ## Interactive input contract
 
-Whenever this skill needs interactive input — **scope selection** (Step 0), **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, **continuation choice** (Step 11.5), **Figma → code write confirmation** (Step 11.5b), **optional ↳ changelog** (Step **9f** — skip vs update, then display name when updating), or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
+Whenever this skill needs interactive input — **scope selection** (Step 0), **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, **continuation choice** (Step 11.5), **Figma → code write confirmation** (Step 11.5b), **git publish after Figma→code writes** (skip / open PR / push current branch — [`reference/git-publish-after-figma-code.md`](./reference/git-publish-after-figma-code.md)), **optional ↳ changelog** (Step **9f** — skip vs update, then display name when updating), or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
 
 Bundled decisions are one **tool call** with multiple sub-questions (e.g. Step 5: one sub-question per axis with drift). That is still one decision moment, one `AskUserQuestion`.
 
@@ -138,7 +138,7 @@ Before any file probes, reads, or diffs, call **AskUserQuestion** once to pin th
 
 > "What do you want this sync to cover?
 > - **figma-only** — Refresh the Figma style-guide docs (↳ Primitives / Theme / Layout / Text Styles / Effects / Token Overview / Thumbnail) so they reflect the current Figma variables. Optionally update the **`↳ changelog`** page after the run (Step **9f**). Stays entirely inside Figma. **No** `tokens.css` / `tokens.json` read, **no** component scan, **no** Code Connect, **no** code-side writes. When it finishes, the skill asks whether to continue to a code-side reconcile.
-> - **full** — Full reconcile across Variables (code ↔ Figma), Components, and Code Connect. Direction is chosen per axis at Step 5. May open a drift-report PR (Axis B F-wins) and/or publish mappings (Axis C C-wins).
+> - **full** — Full reconcile across Variables (code ↔ Figma), Components, and Code Connect. Direction is chosen per axis at Step 5. May record component drift to disk and optionally open a PR or push git (Axis B F-wins + [`./reference/git-publish-after-figma-code.md`](./reference/git-publish-after-figma-code.md)); may publish mappings (Axis C C-wins).
 > - **code-to-figma** — One-way push of code as source of truth: tokens push up to Figma, drifted components get redrawn via `/create-component`, mappings get republished via `/code-connect`. Skips the per-axis direction prompt and asks a single confirmation instead."
 
 Record the answer as `plan.scope`, then follow the **Branch router** table above.

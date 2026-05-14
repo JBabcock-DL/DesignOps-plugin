@@ -215,7 +215,11 @@ Options: `yes` | `yes + delete removed` | `preview full diff` | `cancel`.
 
 ### 4. Write the file
 
-On `yes` or `yes + delete removed`, write the rendered content to the token-file path atomically (write to a temp, rename, or use the host writer's atomic mode). If the repo is a git worktree, leave the write uncommitted — the user stages / commits / PRs it themselves per repo conventions.
+On `yes` or `yes + delete removed`, write the rendered content to the token-file path atomically (write to a temp, rename, or use the host writer's atomic mode).
+
+#### 4.b Git publish (after successful write)
+
+Run the **git publish gate** in [`../reference/git-publish-after-figma-code.md`](../reference/git-publish-after-figma-code.md) (Steps A–C) with `<paths>` = the token file path only. Branch prefix for **Open pull request**: `sync/figma-tokens-`.
 
 ### 5. Report
 

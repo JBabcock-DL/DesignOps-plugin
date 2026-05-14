@@ -39,6 +39,7 @@ Do not paste entire `SKILL.md` files into context “just in case.” Follow eac
 - **`/create-component` Step 6:** **`assemble-component-use-figma-code.mjs`** + **`check-payload`**, then **`Task` → `canvas-bundle-runner`** (`cc-*` + `assembledCodePath`) — or **parent** **`Read`** same assembled file → **`call_mcp`** ([`EXECUTOR.md`](skills/create-component/EXECUTOR.md)). Batch prep: **`npm run create-component-step6 -- --ctx-file <path>`** ([`scripts/create-component-step6-all.mjs`](scripts/create-component-step6-all.mjs)); **never** parallel **`Task`** for two **`cc-*`** steps. Regenerate bundles: **`npm run bundle-component`**.
 - **`/sync-design-system` canvas refresh (6.Canvas.9b/9d):** same **canvas-bundle-runner** rule; after each runner Task, parent runs **§14 audit** slice for that page — [`skills/create-design-system/conventions/14-audit.md`](skills/create-design-system/conventions/14-audit.md).
 - **`/sync-design-system` optional `↳ changelog` (Step 9f):** designer opt-in via **`AskUserQuestion`**; assemble with **`assemble-sync-changelog-figma.mjs`** + **`check-payload`**, then parent **`Read` → `use_figma`** — [`skills/sync-design-system/phases/09f-changelog-optional.md`](skills/sync-design-system/phases/09f-changelog-optional.md).
+- **`/sync-design-system` git publish (after Figma→code writes):** **`AskUserQuestion`**: skip / open PR / push current branch; skipped if not a git repo — [`skills/sync-design-system/reference/git-publish-after-figma-code.md`](skills/sync-design-system/reference/git-publish-after-figma-code.md).
 
 ---
 
