@@ -34,12 +34,13 @@ This skill audits every design-system surface in a single pass: tokens (**Axis A
 2. **`plan.scope === 'figma-only'`** — **Never** run Step 1’s axis-detection table. Jump to [`phases/figma-only-path.md`](./phases/figma-only-path.md) after Step 0.
 3. **Style-guide canvas redraws (15a–15c, Step 17 bundles)** — Parent thread: **`Task` → [`canvas-bundle-runner`](../canvas-bundle-runner/SKILL.md)** only. Do **not** `Read` `.min.mcp.js` in the parent or call `use_figma` for those bundles. See [`AGENTS.md`](../../AGENTS.md) § *Canvas bundles — subagent delegation*. **After each runner Task:** run [`../create-design-system/conventions/14-audit.md`](../create-design-system/conventions/14-audit.md) § *After canvas-bundle-runner (parent thread)* before declaring that page done.
 4. **Thumbnail `Cover` (6.Canvas.9e)** — Small inline `use_figma` from parent is unchanged (not a committed canvas bundle).
+5. **Optional `↳ changelog` (Step 9f)** — Parent-thread `use_figma` only **after** designer opt-in via **`AskUserQuestion`**; assemble with [`scripts/assemble-sync-changelog-figma.mjs`](../../scripts/assemble-sync-changelog-figma.mjs) + **`check-payload`**, then **`Read`** → `use_figma`. Not delegated to **`canvas-bundle-runner`**. See [`phases/09f-changelog-optional.md`](./phases/09f-changelog-optional.md).
 
 ---
 
 ## Interactive input contract
 
-Whenever this skill needs interactive input — **scope selection** (Step 0), **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, **continuation choice** (Step 11.5), **Figma → code write confirmation** (Step 11.5b), or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
+Whenever this skill needs interactive input — **scope selection** (Step 0), **token file path**, **Figma file key or URL**, **bundled direction choice** (Step 5), **per-item resolutions** in R mode or validation pauses, **push confirmations**, **continuation choice** (Step 11.5), **Figma → code write confirmation** (Step 11.5b), **optional ↳ changelog** (Step **9f** — skip vs update, then display name when updating), or **corrected paths after an error** — use **AskUserQuestion**. **One tool call per decision moment.** Wait for each answer before the next.
 
 Bundled decisions are one **tool call** with multiple sub-questions (e.g. Step 5: one sub-question per axis with drift). That is still one decision moment, one `AskUserQuestion`.
 
@@ -59,6 +60,7 @@ Do not dump multiple decision prompts as plain markdown without calling **AskUse
   4.figma   Summary         — variable counts per collection
   5.figma   Page picker     — all | select | cancel
   6.figma   Canvas refresh  — 9b/9d/9e on selected pages
+   9f       Optional changelog — AskUserQuestion; maybe use_figma (see 09f-changelog-optional.md)
   11.figma  Report          — scope, file key, pages refreshed
   11.5      Continuation    — continue-figma-to-code | continue-full
                               | continue-code-to-figma | done
@@ -77,10 +79,11 @@ Do not dump multiple decision prompts as plain markdown without calling **AskUse
   8. Execute Axis B         — redraw / PR / review as planned
   9. Validate Axis C        — reclassify C's plan; pause + re-prompt only on ALTERED or NEW
  10. Execute Axis C         — publish / refresh / review as planned
+      Step 9f (changelog)   — optional; after 10, before 11 — [`phases/09f-changelog-optional.md`](./phases/09f-changelog-optional.md)
  11. Unified report         — scope, upstream-resolved + validation-pause counts
 ```
 
-In a clean `figma-only` run the user answers **two** `AskUserQuestion` calls (scope at Step 0, page picker at Step 5.figma) plus one continuation prompt at Step 11.5. The `continue-figma-to-code` branch adds **one** more confirmation (Step 11.5b). In a clean `full` / `code-to-figma` run the user answers **two** (scope at Step 0, direction at Step 5); if entered via continuation from figma-only, the Figma variable read is reused from `plan.A.figmaVarsInMemory`. Validation pauses (Steps 7, 9) are exception-driven.
+In a clean `figma-only` run the user answers **at least two** `AskUserQuestion` calls (scope at Step 0, page picker at Step 5.figma), plus optional **Step 9f** changelog prompts when they opt in, plus one continuation prompt at Step 11.5. The `continue-figma-to-code` branch adds **one** more confirmation (Step 11.5b). In a clean `full` / `code-to-figma` run the user answers **two** (scope at Step 0, direction at Step 5), plus optional **9f** prompts; if entered via continuation from figma-only, the Figma variable read is reused from `plan.A.figmaVarsInMemory`. Validation pauses (Steps 7, 9) are exception-driven.
 
 ### Plan state object
 
@@ -114,12 +117,14 @@ Every item across every axis carries a **stable key**: `{axis}.{subject}.{bucket
 
 | `plan.scope` | Next phase file(s) in order |
 |--------------|-------------------------------|
-| **figma-only** | [`phases/figma-only-path.md`](./phases/figma-only-path.md) (Step 1.5 → 2A.figma → 4.figma–6.figma → 11.figma → 11.5 → 11.5b). Token formats / errors: [`reference/token-formats.md`](./reference/token-formats.md), [`reference/error-guidance.md`](./reference/error-guidance.md). |
-| **full** or **code-to-figma** | 1. [`phases/00-scope-preflight.md`](./phases/00-scope-preflight.md) (Step 0 recap optional; Step 1) — if Step 0 already done, start at Step 1 content. 2. [`phases/02-read-axes.md`](./phases/02-read-axes.md) 3. [`phases/03-diff.md`](./phases/03-diff.md) 4. [`phases/04-present-05-decide.md`](./phases/04-present-05-decide.md) 5. [`phases/06-axis-A-and-canvas.md`](./phases/06-axis-A-and-canvas.md) 6. [`phases/07-10-axes-BC.md`](./phases/07-10-axes-BC.md) 7. [`phases/11-report-and-R-mode.md`](./phases/11-report-and-R-mode.md) |
+| **figma-only** | [`phases/figma-only-path.md`](./phases/figma-only-path.md) (Step 1.5 → 2A.figma → 4.figma–6.figma → **9f** → 11.figma → 11.5 → 11.5b). Token formats / errors: [`reference/token-formats.md`](./reference/token-formats.md), [`reference/error-guidance.md`](./reference/error-guidance.md). |
+| **full** or **code-to-figma** | 1. [`phases/00-scope-preflight.md`](./phases/00-scope-preflight.md) (Step 0 recap optional; Step 1) — if Step 0 already done, start at Step 1 content. 2. [`phases/02-read-axes.md`](./phases/02-read-axes.md) 3. [`phases/03-diff.md`](./phases/03-diff.md) 4. [`phases/04-present-05-decide.md`](./phases/04-present-05-decide.md) 5. [`phases/06-axis-A-and-canvas.md`](./phases/06-axis-A-and-canvas.md) 6. [`phases/07-10-axes-BC.md`](./phases/07-10-axes-BC.md) 7. [`phases/09f-changelog-optional.md`](./phases/09f-changelog-optional.md) (**before** Step 11). 8. [`phases/11-report-and-R-mode.md`](./phases/11-report-and-R-mode.md) |
 
 **Lazy-read rule:** Open **only** the phase file for the step you are executing. **Step 0** text also appears in [`phases/00-scope-preflight.md`](./phases/00-scope-preflight.md) for the full path; run Step 0 from this router or from that file once.
 
 **Canvas chain detail (9b / 9d / 9e, slug table, 15c ordering):** [`phases/06-axis-A-and-canvas.md`](./phases/06-axis-A-and-canvas.md) §6.Canvas and [`phases/figma-only-path.md`](./phases/figma-only-path.md) §6.figma.
+
+**Optional `↳ changelog` (Step 9f):** [`phases/09f-changelog-optional.md`](./phases/09f-changelog-optional.md) — runs after execution, before Step **11** / **11.figma** reports.
 
 **Drift report template (8.F):** [`drift-report-template.md`](./drift-report-template.md).
 
@@ -132,7 +137,7 @@ Before any file probes, reads, or diffs, call **AskUserQuestion** once to pin th
 **Prompt**
 
 > "What do you want this sync to cover?
-> - **figma-only** — Refresh the Figma style-guide docs (↳ Primitives / Theme / Layout / Text Styles / Effects / Token Overview / Thumbnail) so they reflect the current Figma variables. Stays entirely inside Figma. **No** `tokens.css` / `tokens.json` read, **no** component scan, **no** Code Connect, **no** code-side writes. When it finishes, the skill asks whether to continue to a code-side reconcile.
+> - **figma-only** — Refresh the Figma style-guide docs (↳ Primitives / Theme / Layout / Text Styles / Effects / Token Overview / Thumbnail) so they reflect the current Figma variables. Optionally update the **`↳ changelog`** page after the run (Step **9f**). Stays entirely inside Figma. **No** `tokens.css` / `tokens.json` read, **no** component scan, **no** Code Connect, **no** code-side writes. When it finishes, the skill asks whether to continue to a code-side reconcile.
 > - **full** — Full reconcile across Variables (code ↔ Figma), Components, and Code Connect. Direction is chosen per axis at Step 5. May open a drift-report PR (Axis B F-wins) and/or publish mappings (Axis C C-wins).
 > - **code-to-figma** — One-way push of code as source of truth: tokens push up to Figma, drifted components get redrawn via `/create-component`, mappings get republished via `/code-connect`. Skips the per-axis direction prompt and asks a single confirmation instead."
 

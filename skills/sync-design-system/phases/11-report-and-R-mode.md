@@ -1,8 +1,16 @@
-# Sync — Step 11 + R-mode reference
+# Sync — Step 9f + Step 11 + R-mode reference
 
 > **When to read:** After Steps 7–10 complete (or axes skipped) for `full` / `code-to-figma`.
 >
+> **Before Step 11:** Read [`./09f-changelog-optional.md`](./09f-changelog-optional.md) and run **Step 9f** (optional `↳ changelog` in Figma).
+>
 > **Errors:** [`../reference/error-guidance.md`](../reference/error-guidance.md).
+
+---
+
+## Step 9f — Optional `↳ changelog`
+
+See [`./09f-changelog-optional.md`](./09f-changelog-optional.md). Run **before** printing Step **11** so the page can mirror the same execution facts as the chat report.
 
 ---
 

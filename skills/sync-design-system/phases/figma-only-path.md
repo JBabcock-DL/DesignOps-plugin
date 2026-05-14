@@ -125,6 +125,10 @@ Run the canvas chain (6.Canvas.9b / 9d / 9e) **scoped to the user's selection** 
 
 Log one checklist row per executed page (same format as 6.Canvas's blocking checklist). Pages not selected are logged as `skipped (not selected)`.
 
+### 9f — Optional `↳ changelog` (before report)
+
+Read [`./09f-changelog-optional.md`](./09f-changelog-optional.md) and run **Step 9f** (designer opt-in + optional `use_figma` via [`scripts/assemble-sync-changelog-figma.mjs`](../../../scripts/assemble-sync-changelog-figma.mjs)) **before** Step **11.figma** below.
+
 ### 11.figma — Report (Figma-only shape)
 
 Skip the Axis A / B / C sub-blocks of Step 11. Emit:

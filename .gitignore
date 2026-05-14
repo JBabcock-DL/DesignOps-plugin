@@ -20,3 +20,6 @@ scripts/test-fixtures/composer2-probe-draw/.designops/
 
 # Step 6 orchestration QA (`npm run qa:step6-orchestration`)
 scripts/test-fixtures/.step6-orchestration-out/
+
+# Sync changelog assembler QA (`npm run qa:sync-changelog`)
+scripts/test-fixtures/.sync-changelog-out/

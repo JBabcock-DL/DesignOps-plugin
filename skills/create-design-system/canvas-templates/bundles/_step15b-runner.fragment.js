@@ -137,10 +137,10 @@ for (const group of groupOrder) {
 
 const textStyles = await figma.getLocalTextStylesAsync();
 const docStyles = {
-  Section:   textStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
-  TokenName: textStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
-  Code:      textStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
-  Caption:   textStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
+  Section:   textStyles.find((s) => s.name === '_Doc/Section')?.id   || null,
+  TokenName: textStyles.find((s) => s.name === '_Doc/TokenName')?.id || null,
+  Code:      textStyles.find((s) => s.name === '_Doc/Code')?.id      || null,
+  Caption:   textStyles.find((s) => s.name === '_Doc/Caption')?.id   || null,
 };
 
 const themePage =

@@ -812,10 +812,10 @@ async function build(ctx) {
     if (fuzzyRe) { const f = textStyles.find((s) => fuzzyRe.test(s.name)); if (f) return f.id; }
     return '';
   };
-  const docSection   = sid('Doc/Section',   /^doc.*section/i);
-  const docTokenName = sid('Doc/TokenName', /^doc.*(token|heading)/i);
-  const docCode      = sid('Doc/Code',      /^doc.*(code|mono)/i);
-  const docCaption   = sid('Doc/Caption',   /^doc.*(caption|label|body)/i);
+  const docSection   = sid('_Doc/Section',   /^_?doc.*section/i);
+  const docTokenName = sid('_Doc/TokenName', /^_?doc.*(token|heading)/i);
+  const docCode      = sid('_Doc/Code',      /^_?doc.*(code|mono)/i);
+  const docCaption   = sid('_Doc/Caption',   /^_?doc.*(caption|label|body)/i);
 
   const pageContent = page.findOne((n) => n.name === '_PageContent');
   let textUpgraded = 0;

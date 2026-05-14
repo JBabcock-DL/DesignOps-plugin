@@ -160,7 +160,7 @@ The following pages are sourced directly from the Detroit Labs Foundations templ
 
 **Sections:**
 - Thumbnail
-- Table of Contents (Token Overview)
+- Table of Contents (Token Overview, ↳ changelog)
 - Style Guide section header page `🖍️ Style Guide` only at scaffold time — **leaf pages** created by `/create-design-system` 06b (see above)
 - Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
 - Atoms (Typography, Text blocks, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)

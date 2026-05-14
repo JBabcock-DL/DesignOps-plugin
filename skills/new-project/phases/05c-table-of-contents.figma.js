@@ -92,7 +92,7 @@ const bands = [
     caption: 'Tokens, brand primitives, and style guide references.',
     sections: [
       { title: 'Meta',                   pages: ['Thumbnail'] },
-      { title: '📝 Token & Style Docs',  pages: ['↳ Token Overview'] },
+      { title: '📝 Token & Style Docs',  pages: ['↳ Token Overview', '↳ changelog'] },
       { title: '🖍️ Style Guide',          pages: ['↳ Primitives', '↳ Theme', '↳ Layout', '↳ Text Styles', '↳ Effects'] },
       { title: '🖼️ Brand Assets',         pages: ['↳ Logo Marks', '↳ Vector Patterns', '↳ Icons', '↳ Imagery', '↳ Motion'] },
     ],

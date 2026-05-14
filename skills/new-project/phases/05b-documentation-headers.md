@@ -69,6 +69,7 @@ const descriptions = {
   "Thumbnail":                  "File cover frame (`Cover`) on the Thumbnail page.",
   "📝 Table of Contents":       "Index of all pages in this design system with links to each section.",
   "↳ Token Overview":           "How the token architecture works and how to use it with Claude.",
+  "↳ changelog":               "Optional record of the last /sync-design-system run — scope, axes, and canvas refresh summary.",
   "🖍️ Style Guide":             "Visual documentation of all design tokens in this system.",
   "↳ Primitives":               "Raw color ramps, spacing scale, corner radius scale, and elevation values.",
   "↳ Theme":                    "Semantic color tokens — light and dark mode aliases into Primitives.",

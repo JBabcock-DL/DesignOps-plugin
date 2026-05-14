@@ -101,10 +101,10 @@ for (const cat of orderedCategories) {
 }
 
 const docStyles = {
-  Section:   allTextStyles.find((s) => s.name === 'Doc/Section')?.id   || null,
-  TokenName: allTextStyles.find((s) => s.name === 'Doc/TokenName')?.id || null,
-  Code:      allTextStyles.find((s) => s.name === 'Doc/Code')?.id      || null,
-  Caption:   allTextStyles.find((s) => s.name === 'Doc/Caption')?.id   || null,
+  Section:   allTextStyles.find((s) => s.name === '_Doc/Section')?.id   || null,
+  TokenName: allTextStyles.find((s) => s.name === '_Doc/TokenName')?.id || null,
+  Code:      allTextStyles.find((s) => s.name === '_Doc/Code')?.id      || null,
+  Caption:   allTextStyles.find((s) => s.name === '_Doc/Caption')?.id   || null,
 };
 
 const textStylesPage =

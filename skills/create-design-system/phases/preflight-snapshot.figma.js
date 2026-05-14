@@ -99,7 +99,7 @@ if (registryFrame) {
 const textStyles = await figma.getLocalTextStylesAsync();
 const effectStyles = await figma.getLocalEffectStylesAsync();
 
-const docNames = ['Doc/Section', 'Doc/TokenName', 'Doc/Code', 'Doc/Caption'];
+const docNames = ['_Doc/Section', '_Doc/TokenName', '_Doc/Code', '_Doc/Caption'];
 const docCorePresent = docNames.every((nm) => textStyles.some((s) => s.name === nm));
 
 const shadowNames = ['Effect/shadow-sm', 'Effect/shadow-md', 'Effect/shadow-lg', 'Effect/shadow-xl', 'Effect/shadow-2xl'];
@@ -113,7 +113,7 @@ const typographySlotsPresent = typoSlots >= 20;
 
 // Fuzzy Doc/* — prefix matches doc/documentation/system/ui etc., role matches section/code/etc.
 var docCoreFuzzyCount = textStyles.filter(function(s) {
-  return /^(doc|documentation|system|ui|base|foundation)(\/)/i.test(s.name) &&
+  return /^_?(doc|documentation|system|ui|base|foundation)(\/)/i.test(s.name) &&
          /\b(section|heading|caption|label|code|token|mono|tokenname)\b/i.test(s.name);
 }).length;
 var docCorePresentFuzzy = docCoreFuzzyCount >= 4;

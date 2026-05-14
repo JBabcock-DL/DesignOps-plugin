@@ -129,7 +129,7 @@ Each bundle calls `setCurrentPageAsync` for its target page in-plugin; no ctx as
 
 `figma.getLocalTextStylesAsync()` / `figma.getLocalEffectStylesAsync()`; `loadFontAsync` for every `fontName` set.
 
-1. **`Doc/Section`, `Doc/TokenName`, `Doc/Code`, `Doc/Caption`** — find or `createTextStyle()`. Bind to Typography mode **100** variables (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*`/`Label/MD/*`) via `setBoundVariable`; fall back to resolved literals from mode 100.
+1. **`_Doc/Section`, `_Doc/TokenName`, `_Doc/Code`, `_Doc/Caption`** — find or `createTextStyle()`. The `_` prefix prevents these from being published to the Figma library. Bind to Typography mode **100** variables (`Headline/LG/*`, `Label/LG/*`, `Label/SM/*`, `Body/SM/*`/`Label/MD/*`) via `setBoundVariable`; fall back to resolved literals from mode 100.
 
 2. **Slot text styles (15 base + 12 body variants = 27)** — find or create per slot; bind `{Slot}/font-size`, `font-family`, `font-weight`, `line-height` (Typography · mode 100). Slot list in [`../data/typography-slots.json`](../data/typography-slots.json) `baseSlots` + `bodyVariants`.
 

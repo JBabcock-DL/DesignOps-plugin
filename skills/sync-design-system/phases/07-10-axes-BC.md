@@ -2,7 +2,7 @@
 
 > **When to read:** After Step 6 for `full` / `code-to-figma`.
 >
-> **Next:** [`11-report-and-R-mode.md`](./11-report-and-R-mode.md).
+> **Next:** [`09f-changelog-optional.md`](./09f-changelog-optional.md) (optional Step **9f**), then [`11-report-and-R-mode.md`](./11-report-and-R-mode.md).
 
 ---
 

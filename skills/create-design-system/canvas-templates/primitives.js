@@ -25,10 +25,10 @@ async function build(ctx) {
   // Fuzzy docStyles fallback — augment any missing slots from local text styles
   if (!docStyles.Section || !docStyles.TokenName || !docStyles.Code || !docStyles.Caption) {
     var _ts = await figma.getLocalTextStylesAsync();
-    if (!docStyles.Section)   { var _s = _ts.find(function(s) { return /^doc.*section/i.test(s.name); }); if (_s) docStyles.Section = _s.id; }
-    if (!docStyles.TokenName) { var _tn = _ts.find(function(s) { return /^doc.*(token|heading)/i.test(s.name); }); if (_tn) docStyles.TokenName = _tn.id; }
-    if (!docStyles.Code)      { var _c = _ts.find(function(s) { return /^doc.*(code|mono)/i.test(s.name); }); if (_c) docStyles.Code = _c.id; }
-    if (!docStyles.Caption)   { var _cap = _ts.find(function(s) { return /^doc.*(caption|label|body)/i.test(s.name); }); if (_cap) docStyles.Caption = _cap.id; }
+    if (!docStyles.Section)   { var _s = _ts.find(function(s) { return /^_?doc.*section/i.test(s.name); }); if (_s) docStyles.Section = _s.id; }
+    if (!docStyles.TokenName) { var _tn = _ts.find(function(s) { return /^_?doc.*(token|heading)/i.test(s.name); }); if (_tn) docStyles.TokenName = _tn.id; }
+    if (!docStyles.Code)      { var _c = _ts.find(function(s) { return /^_?doc.*(code|mono)/i.test(s.name); }); if (_c) docStyles.Code = _c.id; }
+    if (!docStyles.Caption)   { var _cap = _ts.find(function(s) { return /^_?doc.*(caption|label|body)/i.test(s.name); }); if (_cap) docStyles.Caption = _cap.id; }
   }
 
   await figma.setCurrentPageAsync(figma.root.children.find(p => p.id === pageId) || figma.currentPage);

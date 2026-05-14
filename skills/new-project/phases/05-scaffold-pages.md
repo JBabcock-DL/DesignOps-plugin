@@ -35,6 +35,7 @@ const pages = [
   "---",
   "📝 Table of Contents",
   "↳ Token Overview",
+  "↳ changelog",
 
   // ── Style Guide (leaf token pages created by /create-design-system Phase 06b) ──
   "---",

@@ -118,7 +118,7 @@ The file lands in Drafts. At the end of the run Claude provides a one-step move 
 
 **Page hierarchy** — sourced from the Detroit Labs Foundations template and extended with shadcn/ui component pages, organized into atomic design groups:
 
-- Token & Style Docs (Table of Contents, Token Overview)
+- Token & Style Docs (Table of Contents, Token Overview, ↳ changelog)
 - Style Guide (Primitives, Theme, Layout, Text Styles, Effects)
 - Brand Assets (Logo Marks, Vector Patterns, Icons, Imagery, Motion)
 - Atoms (Typography, Label, Kbd, Dividers, Avatar, Badge, Chips, Tags, Counters, Aspect Ratio)
@@ -209,6 +209,7 @@ Diff a local token file against the current Figma variable state and push change
    - **Review manually** — resolve each conflict one at a time before pushing
 5. Flags any legacy `Web`, `Android/M3`, or `iOS/HIG` collections as deprecated if found
 6. **After a successful push to Figma** (options 1, 3, or confirmed manual push): runs **`use_figma`** in one skill run — **Step 9b** redraws affected style guide pages (one call per page batch, matching create-design-system **15a–15c** + **Doc/** / slot styles / effect styles, **1800** canvas + **1640** tables), **Step 9d** refreshes **`↳ Token Overview`**, **Step 9e** updates the Thumbnail **`Cover`** gradient — all following **Canvas documentation visual spec § A–G** like `/create-design-system`. Skipped when only pushing to code (option 2).
+7. **Optional — Step 9f:** After execution, the designer may choose to refresh the **`↳ changelog`** page with this run's summary (date, display name, axes); see [`skills/sync-design-system/phases/09f-changelog-optional.md`](skills/sync-design-system/phases/09f-changelog-optional.md).
 
 ---
 
