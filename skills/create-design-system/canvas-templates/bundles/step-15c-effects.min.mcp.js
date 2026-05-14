@@ -357,8 +357,8 @@ row.counterAxisSizingMode = 'AUTO';
 row.primaryAxisSizingMode = 'FIXED';
 row.resize(1640, 1);
 row.minHeight = 56;
-row.paddingTop = 14;
-row.paddingBottom = 14;
+row.paddingTop = 24;
+row.paddingBottom = 24;
 row.counterAxisAlignItems = 'CENTER';
 row.fills = [];
 if (borderVariable !== null) {
