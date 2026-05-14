@@ -11,7 +11,8 @@ After **Step 11 close** (Doc/* text styles + Effect/shadow-* published) and **be
 
 ## Prerequisites
 
-- `/new-project` completed through **05b** (`_Header` master on `Documentation components`) and **05c** (TOC rows include the five style-guide link rows; 05f skipped missing destinations until now).
+- **Ideal:** `/new-project` through **05b** (`_Header` master on `Documentation components`) and **05c** (TOC rows include the five style-guide link rows; 05f skipped missing destinations until now).
+- **Custom / migrated files:** If there is no `_Header` `COMPONENT` on `Documentation components`, the shell still completes items 1, 3, and 4 and returns `headerMasterMissing: true` (see **Missing `_Header` master** below) — do not treat that return as a thrown error.
 - `/create-design-system` **Step 11** complete including **Step 11 close** (see [`04-step11-push.md`](./04-step11-push.md)).
 - Optional: run [`preflight-snapshot.md`](./preflight-snapshot.md) read-only probe first; if `axisC.docCorePresent` or `axisC.effectShadowPresent` is false, finish Step 11 close before this shell.
 
@@ -20,23 +21,28 @@ After **Step 11 close** (Doc/* text styles + Effect/shadow-* published) and **be
 1. Load **figma-use** if required.
 2. `const FILE_KEY = '<same key as use_figma fileKey>';` — required for TOC hyperlinks.
 3. Optionally `const MANIFEST_VERSION_EMBED = '2026-05-13';` (match [`designops-foundations-shell.json`](../../shared/designops-foundations-shell.json) `manifestVersion`).
-4. **Optional — no `_Header` master on `Documentation components`:** before the script body, set `const DESIGNOPS_HEADER_PLACEHOLDER = true;` so the shell **creates** a minimal `_Header` `COMPONENT` (1800×320, `_title` + `_description` text) and then places instances. If you omit this and the master is missing, the shell **does not throw**: it still writes the registry, stamps slugs, and sets TOC links, but skips header instances and returns `headerMasterMissing: true`.
-5. **`Read`** [`foundations-shell.figma.js`](./foundations-shell.figma.js) in full and paste as the script body (it embeds `MANIFEST.shellPages`; keep in sync with the JSON file when editing — repo CI runs `npm run qa:foundations-shell-manifest`).
+4. **`Read`** [`foundations-shell.figma.js`](./foundations-shell.figma.js) in full and paste as the script body (it embeds `MANIFEST.shellPages`; keep in sync with the JSON file when editing — repo CI runs `npm run qa:foundations-shell-manifest`).
 
-**No** `_shared-token-helpers` inlay is required for the default shell — header instances clone the existing `_Header` master from Phase 05b (or the placeholder master when step 4 opt-in is used).
+**No** `_shared-token-helpers` inlay is required for the default shell — header instances clone the existing `_Header` master from Phase 05b when that master exists.
 
 ## Success criteria
 
-- Return JSON includes `ok: true`, `createdCount`, `stampedCount`, `headersPlaced`, `linksSet`, `registryKeys`, and booleans `headerMasterMissing`, `placeholderHeaderCreated` (both default `false` when a real master was present).
+- Return JSON includes `ok: true`, `createdCount`, `stampedCount`, `headersPlaced`, `linksSet`, `registryKeys`, and boolean `headerMasterMissing` (`false` when a `_Header` `COMPONENT` was found on `Documentation components`).
 - Second run on the same file: `createdCount === 0` (idempotent).
 
-## `_Header` master missing — agent (parent) branch
+## Missing `_Header` master — `AskUserQuestion` (parent only)
 
-If the return has `headerMasterMissing: true` and `placeholderHeaderCreated: false`, the file has no `_Header` `COMPONENT` and the run did **not** use the placeholder opt-in. **One `AskUserQuestion`** with:
+`use_figma` cannot prompt the designer. After the shell returns, if **`headerMasterMissing` is `true`**:
 
-- **Placeholder** — Re-run this phase with `const DESIGNOPS_HEADER_PLACEHOLDER = true;` before the script body (minimal master + instances).
-- **Skip** — Continue to Phase 07; style-guide canvas may assert on `_Header` until the designer adds a real master or re-runs shell with placeholder.
-- **Stop** — Designer adds a proper `_Header` (e.g. `/new-project` Phase 05b or paste from template), then re-run Phase 06b.
+1. Fire **one `AskUserQuestion`** with exactly these options (labels may shorten; meanings must match):
+
+- **Build documentation header** — Run **`/new-project` Phase 05b** as written in [`skills/new-project/phases/05b-documentation-headers.md`](../../new-project/phases/05b-documentation-headers.md): inline [`_shared-token-helpers.figma.js`](../../new-project/phases/_shared-token-helpers.figma.js) between the markers, one `use_figma` with the file key. That phase creates the real shared `_Header` (1800×320, `cornerRadius: 0`, bound fill, logo + wordmark + `_title` / `_description` per spec) and places instances site-wide. **Then re-run Phase 06b** (same assembly as above) so the five style-guide pages get manifest title/description overrides and any remaining shell work stays idempotent.
+
+- **Skip** — Continue to Phase 07 without building a header in this turn. Style-guide canvas (Step 15a+) expects an `_Header` instance at `(0,0)` on each leaf page; missing chrome can cause asserts or thin layout until 05b + 06b are done later.
+
+- **Stop** — End the skill run; designer fixes the file manually (e.g. copies `_Header` from a Foundations template), then re-runs `/create-design-system` from Phase 06b.
+
+2. Do **not** invent a substitute “minimal” header inside `foundations-shell.figma.js` — the only automated **build** path is Phase **05b** above.
 
 ## Failure modes
 

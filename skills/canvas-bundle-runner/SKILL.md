@@ -28,7 +28,7 @@ If `step` matches neither table in §2, return `{ ok: false, step, errors: ["unk
 
 Given input `{ step, fileKey, description? }` (parent passes these in its Task prompt):
 
-**Tier 3 (parent scheduling):** On Foundations files from `/new-project` v2 scaffold, the **parent** must run **`/create-design-system`** checklist **Pre-flight snapshot** + **Foundations shell** ([`preflight-snapshot.md`](../create-design-system/phases/preflight-snapshot.md), [`06b-foundations-shell.md`](../create-design-system/phases/06b-foundations-shell.md)) **before** the first style-guide `step` Task — this skill does **not** run those probes.
+**Tier 3 (parent scheduling):** On Foundations files from `/new-project` v2 scaffold, the **parent** must run **`/create-design-system`** checklist **Pre-flight snapshot** + **Foundations shell** ([`preflight-snapshot.md`](../create-design-system/phases/preflight-snapshot.md), [`06b-foundations-shell.md`](../create-design-system/phases/06b-foundations-shell.md)) **before** the first style-guide `step` Task — this skill does **not** run those probes. If the shell returns `headerMasterMissing: true`, follow the **`AskUserQuestion`** branch in [`06b-foundations-shell.md`](../create-design-system/phases/06b-foundations-shell.md) (build real `_Header` via `/new-project` Phase 05b, skip, or stop) before expecting canvas to pass `_Header` asserts.
 
 1. **`Read`** exactly one file — the `.min.mcp.js` that matches `step` (§2 **Canvas** table). No globbing, no enumerating `bundles/`, no reading `_lib.js`, no reading phase files. One `Read`, one path.
 2. **Call `use_figma`** on the Figma MCP server with:

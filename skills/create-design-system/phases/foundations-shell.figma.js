@@ -3,12 +3,10 @@
 // Standalone script for use_figma — no _shared-token-helpers inlay (see 06b-foundations-shell.md).
 // Before this block, set: const FILE_KEY = '<figma file key>';
 //
-// Optional (MCP / migrated files without /new-project 05b):
-//   const DESIGNOPS_HEADER_PLACEHOLDER = true;
-// → creates a minimal `_Header` COMPONENT on Documentation components (1800×320, _title + _description).
-// If omitted and no `_Header` master exists, the shell still writes registry + slugs + TOC links but skips
-// header instances and returns `headerMasterMissing: true` (parent should ask designer: re-run with
-// DESIGNOPS_HEADER_PLACEHOLDER true, add a real master from /new-project 05b, or accept skip and fix canvas).
+// If no `_Header` COMPONENT exists on Documentation components, the shell still writes
+// registry + slugs + TOC links but skips header instances and returns `headerMasterMissing: true`.
+// Parent: one AskUserQuestion — **Build documentation header** (run /new-project Phase 05b per
+// skills/new-project/phases/05b-documentation-headers.md, then re-run this shell) or **Skip**.
 //
 // Preconditions: /new-project through 05c when using the full template. Variables + Step 11 close should have run first.
 
@@ -77,44 +75,6 @@ function hasHeaderOnPage(page) {
   return false;
 }
 
-/** Minimal `_Header` master for Tier-3 shell when /new-project 05b was never run (canvas expects INSTANCE at 0,0). */
-async function createPlaceholderHeaderMaster(page) {
-  const comp = figma.createComponent();
-  comp.name = '_Header';
-  comp.layoutMode = 'VERTICAL';
-  comp.primaryAxisSizingMode = 'FIXED';
-  comp.counterAxisSizingMode = 'FIXED';
-  comp.resize(1800, 320);
-  comp.cornerRadius = 0;
-  comp.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 1 }];
-  comp.paddingLeft = comp.paddingRight = 40;
-  comp.paddingTop = comp.paddingBottom = 32;
-  comp.itemSpacing = 8;
-  page.appendChild(comp);
-
-  const title = figma.createText();
-  title.name = '_title';
-  await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
-  title.fontName = { family: 'Inter', style: 'Bold' };
-  title.fontSize = 28;
-  title.characters = 'Title';
-  title.textAutoResize = 'HEIGHT';
-  title.resize(1720, 1);
-  comp.appendChild(title);
-
-  const desc = figma.createText();
-  desc.name = '_description';
-  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-  desc.fontName = { family: 'Inter', style: 'Regular' };
-  desc.fontSize = 16;
-  desc.characters = 'Description';
-  desc.textAutoResize = 'HEIGHT';
-  desc.resize(1720, 1);
-  comp.appendChild(desc);
-
-  return comp;
-}
-
 await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
 await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
@@ -163,7 +123,7 @@ function pickTheme() {
 const idMap = {};
 const prim = pickCollection('Primitives', /primitiv|core|foundation|base/i);
 const theme = pickTheme();
-const typo = pickCollection('Typography', /typograph/i);
+const typo = pickCollection('Typography', /typograph|text\s*styles/i);
 const layout = pickCollection('Layout', /layout|spacing|dimensional/i);
 const effects = pickCollection('Effects', /effects?|shadow|elevation/i);
 if (prim) idMap.primitives = prim.id;
@@ -182,17 +142,9 @@ const mergedRegistry = { ...prevRegistry, ...idMap };
 registryFrame.setSharedPluginData(DESIGNOPS_SHARED_NS, REGISTRY_SUBKEY, JSON.stringify(mergedRegistry));
 
 let headerMaster = docPage.findOne((n) => n.type === 'COMPONENT' && n.name === '_Header');
-let headerMasterMissing = false;
-let placeholderHeaderCreated = false;
-
-if (!headerMaster) {
-  if (typeof DESIGNOPS_HEADER_PLACEHOLDER !== 'undefined' && DESIGNOPS_HEADER_PLACEHOLDER === true) {
-    headerMaster = await createPlaceholderHeaderMaster(docPage);
-    placeholderHeaderCreated = true;
-  } else {
-    headerMasterMissing = true;
-    headerMaster = null;
-  }
+const headerMasterMissing = !headerMaster;
+if (headerMasterMissing) {
+  headerMaster = null;
 }
 
 let createdCount = 0;
@@ -293,5 +245,4 @@ return {
   linksSet,
   registryKeys: Object.keys(mergedRegistry),
   headerMasterMissing,
-  placeholderHeaderCreated,
 };

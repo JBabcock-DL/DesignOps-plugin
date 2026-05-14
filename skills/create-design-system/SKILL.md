@@ -134,7 +134,7 @@ Current: Building Primitives…
 - [ ] Summarizing results (counts & file links)
 - [ ] Publishing Doc/\* text styles + Effect/shadow-\* (at **Step 11 close** — see §0.4; if phases 02–04 were skipped, run the Step 11 close / 15c §0 idempotent block **before** canvas so 15a/15b bind on first pass)
 - [ ] Pre-flight snapshot (Tier 3 — read [`phases/preflight-snapshot.md`](./phases/preflight-snapshot.md); observe-only)
-- [ ] Foundations shell (Tier 3 — read [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md); creates five style-guide `PAGE`s + registry + TOC links after variables exist)
+- [ ] Foundations shell (Tier 3 — read [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md); creates five style-guide `PAGE`s + registry + TOC links after variables exist; if the shell returns `headerMasterMissing`, one `AskUserQuestion`: build real header via [`/new-project` Phase 05b](../../new-project/phases/05b-documentation-headers.md) then re-run 06b, **Skip**, or **Stop**)
 - [ ] Drawing ↳ Primitives style guide (Step 15a)
 - [ ] Drawing ↳ Theme style guide (Step 15b)
 - [ ] Drawing ↳ Layout + ↳ Text Styles + ↳ Effects (rest of Step 15c)

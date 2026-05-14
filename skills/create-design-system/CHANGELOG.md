@@ -8,6 +8,8 @@ Preserved historical context for gotcha rules in [`conventions/00-gotchas.md`](.
 
 **Change:** `/new-project` Step 5 no longer creates the five style-guide leaf `PAGE`s; they are created (or legacy-matched) by **`/create-design-system`** after variables + Step 11 close via [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md). [`designops-foundations-shell.json`](../shared/designops-foundations-shell.json) + `pluginData` page slugs + [`_DesignOpsRegistry`](./conventions/foundations-shell-and-preflight.md) collection ids; canvas runners use [`_lib.js`](./canvas-templates/_lib.js) `findDesignOpsPage` / `readDesignOpsCollectionRegistry` / `resolveCollectionByLogicalKey`. Read-only probe: [`phases/preflight-snapshot.md`](./phases/preflight-snapshot.md). **Spec polish:** pre-flight emits `blocked_ambiguous` + `duplicate_legacy_match:` for ambiguous display-title collisions; `npm run qa:foundations-shell-manifest` keeps embedded `MANIFEST` aligned with the JSON file.
 
+**Update (same tier):** Removed in-shell “minimal placeholder” `_Header`; when the master is absent the shell returns `headerMasterMissing: true` and the parent runs **`AskUserQuestion`**: build the real header via [`/new-project` Phase 05b](../new-project/phases/05b-documentation-headers.md) then re-run 06b, **Skip**, or **Stop** — see [`phases/06b-foundations-shell.md`](./phases/06b-foundations-shell.md). Registry `typography` key also matches a collection named **Text Styles** (fuzzy).
+
 ---
 
 ## 2026 — Text Styles canvas: SPECIMEN audit, variableMap authority, fonts
