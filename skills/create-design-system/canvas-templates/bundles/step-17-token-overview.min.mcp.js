@@ -56,6 +56,7 @@ const DESIGNOPS_SHARED_NS = 'labs.designops';
 const DESIGNOPS_PAGE_SLUG_SUBKEY = 'pageSlug';
 const DESIGNOPS_COLLECTION_REGISTRY_SUBKEY = 'collectionRegistry';
 const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+var DESIGNOPS_PATH_ALIAS_SUBKEY = 'pathAliasMap';
 function readDesignOpsPageSlug(page) {
 return page.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_PAGE_SLUG_SUBKEY) || '';
 }
@@ -101,6 +102,182 @@ return typeof o === 'object' && o !== null ? o : {};
 } catch (_) {
 return {};
 }
+}
+function readDesignOpsPathAliasMap(registryFrame) {
+if (!registryFrame) return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+try {
+var raw = registryFrame.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_PATH_ALIAS_SUBKEY);
+if (!raw) return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+var parsed = JSON.parse(raw);
+if (!parsed || typeof parsed !== 'object') return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+parsed.entries = parsed.entries || {};
+return parsed;
+} catch (_) {
+return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+}
+}
+function writeDesignOpsPathAliasMap(registryFrame, aliasData) {
+if (!registryFrame) return;
+try {
+registryFrame.setSharedPluginData(
+DESIGNOPS_SHARED_NS,
+DESIGNOPS_PATH_ALIAS_SUBKEY,
+JSON.stringify(aliasData)
+);
+} catch (_) {  }
+}
+async function computePathAliasMap(variableMap, collections, allVars) {
+var CANONICAL_PATHS = [
+'color/border/subtle',
+'color/background/default',
+'color/background/variant',
+'color/background/content',
+'color/background/content-muted',
+'color/neutral/100',
+'color/neutral/950',
+'color/primary/200',
+'color/primary/500',
+'color/secondary/500',
+'color/primary/default',
+];
+var KEYWORD_RULES = {
+'color/background/default':       { required: [['background','default'],['surface','default']], exclusions: [] },
+'color/background/content':       { required: [['background','content']], exclusions: ['muted'] },
+'color/background/content-muted': { required: [['background','content','muted'],['surface','muted']], exclusions: [] },
+'color/background/variant':       { required: [['background','variant'],['surface','variant']], exclusions: [] },
+'color/border/subtle':            { required: [['border','subtle']], exclusions: [] },
+'color/primary/default':          { required: [['primary','default']], exclusions: [] },
+'color/neutral/100':              { required: [['neutral','100']], exclusions: [] },
+'color/neutral/950':              { required: [['neutral','950']], exclusions: [] },
+'color/primary/200':              { required: [['primary','200']], exclusions: [] },
+'color/primary/500':              { required: [['primary','500']], exclusions: [] },
+'color/secondary/500':            { required: [['secondary','500']], exclusions: [] },
+};
+var allNames = Object.keys(variableMap);
+var entries = {};
+for (var i = 0; i < CANONICAL_PATHS.length; i++) {
+var canonicalPath = CANONICAL_PATHS[i];
+if (variableMap[canonicalPath]) {
+entries[canonicalPath] = { resolvedPath: canonicalPath, confidence: 'exact' };
+continue;
+}
+var rule = KEYWORD_RULES[canonicalPath];
+if (rule) {
+var candidates = allNames.filter(function(name) {
+var segments = name.toLowerCase().split('/');
+for (var e = 0; e < rule.exclusions.length; e++) {
+if (segments.indexOf(rule.exclusions[e]) !== -1) return false;
+}
+for (var r = 0; r < rule.required.length; r++) {
+var reqSet = rule.required[r];
+var allPresent = true;
+for (var s = 0; s < reqSet.length; s++) {
+if (segments.indexOf(reqSet[s]) === -1) { allPresent = false; break; }
+}
+if (allPresent) return true;
+}
+return false;
+});
+if (candidates.length === 1) {
+entries[canonicalPath] = { resolvedPath: candidates[0], confidence: 'semantic' };
+continue;
+}
+}
+var parts = canonicalPath.split('/');
+var lastPart = parts[parts.length - 1];
+if (/^\d+$/.test(lastPart)) {
+var primColl = null;
+for (var ci = 0; ci < collections.length; ci++) {
+var c = collections[ci];
+if (/^(primitiv|core|foundation|base)/i.test(c.name)) { primColl = c; break; }
+}
+if (!primColl) {
+var hasLightDark = function(col) {
+return col.modes.some(function(m) { return /^light/i.test(m.name); }) &&
+col.modes.some(function(m) { return /^dark/i.test(m.name); });
+};
+var colorCountFn = function(col) {
+return allVars.filter(function(v) { return v.variableCollectionId === col.id && v.resolvedType === 'COLOR'; }).length;
+};
+var nonThemeCols = collections.filter(function(col) { return !hasLightDark(col); });
+nonThemeCols.sort(function(a, b) { return colorCountFn(b) - colorCountFn(a); });
+if (nonThemeCols.length > 0) primColl = nonThemeCols[0];
+}
+if (primColl) {
+var rampKeyword = parts.length >= 2 ? parts[parts.length - 2].toLowerCase() : null;
+if (rampKeyword) {
+var stopCandidates = allVars.filter(function(v) {
+if (v.variableCollectionId !== primColl.id) return false;
+if (v.resolvedType !== 'COLOR') return false;
+var segs = v.name.toLowerCase().split('/');
+var lastSeg = segs[segs.length - 1];
+return lastSeg === lastPart && segs.indexOf(rampKeyword) !== -1;
+});
+if (stopCandidates.length === 1) {
+entries[canonicalPath] = { resolvedPath: stopCandidates[0].name, confidence: 'position' };
+continue;
+}
+}
+}
+}
+entries[canonicalPath] = { resolvedPath: null, confidence: null };
+}
+return entries;
+}
+async function ensureCanonicalMapOnCtx(ctx) {
+if (!ctx.variableMap) return;
+var registryFrame = null;
+try {
+var docPage = figma.root.children.find(function(p) {
+return p.type === 'PAGE' && p.name === 'Documentation components';
+});
+if (docPage) {
+registryFrame = docPage.findOne(function(n) {
+return n.type === 'FRAME' && n.name === '_DesignOpsRegistry';
+}) || null;
+}
+} catch (_) {}
+var allVarsC, collectionsC;
+try {
+allVarsC = await figma.variables.getLocalVariablesAsync();
+collectionsC = await figma.variables.getLocalVariableCollectionsAsync();
+} catch (_) {
+allVarsC = [];
+collectionsC = [];
+}
+var checksum = ((allVarsC.length ^ collectionsC.length) & 0xFFFF).toString(16).padStart(4, '0');
+var stored = readDesignOpsPathAliasMap(registryFrame);
+if (stored.variableMapChecksum === checksum && Object.keys(stored.entries).length > 0) {
+ctx.canonicalMap = {};
+var storedEntries = stored.entries;
+Object.keys(storedEntries).forEach(function(k) {
+ctx.canonicalMap[k] = storedEntries[k] ? storedEntries[k].resolvedPath : null;
+});
+return;
+}
+var freshEntries = await computePathAliasMap(ctx.variableMap, collectionsC, allVarsC);
+var aliasData = {
+schemaVersion: 1,
+computedAt: new Date().toISOString(),
+variableMapChecksum: checksum,
+entries: freshEntries,
+};
+writeDesignOpsPathAliasMap(registryFrame, aliasData);
+ctx.canonicalMap = {};
+Object.keys(freshEntries).forEach(function(k) {
+ctx.canonicalMap[k] = freshEntries[k] ? freshEntries[k].resolvedPath : null;
+});
+}
+function resolveCanonicalPath(canonicalPath, variableMap, canonicalMap) {
+if (variableMap && variableMap[canonicalPath]) return canonicalPath;
+if (!canonicalMap) return null;
+var alias = canonicalMap[canonicalPath];
+if (alias && variableMap && variableMap[alias]) return alias;
+return null;
+}
+function isHeaderNode(node) {
+return (node.name === '_Header' || /^_?header/i.test(node.name)) &&
+(node.type === 'INSTANCE' || node.type === 'COMPONENT');
 }
 function resolveCollectionByLogicalKey(logicalKey, collections, registryIds, fallbackFn) {
 var want = registryIds && registryIds[logicalKey];
@@ -341,8 +518,9 @@ body.appendChild(row);
 table.appendChild(body);
 group.appendChild(table);
 if (!slug.includes('token-overview/platform-mapping')) {
-const shadowStyle = (await figma.getLocalEffectStylesAsync())
-.find(s => s.name === 'Effect/shadow-sm');
+const _allEffectStyles = await figma.getLocalEffectStylesAsync();
+const shadowStyle = _allEffectStyles.find(s => s.name === 'Effect/shadow-sm')
+|| _allEffectStyles.find(s => /shadow.*sm/i.test(s.name));
 if (shadowStyle) table.effectStyleId = shadowStyle.id;
 }
 parent.appendChild(group);
@@ -352,9 +530,9 @@ return group;
 }
 async function buildPageContent(page) {
 for (const node of [...page.children]) {
-if (node.name !== '_Header') node.remove();
+if (!isHeaderNode(node)) node.remove();
 }
-const header = page.findOne(n => n.name === '_Header');
+const header = page.children.find(n => isHeaderNode(n));
 if (header) {
 if (Math.abs(header.width - 1800) > 1) header.resize(1800, 320);
 }
@@ -377,28 +555,28 @@ content.layoutSizingVertical = 'HUG';
 return content;
 }
 const STEP17_MIN_PLATFORM_ROWS = [
-{ tokenPath: 'color/background/default', collection: 'Theme' },
-{ tokenPath: 'color/background/content', collection: 'Theme' },
-{ tokenPath: 'color/background/content-muted', collection: 'Theme' },
-{ tokenPath: 'color/background/variant', collection: 'Theme' },
-{ tokenPath: 'color/border/default', collection: 'Theme' },
-{ tokenPath: 'color/border/subtle', collection: 'Theme' },
-{ tokenPath: 'color/primary/default', collection: 'Theme' },
-{ tokenPath: 'color/primary/content', collection: 'Theme' },
-{ tokenPath: 'color/primary/subtle', collection: 'Theme' },
-{ tokenPath: 'color/secondary/default', collection: 'Theme' },
-{ tokenPath: 'color/tertiary/default', collection: 'Theme' },
-{ tokenPath: 'color/error/default', collection: 'Theme' },
-{ tokenPath: 'color/component/ring', collection: 'Theme' },
-{ tokenPath: 'Headline/LG/font-size', collection: 'Typography' },
-{ tokenPath: 'Title/LG/font-size', collection: 'Typography' },
-{ tokenPath: 'Body/MD/font-size', collection: 'Typography' },
-{ tokenPath: 'typeface/display', collection: 'Primitives' },
-{ tokenPath: 'space/md', collection: 'Layout' },
-{ tokenPath: 'space/lg', collection: 'Layout' },
-{ tokenPath: 'radius/md', collection: 'Layout' },
-{ tokenPath: 'radius/lg', collection: 'Layout' },
-{ tokenPath: 'shadow/color', collection: 'Effects' },
+{ tokenPath: 'color/background/default',       collection: 'Theme',      defaultHex: '#FBFBFB' },
+{ tokenPath: 'color/background/content',       collection: 'Theme',      defaultHex: '#FFFFFF' },
+{ tokenPath: 'color/background/content-muted', collection: 'Theme',      defaultHex: '#F4F4F5' },
+{ tokenPath: 'color/background/variant',       collection: 'Theme',      defaultHex: '#F9F9FA' },
+{ tokenPath: 'color/border/default',           collection: 'Theme',      defaultHex: '#E4E4E7' },
+{ tokenPath: 'color/border/subtle',            collection: 'Theme',      defaultHex: '#F4F4F5' },
+{ tokenPath: 'color/primary/default',          collection: 'Theme',      defaultHex: '#2563EB' },
+{ tokenPath: 'color/primary/content',          collection: 'Theme',      defaultHex: '#FFFFFF' },
+{ tokenPath: 'color/primary/subtle',           collection: 'Theme',      defaultHex: '#DBEAFE' },
+{ tokenPath: 'color/secondary/default',        collection: 'Theme',      defaultHex: '#6B7280' },
+{ tokenPath: 'color/tertiary/default',         collection: 'Theme',      defaultHex: '#8B5CF6' },
+{ tokenPath: 'color/error/default',            collection: 'Theme',      defaultHex: '#EF4444' },
+{ tokenPath: 'color/component/ring',           collection: 'Theme',      defaultHex: '#2563EB' },
+{ tokenPath: 'Headline/LG/font-size',          collection: 'Typography', defaultHex: '32px' },
+{ tokenPath: 'Title/LG/font-size',             collection: 'Typography', defaultHex: '22px' },
+{ tokenPath: 'Body/MD/font-size',              collection: 'Typography', defaultHex: '14px' },
+{ tokenPath: 'typeface/display',               collection: 'Primitives', defaultHex: 'Inter' },
+{ tokenPath: 'space/md',                       collection: 'Layout',     defaultHex: '16px' },
+{ tokenPath: 'space/lg',                       collection: 'Layout',     defaultHex: '24px' },
+{ tokenPath: 'radius/md',                      collection: 'Layout',     defaultHex: '8px' },
+{ tokenPath: 'radius/lg',                      collection: 'Layout',     defaultHex: '12px' },
+{ tokenPath: 'shadow/color',                   collection: 'Effects',    defaultHex: 'rgba(0,0,0,0.15)' },
 ];
 const ARCH_BIND = [
 { name: 'Primitives', path: 'color/primary/default' },
@@ -449,6 +627,7 @@ if ('children' in node) for (const c of node.children) walkNodes(c, fn);
 }
 async function build(ctx) {
 await ensureLocalVariableMapOnCtx(ctx);
+await ensureCanonicalMapOnCtx(ctx);
 await loadFonts(['Inter', 'Roboto Mono', 'SF Mono']);
 const pageNode = await figma.getNodeByIdAsync(ctx.pageId);
 if (!pageNode || pageNode.type !== 'PAGE') throw new Error('Step 17: invalid pageId');
@@ -456,7 +635,8 @@ await figma.setCurrentPageAsync(pageNode);
 const page = figma.currentPage;
 const { variableMap } = ctx;
 const collections = await figma.variables.getLocalVariableCollectionsAsync();
-const primColl = collections.find((c) => c.name === 'Primitives');
+const primColl = collections.find((c) => c.name === 'Primitives')
+|| collections.find((c) => /^(primitiv|core|foundation|base)/i.test(c.name));
 const primModeId = primColl ? primColl.modes[0]?.modeId : null;
 const pmTable = page.findOne((n) => n.name === 'doc/table/token-overview/platform-mapping');
 const pmTableId = pmTable ? pmTable.id : null;
@@ -471,11 +651,16 @@ n.effects = [];
 });
 }
 const textStyles = await figma.getLocalTextStylesAsync();
-const sid = (name) => textStyles.find((s) => s.name === name)?.id || '';
-const docSection = sid('Doc/Section');
-const docTokenName = sid('Doc/TokenName');
-const docCode = sid('Doc/Code');
-const docCaption = sid('Doc/Caption');
+const sid = (name, fuzzyRe) => {
+const exact = textStyles.find((s) => s.name === name);
+if (exact) return exact.id;
+if (fuzzyRe) { const f = textStyles.find((s) => fuzzyRe.test(s.name)); if (f) return f.id; }
+return '';
+};
+const docSection   = sid('Doc/Section',   /^doc.*section/i);
+const docTokenName = sid('Doc/TokenName', /^doc.*(token|heading)/i);
+const docCode      = sid('Doc/Code',      /^doc.*(code|mono)/i);
+const docCaption   = sid('Doc/Caption',   /^doc.*(caption|label|body)/i);
 const pageContent = page.findOne((n) => n.name === '_PageContent');
 let textUpgraded = 0;
 if (pageContent) {
@@ -513,7 +698,8 @@ if (docCode) n.textStyleId = docCode;
 }
 }
 const effectStyles = await figma.getLocalEffectStylesAsync();
-const shadowSm = effectStyles.find((e) => e.name === 'Effect/shadow-sm');
+const shadowSm = effectStyles.find((e) => e.name === 'Effect/shadow-sm')
+|| effectStyles.find((e) => /shadow.*sm/i.test(e.name));
 const shadowSmId = shadowSm ? shadowSm.id : '';
 let shadowFrames = 0;
 if (pageContent && shadowSmId) {
@@ -538,7 +724,8 @@ shadowFrames++;
 for (const spec of ARCH_BIND) {
 const box = page.findOne((n) => n.name === 'arch-box/' + spec.name);
 if (!box || box.type !== 'FRAME') continue;
-const vid = variableMap[spec.path];
+const _archActualPath = resolveCanonicalPath(spec.path, variableMap, ctx.canonicalMap) || spec.path;
+const vid = variableMap[_archActualPath];
 if (!vid) continue;
 const v = await figma.variables.getVariableByIdAsync(vid);
 if (!v) continue;
@@ -547,13 +734,15 @@ bindPaintToVar(box, v);
 } catch (_) {}
 }
 const phoneLight = page.findOne((n) => n.name === 'phone-frame/light');
-if (phoneLight && variableMap['color/background/default']) {
-const v = await figma.variables.getVariableByIdAsync(variableMap['color/background/default']);
+const _phoneLightPath = resolveCanonicalPath('color/background/default', variableMap, ctx.canonicalMap);
+if (phoneLight && _phoneLightPath) {
+const v = await figma.variables.getVariableByIdAsync(variableMap[_phoneLightPath]);
 if (v) try { bindPaintToVar(phoneLight, v); } catch (_) {}
 }
 const phoneDark = page.findOne((n) => n.name === 'phone-frame/dark');
-if (phoneDark && variableMap['color/neutral/950']) {
-const v = await figma.variables.getVariableByIdAsync(variableMap['color/neutral/950']);
+const _phoneDarkPath = resolveCanonicalPath('color/neutral/950', variableMap, ctx.canonicalMap);
+if (phoneDark && _phoneDarkPath) {
+const v = await figma.variables.getVariableByIdAsync(variableMap[_phoneDarkPath]);
 if (v) try { bindPaintToVar(phoneDark, v); } catch (_) {}
 }
 const rowPrefix = 'doc/table/token-overview/platform-mapping/row/';
@@ -565,16 +754,27 @@ const rowFrames = pmTable.findAll(
 );
 for (const row of rowFrames) {
 const tokenPath = row.name.slice(rowPrefix.length);
-const vid = variableMap[tokenPath];
+const _actualPath = resolveCanonicalPath(tokenPath, variableMap, ctx.canonicalMap);
+const vid = _actualPath ? variableMap[_actualPath] : null;
 if (!vid) {
+const minRow = STEP17_MIN_PLATFORM_ROWS.find((r) => r.tokenPath === tokenPath);
+if (minRow && minRow.defaultHex) {
+for (const key of ['web', 'android', 'ios']) {
+const cell = row.findOne((c) => c.name === row.name + '/cell/' + key);
+if (!cell) continue;
+for (const t of cell.children || []) {
+if (t.type === 'TEXT' && String(t.characters) !== minRow.defaultHex) {
+try { t.characters = minRow.defaultHex; cellsUpdated++; } catch (_) {}
+}
+}
+}
+} else {
 const tokCell = row.findOne((c) => c.type === 'FRAME' && c.name.endsWith('/cell/token'));
 if (tokCell) {
 for (const t of tokCell.children || []) {
 if (t.type === 'TEXT' && !String(t.characters).includes('stale')) {
-try {
-t.characters = String(t.characters) + ' · stale';
-staleRows++;
-} catch (_) {}
+try { t.characters = String(t.characters) + ' · stale'; staleRows++; } catch (_) {}
+}
 }
 }
 }
@@ -616,7 +816,8 @@ placeholdersRemoved++;
 }
 let tbdFixed = 0;
 let fallbackHex = '#2563eb';
-const p500 = variableMap['color/primary/500'];
+const _p500Path = resolveCanonicalPath('color/primary/500', variableMap, ctx.canonicalMap);
+const p500 = _p500Path ? variableMap[_p500Path] : null;
 if (p500 && primModeId) {
 const v500 = await figma.variables.getVariableByIdAsync(p500);
 if (v500) {
@@ -637,7 +838,7 @@ tbdFixed++;
 }
 const missingMinRows = [];
 for (const spec of STEP17_MIN_PLATFORM_ROWS) {
-if (!variableMap[spec.tokenPath]) missingMinRows.push(spec.tokenPath);
+if (!resolveCanonicalPath(spec.tokenPath, variableMap, ctx.canonicalMap)) missingMinRows.push(spec.tokenPath);
 }
 return {
 step: '17-token-overview',

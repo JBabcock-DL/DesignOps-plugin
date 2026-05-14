@@ -141,7 +141,25 @@ try {
 const mergedRegistry = { ...prevRegistry, ...idMap };
 registryFrame.setSharedPluginData(DESIGNOPS_SHARED_NS, REGISTRY_SUBKEY, JSON.stringify(mergedRegistry));
 
-let headerMaster = docPage.findOne((n) => n.type === 'COMPONENT' && n.name === '_Header');
+function findHeaderComponent(docPage) {
+  // Tier 1: exact name '_Header'
+  var h = docPage.findOne(function(n) { return n.type === 'COMPONENT' && n.name === '_Header'; });
+  if (h) return h;
+  // Tier 2: case-insensitive '_header' or 'header' prefix
+  h = docPage.findOne(function(n) { return n.type === 'COMPONENT' && /^_?header/i.test(n.name); });
+  if (h) return h;
+  // Tier 3: widest COMPONENT >= 1200px on the page (header is typically 1800px)
+  var wide = [];
+  for (var i = 0; i < docPage.children.length; i++) {
+    var ch = docPage.children[i];
+    if (ch.type === 'COMPONENT' && ch.width >= 1200) wide.push(ch);
+  }
+  if (wide.length === 0) return null;
+  wide.sort(function(a, b) { return b.width - a.width; });
+  return wide[0];
+}
+
+let headerMaster = findHeaderComponent(docPage);
 const headerMasterMissing = !headerMaster;
 if (headerMasterMissing) {
   headerMaster = null;
@@ -211,26 +229,85 @@ if (tokenOverviewPage && !tokenOverviewPage.getSharedPluginData(DESIGNOPS_SHARED
   tokenOverviewPage.setSharedPluginData(DESIGNOPS_SHARED_NS, PAGE_SLUG_SUBKEY, 'token-overview');
 }
 
+function findTocLinkRows(tocPage) {
+  // Strategy 1: standard toc-link/* naming
+  var byName = tocPage.findAll(function(n) { return n.name.startsWith('toc-link/'); });
+  if (byName.length > 0) {
+    return byName.map(function(n) {
+      return { node: n, targetPageName: n.name.replace('toc-link/', ''), matchingPage: null };
+    });
+  }
+  // Strategy 2: frames containing a label TEXT + '→' arrow TEXT sibling
+  var candidates = [];
+  function probe(container) {
+    var children = container.children || [];
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      if (!child.findAll) continue;
+      var texts = child.findAll(function(n) { return n.type === 'TEXT'; });
+      var arrow = null, label = null;
+      for (var t = 0; t < texts.length; t++) {
+        if (texts[t].characters.trim() === '→') { arrow = texts[t]; }
+        else if (texts[t].characters.trim().length > 0 && !label) { label = texts[t]; }
+      }
+      if (!arrow || !label) continue;
+      var labelText = label.characters.trim();
+      var matchingPage = null;
+      var allPages = figma.root.children;
+      for (var p = 0; p < allPages.length; p++) {
+        var pg = allPages[p];
+        if (pg.type !== 'PAGE') continue;
+        if (pg.name === labelText ||
+            pg.name.replace(/^↳\s*/, '').trim().toLowerCase() === labelText.toLowerCase()) {
+          matchingPage = pg;
+          break;
+        }
+      }
+      candidates.push({ node: child, targetPageName: matchingPage ? matchingPage.name : labelText, matchingPage: matchingPage });
+    }
+  }
+  probe(tocPage);
+  if (candidates.length === 0) {
+    for (var c = 0; c < tocPage.children.length; c++) {
+      if (tocPage.children[c].children) probe(tocPage.children[c]);
+    }
+  }
+  return candidates;
+}
+
 let linksSet = 0;
 if (typeof FILE_KEY === 'undefined' || !FILE_KEY) {
   /* skip hyperlinks without file key */
 } else {
   const tocPage = figma.root.children.find((p) => p.type === 'PAGE' && p.name === '📝 Table of Contents');
   if (tocPage) {
-    const linkRows = tocPage.findAll((n) => n.name.startsWith('toc-link/'));
-    for (const linkRow of linkRows) {
-      const pageName = linkRow.name.replace('toc-link/', '');
-      const targetPage = figma.root.children.find((p) => p.type === 'PAGE' && p.name === pageName);
+    var tocLinks = findTocLinkRows(tocPage);
+    for (var tli = 0; tli < tocLinks.length; tli++) {
+      var tocLink = tocLinks[tli];
+      var linkRow = tocLink.node;
+      var targetPageName = tocLink.targetPageName;
+      var targetPage = tocLink.matchingPage ||
+        figma.root.children.find(function(p) { return p.type === 'PAGE' && p.name === targetPageName; });
       if (!targetPage) continue;
-      const targetNode =
-        pageName === 'Thumbnail'
-          ? targetPage.findOne((n) => n.name === 'Cover') || targetPage.children[0]
-          : targetPage.children.find((n) => n.name === '_Header') || targetPage.children[0];
+      var targetNode = null;
+      if (targetPageName === 'Thumbnail') {
+        targetNode = targetPage.findOne(function(n) { return n.name === 'Cover'; }) || targetPage.children[0];
+      } else {
+        for (var tc = 0; tc < targetPage.children.length; tc++) {
+          var tch = targetPage.children[tc];
+          if ((tch.name === '_Header' || /^_?header/i.test(tch.name)) &&
+              (tch.type === 'INSTANCE' || tch.type === 'COMPONENT')) {
+            targetNode = tch;
+            break;
+          }
+        }
+        if (!targetNode) targetNode = targetPage.children[0] || null;
+      }
       if (!targetNode) continue;
-      const textNode = linkRow.findOne((n) => n.type === 'TEXT' && n.characters !== '→');
+      var textNode = linkRow.findOne(function(n) { return n.type === 'TEXT' && n.characters.trim() !== '→'; });
       if (!textNode) continue;
-      const nodeId = targetNode.id.replace(':', '-');
-      textNode.hyperlink = { type: 'URL', value: `https://www.figma.com/design/${FILE_KEY}?node-id=${nodeId}` };
+      var nodeId = targetNode.id.replace(':', '-');
+      textNode.hyperlink = { type: 'URL', value: 'https://www.figma.com/design/' + FILE_KEY + '?node-id=' + nodeId };
       linksSet += 1;
     }
   }

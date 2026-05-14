@@ -15,8 +15,11 @@ const REGISTRY_FRAME_NAME = '_DesignOpsRegistry';
 const REGISTRY_SUBKEY = 'collectionRegistry';
 
 function hasHeaderInstance(page) {
-  for (const c of page.children) {
-    if (c.name !== '_Header') continue;
+  for (var _hi = 0; _hi < page.children.length; _hi++) {
+    var c = page.children[_hi];
+    // Accept exact '_Header' or any /^_?header/i instance/component at origin
+    var isHeader = c.name === '_Header' || /^_?header/i.test(c.name);
+    if (!isHeader) continue;
     if (c.type !== 'INSTANCE' && c.type !== 'COMPONENT') continue;
     if (Math.abs(c.x) >= 1 || Math.abs(c.y) >= 1) continue;
     return true;
@@ -108,6 +111,28 @@ for (const s of textStyles) {
 }
 const typographySlotsPresent = typoSlots >= 20;
 
+// Fuzzy Doc/* — prefix matches doc/documentation/system/ui etc., role matches section/code/etc.
+var docCoreFuzzyCount = textStyles.filter(function(s) {
+  return /^(doc|documentation|system|ui|base|foundation)(\/)/i.test(s.name) &&
+         /\b(section|heading|caption|label|code|token|mono|tokenname)\b/i.test(s.name);
+}).length;
+var docCorePresentFuzzy = docCoreFuzzyCount >= 4;
+
+// Fuzzy Effect/shadow-* — any 3+ shadow-like effect styles
+var effectShadowFuzzyCount = effectStyles.filter(function(s) {
+  return /^(effect|shadow|elevation)(\/)/i.test(s.name);
+}).length;
+var effectShadowPresentFuzzy = effectShadowFuzzyCount >= 3;
+
+// Extended typography regex — adds Display, Title, Typography, Type, Text, Font prefixes
+var typographySlotsExtended = 0;
+for (var _tsi = 0; _tsi < textStyles.length; _tsi++) {
+  if (/^(Headline|Body|Label|Display|Title|Typography|Type|Text|Font)(\/)/i.test(textStyles[_tsi].name)) {
+    typographySlotsExtended++;
+  }
+}
+var typographySlotsPresentExtended = typographySlotsExtended >= 20;
+
 const shellSlugs = ['primitives', 'theme', 'layout', 'text-styles', 'effects'];
 let shellReady = true;
 for (const s of shellSlugs) {
@@ -155,6 +180,12 @@ return {
     docCorePresent,
     effectShadowPresent,
     typographySlotsPresent,
+    docCorePresentFuzzy,
+    docCoreFuzzyCount,
+    effectShadowPresentFuzzy,
+    effectShadowFuzzyCount,
+    typographySlotsExtended,
+    typographySlotsPresentExtended,
   },
   manifestVersion,
   warnings,

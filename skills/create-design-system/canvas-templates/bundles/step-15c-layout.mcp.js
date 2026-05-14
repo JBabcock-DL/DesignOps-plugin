@@ -83,6 +83,7 @@ const DESIGNOPS_SHARED_NS = 'labs.designops';
 const DESIGNOPS_PAGE_SLUG_SUBKEY = 'pageSlug';
 const DESIGNOPS_COLLECTION_REGISTRY_SUBKEY = 'collectionRegistry';
 const DESIGNOPS_REGISTRY_FRAME = '_DesignOpsRegistry';
+var DESIGNOPS_PATH_ALIAS_SUBKEY = 'pathAliasMap';
 
 function readDesignOpsPageSlug(page) {
   return page.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_PAGE_SLUG_SUBKEY) || '';
@@ -140,6 +141,188 @@ function readDesignOpsCollectionRegistry() {
   } catch (_) {
     return {};
   }
+}
+
+function readDesignOpsPathAliasMap(registryFrame) {
+  if (!registryFrame) return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+  try {
+    var raw = registryFrame.getSharedPluginData(DESIGNOPS_SHARED_NS, DESIGNOPS_PATH_ALIAS_SUBKEY);
+    if (!raw) return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+    parsed.entries = parsed.entries || {};
+    return parsed;
+  } catch (_) {
+    return { entries: {}, variableMapChecksum: null, schemaVersion: 1 };
+  }
+}
+
+function writeDesignOpsPathAliasMap(registryFrame, aliasData) {
+  if (!registryFrame) return;
+  try {
+    registryFrame.setSharedPluginData(
+      DESIGNOPS_SHARED_NS,
+      DESIGNOPS_PATH_ALIAS_SUBKEY,
+      JSON.stringify(aliasData)
+    );
+  } catch (_) { /* read-only file or API error — alias map is a cache, not required */ }
+}
+
+async function computePathAliasMap(variableMap, collections, allVars) {
+  var CANONICAL_PATHS = [
+    'color/border/subtle',
+    'color/background/default',
+    'color/background/variant',
+    'color/background/content',
+    'color/background/content-muted',
+    'color/neutral/100',
+    'color/neutral/950',
+    'color/primary/200',
+    'color/primary/500',
+    'color/secondary/500',
+    'color/primary/default',
+  ];
+  var KEYWORD_RULES = {
+    'color/background/default':       { required: [['background','default'],['surface','default']], exclusions: [] },
+    'color/background/content':       { required: [['background','content']], exclusions: ['muted'] },
+    'color/background/content-muted': { required: [['background','content','muted'],['surface','muted']], exclusions: [] },
+    'color/background/variant':       { required: [['background','variant'],['surface','variant']], exclusions: [] },
+    'color/border/subtle':            { required: [['border','subtle']], exclusions: [] },
+    'color/primary/default':          { required: [['primary','default']], exclusions: [] },
+    'color/neutral/100':              { required: [['neutral','100']], exclusions: [] },
+    'color/neutral/950':              { required: [['neutral','950']], exclusions: [] },
+    'color/primary/200':              { required: [['primary','200']], exclusions: [] },
+    'color/primary/500':              { required: [['primary','500']], exclusions: [] },
+    'color/secondary/500':            { required: [['secondary','500']], exclusions: [] },
+  };
+  var allNames = Object.keys(variableMap);
+  var entries = {};
+  for (var i = 0; i < CANONICAL_PATHS.length; i++) {
+    var canonicalPath = CANONICAL_PATHS[i];
+    if (variableMap[canonicalPath]) {
+      entries[canonicalPath] = { resolvedPath: canonicalPath, confidence: 'exact' };
+      continue;
+    }
+    var rule = KEYWORD_RULES[canonicalPath];
+    if (rule) {
+      var candidates = allNames.filter(function(name) {
+        var segments = name.toLowerCase().split('/');
+        for (var e = 0; e < rule.exclusions.length; e++) {
+          if (segments.indexOf(rule.exclusions[e]) !== -1) return false;
+        }
+        for (var r = 0; r < rule.required.length; r++) {
+          var reqSet = rule.required[r];
+          var allPresent = true;
+          for (var s = 0; s < reqSet.length; s++) {
+            if (segments.indexOf(reqSet[s]) === -1) { allPresent = false; break; }
+          }
+          if (allPresent) return true;
+        }
+        return false;
+      });
+      if (candidates.length === 1) {
+        entries[canonicalPath] = { resolvedPath: candidates[0], confidence: 'semantic' };
+        continue;
+      }
+    }
+    var parts = canonicalPath.split('/');
+    var lastPart = parts[parts.length - 1];
+    if (/^\d+$/.test(lastPart)) {
+      var primColl = null;
+      for (var ci = 0; ci < collections.length; ci++) {
+        var c = collections[ci];
+        if (/^(primitiv|core|foundation|base)/i.test(c.name)) { primColl = c; break; }
+      }
+      if (!primColl) {
+        var hasLightDark = function(col) {
+          return col.modes.some(function(m) { return /^light/i.test(m.name); }) &&
+                 col.modes.some(function(m) { return /^dark/i.test(m.name); });
+        };
+        var colorCountFn = function(col) {
+          return allVars.filter(function(v) { return v.variableCollectionId === col.id && v.resolvedType === 'COLOR'; }).length;
+        };
+        var nonThemeCols = collections.filter(function(col) { return !hasLightDark(col); });
+        nonThemeCols.sort(function(a, b) { return colorCountFn(b) - colorCountFn(a); });
+        if (nonThemeCols.length > 0) primColl = nonThemeCols[0];
+      }
+      if (primColl) {
+        var rampKeyword = parts.length >= 2 ? parts[parts.length - 2].toLowerCase() : null;
+        if (rampKeyword) {
+          var stopCandidates = allVars.filter(function(v) {
+            if (v.variableCollectionId !== primColl.id) return false;
+            if (v.resolvedType !== 'COLOR') return false;
+            var segs = v.name.toLowerCase().split('/');
+            var lastSeg = segs[segs.length - 1];
+            return lastSeg === lastPart && segs.indexOf(rampKeyword) !== -1;
+          });
+          if (stopCandidates.length === 1) {
+            entries[canonicalPath] = { resolvedPath: stopCandidates[0].name, confidence: 'position' };
+            continue;
+          }
+        }
+      }
+    }
+    entries[canonicalPath] = { resolvedPath: null, confidence: null };
+  }
+  return entries;
+}
+
+async function ensureCanonicalMapOnCtx(ctx) {
+  if (!ctx.variableMap) return;
+  var registryFrame = null;
+  try {
+    var docPage = figma.root.children.find(function(p) {
+      return p.type === 'PAGE' && p.name === 'Documentation components';
+    });
+    if (docPage) {
+      registryFrame = docPage.findOne(function(n) {
+        return n.type === 'FRAME' && n.name === '_DesignOpsRegistry';
+      }) || null;
+    }
+  } catch (_) {}
+  var allVarsC, collectionsC;
+  try {
+    allVarsC = await figma.variables.getLocalVariablesAsync();
+    collectionsC = await figma.variables.getLocalVariableCollectionsAsync();
+  } catch (_) {
+    allVarsC = [];
+    collectionsC = [];
+  }
+  var checksum = ((allVarsC.length ^ collectionsC.length) & 0xFFFF).toString(16).padStart(4, '0');
+  var stored = readDesignOpsPathAliasMap(registryFrame);
+  if (stored.variableMapChecksum === checksum && Object.keys(stored.entries).length > 0) {
+    ctx.canonicalMap = {};
+    var storedEntries = stored.entries;
+    Object.keys(storedEntries).forEach(function(k) {
+      ctx.canonicalMap[k] = storedEntries[k] ? storedEntries[k].resolvedPath : null;
+    });
+    return;
+  }
+  var freshEntries = await computePathAliasMap(ctx.variableMap, collectionsC, allVarsC);
+  var aliasData = {
+    schemaVersion: 1,
+    computedAt: new Date().toISOString(),
+    variableMapChecksum: checksum,
+    entries: freshEntries,
+  };
+  writeDesignOpsPathAliasMap(registryFrame, aliasData);
+  ctx.canonicalMap = {};
+  Object.keys(freshEntries).forEach(function(k) {
+    ctx.canonicalMap[k] = freshEntries[k] ? freshEntries[k].resolvedPath : null;
+  });
+}
+
+function resolveCanonicalPath(canonicalPath, variableMap, canonicalMap) {
+  if (variableMap && variableMap[canonicalPath]) return canonicalPath;
+  if (!canonicalMap) return null;
+  var alias = canonicalMap[canonicalPath];
+  if (alias && variableMap && variableMap[alias]) return alias;
+  return null;
+}
+
+function isHeaderNode(node) {
+  return (node.name === '_Header' || /^_?header/i.test(node.name)) &&
+         (node.type === 'INSTANCE' || node.type === 'COMPONENT');
 }
 
 /**
@@ -452,8 +635,9 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
   // ── effectStyleId (shadow-sm) ─────────────────────────────────────────
   // Skipped for token-overview/platform-mapping (§0.9).
   if (!slug.includes('token-overview/platform-mapping')) {
-    const shadowStyle = (await figma.getLocalEffectStylesAsync())
-      .find(s => s.name === 'Effect/shadow-sm');
+    const _allEffectStyles = await figma.getLocalEffectStylesAsync();
+    const shadowStyle = _allEffectStyles.find(s => s.name === 'Effect/shadow-sm')
+      || _allEffectStyles.find(s => /shadow.*sm/i.test(s.name));
     if (shadowStyle) table.effectStyleId = shadowStyle.id;
   }
 
@@ -470,13 +654,13 @@ async function buildTable(manifest, parent, variables, docStyles, variableMap) {
 // ─── _PageContent builder ────────────────────────────────────────────────────
 
 async function buildPageContent(page) {
-  // Delete every node except _Header
+  // Delete every node except the header (exact '_Header' or any /^_?header/i instance/component)
   for (const node of [...page.children]) {
-    if (node.name !== '_Header') node.remove();
+    if (!isHeaderNode(node)) node.remove();
   }
 
-  // Assert _Header
-  const header = page.findOne(n => n.name === '_Header');
+  // Assert header width
+  const header = page.children.find(n => isHeaderNode(n));
   if (header) {
     if (Math.abs(header.width - 1800) > 1) header.resize(1800, 320);
   }
@@ -543,7 +727,17 @@ const LAYOUT_KNOWN_ORDER = ['space', 'spacing', 'padding', 'radius', 'corner', '
 
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
+  await ensureCanonicalMapOnCtx(ctx);
   const { pageId, variableMap, docStyles, rows } = ctx;
+
+  // Fuzzy docStyles fallback
+  if (!docStyles.Section || !docStyles.TokenName || !docStyles.Code || !docStyles.Caption) {
+    var _ts = await figma.getLocalTextStylesAsync();
+    if (!docStyles.Section)   { var _s = _ts.find(function(s) { return /^doc.*section/i.test(s.name); }); if (_s) docStyles.Section = _s.id; }
+    if (!docStyles.TokenName) { var _tn = _ts.find(function(s) { return /^doc.*(token|heading)/i.test(s.name); }); if (_tn) docStyles.TokenName = _tn.id; }
+    if (!docStyles.Code)      { var _c = _ts.find(function(s) { return /^doc.*(code|mono)/i.test(s.name); }); if (_c) docStyles.Code = _c.id; }
+    if (!docStyles.Caption)   { var _cap = _ts.find(function(s) { return /^doc.*(caption|label|body)/i.test(s.name); }); if (_cap) docStyles.Caption = _cap.id; }
+  }
 
   await figma.setCurrentPageAsync(figma.root.children.find(p => p.id === pageId) || figma.currentPage);
   const page = figma.currentPage;
@@ -555,10 +749,10 @@ async function build(ctx) {
     'color/border/subtle', 'color/background/default', 'color/background/variant',
     'color/background/content', 'color/background/content-muted', 'color/neutral/100', 'color/primary/200',
   ];
-  for (const path of chromePaths) {
-    if (variableMap[path]) {
-      variables[path] = await figma.variables.getVariableByIdAsync(variableMap[path]);
-    }
+  for (var _ci = 0; _ci < chromePaths.length; _ci++) {
+    var _cp = chromePaths[_ci];
+    var _ap = resolveCanonicalPath(_cp, variableMap, ctx.canonicalMap);
+    if (_ap) variables[_cp] = await figma.variables.getVariableByIdAsync(variableMap[_ap]);
   }
 
   const content = await buildPageContent(page);

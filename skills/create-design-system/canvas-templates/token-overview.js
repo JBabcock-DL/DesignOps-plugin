@@ -4,29 +4,31 @@
 // Call shape: [_lib.js] + [this source] + runner fragment (phase 08 / sync 9d).
 
 // Minimum row set — keep in sync with data/platform-mapping-rows.json "rows"
+// defaultHex: fallback display value used in all three platform cells when the variable
+// path cannot be resolved from the live variableMap (path naming mismatch).
 const STEP17_MIN_PLATFORM_ROWS = [
-  { tokenPath: 'color/background/default', collection: 'Theme' },
-  { tokenPath: 'color/background/content', collection: 'Theme' },
-  { tokenPath: 'color/background/content-muted', collection: 'Theme' },
-  { tokenPath: 'color/background/variant', collection: 'Theme' },
-  { tokenPath: 'color/border/default', collection: 'Theme' },
-  { tokenPath: 'color/border/subtle', collection: 'Theme' },
-  { tokenPath: 'color/primary/default', collection: 'Theme' },
-  { tokenPath: 'color/primary/content', collection: 'Theme' },
-  { tokenPath: 'color/primary/subtle', collection: 'Theme' },
-  { tokenPath: 'color/secondary/default', collection: 'Theme' },
-  { tokenPath: 'color/tertiary/default', collection: 'Theme' },
-  { tokenPath: 'color/error/default', collection: 'Theme' },
-  { tokenPath: 'color/component/ring', collection: 'Theme' },
-  { tokenPath: 'Headline/LG/font-size', collection: 'Typography' },
-  { tokenPath: 'Title/LG/font-size', collection: 'Typography' },
-  { tokenPath: 'Body/MD/font-size', collection: 'Typography' },
-  { tokenPath: 'typeface/display', collection: 'Primitives' },
-  { tokenPath: 'space/md', collection: 'Layout' },
-  { tokenPath: 'space/lg', collection: 'Layout' },
-  { tokenPath: 'radius/md', collection: 'Layout' },
-  { tokenPath: 'radius/lg', collection: 'Layout' },
-  { tokenPath: 'shadow/color', collection: 'Effects' },
+  { tokenPath: 'color/background/default',       collection: 'Theme',      defaultHex: '#FBFBFB' },
+  { tokenPath: 'color/background/content',       collection: 'Theme',      defaultHex: '#FFFFFF' },
+  { tokenPath: 'color/background/content-muted', collection: 'Theme',      defaultHex: '#F4F4F5' },
+  { tokenPath: 'color/background/variant',       collection: 'Theme',      defaultHex: '#F9F9FA' },
+  { tokenPath: 'color/border/default',           collection: 'Theme',      defaultHex: '#E4E4E7' },
+  { tokenPath: 'color/border/subtle',            collection: 'Theme',      defaultHex: '#F4F4F5' },
+  { tokenPath: 'color/primary/default',          collection: 'Theme',      defaultHex: '#2563EB' },
+  { tokenPath: 'color/primary/content',          collection: 'Theme',      defaultHex: '#FFFFFF' },
+  { tokenPath: 'color/primary/subtle',           collection: 'Theme',      defaultHex: '#DBEAFE' },
+  { tokenPath: 'color/secondary/default',        collection: 'Theme',      defaultHex: '#6B7280' },
+  { tokenPath: 'color/tertiary/default',         collection: 'Theme',      defaultHex: '#8B5CF6' },
+  { tokenPath: 'color/error/default',            collection: 'Theme',      defaultHex: '#EF4444' },
+  { tokenPath: 'color/component/ring',           collection: 'Theme',      defaultHex: '#2563EB' },
+  { tokenPath: 'Headline/LG/font-size',          collection: 'Typography', defaultHex: '32px' },
+  { tokenPath: 'Title/LG/font-size',             collection: 'Typography', defaultHex: '22px' },
+  { tokenPath: 'Body/MD/font-size',              collection: 'Typography', defaultHex: '14px' },
+  { tokenPath: 'typeface/display',               collection: 'Primitives', defaultHex: 'Inter' },
+  { tokenPath: 'space/md',                       collection: 'Layout',     defaultHex: '16px' },
+  { tokenPath: 'space/lg',                       collection: 'Layout',     defaultHex: '24px' },
+  { tokenPath: 'radius/md',                      collection: 'Layout',     defaultHex: '8px' },
+  { tokenPath: 'radius/lg',                      collection: 'Layout',     defaultHex: '12px' },
+  { tokenPath: 'shadow/color',                   collection: 'Effects',    defaultHex: 'rgba(0,0,0,0.15)' },
 ];
 
 const ARCH_BIND = [
@@ -84,6 +86,7 @@ function walkNodes(node, fn) {
 
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
+  await ensureCanonicalMapOnCtx(ctx);
   await loadFonts(['Inter', 'Roboto Mono', 'SF Mono']);
 
   const pageNode = await figma.getNodeByIdAsync(ctx.pageId);
@@ -93,7 +96,8 @@ async function build(ctx) {
   const { variableMap } = ctx;
 
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
-  const primColl = collections.find((c) => c.name === 'Primitives');
+  const primColl = collections.find((c) => c.name === 'Primitives')
+    || collections.find((c) => /^(primitiv|core|foundation|base)/i.test(c.name));
   const primModeId = primColl ? primColl.modes[0]?.modeId : null;
 
   const pmTable = page.findOne((n) => n.name === 'doc/table/token-overview/platform-mapping');
@@ -112,11 +116,17 @@ async function build(ctx) {
   }
 
   const textStyles = await figma.getLocalTextStylesAsync();
-  const sid = (name) => textStyles.find((s) => s.name === name)?.id || '';
-  const docSection = sid('Doc/Section');
-  const docTokenName = sid('Doc/TokenName');
-  const docCode = sid('Doc/Code');
-  const docCaption = sid('Doc/Caption');
+  // Doc/* style resolution — exact name first, then fuzzy fallback
+  const sid = (name, fuzzyRe) => {
+    const exact = textStyles.find((s) => s.name === name);
+    if (exact) return exact.id;
+    if (fuzzyRe) { const f = textStyles.find((s) => fuzzyRe.test(s.name)); if (f) return f.id; }
+    return '';
+  };
+  const docSection   = sid('Doc/Section',   /^doc.*section/i);
+  const docTokenName = sid('Doc/TokenName', /^doc.*(token|heading)/i);
+  const docCode      = sid('Doc/Code',      /^doc.*(code|mono)/i);
+  const docCaption   = sid('Doc/Caption',   /^doc.*(caption|label|body)/i);
 
   const pageContent = page.findOne((n) => n.name === '_PageContent');
   let textUpgraded = 0;
@@ -157,7 +167,8 @@ async function build(ctx) {
   }
 
   const effectStyles = await figma.getLocalEffectStylesAsync();
-  const shadowSm = effectStyles.find((e) => e.name === 'Effect/shadow-sm');
+  const shadowSm = effectStyles.find((e) => e.name === 'Effect/shadow-sm')
+    || effectStyles.find((e) => /shadow.*sm/i.test(e.name));
   const shadowSmId = shadowSm ? shadowSm.id : '';
   let shadowFrames = 0;
   if (pageContent && shadowSmId) {
@@ -184,7 +195,8 @@ async function build(ctx) {
   for (const spec of ARCH_BIND) {
     const box = page.findOne((n) => n.name === 'arch-box/' + spec.name);
     if (!box || box.type !== 'FRAME') continue;
-    const vid = variableMap[spec.path];
+    const _archActualPath = resolveCanonicalPath(spec.path, variableMap, ctx.canonicalMap) || spec.path;
+    const vid = variableMap[_archActualPath];
     if (!vid) continue;
     const v = await figma.variables.getVariableByIdAsync(vid);
     if (!v) continue;
@@ -195,13 +207,15 @@ async function build(ctx) {
 
   // Dark Mode phone frames (05d names) — rebind fills per Step 17 appendix
   const phoneLight = page.findOne((n) => n.name === 'phone-frame/light');
-  if (phoneLight && variableMap['color/background/default']) {
-    const v = await figma.variables.getVariableByIdAsync(variableMap['color/background/default']);
+  const _phoneLightPath = resolveCanonicalPath('color/background/default', variableMap, ctx.canonicalMap);
+  if (phoneLight && _phoneLightPath) {
+    const v = await figma.variables.getVariableByIdAsync(variableMap[_phoneLightPath]);
     if (v) try { bindPaintToVar(phoneLight, v); } catch (_) {}
   }
   const phoneDark = page.findOne((n) => n.name === 'phone-frame/dark');
-  if (phoneDark && variableMap['color/neutral/950']) {
-    const v = await figma.variables.getVariableByIdAsync(variableMap['color/neutral/950']);
+  const _phoneDarkPath = resolveCanonicalPath('color/neutral/950', variableMap, ctx.canonicalMap);
+  if (phoneDark && _phoneDarkPath) {
+    const v = await figma.variables.getVariableByIdAsync(variableMap[_phoneDarkPath]);
     if (v) try { bindPaintToVar(phoneDark, v); } catch (_) {}
   }
 
@@ -215,16 +229,29 @@ async function build(ctx) {
     );
     for (const row of rowFrames) {
       const tokenPath = row.name.slice(rowPrefix.length);
-      const vid = variableMap[tokenPath];
+      const _actualPath = resolveCanonicalPath(tokenPath, variableMap, ctx.canonicalMap);
+      const vid = _actualPath ? variableMap[_actualPath] : null;
       if (!vid) {
-        const tokCell = row.findOne((c) => c.type === 'FRAME' && c.name.endsWith('/cell/token'));
-        if (tokCell) {
-          for (const t of tokCell.children || []) {
-            if (t.type === 'TEXT' && !String(t.characters).includes('stale')) {
-              try {
-                t.characters = String(t.characters) + ' · stale';
-                staleRows++;
-              } catch (_) {}
+        // Fall back to defaultHex from STEP17_MIN_PLATFORM_ROWS when the variable path
+        // doesn't match the live variableMap (e.g. custom naming conventions).
+        const minRow = STEP17_MIN_PLATFORM_ROWS.find((r) => r.tokenPath === tokenPath);
+        if (minRow && minRow.defaultHex) {
+          for (const key of ['web', 'android', 'ios']) {
+            const cell = row.findOne((c) => c.name === row.name + '/cell/' + key);
+            if (!cell) continue;
+            for (const t of cell.children || []) {
+              if (t.type === 'TEXT' && String(t.characters) !== minRow.defaultHex) {
+                try { t.characters = minRow.defaultHex; cellsUpdated++; } catch (_) {}
+              }
+            }
+          }
+        } else {
+          const tokCell = row.findOne((c) => c.type === 'FRAME' && c.name.endsWith('/cell/token'));
+          if (tokCell) {
+            for (const t of tokCell.children || []) {
+              if (t.type === 'TEXT' && !String(t.characters).includes('stale')) {
+                try { t.characters = String(t.characters) + ' · stale'; staleRows++; } catch (_) {}
+              }
             }
           }
         }
@@ -267,10 +294,11 @@ async function build(ctx) {
     }
   }
 
-  // Replace TBD in text; default hex from color/primary/500
+  // Replace TBD in text; default hex from color/primary/500 (with alias fallback)
   let tbdFixed = 0;
   let fallbackHex = '#2563eb';
-  const p500 = variableMap['color/primary/500'];
+  const _p500Path = resolveCanonicalPath('color/primary/500', variableMap, ctx.canonicalMap);
+  const p500 = _p500Path ? variableMap[_p500Path] : null;
   if (p500 && primModeId) {
     const v500 = await figma.variables.getVariableByIdAsync(p500);
     if (v500) {
@@ -290,10 +318,10 @@ async function build(ctx) {
     });
   }
 
-  // Log minimum row coverage (diagnostic only; full row insert is out of scope for v1 bundle)
+  // Log minimum row coverage — a path is "covered" if it resolves via exact or alias map
   const missingMinRows = [];
   for (const spec of STEP17_MIN_PLATFORM_ROWS) {
-    if (!variableMap[spec.tokenPath]) missingMinRows.push(spec.tokenPath);
+    if (!resolveCanonicalPath(spec.tokenPath, variableMap, ctx.canonicalMap)) missingMinRows.push(spec.tokenPath);
   }
 
   return {

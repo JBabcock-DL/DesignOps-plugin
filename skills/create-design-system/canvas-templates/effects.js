@@ -50,6 +50,7 @@ const SHADOW_COLOR_COLUMNS = [
 
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
+  await ensureCanonicalMapOnCtx(ctx);
   const {
     pageId, variableMap, docStyles,
     effectsCollectionId, effectsLightModeId, effectsDarkModeId,
@@ -57,14 +58,25 @@ async function build(ctx) {
     rows,
   } = ctx;
 
+  // Fuzzy docStyles fallback
+  if (!docStyles.Section || !docStyles.TokenName || !docStyles.Code || !docStyles.Caption) {
+    var _ts = await figma.getLocalTextStylesAsync();
+    if (!docStyles.Section)   { var _s = _ts.find(function(s) { return /^doc.*section/i.test(s.name); }); if (_s) docStyles.Section = _s.id; }
+    if (!docStyles.TokenName) { var _tn = _ts.find(function(s) { return /^doc.*(token|heading)/i.test(s.name); }); if (_tn) docStyles.TokenName = _tn.id; }
+    if (!docStyles.Code)      { var _c = _ts.find(function(s) { return /^doc.*(code|mono)/i.test(s.name); }); if (_c) docStyles.Code = _c.id; }
+    if (!docStyles.Caption)   { var _cap = _ts.find(function(s) { return /^doc.*(caption|label|body)/i.test(s.name); }); if (_cap) docStyles.Caption = _cap.id; }
+  }
+
   await figma.setCurrentPageAsync(figma.root.children.find(p => p.id === pageId) || figma.currentPage);
   const page = figma.currentPage;
 
   await loadFonts(['Inter', 'Roboto Mono', 'SF Mono']);
 
   const variables = {};
-  for (const path of ['color/border/subtle', 'color/background/default', 'color/background/variant', 'color/background/content', 'color/background/content-muted', 'color/background/container-highest', 'color/background/inverse']) {
-    if (variableMap[path]) variables[path] = await figma.variables.getVariableByIdAsync(variableMap[path]);
+  for (var _ci = 0, _effectChromePaths = ['color/border/subtle', 'color/background/default', 'color/background/variant', 'color/background/content', 'color/background/content-muted', 'color/background/container-highest', 'color/background/inverse']; _ci < _effectChromePaths.length; _ci++) {
+    var _cp = _effectChromePaths[_ci];
+    var _ap = resolveCanonicalPath(_cp, variableMap, ctx.canonicalMap) || (_cp in variableMap ? _cp : null);
+    if (_ap) variables[_cp] = await figma.variables.getVariableByIdAsync(variableMap[_ap]);
   }
 
   const content = await buildPageContent(page);
@@ -140,7 +152,8 @@ async function makeShadowPreviewCell(
   if (cardBgVar) bindPaintToVar(card, cardBgVar);
 
   const styles = await figma.getLocalEffectStylesAsync();
-  const es = styles.find(s => s.name === `Effect/shadow-${tier}`);
+  const es = styles.find(s => s.name === `Effect/shadow-${tier}`)
+    || styles.find(s => new RegExp('shadow.*' + tier, 'i').test(s.name));
   if (es) card.effectStyleId = es.id;
 
   if (effectsCollectionId && (useDark ? effectsDarkModeId : effectsLightModeId)) {

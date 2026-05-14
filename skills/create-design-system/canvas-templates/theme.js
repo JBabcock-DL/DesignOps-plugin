@@ -49,11 +49,21 @@ const THEME_GROUP_KNOWN_ORDER = ['background', 'border', 'primary', 'secondary',
 
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);
+  await ensureCanonicalMapOnCtx(ctx);
   const {
     pageId, variableMap, docStyles,
     themeCollectionId, themeLightModeId, themeDarkModeId,
     rows,
   } = ctx;
+
+  // Fuzzy docStyles fallback
+  if (!docStyles.Section || !docStyles.TokenName || !docStyles.Code || !docStyles.Caption) {
+    var _ts = await figma.getLocalTextStylesAsync();
+    if (!docStyles.Section)   { var _s = _ts.find(function(s) { return /^doc.*section/i.test(s.name); }); if (_s) docStyles.Section = _s.id; }
+    if (!docStyles.TokenName) { var _tn = _ts.find(function(s) { return /^doc.*(token|heading)/i.test(s.name); }); if (_tn) docStyles.TokenName = _tn.id; }
+    if (!docStyles.Code)      { var _c = _ts.find(function(s) { return /^doc.*(code|mono)/i.test(s.name); }); if (_c) docStyles.Code = _c.id; }
+    if (!docStyles.Caption)   { var _cap = _ts.find(function(s) { return /^doc.*(caption|label|body)/i.test(s.name); }); if (_cap) docStyles.Caption = _cap.id; }
+  }
 
   await figma.setCurrentPageAsync(figma.root.children.find(p => p.id === pageId) || figma.currentPage);
   const page = figma.currentPage;
@@ -65,10 +75,10 @@ async function build(ctx) {
     'color/border/subtle', 'color/background/default', 'color/background/variant',
     'color/background/content', 'color/background/content-muted',
   ];
-  for (const path of chromePaths) {
-    if (variableMap[path]) {
-      variables[path] = await figma.variables.getVariableByIdAsync(variableMap[path]);
-    }
+  for (var _ci = 0; _ci < chromePaths.length; _ci++) {
+    var _cp = chromePaths[_ci];
+    var _ap = resolveCanonicalPath(_cp, variableMap, ctx.canonicalMap);
+    if (_ap) variables[_cp] = await figma.variables.getVariableByIdAsync(variableMap[_ap]);
   }
 
   const content = await buildPageContent(page);
