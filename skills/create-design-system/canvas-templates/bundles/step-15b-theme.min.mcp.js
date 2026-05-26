@@ -329,6 +329,7 @@ cell.primaryAxisSizingMode = 'AUTO';
 cell.counterAxisSizingMode = 'FIXED';
 }
 cell.resize(colWidth, 1);
+cell.layoutSizingVertical = 'HUG';
 cell.paddingLeft = 16;
 cell.paddingRight = 16;
 cell.paddingTop = 0;
@@ -386,7 +387,7 @@ g: ((int >> 8) & 255) / 255,
 b: (int & 255) / 255,
 };
 }
-async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolvedHex, docStyles, contentVar, themeCollectionId, modeId) {
+async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolvedHex, resolvedHsl, docStyles, contentVar, mutedVar, themeCollectionId, modeId) {
 const cell = makeBodyCell(colWidth, 'HORIZONTAL');
 cell.itemSpacing = 6;
 cell.counterAxisAlignItems = 'CENTER';
@@ -398,6 +399,8 @@ preview.layoutMode = 'HORIZONTAL';
 preview.primaryAxisSizingMode = 'FIXED';
 preview.counterAxisSizingMode = 'FIXED';
 preview.resize(32, 32);
+preview.primaryAxisAlignItems = 'CENTER';
+preview.counterAxisAlignItems = 'CENTER';
 preview.fills = [];
 const rect = figma.createRectangle();
 rect.resize(24, 24);
@@ -411,9 +414,29 @@ preview.appendChild(rect);
 if (themeCollectionId && modeId) {
 try { preview.setExplicitVariableModeForCollection(themeCollectionId, modeId); } catch (_) {}
 }
-const hexText = await makeText(resolvedHex || '—', Math.max(40, colWidth - 36), docStyles.Code || null, contentVar);
+const textWidth = Math.max(40, colWidth - 36);
+const hexText = await makeText(resolvedHex || '—', textWidth, docStyles.Code || null, contentVar);
+if (resolvedHsl) {
+const textStack = figma.createFrame();
+textStack.layoutMode = 'VERTICAL';
+textStack.primaryAxisSizingMode = 'AUTO';
+textStack.counterAxisSizingMode = 'FIXED';
+textStack.resize(textWidth, 1);
+textStack.layoutSizingVertical = 'HUG';
+textStack.itemSpacing = 2;
+textStack.fills = [];
+hexText.layoutAlign = 'STRETCH';
+textStack.appendChild(hexText);
+const hslText = await makeText(resolvedHsl, textWidth, docStyles.Caption || null, mutedVar);
+hslText.layoutAlign = 'STRETCH';
+textStack.appendChild(hslText);
+textStack.layoutSizingVertical = 'HUG';
+cell.appendChild(preview);
+cell.appendChild(textStack);
+} else {
 cell.appendChild(preview);
 cell.appendChild(hexText);
+}
 rehugCell(cell);
 return cell;
 }
@@ -646,16 +669,16 @@ const themeVarId = rowData.themeVariableId || variableMap[rowData.tokenPath];
 for (const col of columns) {
 if (col.id === 'LIGHT') {
 const cell = await makeThemeModeColumn(
-col.width, 'light', themeVarId, rowData.resolvedHexLight,
-docStyles, contentVar, themeCollectionId, themeLightModeId,
+col.width, 'light', themeVarId, rowData.resolvedHexLight, rowData.resolvedHslLight || null,
+docStyles, contentVar, mutedVar, themeCollectionId, themeLightModeId,
 );
 row.appendChild(cell);
 continue;
 }
 if (col.id === 'DARK') {
 const cell = await makeThemeModeColumn(
-col.width, 'dark', themeVarId, rowData.resolvedHexDark,
-docStyles, contentVar, themeCollectionId, themeDarkModeId,
+col.width, 'dark', themeVarId, rowData.resolvedHexDark, rowData.resolvedHslDark || null,
+docStyles, contentVar, mutedVar, themeCollectionId, themeDarkModeId,
 );
 row.appendChild(cell);
 continue;
@@ -753,12 +776,29 @@ if (!c) return '#000000';
 const r = Math.round(c.r * 255), g = Math.round(c.g * 255), b = Math.round(c.b * 255);
 return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
-async function resolveHex(varId, themeModeId) {
+function colorToHsl(c) {
+if (!c) return null;
+const r = c.r, g = c.g, b = c.b, a = (c.a !== undefined && c.a < 0.9999) ? c.a : 1;
+const max = Math.max(r, g, b), min = Math.min(r, g, b);
+let h = 0, s = 0;
+const l = (max + min) / 2;
+if (max !== min) {
+const d = max - min;
+s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+else if (max === g) h = ((b - r) / d + 2) / 6;
+else h = ((r - g) / d + 4) / 6;
+}
+const hD = Math.round(h * 360), sP = Math.round(s * 100), lP = Math.round(l * 100);
+if (a < 0.9999) return `hsl(${hD} ${sP}% ${lP}% / ${Math.round(a * 100)}%)`;
+return `hsl(${hD} ${sP}% ${lP}%)`;
+}
+async function resolveColorFormats(varId, themeModeId) {
 let v = await figma.variables.getVariableByIdAsync(varId);
 let m = themeModeId;
 for (let d = 0; d < 10; d++) {
 const val = v.valuesByMode[m];
-if (val == null) return '#000000';
+if (val == null) return { hex: '#000000', hsl: null };
 if (typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
 const next = await figma.variables.getVariableByIdAsync(val.id);
 const nextColl = collections.find((c) => c.id === next.variableCollectionId);
@@ -768,10 +808,12 @@ else m = nextColl ? nextColl.modes[0].modeId : m;
 v = next;
 continue;
 }
-if (typeof val === 'object' && typeof val.r === 'number') return colorToHex(val);
-return '#000000';
+if (typeof val === 'object' && typeof val.r === 'number') {
+return { hex: colorToHex(val), hsl: colorToHsl(val) };
 }
-return '#000000';
+return { hex: '#000000', hsl: null };
+}
+return { hex: '#000000', hsl: null };
 }
 async function resolveFirstAlias(varId, themeModeId) {
 const v = await figma.variables.getVariableByIdAsync(varId);
@@ -845,13 +887,14 @@ const beforeKey = String(beforeCs.WEB || '') + '|' + String(beforeCs.ANDROID || 
 const healed = await ensureCodeSyntax(v);
 const afterKey = String(healed.WEB || '') + '|' + String(healed.ANDROID || '') + '|' + String(healed.iOS || healed.IOS || '');
 if (beforeKey !== afterKey) codeSyntaxHealed++;
-const light = await resolveHex(v.id, themeLightModeId);
-const dark  = await resolveHex(v.id, themeDarkModeId);
+const lightFmts = await resolveColorFormats(v.id, themeLightModeId);
+const darkFmts  = await resolveColorFormats(v.id, themeDarkModeId);
 const aliasLight = await resolveFirstAlias(v.id, themeLightModeId);
 const aliasDark  = await resolveFirstAlias(v.id, themeDarkModeId);
 allRows[group].push({
 tokenPath: v.name,
-resolvedHexLight: light, resolvedHexDark: dark,
+resolvedHexLight: lightFmts.hex, resolvedHexDark: darkFmts.hex,
+resolvedHslLight: lightFmts.hsl, resolvedHslDark: darkFmts.hsl,
 aliasLight, aliasDark,
 codeSyntax: { WEB: String(healed.WEB || ''), ANDROID: String(healed.ANDROID || ''), iOS: String(healed.iOS || healed.IOS || '') },
 });

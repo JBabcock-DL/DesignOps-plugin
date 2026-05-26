@@ -329,6 +329,7 @@ cell.primaryAxisSizingMode = 'AUTO';
 cell.counterAxisSizingMode = 'FIXED';
 }
 cell.resize(colWidth, 1);
+cell.layoutSizingVertical = 'HUG';
 cell.paddingLeft = 16;
 cell.paddingRight = 16;
 cell.paddingTop = 0;
@@ -386,7 +387,7 @@ g: ((int >> 8) & 255) / 255,
 b: (int & 255) / 255,
 };
 }
-async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolvedHex, docStyles, contentVar, themeCollectionId, modeId) {
+async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolvedHex, resolvedHsl, docStyles, contentVar, mutedVar, themeCollectionId, modeId) {
 const cell = makeBodyCell(colWidth, 'HORIZONTAL');
 cell.itemSpacing = 6;
 cell.counterAxisAlignItems = 'CENTER';
@@ -398,6 +399,8 @@ preview.layoutMode = 'HORIZONTAL';
 preview.primaryAxisSizingMode = 'FIXED';
 preview.counterAxisSizingMode = 'FIXED';
 preview.resize(32, 32);
+preview.primaryAxisAlignItems = 'CENTER';
+preview.counterAxisAlignItems = 'CENTER';
 preview.fills = [];
 const rect = figma.createRectangle();
 rect.resize(24, 24);
@@ -411,9 +414,29 @@ preview.appendChild(rect);
 if (themeCollectionId && modeId) {
 try { preview.setExplicitVariableModeForCollection(themeCollectionId, modeId); } catch (_) {}
 }
-const hexText = await makeText(resolvedHex || '—', Math.max(40, colWidth - 36), docStyles.Code || null, contentVar);
+const textWidth = Math.max(40, colWidth - 36);
+const hexText = await makeText(resolvedHex || '—', textWidth, docStyles.Code || null, contentVar);
+if (resolvedHsl) {
+const textStack = figma.createFrame();
+textStack.layoutMode = 'VERTICAL';
+textStack.primaryAxisSizingMode = 'AUTO';
+textStack.counterAxisSizingMode = 'FIXED';
+textStack.resize(textWidth, 1);
+textStack.layoutSizingVertical = 'HUG';
+textStack.itemSpacing = 2;
+textStack.fills = [];
+hexText.layoutAlign = 'STRETCH';
+textStack.appendChild(hexText);
+const hslText = await makeText(resolvedHsl, textWidth, docStyles.Caption || null, mutedVar);
+hslText.layoutAlign = 'STRETCH';
+textStack.appendChild(hslText);
+textStack.layoutSizingVertical = 'HUG';
+cell.appendChild(preview);
+cell.appendChild(textStack);
+} else {
 cell.appendChild(preview);
 cell.appendChild(hexText);
+}
 rehugCell(cell);
 return cell;
 }

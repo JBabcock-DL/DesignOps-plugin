@@ -20,7 +20,8 @@
 //     component: Row[],
 //   }
 // }
-// Row: { tokenPath, resolvedHexLight, resolvedHexDark, aliasLight, aliasDark, codeSyntax: {WEB,ANDROID,iOS} }
+// Row: { tokenPath, resolvedHexLight, resolvedHexDark, resolvedHslLight?, resolvedHslDark?, aliasLight, aliasDark, codeSyntax: {WEB,ANDROID,iOS} }
+//      resolvedHslLight/Dark: CSS HSL string (e.g. "hsl(248 37% 97% / 8%)") — present for RGBA/alpha tokens.
 //      themeVariableId optional override; defaults to variableMap[tokenPath].
 
 const THEME_COLUMNS = [
@@ -132,16 +133,16 @@ async function buildThemeRow(row, rowData, columns, deps) {
   for (const col of columns) {
     if (col.id === 'LIGHT') {
       const cell = await makeThemeModeColumn(
-        col.width, 'light', themeVarId, rowData.resolvedHexLight,
-        docStyles, contentVar, themeCollectionId, themeLightModeId,
+        col.width, 'light', themeVarId, rowData.resolvedHexLight, rowData.resolvedHslLight || null,
+        docStyles, contentVar, mutedVar, themeCollectionId, themeLightModeId,
       );
       row.appendChild(cell);
       continue;
     }
     if (col.id === 'DARK') {
       const cell = await makeThemeModeColumn(
-        col.width, 'dark', themeVarId, rowData.resolvedHexDark,
-        docStyles, contentVar, themeCollectionId, themeDarkModeId,
+        col.width, 'dark', themeVarId, rowData.resolvedHexDark, rowData.resolvedHslDark || null,
+        docStyles, contentVar, mutedVar, themeCollectionId, themeDarkModeId,
       );
       row.appendChild(cell);
       continue;

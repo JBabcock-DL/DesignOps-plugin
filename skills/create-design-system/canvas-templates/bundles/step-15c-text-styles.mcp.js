@@ -400,6 +400,11 @@ function makeBodyCell(colWidth, layoutMode) {
     cell.counterAxisSizingMode = 'FIXED';   // horizontal = fixed colWidth
   }
   cell.resize(colWidth, 1);
+  // §0.1 belt+suspenders: set HUG immediately after resize() so any inner frame created before
+  // rehugCell() is called also starts with the correct sizing. HORIZONTAL cells hug via
+  // counterAxisSizingMode=AUTO (height is counter axis); VERTICAL cells hug via primaryAxisSizingMode=AUTO
+  // (height is primary axis). Both need layoutSizingVertical='HUG' to force Figma to recalculate.
+  cell.layoutSizingVertical = 'HUG';
   cell.paddingLeft = 16;
   cell.paddingRight = 16;
   cell.paddingTop = 0;
@@ -472,8 +477,12 @@ function hexToRgb(hex) {
   };
 }
 
-// §0.3: `doc/theme-preview/{mode}` holds the chip only; hex TEXT is a sibling (not inside preview).
-async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolvedHex, docStyles, contentVar, themeCollectionId, modeId) {
+// §0.3: `doc/theme-preview/{mode}` holds the swatch chip only; text is a sibling (not inside preview).
+// resolvedHsl is optional — pass the CSS HSL string (e.g. "hsl(248 37% 97% / 8%)") to show both
+// hex and HSL stacked. mutedVar is the Figma variable for the HSL caption fill (may be null).
+// §0.3 inner-frame rule: any VERTICAL frame created here must call layoutSizingVertical='HUG' both
+// (a) immediately after resize() and (b) after the last appendChild() — Figma evaluates lazily.
+async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolvedHex, resolvedHsl, docStyles, contentVar, mutedVar, themeCollectionId, modeId) {
   const cell = makeBodyCell(colWidth, 'HORIZONTAL');
   cell.itemSpacing = 6;
   cell.counterAxisAlignItems = 'CENTER';
@@ -486,6 +495,8 @@ async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolved
   preview.primaryAxisSizingMode = 'FIXED';
   preview.counterAxisSizingMode = 'FIXED';
   preview.resize(32, 32);
+  preview.primaryAxisAlignItems = 'CENTER';
+  preview.counterAxisAlignItems = 'CENTER';
   preview.fills = [];
 
   const rect = figma.createRectangle();
@@ -502,9 +513,32 @@ async function makeThemeModeColumn(colWidth, modeSlug, themeVariableId, resolved
     try { preview.setExplicitVariableModeForCollection(themeCollectionId, modeId); } catch (_) {}
   }
 
-  const hexText = await makeText(resolvedHex || '—', Math.max(40, colWidth - 36), docStyles.Code || null, contentVar);
-  cell.appendChild(preview);
-  cell.appendChild(hexText);
+  const textWidth = Math.max(40, colWidth - 36);
+  const hexText = await makeText(resolvedHex || '—', textWidth, docStyles.Code || null, contentVar);
+
+  if (resolvedHsl) {
+    // Stack hex + HSL vertically. §0.3 inner-frame rule: call layoutSizingVertical='HUG' after
+    // resize() AND again after all children are appended — Figma does not auto-hug on resize().
+    const textStack = figma.createFrame();
+    textStack.layoutMode = 'VERTICAL';
+    textStack.primaryAxisSizingMode = 'AUTO';
+    textStack.counterAxisSizingMode = 'FIXED';
+    textStack.resize(textWidth, 1);
+    textStack.layoutSizingVertical = 'HUG'; // (a) after resize — prevents fixed-1px artifact
+    textStack.itemSpacing = 2;
+    textStack.fills = [];
+    hexText.layoutAlign = 'STRETCH'; // fill textStack width, not makeText's (colWidth-40) fixed px
+    textStack.appendChild(hexText);
+    const hslText = await makeText(resolvedHsl, textWidth, docStyles.Caption || null, mutedVar);
+    hslText.layoutAlign = 'STRETCH'; // same
+    textStack.appendChild(hslText);
+    textStack.layoutSizingVertical = 'HUG'; // (b) after last appendChild — force recalculate
+    cell.appendChild(preview);
+    cell.appendChild(textStack);
+  } else {
+    cell.appendChild(preview);
+    cell.appendChild(hexText);
+  }
   rehugCell(cell);
   return cell;
 }

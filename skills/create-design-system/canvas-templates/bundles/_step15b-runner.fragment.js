@@ -68,12 +68,33 @@ function colorToHex(c) {
   return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-async function resolveHex(varId, themeModeId) {
+// Returns CSS HSL string; appends "/ alpha%" for RGBA tokens (e.g. state-layer overlays).
+function colorToHsl(c) {
+  if (!c) return null;
+  const r = c.r, g = c.g, b = c.b, a = (c.a !== undefined && c.a < 0.9999) ? c.a : 1;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  const hD = Math.round(h * 360), sP = Math.round(s * 100), lP = Math.round(l * 100);
+  if (a < 0.9999) return `hsl(${hD} ${sP}% ${lP}% / ${Math.round(a * 100)}%)`;
+  return `hsl(${hD} ${sP}% ${lP}%)`;
+}
+
+// Resolves a variable alias chain and returns both hex and HSL representations.
+// HSL is non-null only when the resolved value has a meaningful alpha (state overlays, scrims).
+async function resolveColorFormats(varId, themeModeId) {
   let v = await figma.variables.getVariableByIdAsync(varId);
   let m = themeModeId;
   for (let d = 0; d < 10; d++) {
     const val = v.valuesByMode[m];
-    if (val == null) return '#000000';
+    if (val == null) return { hex: '#000000', hsl: null };
     if (typeof val === 'object' && val.type === 'VARIABLE_ALIAS') {
       const next = await figma.variables.getVariableByIdAsync(val.id);
       const nextColl = collections.find((c) => c.id === next.variableCollectionId);
@@ -83,10 +104,12 @@ async function resolveHex(varId, themeModeId) {
       v = next;
       continue;
     }
-    if (typeof val === 'object' && typeof val.r === 'number') return colorToHex(val);
-    return '#000000';
+    if (typeof val === 'object' && typeof val.r === 'number') {
+      return { hex: colorToHex(val), hsl: colorToHsl(val) };
+    }
+    return { hex: '#000000', hsl: null };
   }
-  return '#000000';
+  return { hex: '#000000', hsl: null };
 }
 
 async function resolveFirstAlias(varId, themeModeId) {
@@ -182,13 +205,14 @@ for (const group of groupOrder) {
     const healed = await ensureCodeSyntax(v);
     const afterKey = String(healed.WEB || '') + '|' + String(healed.ANDROID || '') + '|' + String(healed.iOS || healed.IOS || '');
     if (beforeKey !== afterKey) codeSyntaxHealed++;
-    const light = await resolveHex(v.id, themeLightModeId);
-    const dark  = await resolveHex(v.id, themeDarkModeId);
+    const lightFmts = await resolveColorFormats(v.id, themeLightModeId);
+    const darkFmts  = await resolveColorFormats(v.id, themeDarkModeId);
     const aliasLight = await resolveFirstAlias(v.id, themeLightModeId);
     const aliasDark  = await resolveFirstAlias(v.id, themeDarkModeId);
     allRows[group].push({
       tokenPath: v.name,
-      resolvedHexLight: light, resolvedHexDark: dark,
+      resolvedHexLight: lightFmts.hex, resolvedHexDark: darkFmts.hex,
+      resolvedHslLight: lightFmts.hsl, resolvedHslDark: darkFmts.hsl,
       aliasLight, aliasDark,
       codeSyntax: { WEB: String(healed.WEB || ''), ANDROID: String(healed.ANDROID || ''), iOS: String(healed.iOS || healed.IOS || '') },
     });
