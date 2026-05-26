@@ -89,6 +89,8 @@ Use the **same** value logic as the Phase 1 REST spec (Steps 5–9): ramps, Them
 
 After each Plugin pass, build the lookup table of `codeSyntax` for **every variable in that collection** from Steps 5–9 (same cells as Phase 1 — Theme: Step 6 tables + [`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md) overrides).
 
+**Theme — iterate both arrays.** [`../data/theme-aliases.json`](../data/theme-aliases.json) ships variables in two top-level arrays: `rows` (alias rows) **and** `rawLiterals` (RGBA-per-mode rows — currently `scrim`, `shadow`, plus the 12 `color/state/*` entries). Every entry in both arrays carries its own `codeSyntax` triple — emit a REST `UPDATE` row for **all of them**. Missing the `rawLiterals` half is the common failure mode that leaves state variables blank in the Step 15b canvas table (Step 15b also self-heals state / scrim / shadow codeSyntax via `setVariableCodeSyntax`, but the push should still be correct so other consumers — Code Connect, exporters — see complete data).
+
 **Payload shape (per pass):**
 
 ```json

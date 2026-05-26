@@ -788,6 +788,38 @@ function readCS(v) {
 const cs = v.codeSyntax || {};
 return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
+const RAW_LITERAL_CODESYNTAX = {
+'color/background/scrim':  { WEB: 'var(--color-scrim)',        ANDROID: 'scrim',  iOS: '.Effect.scrim' },
+'color/background/shadow': { WEB: 'var(--color-shadow-tint)',  ANDROID: 'shadow', iOS: '.Background.shadow.tint' },
+};
+function deriveStateCodeSyntax(name) {
+const m = /^color\/state\/(primary|secondary|tertiary|error)\/(hover|pressed|focus)$/.exec(name);
+if (!m) return null;
+const role = m[1], state = m[2];
+return {
+WEB: 'var(--color-state-' + role + '-' + state + ')',
+ANDROID: state === 'pressed' ? ('ripple-' + role) : ('state-layer-' + role),
+iOS: '.State.' + role + '.' + state,
+};
+}
+async function ensureCodeSyntax(v) {
+const cs = v.codeSyntax || {};
+const hasAll = cs.WEB && cs.ANDROID && (cs.iOS || cs.IOS);
+if (hasAll) return cs;
+const derived = RAW_LITERAL_CODESYNTAX[v.name] || deriveStateCodeSyntax(v.name) || null;
+if (!derived) return cs;
+const next = {
+WEB: cs.WEB || derived.WEB,
+ANDROID: cs.ANDROID || derived.ANDROID,
+iOS: (cs.iOS || cs.IOS) || derived.iOS,
+};
+try {
+if (!cs.WEB)              v.setVariableCodeSyntax('WEB',     next.WEB);
+if (!cs.ANDROID)          v.setVariableCodeSyntax('ANDROID', next.ANDROID);
+if (!(cs.iOS || cs.IOS))  v.setVariableCodeSyntax('iOS',     next.iOS);
+} catch (_) {}
+return next;
+}
 const themeVars = allVars.filter(
 (v) => v.variableCollectionId === themeColl.id && v.resolvedType === 'COLOR'
 );
@@ -799,10 +831,16 @@ const groupKey = (segs[0] === 'color' && segs.length >= 3) ? segs[1] : segs[0];
 if (!groupMap[groupKey]) { groupMap[groupKey] = []; groupOrder.push(groupKey); }
 groupMap[groupKey].push(v);
 }
+let codeSyntaxHealed = 0;
 const allRows = {};
 for (const group of groupOrder) {
 allRows[group] = [];
 for (const v of groupMap[group]) {
+const beforeCs = v.codeSyntax || {};
+const beforeKey = String(beforeCs.WEB || '') + '|' + String(beforeCs.ANDROID || '') + '|' + String(beforeCs.iOS || beforeCs.IOS || '');
+const healed = await ensureCodeSyntax(v);
+const afterKey = String(healed.WEB || '') + '|' + String(healed.ANDROID || '') + '|' + String(healed.iOS || healed.IOS || '');
+if (beforeKey !== afterKey) codeSyntaxHealed++;
 const light = await resolveHex(v.id, themeLightModeId);
 const dark  = await resolveHex(v.id, themeDarkModeId);
 const aliasLight = await resolveFirstAlias(v.id, themeLightModeId);
@@ -811,7 +849,7 @@ allRows[group].push({
 tokenPath: v.name,
 resolvedHexLight: light, resolvedHexDark: dark,
 aliasLight, aliasDark,
-codeSyntax: readCS(v),
+codeSyntax: { WEB: String(healed.WEB || ''), ANDROID: String(healed.ANDROID || ''), iOS: String(healed.iOS || healed.IOS || '') },
 });
 }
 }
@@ -844,4 +882,5 @@ const tableGroups = themePage.findAll((n) => n.name && n.name.startsWith('doc/ta
 return {
 ok: true, step: '15b-theme', pageId: themePage.id,
 collection: themeColl.name, tableGroups, pageName: themePage.name,
+codeSyntaxHealed,
 };

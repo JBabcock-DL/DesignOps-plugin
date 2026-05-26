@@ -293,6 +293,7 @@ function buildVariant(name, fillVar, fallbackFill, {
   addLeadingProp   = false,
   addTrailingProp  = false,
   propLabelText    = 'Label',
+  stateRole        = null,
 } = {}) {
   const c = figma.createComponent();
   c.name = name;
@@ -483,6 +484,31 @@ function buildVariant(name, fillVar, fallbackFill, {
     const msg = err && err.message ? err.message : String(err);
     __ccPropAddErrors.push({ variant: name, message: msg });
     console.warn(`addComponentProperty failed on variant '${name}':`, msg);
+  }
+
+  // --- State-layer frames (M3 state overlays) ---
+  // Absolutely-positioned frames appended last so they sit on top of content.
+  // Fill is bound to color/state/{stateRole}/{state}; opacity starts at 0.
+  // applyStateOverride sets the active state's layer to opacity 1.
+  // Corner radius matches the component so tint respects rounded corners.
+  if (stateRole) {
+    ['hover', 'pressed', 'focus'].forEach(function(st) {
+      const sl = figma.createFrame();
+      sl.name               = 'state-layer/' + st;
+      sl.layoutMode         = 'NONE';
+      sl.layoutPositioning  = 'ABSOLUTE';
+      sl.constraints        = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+      sl.resize(100, 100);
+      sl.x                  = 0;
+      sl.y                  = 0;
+      sl.opacity            = 0;
+      sl.fills              = [];
+      sl.clipsContent       = false;
+      ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+        .forEach(function(f) { bindNum(sl, f, radiusVar, 6); });
+      bindColor(sl, 'color/state/' + stateRole + '/' + st, '#00000000', 'fills');
+      c.appendChild(sl);
+    });
   }
 
   // Append to current page before any combining

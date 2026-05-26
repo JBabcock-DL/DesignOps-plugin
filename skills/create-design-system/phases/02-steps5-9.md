@@ -30,7 +30,12 @@ Create (or update) the `Theme` collection with **two modes: `Light` and `Dark`**
 
 **Data reference:** [`../data/theme-aliases.json`](../data/theme-aliases.json) — complete alias map (50 rows) + codeSyntax per variable.
 
-Every Theme variable is a COLOR type. Read `rows` from the JSON: `path` = variable name, `light`/`dark` = Primitive path to alias by ID, `codeSyntax` = set explicitly (NOT derived from the Figma variable path). The two entries in `rawLiterals` (`scrim`, `shadow`) are hard-coded RGBA per mode — opacity cannot ride on an alias.
+Every Theme variable is a COLOR type. The JSON has two arrays — both must be created:
+
+- **`rows`** — alias rows: `path` = variable name, `light`/`dark` = Primitive path to alias by ID, `codeSyntax` = set explicitly (NOT derived from the Figma variable path).
+- **`rawLiterals`** — RGBA-per-mode rows (opacity cannot ride on a variable alias). Currently `scrim`, `shadow`, and the full **state-layer set** (`color/state/{primary|secondary|tertiary|error}/{hover|pressed|focus}` = 12 vars). Every `rawLiterals` row carries its own `codeSyntax` triple — push it identically to alias rows in Step 11.
+
+State layers derive their RGBA from the role color at 8% (hover) or 12% (pressed/focus); see [`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md) § *State group* for the WEB/ANDROID/iOS pattern (note: `pressed` → `ripple-{role}` on Android, all other states → `state-layer-{role}`).
 
 **codeSyntax notes:** WEB uses `--color-*` namespace (Tailwind v4 `@theme` ready). ANDROID uses M3 `ColorScheme` role names in kebab-case (not Compose camelCase). iOS uses dot-path semantics (design-system paths for codegen, not UIColor symbols). Additional exception lists and derivation rules: [`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md).
 

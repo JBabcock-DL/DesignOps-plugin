@@ -50,7 +50,11 @@ Payload (Figma Variables bulk write format):
   - `space/*`, `radius/*` (lowercase) → `Layout`
   - `shadow/*` → `Effects`
 - For CONFLICT tokens, update the existing variable's value.
-- Report: `Axis A: pushed N tokens to Figma.`
+- **codeSyntax on every NEW variable.** A separate `PUT /v1/files/:key/variables` with `variables: [{ id, action: 'UPDATE', codeSyntax: { WEB, ANDROID, iOS } }]` must follow the value push for every newly created variable — otherwise the Step 15b style-guide table (and other downstream consumers) renders blank WEB/ANDROID/iOS cells. Lookup sources, by collection:
+  - **Theme:** [`../../create-design-system/data/theme-aliases.json`](../../create-design-system/data/theme-aliases.json) — match by `path` against both `rows` and `rawLiterals` (the latter is where `color/state/*`, `color/background/scrim`, `color/background/shadow` live). For paths not in the JSON, derive per [`../../create-design-system/phases/02b-theme-codesyntax.md`](../../create-design-system/phases/02b-theme-codesyntax.md) (state-layer pattern: WEB `var(--color-state-{role}-{state})`, ANDROID `state-layer-{role}` / `ripple-{role}` for pressed, iOS `.State.{role}.{state}`).
+  - **Primitives:** derivation rules in [`../../create-design-system/data/primitives-baseline.json`](../../create-design-system/data/primitives-baseline.json) → `codeSyntaxRules`.
+  - **Typography / Layout / Effects:** corresponding data files under [`../../create-design-system/data/`](../../create-design-system/data/) (`typography-slots.json`, `layout-effects.json`).
+- Report: `Axis A: pushed N tokens to Figma (codeSyntax set on C newly created vars).`
 
 **Canvas chain runs** — proceed to 6.Canvas below.
 

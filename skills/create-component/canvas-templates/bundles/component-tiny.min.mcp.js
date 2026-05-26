@@ -164,6 +164,7 @@ addLabelProp     = false,
 addLeadingProp   = false,
 addTrailingProp  = false,
 propLabelText    = 'Label',
+stateRole        = null,
 } = {}) {
 const c = figma.createComponent();
 c.name = name;
@@ -292,6 +293,25 @@ mainComponent: propKeys.centerSwap,
 const msg = err && err.message ? err.message : String(err);
 __ccPropAddErrors.push({ variant: name, message: msg });
 console.warn(`addComponentProperty failed on variant '${name}':`, msg);
+}
+if (stateRole) {
+['hover', 'pressed', 'focus'].forEach(function(st) {
+const sl = figma.createFrame();
+sl.name               = 'state-layer/' + st;
+sl.layoutMode         = 'NONE';
+sl.layoutPositioning  = 'ABSOLUTE';
+sl.constraints        = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+sl.resize(100, 100);
+sl.x                  = 0;
+sl.y                  = 0;
+sl.opacity            = 0;
+sl.fills              = [];
+sl.clipsContent       = false;
+['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+.forEach(function(f) { bindNum(sl, f, radiusVar, 6); });
+bindColor(sl, 'color/state/' + stateRole + '/' + st, '#00000000', 'fills');
+c.appendChild(sl);
+});
 }
 figma.currentPage.appendChild(c);
 return { component: c, slots, propKeys };
