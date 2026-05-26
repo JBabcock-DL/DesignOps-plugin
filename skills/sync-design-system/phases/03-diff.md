@@ -44,6 +44,14 @@ npx tsx <abs-path>/skills/create-component/resolver/resolve-classes.mjs \
 
 The resolver returns `{ fills, strokes, radii, spacing, typography, unresolved }` keyed by Tailwind state (`base`, `hover`, `focus-visible`, `disabled`, `dark`). Compare each resolved path to the Figma-side binding on the corresponding element. Unresolvable classes are recorded in the Axis B diff as informational (not a bucketed drift item).
 
+**State-layer frame bindings.** For chip-archetype and row-item-archetype components, the draw engine inserts absolutely-positioned child frames named `state-layer/hover`, `state-layer/pressed`, and `state-layer/focus` inside each variant component. These carry fills bound to `color/state/{role}/{state}` Theme variables. When comparing Figma-side bindings, include these as additional element paths in the token-binding diff:
+
+- Walk each variant `COMPONENT` node's direct children for frames matching the name pattern `state-layer/*`.
+- For each such frame, read `fills[0].boundVariables.color` to get the bound variable path.
+- The expected code-side token is `color/state/{stateRole}/{state}` where `stateRole` is derived from the variant's fill path (e.g. `color/primary/default` → `primary`) or the explicit `style[variant].stateRole` field.
+- Stable key: `B.<component>.state-layer.<state>` (e.g. `B.button.state-layer.hover`).
+- A missing `state-layer/*` frame is drift only for interactive archetypes (chip, row-item) — not for surface-stack, tiny, control, container, or field.
+
 Components marked `unresolvable` in Step 2B surface as a separate informational row, not a drift bucket.
 
 ### 3B.1 — Composition drift (`COMPOSITION_DRIFT` / `composition` bucket)

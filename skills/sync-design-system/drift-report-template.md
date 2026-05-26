@@ -79,9 +79,12 @@ Source of truth for token resolution: the cva class strings from `{{source-file}
 | Element path | State | Code class | Code → token | Figma binding | Stable key |
 |---|---|---|---|---|---|
 | `bg` | `base` | `bg-primary` | `color/primary/default` | `color/primary/subtle` | `B.{{component}}.binding.bg.base` |
-| `bg` | `hover` | `hover:bg-primary/90` | `color/primary/default` (opacity 90) | `color/primary/hover` | `B.{{component}}.binding.bg.hover` |
+| `bg` | `hover` | `hover:bg-[var(--color-state-primary-hover)]` | `color/state/primary/hover` | `color/state/primary/hover` ✓ | _in sync_ |
 | `text` | `base` | `text-primary-foreground` | `color/primary/content` | `color/primary/content` ✓ | _in sync_ |
 | `radius` | `base` | `rounded-md` | `radius/md` | `radius/lg` | `B.{{component}}.binding.radius.base` |
+| `state-layer/hover` | `hover` | _(Figma-side frame fill)_ | `color/state/primary/hover` | `color/state/primary/hover` ✓ | `B.{{component}}.state-layer.hover` |
+| `state-layer/pressed` | `pressed` | _(Figma-side frame fill)_ | `color/state/primary/pressed` | — missing — | `B.{{component}}.state-layer.pressed` |
+| `state-layer/focus` | `focus` | _(Figma-side frame fill)_ | `color/state/primary/focus` | `color/state/primary/focus` ✓ | _in sync_ |
 
 Unresolved classes (resolver could not map to a Figma path — add a note in `resolve-classes.mjs`'s LEAF_TO_FIGMA if these should be recognized):
 
@@ -100,7 +103,8 @@ Unresolved classes (resolver could not map to a Figma path — add a note in `re
     "variant-axis": [ { "axis": "variant", "code": [...], "figma": [...] } ],
     "default":      [ { "axis": "variant", "code": "default", "figma": "primary" } ],
     "prop":         [ { "name": "Leading icon", "code": true, "figma": false } ],
-    "binding":      [ { "element": "bg", "state": "base", "code": "color/primary/default", "figma": "color/primary/subtle" } ],
+    "binding":      [ { "element": "bg", "state": "base", "code": "color/primary/default", "figma": "color/primary/subtle" },
+                      { "element": "state-layer/pressed", "state": "pressed", "code": "color/state/primary/pressed", "figma": null } ],
     "code-only":    false,
     "figma-only":   false
   }

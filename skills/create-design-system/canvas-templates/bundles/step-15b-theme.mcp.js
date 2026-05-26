@@ -730,11 +730,12 @@ const THEME_GROUP_META = {
   secondary:  { title: 'Secondary',  caption: 'Secondary brand roles for supporting actions.' },
   tertiary:   { title: 'Tertiary',   caption: 'Tertiary / decorative accent roles.' },
   error:      { title: 'Error',      caption: 'Feedback color for destructive and error states.' },
+  state:      { title: 'State',      caption: 'M3 state layer overlays — per-role RGBA tints for hover, pressed, and focus interactions. ANDROID pressed entries double as the ripple drawable color.' },
   component:  { title: 'Component',  caption: 'shadcn-aligned component tokens (ring, input, muted, popover).' },
   button:     { title: 'Button',     caption: 'Component-level button state tokens.' },
   text:       { title: 'Text',       caption: 'Text and content color tokens.' },
 };
-const THEME_GROUP_KNOWN_ORDER = ['background', 'border', 'primary', 'secondary', 'tertiary', 'error', 'component', 'button', 'text'];
+const THEME_GROUP_KNOWN_ORDER = ['background', 'border', 'primary', 'secondary', 'tertiary', 'error', 'state', 'component', 'button', 'text'];
 
 async function build(ctx) {
   await ensureLocalVariableMapOnCtx(ctx);

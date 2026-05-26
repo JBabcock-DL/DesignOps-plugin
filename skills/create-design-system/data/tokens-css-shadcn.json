@@ -47,7 +47,20 @@
     { "alias": "--popover",                "from": "--color-background-container-highest" },
     { "alias": "--popover-foreground",     "from": "--color-content" },
     { "alias": "--muted",                  "from": "--color-background-variant" },
-    { "alias": "--muted-foreground",       "from": "--color-content-muted" }
+    { "alias": "--muted-foreground",       "from": "--color-content-muted" },
+
+    { "alias": "--color-state-primary-hover",     "from": "--color-state-primary-hover" },
+    { "alias": "--color-state-primary-pressed",   "from": "--color-state-primary-pressed" },
+    { "alias": "--color-state-primary-focus",     "from": "--color-state-primary-focus" },
+    { "alias": "--color-state-secondary-hover",   "from": "--color-state-secondary-hover" },
+    { "alias": "--color-state-secondary-pressed", "from": "--color-state-secondary-pressed" },
+    { "alias": "--color-state-secondary-focus",   "from": "--color-state-secondary-focus" },
+    { "alias": "--color-state-tertiary-hover",    "from": "--color-state-tertiary-hover" },
+    { "alias": "--color-state-tertiary-pressed",  "from": "--color-state-tertiary-pressed" },
+    { "alias": "--color-state-tertiary-focus",    "from": "--color-state-tertiary-focus" },
+    { "alias": "--color-state-error-hover",       "from": "--color-state-error-hover" },
+    { "alias": "--color-state-error-pressed",     "from": "--color-state-error-pressed" },
+    { "alias": "--color-state-error-focus",       "from": "--color-state-error-focus" }
   ],
   "bodyVariantDecorationHelpers": {
     "$note": "Declare once in :root — these do not change per theme or font-scale.",

@@ -64,10 +64,26 @@
   ],
   "rawLiterals": [
     { "path": "color/background/scrim",  "light": { "r": 0, "g": 0, "b": 0, "a": 0.32 }, "dark": { "r": 0, "g": 0, "b": 0, "a": 0.32 }, "codeSyntax": { "WEB": "var(--color-scrim)",        "ANDROID": "scrim",  "iOS": ".Effect.scrim" },         "note": "Figma variable aliases cannot carry opacity; write as resolved RGBA." },
-    { "path": "color/background/shadow", "light": { "r": 0, "g": 0, "b": 0, "a": 0.15 }, "dark": { "r": 0, "g": 0, "b": 0, "a": 0.40 }, "codeSyntax": { "WEB": "var(--color-shadow-tint)", "ANDROID": "shadow", "iOS": ".Background.shadow.tint" }, "note": "Same reason as scrim — RGBA per mode, not an alias." }
+    { "path": "color/background/shadow", "light": { "r": 0, "g": 0, "b": 0, "a": 0.15 }, "dark": { "r": 0, "g": 0, "b": 0, "a": 0.40 }, "codeSyntax": { "WEB": "var(--color-shadow-tint)", "ANDROID": "shadow", "iOS": ".Background.shadow.tint" }, "note": "Same reason as scrim — RGBA per mode, not an alias." },
+
+    { "path": "color/state/primary/hover",     "light": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "codeSyntax": { "WEB": "var(--color-state-primary-hover)",     "ANDROID": "state-layer-primary", "iOS": ".State.primary.hover"   }, "note": "M3 state layer — on-primary at 8% opacity. Opacity cannot ride on alias; write as RGBA." },
+    { "path": "color/state/primary/pressed",   "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-primary-pressed)",   "ANDROID": "ripple-primary",      "iOS": ".State.primary.pressed" }, "note": "M3 state layer — on-primary at 12% opacity. ANDROID: ripple-primary (doubles as Android ripple drawable)." },
+    { "path": "color/state/primary/focus",     "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-primary-focus)",     "ANDROID": "state-layer-primary", "iOS": ".State.primary.focus"   }, "note": "M3 state layer — on-primary at 12% opacity." },
+
+    { "path": "color/state/secondary/hover",   "light": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "codeSyntax": { "WEB": "var(--color-state-secondary-hover)",   "ANDROID": "state-layer-secondary", "iOS": ".State.secondary.hover"   }, "note": "M3 state layer — on-secondary at 8% opacity. Opacity cannot ride on alias; write as RGBA." },
+    { "path": "color/state/secondary/pressed", "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-secondary-pressed)", "ANDROID": "ripple-secondary",      "iOS": ".State.secondary.pressed" }, "note": "M3 state layer — on-secondary at 12% opacity. ANDROID: ripple-secondary." },
+    { "path": "color/state/secondary/focus",   "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-secondary-focus)",   "ANDROID": "state-layer-secondary", "iOS": ".State.secondary.focus"   }, "note": "M3 state layer — on-secondary at 12% opacity." },
+
+    { "path": "color/state/tertiary/hover",    "light": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "codeSyntax": { "WEB": "var(--color-state-tertiary-hover)",    "ANDROID": "state-layer-tertiary", "iOS": ".State.tertiary.hover"   }, "note": "M3 state layer — on-tertiary at 8% opacity. Opacity cannot ride on alias; write as RGBA." },
+    { "path": "color/state/tertiary/pressed",  "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-tertiary-pressed)",  "ANDROID": "ripple-tertiary",      "iOS": ".State.tertiary.pressed" }, "note": "M3 state layer — on-tertiary at 12% opacity. ANDROID: ripple-tertiary." },
+    { "path": "color/state/tertiary/focus",    "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-tertiary-focus)",    "ANDROID": "state-layer-tertiary", "iOS": ".State.tertiary.focus"   }, "note": "M3 state layer — on-tertiary at 12% opacity." },
+
+    { "path": "color/state/error/hover",       "light": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.08 }, "codeSyntax": { "WEB": "var(--color-state-error-hover)",       "ANDROID": "state-layer-error", "iOS": ".State.error.hover"   }, "note": "M3 state layer — on-error at 8% opacity. Opacity cannot ride on alias; write as RGBA." },
+    { "path": "color/state/error/pressed",     "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-error-pressed)",     "ANDROID": "ripple-error",      "iOS": ".State.error.pressed" }, "note": "M3 state layer — on-error at 12% opacity. ANDROID: ripple-error." },
+    { "path": "color/state/error/focus",       "light": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "dark": { "r": 1, "g": 1, "b": 1, "a": 0.12 }, "codeSyntax": { "WEB": "var(--color-state-error-focus)",       "ANDROID": "state-layer-error", "iOS": ".State.error.focus"   }, "note": "M3 state layer — on-error at 12% opacity." }
   ],
   "notes": {
     "derivationRules": "See 02b-theme-codesyntax.md for WEB/ANDROID/iOS derivation rules and exception lists. codeSyntax in this file is the authoritative per-row value.",
-    "groupOrder": ["background", "border", "primary", "secondary", "tertiary", "error", "component"]
+    "groupOrder": ["background", "border", "primary", "secondary", "tertiary", "error", "state", "component"]
   }
 }

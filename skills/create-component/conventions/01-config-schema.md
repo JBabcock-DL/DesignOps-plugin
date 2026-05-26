@@ -76,6 +76,10 @@ style: {
     fallback:  '#1a1a1a',                 // hex used when the Theme collection is absent
     labelVar:  'color/primary/content',   // Theme token for the label text fill
     strokeVar: null,                      // Theme token for stroke, or null for no stroke
+    stateRole: 'primary',                 // optional — which color/state/{role}/* tokens to bind to the state-layer frames.
+                                          // Defaults to the role parsed from fill path (e.g. 'color/primary/default' → 'primary').
+                                          // Required for transparent-fill variants (outline, ghost) where the fill path has no role segment.
+                                          // Set to null to suppress state-layer frames entirely (non-interactive variants).
   },
   // ... one entry per variant ...
 }
@@ -87,7 +91,7 @@ style: {
 
 | Component shape | `variants` | `sizes` | `states` | `applyStateOverride` |
 |---|---|---|---|---|
-| Button-like (button, toggle) | 2–6 visual variants | 3–4 size presets | `default` · `hover` · `pressed` ⎮ `disabled` | opacity overlay |
+| Button-like (button, toggle) | 2–6 visual variants | 3–4 size presets | `default` · `hover` · `pressed` ⎮ `disabled` | state-layer visibility; disabled keeps `instance.opacity = 0.38` |
 | Input-like (input, textarea, select) | `['default']` | `[]` | `default` · `focus` · `error` ⎮ `disabled` | mutate `strokes` + overlay field |
 | Checkable (checkbox, radio, switch) | `['default']` | `[]` | `unchecked` · `checked` · `indeterminate` ⎮ `disabled` | `instance.setProperties({ checked, disabled })` |
 | Badge / Alert | 4–5 visual variants | `[]` | `[{ key: 'default', group: 'default' }]` | no-op |

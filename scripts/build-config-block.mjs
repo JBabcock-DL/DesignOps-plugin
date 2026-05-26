@@ -51,10 +51,15 @@ const LAYOUT_DEFAULTS = {
       { key: 'disabled', group: 'disabled'  },
     ],
     applyStateOverrideBody:
-      'if (stateKey === "disabled") instance.opacity = 0.38;\n' +
-      '  else if (stateKey === "hover") instance.opacity = 0.92;\n' +
-      '  else if (stateKey === "pressed") instance.opacity = 0.84;\n' +
-      '  else instance.opacity = 1;',
+      'const _layers = instance.findAll(n => n.name.startsWith("state-layer/"));\n' +
+      '  _layers.forEach(l => { l.opacity = 0; });\n' +
+      '  if (stateKey === "disabled") {\n' +
+      '    instance.opacity = 0.38;\n' +
+      '  } else {\n' +
+      '    instance.opacity = 1;\n' +
+      '    const _sl = instance.findChild(n => n.name === "state-layer/" + stateKey);\n' +
+      '    if (_sl) _sl.opacity = 1;\n' +
+      '  }',
     labelFn: '(size, variant) => title',
     padH:    "{ default: 'space/md', sm: 'space/sm', lg: 'space/lg' }",
     radius:  "'radius/md'",
@@ -97,10 +102,15 @@ const LAYOUT_DEFAULTS = {
       { key: 'disabled', group: 'disabled' },
     ],
     applyStateOverrideBody:
-      'if (stateKey === "disabled") instance.opacity = 0.38;\n' +
-      '  else if (stateKey === "hover") instance.opacity = 0.92;\n' +
-      '  else if (stateKey === "active") instance.opacity = 0.84;\n' +
-      '  else instance.opacity = 1;',
+      'const _layers = instance.findAll(n => n.name.startsWith("state-layer/"));\n' +
+      '  _layers.forEach(l => { l.opacity = 0; });\n' +
+      '  if (stateKey === "disabled") {\n' +
+      '    instance.opacity = 0.38;\n' +
+      '  } else {\n' +
+      '    instance.opacity = 1;\n' +
+      '    const _sl = instance.findChild(n => n.name === "state-layer/" + stateKey);\n' +
+      '    if (_sl) _sl.opacity = 1;\n' +
+      '  }',
     labelFn: '() => null',
     padH:    "{ default: 'space/sm' }",
     radius:  "'radius/sm'",
@@ -175,6 +185,10 @@ function formatStyleEntry(variant) {
       fallback:  "#888888",  // hex fallback when Theme collection absent
       labelVar:  null, // TODO: e.g. 'color/${variant}/content'
       strokeVar: null, // TODO: e.g. 'color/${variant}/border' or null
+      stateRole: null, // TODO: e.g. 'primary' — role for state-layer fills (color/state/{role}/*).
+                       //   Derived automatically from fill path when omitted.
+                       //   Set explicitly for transparent-fill variants (outline, ghost).
+                       //   Set to null to suppress state layers on non-interactive variants.
     }`;
 }
 

@@ -22,6 +22,18 @@ Use this file alongside **Step 6** in the main skill. The **authoritative triple
 - **Domains** group related roles: `.Background.*`, `.Foreground.*`, `.Primary.*`, `.Border.*`, `.Status.*`, `.Component.*`, etc., per Step 6.
 - **Exceptions** exist where Figma grouping (`color/background/content`) maps to `.Foreground.primary` — follow the **iOS** column exactly.
 
+## State group (`color/state/*`)
+
+State layer tokens are `rawLiterals` (RGBA with alpha) — they cannot alias a Primitive because opacity cannot ride on a variable alias.
+
+- **WEB:** `var(--color-state-{role}-{state})` — e.g. `var(--color-state-primary-hover)`
+- **ANDROID:**
+  - `hover` / `focus` → `state-layer-{role}` (e.g. `state-layer-primary`)
+  - `pressed` → `ripple-{role}` (e.g. `ripple-primary`) — doubles as the Android ripple drawable color; no separate ripple token needed
+- **iOS:** `.State.{role}.{state}` — e.g. `.State.primary.hover`, `.State.error.pressed`
+
+Roles: `primary`, `secondary`, `tertiary`, `error`. States per role: `hover` (8%), `pressed` (12%), `focus` (12%).
+
 ## Verification
 
 - After push, Step 12 spot-checks (`color/background/default`, `color/error/default`, …) must match Step 6 **and** this file’s exception rules.

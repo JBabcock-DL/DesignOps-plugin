@@ -116,6 +116,20 @@ const LEAF_TO_FIGMA = {
   'color-sidebar': 'color/component/sidebar',
   'color-on-sidebar': 'color/component/sidebar-content',
 
+  // State layer overlays (M3 per-role RGBA tints — rawLiterals in Theme collection)
+  'color-state-primary-hover':     'color/state/primary/hover',
+  'color-state-primary-pressed':   'color/state/primary/pressed',
+  'color-state-primary-focus':     'color/state/primary/focus',
+  'color-state-secondary-hover':   'color/state/secondary/hover',
+  'color-state-secondary-pressed': 'color/state/secondary/pressed',
+  'color-state-secondary-focus':   'color/state/secondary/focus',
+  'color-state-tertiary-hover':    'color/state/tertiary/hover',
+  'color-state-tertiary-pressed':  'color/state/tertiary/pressed',
+  'color-state-tertiary-focus':    'color/state/tertiary/focus',
+  'color-state-error-hover':       'color/state/error/hover',
+  'color-state-error-pressed':     'color/state/error/pressed',
+  'color-state-error-focus':       'color/state/error/focus',
+
   // Layout — Corner primitives (exposed under both Primitive and Layout)
   'corner-none': 'radius/none',
   'corner-extra-small': 'radius/xs',
