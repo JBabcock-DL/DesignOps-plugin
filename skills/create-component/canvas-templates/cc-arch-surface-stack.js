@@ -4,6 +4,8 @@ function buildSurfaceStackVariant(name, fillVar, fallbackFill, {
   radiusVar     = 'radius/xl',
   padH          = 'space/2xl',
   sizeKey       = null,
+  stateRole     = null,
+  focusRingVar  = 'color/component/ring',
 } = {}) {
   const surface = CONFIG.surface || {};
   const padYTok = surface.sectionPadY ?? padH;
@@ -14,6 +16,7 @@ function buildSurfaceStackVariant(name, fillVar, fallbackFill, {
   const c = figma.createComponent();
   c.name = name;
   c.layoutMode = 'VERTICAL';
+  c.clipsContent = false;
   c.resize(width, 1);
   c.primaryAxisSizingMode = 'AUTO';
   c.counterAxisSizingMode = 'FIXED';
@@ -155,6 +158,43 @@ function buildSurfaceStackVariant(name, fillVar, fallbackFill, {
     }
   } catch (e) {
     console.warn('ccProp', name, e);
+  }
+
+  if (stateRole) {
+    ['hover', 'pressed', 'focus'].forEach(function(st) {
+      const sl = figma.createFrame();
+      sl.name               = 'state-layer/' + st;
+      sl.layoutMode         = 'NONE';
+      sl.layoutPositioning  = 'ABSOLUTE';
+      sl.constraints        = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+      sl.resize(100, 100);
+      sl.x                  = 0;
+      sl.y                  = 0;
+      sl.opacity            = 0;
+      sl.fills              = [];
+      sl.clipsContent       = false;
+      ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+        .forEach(function(f) { bindNum(sl, f, radiusVar, 12); });
+      bindColor(sl, 'color/state/' + stateRole + '/' + st, '#00000000', 'fills');
+      c.appendChild(sl);
+    });
+    const ring = figma.createFrame();
+    ring.name              = 'focus-ring';
+    ring.layoutMode        = 'NONE';
+    ring.layoutPositioning = 'ABSOLUTE';
+    ring.constraints       = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+    ring.resize(100, 100);
+    ring.x                 = 0;
+    ring.y                 = 0;
+    ring.opacity           = 0;
+    ring.fills             = [];
+    ring.clipsContent      = false;
+    ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+      .forEach(function(f) { bindNum(ring, f, radiusVar, 12); });
+    bindColor(ring, focusRingVar, '#3b82f6', 'strokes');
+    ring.strokeWeight = 2;
+    ring.strokeAlign  = 'OUTSIDE';
+    c.appendChild(ring);
   }
 
   figma.currentPage.appendChild(c);

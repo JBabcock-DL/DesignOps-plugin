@@ -91,6 +91,20 @@
 - [ ] **V** No hard-coded hex on chrome
 - [ ] **V** Instance overrides (hover/pressed/disabled) use opacity for button-like components ([`04-doc-pipeline-contract.md` §13.1.a](./04-doc-pipeline-contract.md#131a--opacity-is-authoritative-for-button-like-components)) or `setProperties(...)` for components where state IS a Figma variant ([`04-doc-pipeline-contract.md` §13.1.b](./04-doc-pipeline-contract.md#131b--exception-state-is-a-figma-variant-property)) — never math-generated fill shades
 
+### State-layer integrity — M3-strict (S9.10)
+
+For every variant `c` under `_ccVariantBuild/{component}`:
+
+1. The resolved `stateRole` (from `CONFIG.style[v].stateRole`, or the `parseStateRole` derivation) must be one of: `on-primary`, `on-secondary`, `on-tertiary`, `on-error`, `on-surface`, or `null`. **Bare-role values** (`primary`, `secondary`, `tertiary`, `error`) are **invalid** — those Theme variables no longer exist.
+2. If `stateRole !== null`: `c` must contain three `FrameNode` children named exactly `state-layer/hover`, `state-layer/pressed`, `state-layer/focus`. Each has `opacity === 0`, `layoutPositioning === 'ABSOLUTE'`, `constraints` STRETCH/STRETCH, and `fills[0].boundVariables.color.id` resolving to the `color/state/{stateRole}/{state}` variable.
+3. If `stateRole !== null` (or `focusRingVar` was set): `c` must contain a `focus-ring` `FrameNode` child with `opacity === 0`, `strokeAlign === 'OUTSIDE'`, `strokeWeight === 2`, and stroke `boundVariables.color.id` resolving to `color/component/ring` (or the explicit `focusRingVar` override).
+4. `c.clipsContent === false` whenever a `focus-ring` child is present.
+
+- [ ] **S9.10** State-layer tokens use M3 on-color naming (`on-{role}` / `on-surface`) — no bare-role names
+- [ ] **S9.10** Three `state-layer/*` frames present (if `stateRole !== null`) with correct `boundVariables` bindings
+- [ ] **S9.10** `focus-ring` frame present with `strokeAlign === 'OUTSIDE'`, bound to `color/component/ring`
+- [ ] **S9.10** `c.clipsContent === false` on any variant that carries a `focus-ring` frame
+
 If any `S9.*` / `MA.*` row fails, fix before reporting the component `drawn`. `V` rows require a `get_screenshot` review and should be corrected where possible; do not block the run on them unless the designer reports a regression.
 
 ---

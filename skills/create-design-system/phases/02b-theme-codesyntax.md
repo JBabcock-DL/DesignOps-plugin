@@ -26,13 +26,24 @@ Use this file alongside **Step 6** in the main skill. The **authoritative triple
 
 State layer tokens are `rawLiterals` (RGBA with alpha) — they cannot alias a Primitive because opacity cannot ride on a variable alias.
 
-- **WEB:** `var(--color-state-{role}-{state})` — e.g. `var(--color-state-primary-hover)`
-- **ANDROID:**
-  - `hover` / `focus` → `state-layer-{role}` (e.g. `state-layer-primary`)
-  - `pressed` → `ripple-{role}` (e.g. `ripple-primary`) — doubles as the Android ripple drawable color; no separate ripple token needed
-- **iOS:** `.State.{role}.{state}` — e.g. `.State.primary.hover`, `.State.error.pressed`
+The M3-strict model: the state layer always carries the **foreground (on-color) of the container it sits on**. Two overlay families cover every component variant:
 
-Roles: `primary`, `secondary`, `tertiary`, `error`. States per role: `hover` (8%), `pressed` (12%), `focus` (12%).
+- **`color/state/on-{role}/{state}`** — filled variants. RGB = `color/{role}/content` (Light and Dark identical, both alias `color/{role}/50`). Roles: `on-primary`, `on-secondary`, `on-tertiary`, `on-error`.
+- **`color/state/on-surface/{state}`** — outline / ghost / transparent variants. RGB = `color/background/content` (Light = `color/neutral/900`, Dark = `color/neutral/50`; RGB differs between modes).
+
+Per-state alpha: `hover` 0.08, `pressed` 0.12, `focus` 0.12.
+
+- **WEB:** `var(--color-state-on-{role-kebab}-{state})` — e.g. `var(--color-state-on-primary-pressed)`, `var(--color-state-on-surface-hover)`
+- **ANDROID:**
+  - `hover` / `focus` → `state-layer-on-{role-kebab}` (e.g. `state-layer-on-primary`, `state-layer-on-surface`)
+  - `pressed` → `ripple-on-{role-kebab}` (e.g. `ripple-on-primary`, `ripple-on-surface`)
+- **iOS:** `.State.on{Role}.{state}` — e.g. `.State.onPrimary.pressed`, `.State.onSurface.focus`
+
+`{role-kebab}` is `primary`, `secondary`, `tertiary`, `error`, `surface`. iOS `{Role}` uses PascalCase (`Primary`, `Secondary`, `Tertiary`, `Error`, `Surface`).
+
+Total: 15 state-layer variables (4 on-roles × 3 states + on-surface × 3 states).
+
+The legacy `color/state/{role}/{state}` family (role color × alpha) is **removed** — see `theme-aliases.json` history. Outline/ghost variants no longer get a brand-tinted hover; they get a neutral on-surface tint per M3 spec.
 
 ## Verification
 

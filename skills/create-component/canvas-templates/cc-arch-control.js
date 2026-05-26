@@ -1,9 +1,10 @@
 function buildControlVariant(name, fillVar, fallbackFill, {
-  labelVar  = 'color/background/content',
-  strokeVar = 'color/border/default',
-  radiusVar = 'radius/sm',
-  padH      = 'space/none',
-  sizeKey   = null,
+  labelVar     = 'color/background/content',
+  strokeVar    = 'color/border/default',
+  radiusVar    = 'radius/sm',
+  padH         = 'space/none',
+  sizeKey      = null,
+  focusRingVar = 'color/component/ring',
 } = {}) {
   const control = CONFIG.control || {};
   const shape = control.shape ?? 'checkbox';
@@ -31,7 +32,25 @@ function buildControlVariant(name, fillVar, fallbackFill, {
     bindColor(thumb, control.thumbVar ?? 'color/background/default', '#ffffff', 'fills');
     ['topLeftRadius','topRightRadius','bottomLeftRadius','bottomRightRadius']
       .forEach(fn => bindNum(thumb, fn, 'radius/full', (h - 4) / 2));
+    c.clipsContent = false;
     c.appendChild(thumb);
+    const ringS = figma.createFrame();
+    ringS.name              = 'focus-ring';
+    ringS.layoutMode        = 'NONE';
+    ringS.layoutPositioning = 'ABSOLUTE';
+    ringS.constraints       = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+    ringS.resize(100, 100);
+    ringS.x                 = 0;
+    ringS.y                 = 0;
+    ringS.opacity           = 0;
+    ringS.fills             = [];
+    ringS.clipsContent      = false;
+    ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+      .forEach(function(f) { bindNum(ringS, f, 'radius/full', h / 2); });
+    bindColor(ringS, focusRingVar, '#3b82f6', 'strokes');
+    ringS.strokeWeight = 2;
+    ringS.strokeAlign  = 'OUTSIDE';
+    c.appendChild(ringS);
     figma.currentPage.appendChild(c);
     return { component: c, slots: { thumb }, propKeys: {} };
   }
@@ -81,6 +100,24 @@ function buildControlVariant(name, fillVar, fallbackFill, {
       c.appendChild(check);
     }
   }
+  c.clipsContent = false;
+  const ring = figma.createFrame();
+  ring.name              = 'focus-ring';
+  ring.layoutMode        = 'NONE';
+  ring.layoutPositioning = 'ABSOLUTE';
+  ring.constraints       = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+  ring.resize(100, 100);
+  ring.x                 = 0;
+  ring.y                 = 0;
+  ring.opacity           = 0;
+  ring.fills             = [];
+  ring.clipsContent      = false;
+  ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+    .forEach(function(f) { bindNum(ring, f, cornerTok, cornerFallback); });
+  bindColor(ring, focusRingVar, '#3b82f6', 'strokes');
+  ring.strokeWeight = 2;
+  ring.strokeAlign  = 'OUTSIDE';
+  c.appendChild(ring);
   figma.currentPage.appendChild(c);
   return { component: c, slots: {}, propKeys: {} };
 }

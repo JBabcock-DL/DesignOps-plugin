@@ -30,6 +30,10 @@ for (const v of CONFIG.variants) {
     const label = typeof CONFIG.label === 'function' ? CONFIG.label(s, v) : (CONFIG.label ?? CONFIG.title);
     const padH = (s !== null && CONFIG.padH?.[s]) || padFallback;
     const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
+    const computedStateRole = typeof parseStateRole === 'function'
+      ? parseStateRole(st.fill, Object.prototype.hasOwnProperty.call(st, 'stateRole') ? st.stateRole : undefined)
+      : (st.stateRole ?? null);
+    const computedFocusRing = st.focusRingVar ?? 'color/component/ring';
     const built = buildVariant(name, st.fill, st.fallback, {
       label,
       labelVar: st.labelVar,
@@ -44,6 +48,8 @@ for (const v of CONFIG.variants) {
       addLeadingProp: !!cp.leadingIcon && leadingGlobal,
       addTrailingProp: !!cp.trailingIcon && trailingGlobal,
       propLabelText: defaultLabelText,
+      stateRole: computedStateRole,
+      focusRingVar: computedFocusRing,
     });
     variantData.push(built);
   }

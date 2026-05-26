@@ -33,9 +33,9 @@ Create (or update) the `Theme` collection with **two modes: `Light` and `Dark`**
 Every Theme variable is a COLOR type. The JSON has two arrays — both must be created:
 
 - **`rows`** — alias rows: `path` = variable name, `light`/`dark` = Primitive path to alias by ID, `codeSyntax` = set explicitly (NOT derived from the Figma variable path).
-- **`rawLiterals`** — RGBA-per-mode rows (opacity cannot ride on a variable alias). Currently `scrim`, `shadow`, and the full **state-layer set** (`color/state/{primary|secondary|tertiary|error}/{hover|pressed|focus}` = 12 vars). Every `rawLiterals` row carries its own `codeSyntax` triple — push it identically to alias rows in Step 11.
+- **`rawLiterals`** — RGBA-per-mode rows (opacity cannot ride on a variable alias). Currently `scrim`, `shadow`, and the full **state-layer set** (15 vars: 12 on-color overlays at `color/state/on-{primary|secondary|tertiary|error}/{hover|pressed|focus}` for filled variants, plus 3 on-surface overlays at `color/state/on-surface/{hover|pressed|focus}` for outline/ghost variants). Every `rawLiterals` row carries its own `codeSyntax` triple — push it identically to alias rows in Step 11.
 
-State layers derive their RGBA from the role color at 8% (hover) or 12% (pressed/focus); see [`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md) § *State group* for the WEB/ANDROID/iOS pattern (note: `pressed` → `ripple-{role}` on Android, all other states → `state-layer-{role}`).
+State layers derive their RGBA from the on-color of the container they sit on: filled variants use `color/{role}/content` RGB at 8/12/12% alpha (Light = Dark); outline/ghost variants use `color/background/content` RGB at the same alpha cadence (Light ≠ Dark). M3-strict model; see [`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md) § *State group*.
 
 **codeSyntax notes:** WEB uses `--color-*` namespace (Tailwind v4 `@theme` ready). ANDROID uses M3 `ColorScheme` role names in kebab-case (not Compose camelCase). iOS uses dot-path semantics (design-system paths for codegen, not UIColor symbols). Additional exception lists and derivation rules: [`02b-theme-codesyntax.md`](./02b-theme-codesyntax.md).
 

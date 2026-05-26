@@ -58,6 +58,11 @@ for (const v of CONFIG.variants) {
     const padH = (s !== null && CONFIG.padH?.[s]) || padFallback;
     const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
 
+    const computedStateRole = typeof parseStateRole === 'function'
+      ? parseStateRole(st.fill, Object.prototype.hasOwnProperty.call(st, 'stateRole') ? st.stateRole : undefined)
+      : (st.stateRole ?? null);
+    const computedFocusRing = st.focusRingVar ?? 'color/component/ring';
+
     let built;
     switch (layoutKey) {
       case '__composes__':
@@ -67,6 +72,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           padV: 'space/xs',
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'surface-stack':
@@ -77,6 +84,8 @@ for (const v of CONFIG.variants) {
           padH,
           sizeKey: s,
           propLabelText: defaultLabelText,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'field':
@@ -86,6 +95,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'row-item':
@@ -95,6 +106,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'tiny':
@@ -113,6 +126,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'control':
@@ -122,6 +137,7 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'chip':
@@ -145,6 +161,8 @@ for (const v of CONFIG.variants) {
           addLeadingProp: !!cp.leadingIcon && leadingGlobal,
           addTrailingProp: !!cp.trailingIcon && trailingGlobal,
           propLabelText: defaultLabelText,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
     }

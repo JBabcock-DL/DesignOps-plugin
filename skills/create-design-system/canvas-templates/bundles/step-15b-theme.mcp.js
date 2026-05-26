@@ -989,19 +989,23 @@ const RAW_LITERAL_CODESYNTAX = {
   'color/background/shadow': { WEB: 'var(--color-shadow-tint)',  ANDROID: 'shadow', iOS: '.Background.shadow.tint' },
 };
 
-// State variables follow color/state/{role}/{state} — derivation per 02b-theme-codesyntax.md:
-//   WEB:     var(--color-state-{role}-{state})
-//   ANDROID: state-layer-{role}    (hover/focus)
-//            ripple-{role}         (pressed — doubles as Android ripple drawable)
-//   iOS:     .State.{role}.{state} (lowercase role + state, matches data file casing)
+// State variables follow color/state/on-{role}/{state} or color/state/on-surface/{state}
+// M3-strict derivation per 02b-theme-codesyntax.md:
+//   WEB:     var(--color-state-on-{role-kebab}-{state})
+//   ANDROID: state-layer-on-{role-kebab}  (hover/focus)
+//            ripple-on-{role-kebab}        (pressed — doubles as Android ripple drawable)
+//   iOS:     .State.on{Role}.{state}       (PascalCase role, e.g. onPrimary, onSurface)
 function deriveStateCodeSyntax(name) {
-  const m = /^color\/state\/(primary|secondary|tertiary|error)\/(hover|pressed|focus)$/.exec(name);
+  const m = /^color\/state\/(on-(?:primary|secondary|tertiary|error|surface))\/(hover|pressed|focus)$/.exec(name);
   if (!m) return null;
   const role = m[1], state = m[2];
+  const roleKebab = role; // already kebab: on-primary, on-secondary, etc.
+  const rolePascal = role.replace(/^on-/, 'on').replace(/^on(.)/, function(_, c) { return 'on' + c.toUpperCase(); })
+    .replace(/-([a-z])/, function(_, c) { return c.toUpperCase(); });
   return {
-    WEB: 'var(--color-state-' + role + '-' + state + ')',
-    ANDROID: state === 'pressed' ? ('ripple-' + role) : ('state-layer-' + role),
-    iOS: '.State.' + role + '.' + state,
+    WEB: 'var(--color-state-' + roleKebab + '-' + state + ')',
+    ANDROID: state === 'pressed' ? ('ripple-' + roleKebab) : ('state-layer-' + roleKebab),
+    iOS: '.State.' + rolePascal + '.' + state,
   };
 }
 

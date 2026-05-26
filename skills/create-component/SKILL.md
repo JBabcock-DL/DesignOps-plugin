@@ -76,9 +76,11 @@ Every assertion ID below (`S9.1` … `S9.9`) maps 1:1 to an audit-checklist item
 | **S9.8** | **Atoms:** for every `compSetVariantRows` row where `hasText === false` and CONFIG implies icon-only for that variant×size, `childNames` must include exactly one `icon-slot/center` and no other label frame. **Composites:** skip when `composedWith.length > 0` | Icon-only mode collapsed incorrectly |
 | **S9.9** | `propErrorsCount === 0` | Surface `propErrorsSample` to the designer and STOP — do not report the component drawn |
 
-If all nine assertions pass, the component is safe to mark **Drawn to Canvas = Yes** in the Step 8 table.
+| **S9.10** | **State-layer + focus-ring integrity (M3-strict).** For every variant `c` where `CONFIG.style[v].stateRole !== null`: (a) `c` contains exactly three `FrameNode` children named `state-layer/hover`, `state-layer/pressed`, `state-layer/focus`, each with `opacity === 0`, `layoutPositioning === 'ABSOLUTE'`, and `fills[0].boundVariables.color.id` resolving to `color/state/{stateRole}/{state}` — `stateRole` must be one of `on-primary`, `on-secondary`, `on-tertiary`, `on-error`, `on-surface` (bare-role names are invalid). (b) `c` contains a `focus-ring` `FrameNode` child with `opacity === 0`, `strokeAlign === 'OUTSIDE'`, `strokeWeight === 2`, stroke bound to `color/component/ring` (or the explicit `focusRingVar` override). (c) `c.clipsContent === false`. | State-layer or focus-ring is missing or bound to a removed legacy token — re-run the `component-*` bundle with updated templates |
 
-> **Optional visual check (recommended, not gating):** after S9.1–S9.9 pass, call `get_screenshot` on the `_PageContent` frame's node ID. Inspect the dashed icon-slot placeholders in the matrix rows, confirm opacity ramps across `default → hover → pressed → disabled`, and verify the inline ComponentSet at the top of the doc frame. This is a human-review safety net, not a mechanical assertion.
+If all ten assertions pass, the component is safe to mark **Drawn to Canvas = Yes** in the Step 8 table.
+
+> **Optional visual check (recommended, not gating):** after S9.1–S9.10 pass, call `get_screenshot` on the `_PageContent` frame's node ID. Inspect the dashed icon-slot placeholders in the matrix rows, confirm opacity ramps across `default → hover → pressed → focus → disabled`, and verify the inline ComponentSet at the top of the doc frame. This is a human-review safety net, not a mechanical assertion.
 
 ---
 

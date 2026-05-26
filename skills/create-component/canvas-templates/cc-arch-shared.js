@@ -122,6 +122,28 @@ function wireIconSwapProp(comp, slotNode, propKeys, propName) {
   }
 }
 
+// Derive the M3-strict stateRole from a fill path + optional explicit override.
+// Returns:
+//   null          → caller passed explicitRole === null → suppress state layers
+//   '<string>'    → explicit override wins when non-empty string
+//   'on-{role}'   → fill is a brand-role fill → use on-color overlay
+//   'on-surface'  → fill is transparent/outline/background → use on-surface overlay
+function parseStateRole(stylePath, explicitRole) {
+  if (explicitRole === null) return null;
+  if (typeof explicitRole === 'string' && explicitRole.length > 0) return explicitRole;
+  if (typeof stylePath !== 'string' || stylePath.length === 0) return 'on-surface';
+  if (stylePath.indexOf('color/background/') === 0) return 'on-surface';
+  if (stylePath.indexOf('color/border/') === 0) return 'on-surface';
+  if (stylePath.indexOf('color/component/') === 0) return 'on-surface';
+  const m = stylePath.match(/^color\/([a-z-]+)\/(default|content|subtle|on-subtle)$/);
+  if (!m) return 'on-surface';
+  const role = m[1];
+  if (role === 'primary' || role === 'secondary' || role === 'tertiary' || role === 'error') {
+    return 'on-' + role;
+  }
+  return 'on-surface';
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ARCHETYPE: surface-stack
 // ═══════════════════════════════════════════════════════════════════════════

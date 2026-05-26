@@ -294,6 +294,7 @@ function buildVariant(name, fillVar, fallbackFill, {
   addTrailingProp  = false,
   propLabelText    = 'Label',
   stateRole        = null,
+  focusRingVar     = 'color/component/ring',
 } = {}) {
   const c = figma.createComponent();
   c.name = name;
@@ -304,6 +305,7 @@ function buildVariant(name, fillVar, fallbackFill, {
   c.counterAxisSizingMode = 'AUTO';
   c.primaryAxisAlignItems = 'CENTER';
   c.counterAxisAlignItems = 'CENTER';
+  c.clipsContent          = false;
 
   // Icon-only mode: no label → render a single centered slot, force square
   // padding so the component ends up square (matches shadcn `size=icon`).
@@ -509,6 +511,23 @@ function buildVariant(name, fillVar, fallbackFill, {
       bindColor(sl, 'color/state/' + stateRole + '/' + st, '#00000000', 'fills');
       c.appendChild(sl);
     });
+    const ring = figma.createFrame();
+    ring.name              = 'focus-ring';
+    ring.layoutMode        = 'NONE';
+    ring.layoutPositioning = 'ABSOLUTE';
+    ring.constraints       = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+    ring.resize(100, 100);
+    ring.x                 = 0;
+    ring.y                 = 0;
+    ring.opacity           = 0;
+    ring.fills             = [];
+    ring.clipsContent      = false;
+    ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+      .forEach(function(f) { bindNum(ring, f, radiusVar, 6); });
+    bindColor(ring, focusRingVar, '#3b82f6', 'strokes');
+    ring.strokeWeight = 2;
+    ring.strokeAlign  = 'OUTSIDE';
+    c.appendChild(ring);
   }
 
   // Append to current page before any combining
@@ -638,6 +657,28 @@ function wireIconSwapProp(comp, slotNode, propKeys, propName) {
   } catch (e) {
     console.warn('wI', propName, e);
   }
+}
+
+// Derive the M3-strict stateRole from a fill path + optional explicit override.
+// Returns:
+//   null          → caller passed explicitRole === null → suppress state layers
+//   '<string>'    → explicit override wins when non-empty string
+//   'on-{role}'   → fill is a brand-role fill → use on-color overlay
+//   'on-surface'  → fill is transparent/outline/background → use on-surface overlay
+function parseStateRole(stylePath, explicitRole) {
+  if (explicitRole === null) return null;
+  if (typeof explicitRole === 'string' && explicitRole.length > 0) return explicitRole;
+  if (typeof stylePath !== 'string' || stylePath.length === 0) return 'on-surface';
+  if (stylePath.indexOf('color/background/') === 0) return 'on-surface';
+  if (stylePath.indexOf('color/border/') === 0) return 'on-surface';
+  if (stylePath.indexOf('color/component/') === 0) return 'on-surface';
+  const m = stylePath.match(/^color\/([a-z-]+)\/(default|content|subtle|on-subtle)$/);
+  if (!m) return 'on-surface';
+  const role = m[1];
+  if (role === 'primary' || role === 'secondary' || role === 'tertiary' || role === 'error') {
+    return 'on-' + role;
+  }
+  return 'on-surface';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -856,6 +897,11 @@ for (const v of CONFIG.variants) {
     const padH = (s !== null && CONFIG.padH?.[s]) || padFallback;
     const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
 
+    const computedStateRole = typeof parseStateRole === 'function'
+      ? parseStateRole(st.fill, Object.prototype.hasOwnProperty.call(st, 'stateRole') ? st.stateRole : undefined)
+      : (st.stateRole ?? null);
+    const computedFocusRing = st.focusRingVar ?? 'color/component/ring';
+
     let built;
     switch (layoutKey) {
       case '__composes__':
@@ -865,6 +911,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           padV: 'space/xs',
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'surface-stack':
@@ -875,6 +923,8 @@ for (const v of CONFIG.variants) {
           padH,
           sizeKey: s,
           propLabelText: defaultLabelText,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'field':
@@ -884,6 +934,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'row-item':
@@ -893,6 +945,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'tiny':
@@ -911,6 +965,8 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'control':
@@ -920,6 +976,7 @@ for (const v of CONFIG.variants) {
           radiusVar,
           padH,
           sizeKey: s,
+          focusRingVar: computedFocusRing,
         });
         break;
       case 'chip':
@@ -943,6 +1000,8 @@ for (const v of CONFIG.variants) {
           addLeadingProp: !!cp.leadingIcon && leadingGlobal,
           addTrailingProp: !!cp.trailingIcon && trailingGlobal,
           propLabelText: defaultLabelText,
+          stateRole: computedStateRole,
+          focusRingVar: computedFocusRing,
         });
         break;
     }

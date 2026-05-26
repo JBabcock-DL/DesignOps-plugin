@@ -30,7 +30,7 @@ The **`CONFIG`** object in **`ctx`** is consumed by the bundled runtime in [`../
 | `iconSlots` | `{ leading: boolean, trailing: boolean, size?: number }` _optional_ | `{ leading: true, trailing: true, size: 24 }` | Render **24×24 placeholder frames** around the label so designers can drop SVG content without detaching. Slots are named `icon-slot/leading` and `icon-slot/trailing`; when `label()` returns `null` for a given size, both flags are ignored and a single `icon-slot/center` is drawn instead (shadcn `size=icon` pattern). `size` defaults to **24**; do not deviate without a matching token update. Omit the field to skip icon slots entirely. **See §3.3.1 for the authoritative paint / stroke / cornerRadius / layoutMode spec — do not duplicate those values here.** |
 | `componentProps` | `{ label: boolean, leadingIcon: boolean, trailingIcon: boolean }` _optional_ | `{ label: true, leadingIcon: true, trailingIcon: true }` | Figma element component properties added to the `ComponentSet` so designers edit instances **without detaching**. `label` → **TEXT** property `"Label"` bound to every variant's inner text characters; `leadingIcon` / `trailingIcon` → **BOOLEAN** properties `"Leading icon"` / `"Trailing icon"` bound to the matching `icon-slot/*` frame's `visible` field. BOOLEAN flags are ignored if the matching `iconSlots.<side>` is false. If `addComponentProperty` throws (older plugin contexts), the draw continues and designers fall back to detaching — see § 3.3. |
 | `states` | `{ key, group }[]` | `[{key:'default',group:'default'},…]` | Matrix columns. `group: 'default'` = interactive cluster (left); `group: 'disabled'` = disabled cluster (right). If **no** state has group `'disabled'`, the two-tier header collapses to a single row. |
-| `applyStateOverride` | `(instance, stateKey, ctx) => void` | opacity overlay / `setProperties` call | Applied to each matrix cell's instance. For opacity-based states (button-like), mutate `instance.opacity`. For components where state IS a Figma variant prop (checkbox, switch), call `instance.setProperties({...})` here instead. `ctx = { variant, size, componentNode }`. |
+| `applyStateOverride` | `(instance, stateKey, ctx) => void` | state-layer + focus-ring visibility toggle / `setProperties` call | Applied to each matrix cell's instance. For button/row-item/field-like components: reset all `state-layer/*` and `focus-ring` child frames to `opacity = 0`, then set `opacity = 1` on `state-layer/{stateKey}` (and additionally `focus-ring` when `stateKey === 'focus'`). Disabled state sets `instance.opacity = 0.38` and skips layer toggling. For controls where state IS a Figma variant prop (checkbox, switch), call `instance.setProperties({...})` and manage `focus-ring.opacity` there instead. `ctx = { variant, size, componentNode }`. |
 | `properties` | `[name, type, default, required, description][]` | 5-tuple rows | Properties+Types table body. Columns are fixed at `PROPERTY / TYPE / DEFAULT / REQUIRED / DESCRIPTION`. When the shadcn component is multi-export, model the sub-component matching `CONFIG.layout` — see [`02-archetype-routing.md` §3.1.2](./02-archetype-routing.md#312--multi-export-shadcn-components-which-sub-component-to-model). |
 | `usageDo` | `string[]` | ≥3 bullets | Left "Do" card. |
 | `usageDont` | `string[]` | ≥3 bullets | Right "Don't" card. |
@@ -72,14 +72,18 @@ summary: 'Native <label> that doesn't render anything else',  // ← SyntaxError
 ```js
 style: {
   default: {
-    fill:      'color/primary/default',   // Theme token for the background
-    fallback:  '#1a1a1a',                 // hex used when the Theme collection is absent
-    labelVar:  'color/primary/content',   // Theme token for the label text fill
-    strokeVar: null,                      // Theme token for stroke, or null for no stroke
-    stateRole: 'primary',                 // optional — which color/state/{role}/* tokens to bind to the state-layer frames.
-                                          // Defaults to the role parsed from fill path (e.g. 'color/primary/default' → 'primary').
-                                          // Required for transparent-fill variants (outline, ghost) where the fill path has no role segment.
-                                          // Set to null to suppress state-layer frames entirely (non-interactive variants).
+    fill:         'color/primary/default',    // Theme token for the background
+    fallback:     '#1a1a1a',                  // hex used when the Theme collection is absent
+    labelVar:     'color/primary/content',    // Theme token for the label text fill
+    strokeVar:    null,                       // Theme token for stroke, or null for no stroke
+    stateRole:    'on-primary',               // M3-strict overlay role — 'on-{role}' for filled variants,
+                                              // 'on-surface' for outline/ghost/transparent variants.
+                                              // Derived automatically via parseStateRole(fill, explicit) when omitted.
+                                              // Set to null to suppress all state-layer frames entirely.
+                                              // BREAKING: legacy bare-role values ('primary', 'secondary', etc.)
+                                              // are NO LONGER VALID — those Theme variables were removed.
+    focusRingVar: 'color/component/ring',     // optional — Theme token for the focus-ring stroke.
+                                              // Override per-variant to use a role-specific ring (e.g. destructive-error ring).
   },
   // ... one entry per variant ...
 }
@@ -91,7 +95,7 @@ style: {
 
 | Component shape | `variants` | `sizes` | `states` | `applyStateOverride` |
 |---|---|---|---|---|
-| Button-like (button, toggle) | 2–6 visual variants | 3–4 size presets | `default` · `hover` · `pressed` ⎮ `disabled` | state-layer visibility; disabled keeps `instance.opacity = 0.38` |
+| Button-like (button, toggle) | 2–6 visual variants | 3–4 size presets | `default` · `hover` · `pressed` · `focus` ⎮ `disabled` | state-layer + focus-ring visibility; disabled keeps `instance.opacity = 0.38` |
 | Input-like (input, textarea, select) | `['default']` | `[]` | `default` · `focus` · `error` ⎮ `disabled` | mutate `strokes` + overlay field |
 | Checkable (checkbox, radio, switch) | `['default']` | `[]` | `unchecked` · `checked` · `indeterminate` ⎮ `disabled` | `instance.setProperties({ checked, disabled })` |
 | Badge / Alert | 4–5 visual variants | `[]` | `[{ key: 'default', group: 'default' }]` | no-op |

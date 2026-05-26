@@ -45,13 +45,14 @@ const LAYOUT_DEFAULTS = {
     variants:  ['default', 'secondary', 'outline', 'ghost'],
     sizes:     ['sm', 'default', 'lg'],
     stateAxes: [
-      { key: 'default',  group: 'default'   },
-      { key: 'hover',    group: 'default'   },
-      { key: 'pressed',  group: 'default'   },
-      { key: 'disabled', group: 'disabled'  },
+      { key: 'default',  group: 'default'  },
+      { key: 'hover',    group: 'default'  },
+      { key: 'pressed',  group: 'default'  },
+      { key: 'focus',    group: 'default'  },
+      { key: 'disabled', group: 'disabled' },
     ],
     applyStateOverrideBody:
-      'const _layers = instance.findAll(n => n.name.startsWith("state-layer/"));\n' +
+      'const _layers = instance.findAll(n => n.name.startsWith("state-layer/") || n.name === "focus-ring");\n' +
       '  _layers.forEach(l => { l.opacity = 0; });\n' +
       '  if (stateKey === "disabled") {\n' +
       '    instance.opacity = 0.38;\n' +
@@ -59,6 +60,10 @@ const LAYOUT_DEFAULTS = {
       '    instance.opacity = 1;\n' +
       '    const _sl = instance.findChild(n => n.name === "state-layer/" + stateKey);\n' +
       '    if (_sl) _sl.opacity = 1;\n' +
+      '    if (stateKey === "focus") {\n' +
+      '      const _fr = instance.findChild(n => n.name === "focus-ring");\n' +
+      '      if (_fr) _fr.opacity = 1;\n' +
+      '    }\n' +
       '  }',
     labelFn: '(size, variant) => title',
     padH:    "{ default: 'space/md', sm: 'space/sm', lg: 'space/lg' }",
@@ -85,8 +90,19 @@ const LAYOUT_DEFAULTS = {
       { key: 'disabled', group: 'disabled' },
     ],
     applyStateOverrideBody:
-      'if (stateKey === "disabled") instance.opacity = 0.38;\n' +
-      '  else instance.opacity = 1;',
+      'const _layers = instance.findAll(n => n.name.startsWith("state-layer/") || n.name === "focus-ring");\n' +
+      '  _layers.forEach(l => { l.opacity = 0; });\n' +
+      '  if (stateKey === "disabled") {\n' +
+      '    instance.opacity = 0.38;\n' +
+      '  } else {\n' +
+      '    instance.opacity = 1;\n' +
+      '    const _sl = instance.findChild(n => n.name === "state-layer/" + stateKey);\n' +
+      '    if (_sl) _sl.opacity = 1;\n' +
+      '    if (stateKey === "focus") {\n' +
+      '      const _fr = instance.findChild(n => n.name === "focus-ring");\n' +
+      '      if (_fr) _fr.opacity = 1;\n' +
+      '    }\n' +
+      '  }',
     labelFn: '() => null',
     padH:    "{ default: 'space/sm' }",
     radius:  "'radius/sm'",
@@ -98,11 +114,12 @@ const LAYOUT_DEFAULTS = {
     stateAxes: [
       { key: 'default',  group: 'default'  },
       { key: 'hover',    group: 'default'  },
+      { key: 'focus',    group: 'default'  },
       { key: 'active',   group: 'default'  },
       { key: 'disabled', group: 'disabled' },
     ],
     applyStateOverrideBody:
-      'const _layers = instance.findAll(n => n.name.startsWith("state-layer/"));\n' +
+      'const _layers = instance.findAll(n => n.name.startsWith("state-layer/") || n.name === "focus-ring");\n' +
       '  _layers.forEach(l => { l.opacity = 0; });\n' +
       '  if (stateKey === "disabled") {\n' +
       '    instance.opacity = 0.38;\n' +
@@ -110,6 +127,10 @@ const LAYOUT_DEFAULTS = {
       '    instance.opacity = 1;\n' +
       '    const _sl = instance.findChild(n => n.name === "state-layer/" + stateKey);\n' +
       '    if (_sl) _sl.opacity = 1;\n' +
+      '    if (stateKey === "focus") {\n' +
+      '      const _fr = instance.findChild(n => n.name === "focus-ring");\n' +
+      '      if (_fr) _fr.opacity = 1;\n' +
+      '    }\n' +
       '  }',
     labelFn: '() => null',
     padH:    "{ default: 'space/sm' }",
@@ -132,11 +153,15 @@ const LAYOUT_DEFAULTS = {
     stateAxes: [
       { key: 'unchecked', group: 'default'  },
       { key: 'checked',   group: 'default'  },
+      { key: 'focus',     group: 'default'  },
       { key: 'disabled',  group: 'disabled' },
     ],
     applyStateOverrideBody:
-      'if (stateKey === "checked") instance.setProperties({ checked: true, disabled: false });\n' +
+      'const _fr = instance.findChild(n => n.name === "focus-ring");\n' +
+      '  if (_fr) _fr.opacity = 0;\n' +
+      '  if (stateKey === "checked") instance.setProperties({ checked: true, disabled: false });\n' +
       '  else if (stateKey === "disabled") instance.setProperties({ disabled: true });\n' +
+      '  else if (stateKey === "focus") { instance.setProperties({ checked: false, disabled: false }); if (_fr) _fr.opacity = 1; }\n' +
       '  else instance.setProperties({ checked: false, disabled: false });',
     labelFn: '() => null',
     padH:    "{ default: 'space/xs' }",
@@ -179,16 +204,28 @@ function indentLines(text, spaces) {
 }
 
 function formatStyleEntry(variant) {
-  // Emit a stub style entry — agent fills in real token paths at Step 4.7
+  // Emit a stub style entry — agent fills in real token paths at Step 4.7.
+  // M3-strict stateRole defaults: outline/ghost/link variants → 'on-surface' (neutral
+  // overlay); filled destructive → 'on-error'; secondary → 'on-secondary';
+  // tertiary → 'on-tertiary'; all other filled → 'on-primary'.
+  // The legacy bare-role values ('primary', 'secondary', etc.) are no longer valid.
+  const isOutline    = /outline|ghost|link|text/i.test(variant);
+  const isDestructive = /destructive|danger|error/i.test(variant);
+  const isSecondary  = /secondary|muted/i.test(variant);
+  const isTertiary   = /tertiary|accent/i.test(variant);
+  let role;
+  if (isOutline)          role = 'on-surface';
+  else if (isDestructive) role = 'on-error';
+  else if (isSecondary)   role = 'on-secondary';
+  else if (isTertiary)    role = 'on-tertiary';
+  else                    role = 'on-primary';
   return `{
-      fill:      null, // TODO: replace with Theme token e.g. 'color/${variant}/default'
-      fallback:  "#888888",  // hex fallback when Theme collection absent
-      labelVar:  null, // TODO: e.g. 'color/${variant}/content'
-      strokeVar: null, // TODO: e.g. 'color/${variant}/border' or null
-      stateRole: null, // TODO: e.g. 'primary' — role for state-layer fills (color/state/{role}/*).
-                       //   Derived automatically from fill path when omitted.
-                       //   Set explicitly for transparent-fill variants (outline, ghost).
-                       //   Set to null to suppress state layers on non-interactive variants.
+      fill:         null, // TODO: replace with Theme token e.g. 'color/${variant}/default'
+      fallback:     "#888888",
+      labelVar:     null, // TODO: e.g. 'color/${variant}/content'
+      strokeVar:    null, // TODO: e.g. 'color/${variant}/border' or null
+      stateRole:    ${JSON.stringify(role)}, // M3 overlay role — '${role}' for the ${isOutline ? 'outline/ghost (neutral on-surface tint)' : 'filled (on-color tint)'} case. Set to null to suppress state layers entirely.
+      focusRingVar: 'color/component/ring',  // override per-variant if a destructive ring etc. is desired
     }`;
 }
 

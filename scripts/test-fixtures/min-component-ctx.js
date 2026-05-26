@@ -19,6 +19,8 @@ const ctx = {
       fallback: '#000000',
       labelVar: 'color/foreground/on-primary',
       strokeVar: 'color/border/default',
+      stateRole: 'on-primary',
+      focusRingVar: 'color/component/ring',
     },
   },
   padH: { default: 'space/md' },

@@ -165,6 +165,7 @@ addLeadingProp   = false,
 addTrailingProp  = false,
 propLabelText    = 'Label',
 stateRole        = null,
+focusRingVar     = 'color/component/ring',
 } = {}) {
 const c = figma.createComponent();
 c.name = name;
@@ -173,6 +174,7 @@ c.primaryAxisSizingMode = 'AUTO';
 c.counterAxisSizingMode = 'AUTO';
 c.primaryAxisAlignItems = 'CENTER';
 c.counterAxisAlignItems = 'CENTER';
+c.clipsContent          = false;
 const hasLabel   = !!(label && String(label).length > 0);
 const anySlot    = leadingSlot || trailingSlot;
 const iconOnly   = !hasLabel && anySlot;
@@ -312,6 +314,23 @@ sl.clipsContent       = false;
 bindColor(sl, 'color/state/' + stateRole + '/' + st, '#00000000', 'fills');
 c.appendChild(sl);
 });
+const ring = figma.createFrame();
+ring.name              = 'focus-ring';
+ring.layoutMode        = 'NONE';
+ring.layoutPositioning = 'ABSOLUTE';
+ring.constraints       = { horizontal: 'STRETCH', vertical: 'STRETCH' };
+ring.resize(100, 100);
+ring.x                 = 0;
+ring.y                 = 0;
+ring.opacity           = 0;
+ring.fills             = [];
+ring.clipsContent      = false;
+['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']
+.forEach(function(f) { bindNum(ring, f, radiusVar, 6); });
+bindColor(ring, focusRingVar, '#3b82f6', 'strokes');
+ring.strokeWeight = 2;
+ring.strokeAlign  = 'OUTSIDE';
+c.appendChild(ring);
 }
 figma.currentPage.appendChild(c);
 return { component: c, slots, propKeys };
@@ -342,6 +361,10 @@ const name = s === null ? `variant=${v}` : `variant=${v}, size=${s}`;
 const label = typeof CONFIG.label === 'function' ? CONFIG.label(s, v) : (CONFIG.label ?? CONFIG.title);
 const padH = (s !== null && CONFIG.padH?.[s]) || padFallback;
 const labelStyleName = (s !== null && CONFIG.labelStyle?.[s]) || labelStyleFallback;
+const computedStateRole = typeof parseStateRole === 'function'
+? parseStateRole(st.fill, Object.prototype.hasOwnProperty.call(st, 'stateRole') ? st.stateRole : undefined)
+: (st.stateRole ?? null);
+const computedFocusRing = st.focusRingVar ?? 'color/component/ring';
 const built = buildVariant(name, st.fill, st.fallback, {
 label,
 labelVar: st.labelVar,
@@ -356,6 +379,8 @@ addLabelProp: !!cp.label,
 addLeadingProp: !!cp.leadingIcon && leadingGlobal,
 addTrailingProp: !!cp.trailingIcon && trailingGlobal,
 propLabelText: defaultLabelText,
+stateRole: computedStateRole,
+focusRingVar: computedFocusRing,
 });
 variantData.push(built);
 }

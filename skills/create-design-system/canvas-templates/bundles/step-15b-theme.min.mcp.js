@@ -793,13 +793,16 @@ const RAW_LITERAL_CODESYNTAX = {
 'color/background/shadow': { WEB: 'var(--color-shadow-tint)',  ANDROID: 'shadow', iOS: '.Background.shadow.tint' },
 };
 function deriveStateCodeSyntax(name) {
-const m = /^color\/state\/(primary|secondary|tertiary|error)\/(hover|pressed|focus)$/.exec(name);
+const m = /^color\/state\/(on-(?:primary|secondary|tertiary|error|surface))\/(hover|pressed|focus)$/.exec(name);
 if (!m) return null;
 const role = m[1], state = m[2];
+const roleKebab = role;
+const rolePascal = role.replace(/^on-/, 'on').replace(/^on(.)/, function(_, c) { return 'on' + c.toUpperCase(); })
+.replace(/-([a-z])/, function(_, c) { return c.toUpperCase(); });
 return {
-WEB: 'var(--color-state-' + role + '-' + state + ')',
-ANDROID: state === 'pressed' ? ('ripple-' + role) : ('state-layer-' + role),
-iOS: '.State.' + role + '.' + state,
+WEB: 'var(--color-state-' + roleKebab + '-' + state + ')',
+ANDROID: state === 'pressed' ? ('ripple-' + roleKebab) : ('state-layer-' + roleKebab),
+iOS: '.State.' + rolePascal + '.' + state,
 };
 }
 async function ensureCodeSyntax(v) {
