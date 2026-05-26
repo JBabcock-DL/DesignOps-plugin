@@ -570,11 +570,12 @@ primary:    { title: 'Primary',    caption: 'Primary brand roles and their on-co
 secondary:  { title: 'Secondary',  caption: 'Secondary brand roles for supporting actions.' },
 tertiary:   { title: 'Tertiary',   caption: 'Tertiary / decorative accent roles.' },
 error:      { title: 'Error',      caption: 'Feedback color for destructive and error states.' },
+state:      { title: 'State',      caption: 'M3 state layer overlays — per-role RGBA tints for hover, pressed, and focus interactions. ANDROID pressed entries double as the ripple drawable color.' },
 component:  { title: 'Component',  caption: 'shadcn-aligned component tokens (ring, input, muted, popover).' },
 button:     { title: 'Button',     caption: 'Component-level button state tokens.' },
 text:       { title: 'Text',       caption: 'Text and content color tokens.' },
 };
-const THEME_GROUP_KNOWN_ORDER = ['background', 'border', 'primary', 'secondary', 'tertiary', 'error', 'component', 'button', 'text'];
+const THEME_GROUP_KNOWN_ORDER = ['background', 'border', 'primary', 'secondary', 'tertiary', 'error', 'state', 'component', 'button', 'text'];
 async function build(ctx) {
 await ensureLocalVariableMapOnCtx(ctx);
 await ensureCanonicalMapOnCtx(ctx);
@@ -793,9 +794,10 @@ const themeVars = allVars.filter(
 const groupOrder = [];
 const groupMap = {};
 for (const v of themeVars) {
-const firstSeg = v.name.split('/')[0];
-if (!groupMap[firstSeg]) { groupMap[firstSeg] = []; groupOrder.push(firstSeg); }
-groupMap[firstSeg].push(v);
+const segs = v.name.split('/');
+const groupKey = (segs[0] === 'color' && segs.length >= 3) ? segs[1] : segs[0];
+if (!groupMap[groupKey]) { groupMap[groupKey] = []; groupOrder.push(groupKey); }
+groupMap[groupKey].push(v);
 }
 const allRows = {};
 for (const group of groupOrder) {

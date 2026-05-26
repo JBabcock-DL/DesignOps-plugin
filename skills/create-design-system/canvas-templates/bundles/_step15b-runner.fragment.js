@@ -106,16 +106,20 @@ function readCS(v) {
   return { WEB: String(cs.WEB || ''), ANDROID: String(cs.ANDROID || ''), iOS: String(cs.iOS || cs.IOS || '') };
 }
 
-// All COLOR vars from this collection only, grouped by first path segment
+// All COLOR vars from this collection only, grouped by semantic role segment.
+// Theme variable names follow the pattern color/{role}/{variant} (e.g. color/primary/default).
+// We group by the second segment (the role) so Background, Border, Primary, etc. each get
+// their own table. Non-color-prefixed variables fall back to first segment as the group key.
 const themeVars = allVars.filter(
   (v) => v.variableCollectionId === themeColl.id && v.resolvedType === 'COLOR'
 );
 const groupOrder = [];
 const groupMap = {};
 for (const v of themeVars) {
-  const firstSeg = v.name.split('/')[0];
-  if (!groupMap[firstSeg]) { groupMap[firstSeg] = []; groupOrder.push(firstSeg); }
-  groupMap[firstSeg].push(v);
+  const segs = v.name.split('/');
+  const groupKey = (segs[0] === 'color' && segs.length >= 3) ? segs[1] : segs[0];
+  if (!groupMap[groupKey]) { groupMap[groupKey] = []; groupOrder.push(groupKey); }
+  groupMap[groupKey].push(v);
 }
 
 const allRows = {};
