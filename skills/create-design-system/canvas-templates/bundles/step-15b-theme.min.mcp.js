@@ -799,9 +799,10 @@ const role = m[1], state = m[2];
 const roleKebab = role;
 const rolePascal = role.replace(/^on-/, 'on').replace(/^on(.)/, function(_, c) { return 'on' + c.toUpperCase(); })
 .replace(/-([a-z])/, function(_, c) { return c.toUpperCase(); });
+const androidState = state === 'pressed' ? 'ripple' : state;
 return {
 WEB: 'var(--color-state-' + roleKebab + '-' + state + ')',
-ANDROID: state === 'pressed' ? ('ripple-' + roleKebab) : ('state-layer-' + roleKebab),
+ANDROID: roleKebab + '-' + androidState,
 iOS: '.State.' + rolePascal + '.' + state,
 };
 }
