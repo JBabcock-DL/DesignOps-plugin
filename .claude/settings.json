@@ -26,12 +26,16 @@
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-props-1 handoff.json return.json)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-props-2 --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-props-2.js)",
       "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\merge-create-component-handoff.mjs\" cc-doc-props-2 handoff.json return.json)",
-      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-matrix --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-matrix.js)"
+      "Bash(node \"c:\\\\Users\\\\jbabc\\\\Documents\\\\GitHub\\\\DesignOps-plugin\\\\scripts\\\\assemble-slice.mjs\" --step cc-doc-matrix --layout control --config-block checkbox.config.js --registry .designops-registry.json --handoff handoff.json --file-key uCpQaRsW4oiXW3DsC6cLZm --out slice-cc-doc-matrix.js)",
+      "Read(//c/Users/jbabc/Documents/GitHub/figmint/**)",
+      "Bash(python scripts/bootstrap-sprints-2-11.py)",
+      "Bash(tee /tmp/bootstrap-run.log)"
     ],
     "additionalDirectories": [
       "~/.claude/plugins/marketplaces/local-desktop-app-uploads/labs-design-ops/.claude-plugin",
       "C:\\Users\\jbabc\\.claude\\plugins\\marketplaces\\local-desktop-app-uploads\\labs-design-ops\\skills\\new-project",
-      "c:\\Users\\jbabc\\Documents\\GitHub\\figtest"
+      "c:\\Users\\jbabc\\Documents\\GitHub\\figtest",
+      "c:\\Users\\jbabc\\Documents\\GitHub\\figmint\\scripts"
     ]
   },
   "enabledMcpjsonServers": [
